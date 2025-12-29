@@ -76,32 +76,50 @@ async function main() {
     const now = new Date();
     let counter = 3000;
 
+    // Simulate exchange rate from 6 months ago (35) to now (60)
+    const startRate = 35;
+    const endRate = 60;
+    const rateStep = (endRate - startRate) / 180;
+
     for (let i = 0; i < 180; i++) {
         const d = new Date();
         d.setDate(now.getDate() - i);
+
+        // Calculate daily rate (linear progression)
+        // i=0 is today (max rate), i=180 is 6 months ago (min rate)
+        // Rate = EndRate - (Step * i)
+        const currentRate = endRate - (rateStep * i);
 
         const count = Math.floor(Math.random() * 4) + 1;
         for (let j = 0; j < count; j++) {
             const c = clients[Math.floor(Math.random() * clients.length)];
             const p = createdProducts[Math.floor(Math.random() * createdProducts.length)];
             const qty = Math.floor(Math.random() * 2) + 1;
-            const sub = Number(p.salePrice) * qty;
+
+            // Calculate prices based on rate
+            // p.salePrice is in USD. 
+            // We assume the system main currency is VES.
+            // Subtotal (VES) = USD Price * Qty * Rate
+
+            const priceUSD = Number(p.salePrice);
+            const sub = priceUSD * qty * currentRate;
             const total = sub * 1.16;
 
             await prisma.sale.create({
                 data: {
-                    clientId: c.id,
+                    client: { connect: { id: c.id } },
                     date: d,
                     invoiceNumber: `FAC-${counter++}`,
                     subtotal: sub,
                     tax: sub * 0.16,
                     total: total,
                     paymentMethod: 'CASH',
+                    exchangeRate: currentRate,
                     items: {
                         create: {
-                            productId: p.id,
+                            product: { connect: { id: p.id } },
                             quantity: qty,
-                            unitPrice: p.salePrice,
+                            unitPrice: priceUSD * currentRate, // Price in VES
                             total: sub
                         }
                     }

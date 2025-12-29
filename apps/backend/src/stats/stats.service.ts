@@ -281,42 +281,150 @@ export class StatsService {
         };
     }
 
-    async getBalanceReport() {
-        // Last 12 months balance
-        const balanceData: { month: string; income: number; expenses: number; total: number }[] = [];
+    async getBalanceReport(currencyCode: string = 'VES') {
+        const balanceData: {
+            month: string;
+            income: number;
+            expenses: number;
+            purchases: number;
+            total: number;
+            profitMargin: number;
+            operatingCostRatio: number;
+        }[] = [];
+
         const now = dayjs();
+
+        // 1. Get Target Currency (if not VES)
+        const targetCurrency = currencyCode !== 'VES'
+            ? await this.prisma.currency.findUnique({ where: { code: currencyCode } })
+            : null;
+
+        // 2. Get Reference Currency (The one stored in sale.exchangeRate, usually USD)
+        const companySettings = await this.prisma.companySettings.findFirst({
+            include: { preferredSecondaryCurrency: true }
+        });
+        const refCurrency = companySettings?.preferredSecondaryCurrency;
+
+        // Calculate Cross-Rate Factor (Ref -> Target)
+        // If we have 100 USD (Ref), how many EUR (Target) is that?
+        // Factor = RefRate / TargetRate. 
+        // Example: USD=60, EUR=65. 1 USD = 0.92 EUR.
+        let crossRateFactor = 1;
+
+        if (targetCurrency && refCurrency && targetCurrency.code !== refCurrency.code) {
+            const refRate = Number(refCurrency.exchangeRate || 0);
+            const targetRate = Number(targetCurrency.exchangeRate || 1);
+            if (targetRate > 0) {
+                crossRateFactor = refRate / targetRate;
+            }
+        }
 
         for (let i = 11; i >= 0; i--) {
             const currentMonth = now.subtract(i, 'month');
             const start = currentMonth.startOf('month').toDate();
             const end = currentMonth.endOf('month').toDate();
 
-            // Income from sales
-            const sales = await this.prisma.sale.aggregate({
+            // 1. SALES (Ingresos)
+            const sales = await this.prisma.sale.findMany({
                 where: { createdAt: { gte: start, lte: end }, active: true },
-                _sum: { total: true },
+                select: { total: true, exchangeRate: true }
             });
 
-            // Egress from purchases
-            const purchases = await this.prisma.purchase.aggregate({
+            // 2. PURCHASES (Compras - Costos de Venta)
+            const purchases = await this.prisma.purchase.findMany({
                 where: { createdAt: { gte: start, lte: end } },
-                _sum: { total: true },
+                select: { total: true, exchangeRate: true, currencyCode: true }
             });
 
-            // Egress from other expenses
-            const expenses = await this.prisma.expense.aggregate({
+            // 3. EXPENSES (Gastos Operativos)
+            const expenses = await this.prisma.expense.findMany({
                 where: { date: { gte: start, lte: end } },
-                _sum: { amount: true },
+                select: { amount: true, exchangeRate: true, currencyCode: true }
             });
 
-            const income = Number(sales._sum.total || 0);
-            const egress = Number(purchases._sum.total || 0) + Number(expenses._sum.amount || 0);
+            // --- CONVERSION LOGIC ---
+            // Rule: "Traer los datos basados en las tasas cuando registró las ventas"
+            // If viewing in VES: Use amounts as stored (assuming base is VES).
+            // If viewing in USD: Divide VES amount by the historical exchange rate of that transaction.
+
+            let monthlyIncome = 0;
+            let monthlyOperationalExpenses = 0;
+            let monthlyPurchases = 0;
+
+            // Calculate Income
+            sales.forEach(sale => {
+                let amount = Number(sale.total);
+                if (currencyCode !== 'VES') {
+                    // 1. Convert VES to Historical Reference Currency (USD)
+                    const historicalRate = Number(sale.exchangeRate) || 1;
+                    let amountInRef = amount / historicalRate;
+
+                    // 2. Convert Reference to Target (if different) using current cross-rate
+                    // If Target is Ref (USD), factor is 1. If Target is EUR, factor is ~0.9.
+                    amount = amountInRef * crossRateFactor;
+                }
+                monthlyIncome += amount;
+            });
+
+            // Calculate Expenses (Purchases + Expenses)
+            purchases.forEach(p => {
+                let amount = Number(p.total);
+                // If purchase was in Foreign Currency but we want VES, multiply.
+                // If purchase was in VES but we want Foreign, divide.
+                // Simplified assumption: System stores values in Base Currency (VES) or normalization happens.
+                // However, Purchase model has currencyCode. Let's handle it:
+
+                const rate = Number(p.exchangeRate) || 1;
+
+                // First normalize to System Currency (VES)
+                let amountInVES = p.currencyCode === 'VES' ? amount : amount * rate;
+
+                // Then convert to Target Currency
+                if (currencyCode === 'VES') {
+                    monthlyPurchases += amountInVES;
+                } else {
+                    // 1. Convert to Historical Reference (USD) using the stored rate (approximation)
+                    // If the purchase has its own specific rate, we use that. 
+                    // But for consistency with sales, we need to bring it to Ref Currency first.
+                    // Ideally, we divide VES Amount by the Historical Ref Rate.
+                    // But Purchase.exchangeRate IS the historical Ref Rate ideally.
+
+                    let amountInRef = amountInVES / (Number(p.exchangeRate) || 1);
+
+                    monthlyPurchases += (amountInRef * crossRateFactor);
+                }
+            });
+
+            expenses.forEach(e => {
+                const amount = Number(e.amount);
+                const rate = Number(e.exchangeRate) || 1;
+
+                let amountInVES = e.currencyCode === 'VES' ? amount : amount * rate;
+
+                if (currencyCode === 'VES') {
+                    monthlyOperationalExpenses += amountInVES;
+                } else {
+                    let amountInRef = amountInVES / rate;
+                    monthlyOperationalExpenses += (amountInRef * crossRateFactor);
+                }
+            });
+
+            // Metrics
+            const totalExpenses = monthlyOperationalExpenses + monthlyPurchases;
+            const profit = monthlyIncome - totalExpenses;
+            // Profit Margin % = (Net Income / Revenue) * 100
+            const profitMargin = monthlyIncome > 0 ? (profit / monthlyIncome) * 100 : 0;
+            // Operating Cost Ratio % = (Expenses / Revenue) * 100
+            const operatingCostRatio = monthlyIncome > 0 ? (monthlyOperationalExpenses / monthlyIncome) * 100 : 0;
 
             balanceData.push({
-                month: currentMonth.format('MMMM YYYY'),
-                income: income,
-                expenses: egress,
-                total: income - egress,
+                month: currentMonth.format('MMMM'), // Just Month Name
+                income: Number(monthlyIncome.toFixed(2)),
+                expenses: Number(monthlyOperationalExpenses.toFixed(2)),
+                purchases: Number(monthlyPurchases.toFixed(2)),
+                total: Number(profit.toFixed(2)),
+                profitMargin: Number(profitMargin.toFixed(1)),
+                operatingCostRatio: Number(operatingCostRatio.toFixed(1))
             });
         }
 

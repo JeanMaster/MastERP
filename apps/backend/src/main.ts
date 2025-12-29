@@ -11,36 +11,10 @@ async function bootstrap() {
   const httpAdapterHost = app.get(HttpAdapterHost);
   app.useGlobalFilters(new AllExceptionsFilter(httpAdapterHost));
 
-  // CORS - Permitir localhost, IPs de red privada y el dominio de Vercel
+  // CORS - Configuración Permisiva para LAN
   app.enableCors({
-    origin: (origin, callback) => {
-      // Si no hay origen (ej. Postman o herramientas del mismo servidor), permitir
-      if (!origin) return callback(null, true);
-
-      const allowedOriginPatterns = [
-        /^http:\/\/localhost:\d+$/,
-        /^http:\/\/127\.0\.0\.1:\d+$/,
-        /^http:\/\/192\.168\.\d+\.\d+:\d+$/,
-        /^http:\/\/10\.\d+\.\d+\.\d+:\d+$/,
-        /^http:\/\/172\.(1[6-9]|2[0-9]|3[0-1])\.\d+\.\d+:\d+$/,
-        /\.vercel\.app$/, // Permitir cualquier subdominio de vercel.app
-      ];
-
-      const isAllowed = allowedOriginPatterns.some(pattern => pattern.test(origin));
-
-      if (isAllowed || process.env.NODE_ENV !== 'production') {
-        return callback(null, true);
-      }
-
-      // Para producción, permitir orígenes definidos en env vars o dominios conocidos
-      const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',') || [];
-      if (allowedOrigins.includes(origin) || origin.includes('valery-port')) {
-        return callback(null, true);
-      }
-
-      return callback(new Error('Not allowed by CORS'));
-    },
-    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+    origin: true, // Refleja el origen de la solicitud (Permite todo)
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
     credentials: true,
   });
 

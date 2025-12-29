@@ -28,7 +28,9 @@ export class StatsController {
 
     @Get('balance')
     @ApiOperation({ summary: 'Get balance report' })
-    getBalanceReport() {
-        return this.statsService.getBalanceReport();
+    @ApiQuery({ name: 'currency', required: false })
+    getBalanceReport(@Query('currency') currency?: string) {
+        console.log(`[STATS] getBalanceReport called with currency: '${currency}'`);
+        return this.statsService.getBalanceReport(currency);
     }
 }

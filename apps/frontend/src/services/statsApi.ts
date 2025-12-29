@@ -33,7 +33,10 @@ export interface BalanceEntry {
     month: string;
     income: number;
     expenses: number;
+    purchases: number;
     total: number;
+    profitMargin: number;
+    operatingCostRatio: number;
 }
 
 export const statsApi = {
@@ -54,8 +57,10 @@ export const statsApi = {
         return response.data;
     },
 
-    getBalanceReport: async (): Promise<BalanceEntry[]> => {
-        const response = await apiClient.get('/stats/balance');
+    getBalanceReport: async (currency?: string): Promise<BalanceEntry[]> => {
+        const response = await apiClient.get('/stats/balance', {
+            params: { currency }
+        });
         return response.data;
     },
 };
