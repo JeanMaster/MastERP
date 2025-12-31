@@ -31,6 +31,7 @@ export interface Sale {
     paymentMethod: string;
     tendered?: number;
     change?: number;
+    exchangeRate: number;
     items: SaleItem[];
     active: boolean;
     createdAt: string;
@@ -53,6 +54,7 @@ export interface CreateSaleDto {
     tendered?: number;
     change?: number;
     invoiceNumber?: string;
+    exchangeRate?: number;
 }
 
 export interface SalesFilters {
