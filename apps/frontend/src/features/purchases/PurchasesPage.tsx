@@ -128,7 +128,7 @@ export const PurchasesPage: React.FC = () => {
                     dataSource={purchases}
                     rowKey="id"
                     loading={loading}
-                    scroll={{ x: 800 }}
+                    scroll={{ x: 'max-content' }}
                     size={isMobile ? 'small' : 'middle'}
                     pagination={{
                         pageSize: 10,

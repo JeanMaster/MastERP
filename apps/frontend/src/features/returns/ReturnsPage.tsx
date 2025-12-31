@@ -10,7 +10,8 @@ import {
     Select,
     Typography,
     Spin,
-    Modal
+    Modal,
+    Grid
 } from 'antd';
 import {
     PlusOutlined,
@@ -29,6 +30,8 @@ const { RangePicker } = DatePicker;
 const { Title, Text } = Typography;
 
 export const ReturnsPage = () => {
+    const screens = Grid.useBreakpoint();
+    const isMobile = !screens.lg;
     const [filters, setFilters] = useState<ReturnFilters>({});
     const [dateRange, setDateRange] = useState<[dayjs.Dayjs, dayjs.Dayjs] | null>(null);
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -223,55 +226,59 @@ export const ReturnsPage = () => {
     ];
 
     return (
-        <div style={{ padding: 24 }}>
-            <Title level={2}>Devoluciones</Title>
+        <div style={{ padding: isMobile ? '8px' : '24px' }}>
+            <Title level={isMobile ? 3 : 2}>Devoluciones</Title>
 
             {/* Filters */}
             <Card style={{ marginBottom: 16 }}>
                 <Space direction="vertical" style={{ width: '100%' }} size="middle">
-                    <Space wrap>
+                    <Space wrap direction={isMobile ? 'vertical' : 'horizontal'} style={{ width: isMobile ? '100%' : 'auto' }}>
                         <RangePicker
                             value={dateRange}
                             onChange={handleDateRangeChange}
                             format="DD/MM/YYYY"
-                            placeholder={['Fecha inicio', 'Fecha fin']}
+                            placeholder={['Inicio', 'Fin']}
+                            style={{ width: isMobile ? '100%' : 'auto' }}
                         />
-                        <Select
-                            style={{ width: 150 }}
-                            placeholder="Estado"
-                            allowClear
-                            onChange={(value) => setFilters(prev => ({ ...prev, status: value }))}
-                        >
-                            <Select.Option value="PENDING">Pendiente</Select.Option>
-                            <Select.Option value="APPROVED">Aprobada</Select.Option>
-                            <Select.Option value="REJECTED">Rechazada</Select.Option>
-                            <Select.Option value="COMPLETED">Completada</Select.Option>
-                        </Select>
-                        <Select
-                            style={{ width: 150 }}
-                            placeholder="Tipo"
-                            allowClear
-                            onChange={(value) => setFilters(prev => ({ ...prev, returnType: value }))}
-                        >
-                            <Select.Option value="REFUND">Reembolso</Select.Option>
-                            <Select.Option value="EXCHANGE_SAME">Cambio Mismo</Select.Option>
-                            <Select.Option value="EXCHANGE_DIFFERENT">Cambio Diferente</Select.Option>
-                        </Select>
-                        <Button
-                            icon={<ReloadOutlined />}
-                            onClick={() => {
-                                setFilters({});
-                                setDateRange(null);
-                                refetch();
-                            }}
-                        />
+                        <Space style={{ width: isMobile ? '100%' : 'auto' }}>
+                            <Select
+                                style={{ flex: 1, minWidth: isMobile ? 0 : 120 }}
+                                placeholder="Estado"
+                                allowClear
+                                onChange={(value) => setFilters(prev => ({ ...prev, status: value }))}
+                            >
+                                <Select.Option value="PENDING">Pendiente</Select.Option>
+                                <Select.Option value="APPROVED">Aprobada</Select.Option>
+                                <Select.Option value="REJECTED">Rechazada</Select.Option>
+                                <Select.Option value="COMPLETED">Completada</Select.Option>
+                            </Select>
+                            <Select
+                                style={{ flex: 1, minWidth: isMobile ? 0 : 120 }}
+                                placeholder="Tipo"
+                                allowClear
+                                onChange={(value) => setFilters(prev => ({ ...prev, returnType: value }))}
+                            >
+                                <Select.Option value="REFUND">Reembolso</Select.Option>
+                                <Select.Option value="EXCHANGE_SAME">Cambio Mismo</Select.Option>
+                                <Select.Option value="EXCHANGE_DIFFERENT">Cambio Diferente</Select.Option>
+                            </Select>
+                            <Button
+                                icon={<ReloadOutlined />}
+                                onClick={() => {
+                                    setFilters({});
+                                    setDateRange(null);
+                                    refetch();
+                                }}
+                            />
+                        </Space>
                     </Space>
                     <Button
                         type="primary"
                         icon={<PlusOutlined />}
                         onClick={() => setIsCreateModalOpen(true)}
+                        block={isMobile}
                     >
-                        Nueva Devolución
+                        {isMobile ? 'Nueva' : 'Nueva Devolución'}
                     </Button>
                 </Space>
             </Card>
@@ -287,10 +294,13 @@ export const ReturnsPage = () => {
                         dataSource={returns}
                         columns={columns}
                         rowKey="id"
+                        scroll={{ x: 'max-content' }}
+                        size={isMobile ? 'small' : 'middle'}
                         pagination={{
                             pageSize: 20,
                             showSizeChanger: true,
-                            showTotal: (total) => `Total: ${total} devoluciones`
+                            size: isMobile ? 'small' : 'default',
+                            showTotal: (total) => `Total: ${total}`
                         }}
                     />
                 )}

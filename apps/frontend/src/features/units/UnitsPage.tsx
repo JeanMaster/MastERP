@@ -1,12 +1,16 @@
 import { useState } from 'react';
-import { Card, Table, Button, Space, Input, message, Popconfirm, Tag } from 'antd';
+import { Card, Table, Button, Space, Input, message, Popconfirm, Tag, Grid } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined, ReloadOutlined } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { unitsApi } from '../../services/unitsApi';
 import type { Unit } from '../../services/unitsApi';
 import { UnitFormModal } from './UnitFormModal';
 
+const { useBreakpoint } = Grid;
+
 export const UnitsPage = () => {
+    const screens = useBreakpoint();
+    const isMobile = !screens.lg;
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingUnit, setEditingUnit] = useState<Unit | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
@@ -102,18 +106,20 @@ export const UnitsPage = () => {
         <Card
             title="Unidades de Medida"
             extra={
-                <Space>
+                <Space direction={isMobile ? 'vertical' : 'horizontal'} style={{ width: isMobile ? '100%' : 'auto' }} align={isMobile ? 'end' : 'center'}>
                     <Input
                         placeholder="Buscar unidad..."
                         prefix={<SearchOutlined />}
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
-                        style={{ width: 250 }}
+                        style={{ width: isMobile ? '100%' : 250 }}
                     />
-                    <Button icon={<ReloadOutlined />} onClick={() => queryClient.invalidateQueries({ queryKey: ['units'] })} />
-                    <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}>
-                        Nueva Unidad
-                    </Button>
+                    <Space>
+                        <Button icon={<ReloadOutlined />} onClick={() => queryClient.invalidateQueries({ queryKey: ['units'] })} />
+                        <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}>
+                            {isMobile ? 'Nueva' : 'Nueva Unidad'}
+                        </Button>
+                    </Space>
                 </Space>
             }
         >
@@ -123,6 +129,7 @@ export const UnitsPage = () => {
                 rowKey="id"
                 loading={isLoading}
                 pagination={{ pageSize: 20 }}
+                scroll={{ x: 'max-content' }}
             />
 
             <UnitFormModal

@@ -64,8 +64,8 @@ export const POSLeftPanel = () => {
         if (option.product) {
             const product = option.product;
 
-            // Check if product has no stock
-            if (product.stock === 0) {
+            // Check if product has no stock (Skip for Services)
+            if (product.type !== 'SERVICE' && product.stock === 0) {
                 Modal.warning({
                     title: 'Producto sin stock',
                     icon: <WarningOutlined style={{ color: '#ff4d4f' }} />,
@@ -78,7 +78,7 @@ export const POSLeftPanel = () => {
             const existingItem = cart.find(item => item.product.id === product.id);
             const currentQuantity = existingItem ? existingItem.quantity : 0;
 
-            if (currentQuantity >= product.stock) {
+            if (product.type !== 'SERVICE' && currentQuantity >= product.stock) {
                 Modal.warning({
                     title: 'Stock insuficiente',
                     icon: <WarningOutlined style={{ color: '#faad14' }} />,
@@ -169,16 +169,18 @@ export const POSLeftPanel = () => {
             width: 70,
             align: 'center' as const,
             render: (_: any, record: CartItem) => {
+                const isService = record.product.type === 'SERVICE';
                 const stock = record.product.stock;
-                const hasStockIssue = record.quantity > stock;
+                const hasStockIssue = !isService && record.quantity > stock;
                 return (
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
                         <Tag color={
-                            stock === 0 ? 'red' :
-                                stock <= 10 ? 'orange' :
-                                    'green'
+                            isService ? 'blue' :
+                                stock === 0 ? 'red' :
+                                    stock <= 10 ? 'orange' :
+                                        'green'
                         } style={{ margin: 0, fontSize: 11 }}>
-                            {stock}
+                            {isService ? '∞' : stock}
                         </Tag>
                         {hasStockIssue && (
                             <ExclamationCircleOutlined
@@ -269,12 +271,13 @@ export const POSLeftPanel = () => {
                     }
 
                     // Stock indicator
-                    const stockIndicator = d.stock === 0 ? '🔴' : d.stock <= 10 ? '🟡' : '🟢';
-                    const stockText = `Stock: ${d.stock}`;
+                    const isService = d.type === 'SERVICE';
+                    const stockIndicator = isService ? '🔵' : d.stock === 0 ? '🔴' : d.stock <= 10 ? '🟡' : '🟢';
+                    const stockText = isService ? 'Servicio' : `Stock: ${d.stock}`;
 
                     return {
                         value: d.id,
-                        label: `${d.sku} - ${d.name} (${priceString}) [${stockText} ${stockIndicator}]`,
+                        label: `${d.sku} - ${d.name} (${priceString}) [${stockText} ${isService ? '∞' : stockIndicator}]`,
                         product: d
                     };
                 })}

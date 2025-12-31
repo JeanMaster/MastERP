@@ -29,8 +29,8 @@ export class SalesService {
                 throw new BadRequestException(`Producto con ID ${item.productId} no encontrado`);
             }
 
-            // Solo validar stock si el producto tiene control de inventario (stock > 0)
-            if (product.stock > 0 && product.stock < item.quantity) {
+            // Solo validar stock si el producto tiene control de inventario (stock > 0) y NO es un servicio
+            if (product.type !== 'SERVICE' && product.stock > 0 && product.stock < item.quantity) {
                 throw new BadRequestException(`Stock insuficiente para ${product.name}. Disponible: ${product.stock}`);
             }
         }
@@ -72,7 +72,7 @@ export class SalesService {
                     where: { id: item.productId },
                 });
 
-                if (product && product.stock > 0) {
+                if (product && product.type !== 'SERVICE' && product.stock > 0) {
                     await prisma.product.update({
                         where: { id: item.productId },
                         data: {

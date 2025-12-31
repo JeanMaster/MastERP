@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { Table, Button, Input, Space, Card, Tag, Tooltip, Switch, App, Row, Col } from 'antd';
+import { Table, Button, Input, Space, Card, Tag, Tooltip, Switch, App, Grid } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined, UserOutlined, ShopOutlined, ReloadOutlined } from '@ant-design/icons';
 import { suppliersApi } from '../../services/suppliersApi';
 import type { Supplier, CreateSupplierDto, UpdateSupplierDto } from '../../services/suppliersApi';
 import { CreateSupplierModal } from './components/CreateSupplierModal';
 
 export const SuppliersPage: React.FC = () => {
+    const screens = Grid.useBreakpoint();
+    const isMobile = !screens.lg;
     const { message, modal } = App.useApp();
     const [suppliers, setSuppliers] = useState<Supplier[]>([]);
     const [loading, setLoading] = useState(true);
@@ -182,34 +184,42 @@ export const SuppliersPage: React.FC = () => {
     ];
 
     return (
-        <div style={{ padding: '24px' }}>
+        <div style={{ padding: isMobile ? '8px' : '24px' }}>
             <Card>
-                <Row justify="space-between" align="middle" style={{ marginBottom: 16 }}>
-                    <Col>
-                        <Space size="large">
-                            <Space>
-                                <ShopOutlined style={{ fontSize: '24px', color: '#1890ff' }} />
-                                <h1 style={{ margin: 0, fontSize: '24px' }}>Proveedores</h1>
-                            </Space>
+                <div style={{
+                    display: 'flex',
+                    flexDirection: isMobile ? 'column' : 'row',
+                    justifyContent: 'space-between',
+                    alignItems: isMobile ? 'flex-start' : 'center',
+                    marginBottom: 16,
+                    gap: 16
+                }}>
+                    <Space direction={isMobile ? 'vertical' : 'horizontal'} style={{ width: isMobile ? '100%' : 'auto' }}>
+                        <Space>
+                            <ShopOutlined style={{ fontSize: isMobile ? '20px' : '24px', color: '#1890ff' }} />
+                            <h1 style={{ margin: 0, fontSize: isMobile ? '20px' : '24px' }}>Proveedores</h1>
+                        </Space>
+                        <Space.Compact style={{ width: isMobile ? '100%' : 'auto' }}>
                             <Input
-                                placeholder="Buscar por nombre, RIF..."
+                                placeholder="Buscar..."
                                 prefix={<SearchOutlined />}
-                                style={{ width: 300 }}
+                                style={{ width: isMobile ? '100%' : 250 }}
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
                                 onPressEnter={fetchSuppliers}
                             />
                             <Button onClick={fetchSuppliers}>Buscar</Button>
-                        </Space>
-                    </Col>
-                    <Col>
+                        </Space.Compact>
+                    </Space>
+                    <Space wrap align="center" style={{ width: isMobile ? '100%' : 'auto', justifyContent: isMobile ? 'space-between' : 'flex-end' }}>
+                        <Switch
+                            checked={!showInactive}
+                            onChange={(checked) => setShowInactive(!checked)}
+                            checkedChildren="Activos"
+                            unCheckedChildren="Inactivos"
+                            size={isMobile ? 'small' : 'default'}
+                        />
                         <Space>
-                            <Switch
-                                checked={!showInactive}
-                                onChange={(checked) => setShowInactive(!checked)}
-                                checkedChildren="Activos"
-                                unCheckedChildren="Inactivos"
-                            />
                             <Button icon={<ReloadOutlined />} onClick={fetchSuppliers} />
                             <Button
                                 type="primary"
@@ -219,11 +229,11 @@ export const SuppliersPage: React.FC = () => {
                                     setModalVisible(true);
                                 }}
                             >
-                                Nuevo Proveedor
+                                {isMobile ? 'Nuevo' : 'Nuevo Proveedor'}
                             </Button>
                         </Space>
-                    </Col>
-                </Row>
+                    </Space>
+                </div>
 
                 <Table
                     columns={columns}
@@ -231,6 +241,7 @@ export const SuppliersPage: React.FC = () => {
                     rowKey="id"
                     loading={loading}
                     pagination={{ pageSize: 10 }}
+                    scroll={{ x: 'max-content' }}
                 />
             </Card>
 

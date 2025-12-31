@@ -207,11 +207,11 @@ export const MainLayout = () => {
                             type="text"
                             icon={isDarkMode ? <span>☀️</span> : <span>🌙</span>}
                             onClick={toggleTheme}
-                            size="large"
+                            size={isMobile ? "middle" : "large"}
                             title={isDarkMode ? 'Modo Claro' : 'Modo Oscuro'}
                             style={{ color: isDarkMode ? '#fff' : '#000' }}
                         />
-                        <Button type="text" icon={<BellOutlined />} size="large" style={{ color: isDarkMode ? '#fff' : '#000' }} />
+                        <Button type="text" icon={<BellOutlined />} size={isMobile ? "middle" : "large"} style={{ color: isDarkMode ? '#fff' : '#000' }} />
                         <Dropdown menu={{
                             items: [
                                 {
@@ -224,21 +224,24 @@ export const MainLayout = () => {
                             ]
                         }}>
                             <Space style={{ cursor: 'pointer' }}>
-                                <Avatar icon={<UserOutlined />} />
-                                <Text strong style={{ color: isDarkMode ? '#fff' : '#000' }}>
-                                    {user?.name || 'Usuario'}
-                                </Text>
+                                <Avatar icon={<UserOutlined />} size={isMobile ? "small" : "default"} />
+                                {!isMobile && (
+                                    <Text strong style={{ color: isDarkMode ? '#fff' : '#000' }}>
+                                        {user?.name || 'Usuario'}
+                                    </Text>
+                                )}
                             </Space>
                         </Dropdown>
                     </Space>
                 </Header>
 
                 <Content style={{
-                    margin: location.pathname.includes('/pos') ? '0' : (isMobile ? '8px' : '24px 16px'),
+                    margin: location.pathname.includes('/pos') ? '0' : (isMobile ? '4px' : '24px 16px'),
                     padding: location.pathname.includes('/pos') ? 0 : (isMobile ? 12 : 24),
                     background: '#fff',
                     minHeight: 280,
                     borderRadius: isMobile ? 8 : 0,
+                    overflow: 'auto'
                 }}>
                     <Outlet />
                 </Content>

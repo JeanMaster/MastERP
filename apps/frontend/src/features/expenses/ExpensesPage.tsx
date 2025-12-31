@@ -1,6 +1,6 @@
 
 import { useState } from 'react';
-import { Card, Table, Button, Input, Tag, Typography, Statistic, Row, Col, Space } from 'antd';
+import { Card, Table, Button, Input, Tag, Typography, Statistic, Row, Col, Space, Grid } from 'antd';
 import { PlusOutlined, ReloadOutlined, SearchOutlined, DollarOutlined } from '@ant-design/icons';
 import { useQuery } from '@tanstack/react-query';
 import dayjs from 'dayjs';
@@ -11,6 +11,8 @@ import { formatVenezuelanPrice } from '../../utils/formatters';
 const { Title } = Typography;
 
 export const ExpensesPage = () => {
+    const screens = Grid.useBreakpoint();
+    const isMobile = !screens.lg;
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [searchText, setSearchText] = useState('');
 
@@ -145,30 +147,30 @@ export const ExpensesPage = () => {
     ];
 
     return (
-        <div style={{ padding: '24px' }}>
+        <div style={{ padding: isMobile ? '8px' : '24px' }}>
             <div style={{ marginBottom: 24 }}>
-                <Title level={2}>Gastos Operativos</Title>
-                <Row gutter={16}>
-                    <Col span={6}>
-                        <Card>
+                <Title level={isMobile ? 3 : 2}>Gastos Operativos</Title>
+                <Row gutter={[16, 16]}>
+                    <Col xs={12} sm={12} md={6}>
+                        <Card size={isMobile ? 'small' : 'default'}>
                             <Statistic
-                                title="Gastos de Hoy (Ref $)"
+                                title="De Hoy (Ref $)"
                                 value={totalTodayUSD}
                                 precision={2}
-                                valueStyle={{ color: '#cf1322' }}
+                                valueStyle={{ color: '#cf1322', fontSize: isMobile ? '16px' : '24px' }}
                                 styles={{ content: { color: '#cf1322' } }}
                                 prefix={<DollarOutlined />}
                                 suffix="$"
                             />
                         </Card>
                     </Col>
-                    <Col span={6}>
-                        <Card>
+                    <Col xs={12} sm={12} md={6}>
+                        <Card size={isMobile ? 'small' : 'default'}>
                             <Statistic
-                                title="Gastos del Mes (Ref $)"
+                                title="Del Mes (Ref $)"
                                 value={totalMonthUSD}
                                 precision={2}
-                                valueStyle={{ color: '#cf1322' }}
+                                valueStyle={{ color: '#cf1322', fontSize: isMobile ? '16px' : '24px' }}
                                 styles={{ content: { color: '#cf1322' } }}
                                 prefix={<DollarOutlined />}
                                 suffix="$"
@@ -180,25 +182,28 @@ export const ExpensesPage = () => {
 
             <Card
                 extra={
-                    <Space>
+                    <Space direction={isMobile ? 'vertical' : 'horizontal'} style={{ width: isMobile ? '100%' : 'auto' }} align={isMobile ? 'end' : 'center'}>
                         <Input
                             placeholder="Buscar gastos..."
                             prefix={<SearchOutlined />}
                             onChange={e => setSearchText(e.target.value)}
-                            style={{ width: 200 }}
+                            style={{ width: isMobile ? '100%' : 200 }}
                         />
-                        <Button
-                            icon={<ReloadOutlined />}
-                            onClick={() => refetch()}
-                        />
-                        <Button
-                            type="primary"
-                            icon={<PlusOutlined />}
-                            onClick={() => setIsCreateModalOpen(true)}
-                            danger
-                        >
-                            Registrar Gasto
-                        </Button>
+                        <Space>
+                            <Button
+                                icon={<ReloadOutlined />}
+                                onClick={() => refetch()}
+                            />
+                            <Button
+                                type="primary"
+                                icon={<PlusOutlined />}
+                                onClick={() => setIsCreateModalOpen(true)}
+                                danger
+                                block={isMobile}
+                            >
+                                {isMobile ? 'Registrar' : 'Registrar Gasto'}
+                            </Button>
+                        </Space>
                     </Space>
                 }
             >
@@ -208,6 +213,7 @@ export const ExpensesPage = () => {
                     rowKey="id"
                     loading={isLoading}
                     pagination={{ pageSize: 10 }}
+                    scroll={{ x: 'max-content' }}
                 />
             </Card>
 

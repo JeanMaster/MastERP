@@ -183,14 +183,16 @@ export const ProductsPage = () => {
         },
         {
             title: 'Stock',
-            dataIndex: 'stock',
             key: 'stock',
             width: '8%',
-            render: (stock: number) => (
-                <Tag color={stock > 10 ? 'green' : stock > 0 ? 'orange' : 'red'}>
-                    {stock}
-                </Tag>
-            ),
+            render: (_: any, record: Product) => {
+                const isService = record.type === 'SERVICE';
+                return (
+                    <Tag color={isService ? 'blue' : record.stock > 10 ? 'green' : record.stock > 0 ? 'orange' : 'red'}>
+                        {isService ? '∞' : record.stock}
+                    </Tag>
+                );
+            },
         },
         {
             title: 'Unidad',

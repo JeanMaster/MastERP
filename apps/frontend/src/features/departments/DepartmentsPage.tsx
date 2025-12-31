@@ -1,12 +1,16 @@
 import { useState } from 'react';
-import { Card, Table, Button, Space, Input, message, Popconfirm, Tag } from 'antd';
+import { Card, Table, Button, Space, Input, message, Popconfirm, Tag, Grid } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined, ReloadOutlined } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { departmentsApi } from '../../services/departmentsApi';
 import type { Department } from '../../services/departmentsApi';
 import { DepartmentFormModal } from './DepartmentFormModal';
 
+const { useBreakpoint } = Grid;
+
 export const DepartmentsPage = () => {
+    const screens = useBreakpoint();
+    const isMobile = !screens.lg;
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingDepartment, setEditingDepartment] = useState<Department | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
@@ -129,18 +133,20 @@ export const DepartmentsPage = () => {
         <Card
             title="Departamentos"
             extra={
-                <Space>
+                <Space direction={isMobile ? 'vertical' : 'horizontal'} style={{ width: isMobile ? '100%' : 'auto' }} align={isMobile ? 'end' : 'center'}>
                     <Input
                         placeholder="Buscar departamento..."
                         prefix={<SearchOutlined />}
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
-                        style={{ width: 250 }}
+                        style={{ width: isMobile ? '100%' : 250 }}
                     />
-                    <Button icon={<ReloadOutlined />} onClick={() => queryClient.invalidateQueries({ queryKey: ['departments'] })} />
-                    <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}>
-                        Nuevo Departamento
-                    </Button>
+                    <Space>
+                        <Button icon={<ReloadOutlined />} onClick={() => queryClient.invalidateQueries({ queryKey: ['departments'] })} />
+                        <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}>
+                            {isMobile ? 'Nuevo' : 'Nuevo Departamento'}
+                        </Button>
+                    </Space>
                 </Space>
             }
         >
@@ -150,6 +156,7 @@ export const DepartmentsPage = () => {
                 loading={isLoading}
                 pagination={false}
                 defaultExpandAllRows
+                scroll={{ x: 'max-content' }}
             />
 
             <DepartmentFormModal

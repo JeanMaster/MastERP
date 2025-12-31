@@ -171,7 +171,7 @@ export const ClientsPage = () => {
                     <Col xs={24} md={12}>
                         <Typography.Title level={isMobile ? 3 : 2} style={{ margin: 0 }}>👥 Gestión de Clientes</Typography.Title>
                     </Col>
-                    <Col xs={24} md={12} style={{ textAlign: isMobile ? 'left' : 'right' }}>
+                    <Col xs={24} md={12} style={{ textAlign: isMobile ? 'right' : 'right' }}>
                         <Space wrap={isMobile}>
                             <Button
                                 icon={<ReloadOutlined />}
@@ -183,7 +183,7 @@ export const ClientsPage = () => {
                                 onClick={() => setIsModalOpen(true)}
                                 block={isMobile}
                             >
-                                Nuevo Cliente
+                                {isMobile ? 'Nuevo' : 'Nuevo Cliente'}
                             </Button>
                         </Space>
                     </Col>
@@ -205,7 +205,7 @@ export const ClientsPage = () => {
                     dataSource={clients}
                     loading={isLoading}
                     rowKey="id"
-                    scroll={{ x: 800 }}
+                    scroll={{ x: 'max-content' }}
                     size={isMobile ? 'small' : 'middle'}
                     pagination={{
                         pageSize: 10,

@@ -1,7 +1,7 @@
 
 import { useState } from 'react';
 import { formatVenezuelanPrice } from '../../utils/formatters';
-import { Card, Table, Button, Space, Input, message, Popconfirm } from 'antd';
+import { Card, Table, Button, Space, Input, message, Popconfirm, Grid } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined, ReloadOutlined } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { productsApi } from '../../services/productsApi';
@@ -9,6 +9,8 @@ import type { Product } from '../../services/productsApi';
 import { ServiceFormModal } from './services/ServiceFormModal';
 
 export const ServicesPage = () => {
+    const screens = Grid.useBreakpoint();
+    const isMobile = !screens.lg;
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingService, setEditingService] = useState<Product | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
@@ -109,24 +111,33 @@ export const ServicesPage = () => {
     ];
 
     return (
-        <div className="fade-in">
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
-                <h1>Servicios</h1>
-                <Space>
+        <div className="fade-in" style={{ padding: isMobile ? '8px' : '0' }}>
+            <div style={{
+                display: 'flex',
+                flexDirection: isMobile ? 'column' : 'row',
+                justifyContent: 'space-between',
+                alignItems: isMobile ? 'flex-start' : 'center',
+                marginBottom: 16,
+                gap: isMobile ? 12 : 0
+            }}>
+                <h1 style={{ margin: 0, fontSize: isMobile ? '1.5rem' : '2rem' }}>Servicios</h1>
+                <Space direction={isMobile ? 'vertical' : 'horizontal'} style={{ width: isMobile ? '100%' : 'auto' }} align={isMobile ? 'end' : 'center'}>
                     <Input
                         placeholder="Buscar servicio..."
                         prefix={<SearchOutlined />}
                         value={searchTerm}
                         onChange={e => setSearchTerm(e.target.value)}
-                        style={{ width: 250 }}
+                        style={{ width: isMobile ? '100%' : 250 }}
                     />
-                    <Button
-                        icon={<ReloadOutlined />}
-                        onClick={() => queryClient.invalidateQueries({ queryKey: ['services'] })}
-                    />
-                    <Button type="primary" icon={<PlusOutlined />} onClick={() => setIsModalOpen(true)}>
-                        Nuevo Servicio
-                    </Button>
+                    <Space>
+                        <Button
+                            icon={<ReloadOutlined />}
+                            onClick={() => queryClient.invalidateQueries({ queryKey: ['services'] })}
+                        />
+                        <Button type="primary" icon={<PlusOutlined />} onClick={() => setIsModalOpen(true)}>
+                            {isMobile ? 'Nuevo' : 'Nuevo Servicio'}
+                        </Button>
+                    </Space>
                 </Space>
             </div>
 
@@ -137,6 +148,7 @@ export const ServicesPage = () => {
                     rowKey="id"
                     loading={isLoading}
                     pagination={{ pageSize: 10 }}
+                    scroll={{ x: 'max-content' }}
                 />
             </Card>
 

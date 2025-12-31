@@ -1,12 +1,16 @@
 import { useState } from 'react';
-import { Card, Table, Button, Space, Input, message, Popconfirm, Tag, Badge } from 'antd';
+import { Card, Table, Button, Space, Input, message, Popconfirm, Tag, Badge, Grid } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined, StarFilled, ReloadOutlined } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { currenciesApi } from '../../services/currenciesApi';
 import type { Currency } from '../../services/currenciesApi';
 import { CurrencyFormModal } from './CurrencyFormModal';
 
+const { useBreakpoint } = Grid;
+
 export const CurrenciesPage = () => {
+    const screens = useBreakpoint();
+    const isMobile = !screens.lg;
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingCurrency, setEditingCurrency] = useState<Currency | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
@@ -148,18 +152,20 @@ export const CurrenciesPage = () => {
         <Card
             title="Monedas"
             extra={
-                <Space>
+                <Space direction={isMobile ? 'vertical' : 'horizontal'} style={{ width: isMobile ? '100%' : 'auto' }} align={isMobile ? 'end' : 'center'}>
                     <Input
                         placeholder="Buscar moneda..."
                         prefix={<SearchOutlined />}
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
-                        style={{ width: 250 }}
+                        style={{ width: isMobile ? '100%' : 250 }}
                     />
-                    <Button icon={<ReloadOutlined />} onClick={() => queryClient.invalidateQueries({ queryKey: ['currencies'] })} />
-                    <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}>
-                        Nueva Moneda
-                    </Button>
+                    <Space>
+                        <Button icon={<ReloadOutlined />} onClick={() => queryClient.invalidateQueries({ queryKey: ['currencies'] })} />
+                        <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}>
+                            {isMobile ? 'Nueva' : 'Nueva Moneda'}
+                        </Button>
+                    </Space>
                 </Space>
             }
         >
@@ -169,6 +175,7 @@ export const CurrenciesPage = () => {
                 rowKey="id"
                 loading={isLoading}
                 pagination={{ pageSize: 20 }}
+                scroll={{ x: 'max-content' }}
             />
 
             <CurrencyFormModal

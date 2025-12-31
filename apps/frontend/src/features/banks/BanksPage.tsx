@@ -1,6 +1,6 @@
 
 import { useState } from 'react';
-import { Card, Table, Button, Space, Input, message, Popconfirm } from 'antd';
+import { Card, Table, Button, Space, Input, message, Popconfirm, Grid } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined, ReloadOutlined, BankOutlined } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { banksApi } from '../../services/banksApi';
@@ -8,7 +8,11 @@ import type { BankAccount } from '../../services/banksApi';
 import { BankFormModal } from './components/BankFormModal';
 import { formatVenezuelanPrice } from '../../utils/formatters';
 
+const { useBreakpoint } = Grid;
+
 export const BanksPage = () => {
+    const screens = useBreakpoint();
+    const isMobile = !screens.lg;
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingBank, setEditingBank] = useState<BankAccount | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
@@ -107,23 +111,32 @@ export const BanksPage = () => {
 
     return (
         <div className="fade-in">
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
-                <h1>Cuentas Bancarias</h1>
-                <Space>
+            <div style={{
+                display: 'flex',
+                flexDirection: isMobile ? 'column' : 'row',
+                justifyContent: 'space-between',
+                alignItems: isMobile ? 'flex-start' : 'center',
+                marginBottom: 16,
+                gap: isMobile ? 12 : 0
+            }}>
+                <h1 style={{ margin: 0, fontSize: isMobile ? '1.5rem' : '2rem' }}>Cuentas Bancarias</h1>
+                <Space direction={isMobile ? 'vertical' : 'horizontal'} style={{ width: isMobile ? '100%' : 'auto' }} align={isMobile ? 'end' : 'center'}>
                     <Input
                         placeholder="Buscar banco, titular..."
                         prefix={<SearchOutlined />}
                         value={searchTerm}
                         onChange={e => setSearchTerm(e.target.value)}
-                        style={{ width: 250 }}
+                        style={{ width: isMobile ? '100%' : 250 }}
                     />
-                    <Button
-                        icon={<ReloadOutlined />}
-                        onClick={() => queryClient.invalidateQueries({ queryKey: ['banks'] })}
-                    />
-                    <Button type="primary" icon={<PlusOutlined />} onClick={() => setIsModalOpen(true)}>
-                        Nueva Cuenta
-                    </Button>
+                    <Space>
+                        <Button
+                            icon={<ReloadOutlined />}
+                            onClick={() => queryClient.invalidateQueries({ queryKey: ['banks'] })}
+                        />
+                        <Button type="primary" icon={<PlusOutlined />} onClick={() => setIsModalOpen(true)}>
+                            {isMobile ? 'Nueva' : 'Nueva Cuenta'}
+                        </Button>
+                    </Space>
                 </Space>
             </div>
 
@@ -134,6 +147,7 @@ export const BanksPage = () => {
                     rowKey="id"
                     loading={isLoading}
                     pagination={{ pageSize: 10 }}
+                    scroll={{ x: 'max-content' }}
                 />
             </Card>
 

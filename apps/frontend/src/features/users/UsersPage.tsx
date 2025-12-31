@@ -1,14 +1,17 @@
 import { useState } from 'react';
-import { Card, Table, Button, Tag, Space, Modal, message } from 'antd';
+import { Card, Table, Button, Tag, Space, Modal, message, Grid } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, UserOutlined } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
 import { BASE_URL } from '../../services/apiConfig';
 import { UserFormModal } from './components/UserFormModal';
 
+const { useBreakpoint } = Grid;
 const API_URL = BASE_URL;
 
 export const UsersPage = () => {
+    const screens = useBreakpoint();
+    const isMobile = !screens.lg;
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingUser, setEditingUser] = useState<any>(null);
     const queryClient = useQueryClient();
@@ -103,12 +106,12 @@ export const UsersPage = () => {
     ];
 
     return (
-        <div style={{ padding: 24 }}>
+        <div style={{ padding: isMobile ? 8 : 24 }}>
             <Card
                 title="Gestión de Usuarios"
                 extra={
                     <Button type="primary" icon={<PlusOutlined />} onClick={handleCreate}>
-                        Nuevo Usuario
+                        {isMobile ? 'Nuevo' : 'Nuevo Usuario'}
                     </Button>
                 }
             >
@@ -117,6 +120,7 @@ export const UsersPage = () => {
                     dataSource={users}
                     rowKey="id"
                     loading={isLoading}
+                    scroll={{ x: 'max-content' }}
                 />
             </Card>
 
