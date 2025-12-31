@@ -59,4 +59,8 @@ export class CreateSaleDto {
     @IsString()
     @IsOptional()
     invoiceNumber?: string;
+
+    @IsNumber({ maxDecimalPlaces: 4 })
+    @IsOptional()
+    exchangeRate?: number;
 }

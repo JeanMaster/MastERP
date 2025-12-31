@@ -1,10 +1,11 @@
 
 import { useState } from 'react';
 import { formatVenezuelanPrice } from '../../utils/formatters';
-import { Card, Table, Button, Space, Input, message, Popconfirm, Grid } from 'antd';
+import { Card, Table, Button, Space, Input, message, Popconfirm, Grid, Tooltip } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined, ReloadOutlined } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { productsApi } from '../../services/productsApi';
+import { currenciesApi } from '../../services/currenciesApi'; // Import currenciesApi
 import type { Product } from '../../services/productsApi';
 import { ServiceFormModal } from './services/ServiceFormModal';
 
@@ -17,9 +18,15 @@ export const ServicesPage = () => {
     const queryClient = useQueryClient();
 
     // Fetch services (products with type = SERVICE)
-    const { data: services = [], isLoading } = useQuery({
+    const { data: services = [], isLoading: isLoadingServices } = useQuery({
         queryKey: ['services'],
         queryFn: () => productsApi.getAll({ type: 'SERVICE' }),
+    });
+
+    // Fetch currencies for conversion
+    const { data: currencies = [] } = useQuery({
+        queryKey: ['currencies'],
+        queryFn: () => currenciesApi.getAll(),
     });
 
     // Delete mutation
@@ -72,16 +79,74 @@ export const ServicesPage = () => {
                 </Space>
             ),
         },
+
         {
-            title: 'Precio',
-            key: 'price',
+            title: 'Costo',
+            key: 'cost',
+            width: 120,
             render: (_: any, record: Product) => (
-                <Space direction="vertical" size={0} style={{ textAlign: 'right', width: '100%' }}>
-                    <span style={{ fontWeight: 'bold', color: '#2ecc71' }}>
-                        {record.currency.symbol} {formatVenezuelanPrice(record.salePrice)}
-                    </span>
-                </Space>
+                <span style={{ color: '#888' }}>
+                    {formatVenezuelanPrice(record.costPrice || 0, record.currency.symbol)}
+                </span>
             ),
+            align: 'right' as const,
+        },
+        {
+            title: 'Precio Venta',
+            key: 'price',
+            width: 140,
+            render: (_: any, record: Product) => {
+                // Calculate prices in other currencies
+                const pricesInOtherCurrencies = currencies
+                    .filter(c => c.active && c.id !== record.currencyId) // Filter active and different from product currency
+                    .map(targetCurrency => {
+                        // 1. Calculate price in Primary Currency (Bs usually)
+                        // If product is in Primary, price is raw. If not, multiply by its rate.
+                        // Assuming rates are stored as "Bs per CurrencyUnit"
+
+                        let priceInPrimary = record.salePrice;
+                        const productCurrency = currencies.find(c => c.id === record.currencyId);
+
+                        if (productCurrency && !productCurrency.isPrimary && productCurrency.exchangeRate) {
+                            priceInPrimary = record.salePrice * Number(productCurrency.exchangeRate);
+                        }
+
+                        // 2. Convert to Target Currency
+                        // If target is Primary, price is priceInPrimary.
+                        // If target is Secondary, divide by its rate.
+                        let convertedPrice = priceInPrimary;
+
+                        if (!targetCurrency.isPrimary && targetCurrency.exchangeRate) {
+                            convertedPrice = priceInPrimary / Number(targetCurrency.exchangeRate);
+                        }
+
+                        return {
+                            currency: targetCurrency,
+                            price: convertedPrice
+                        };
+                    });
+
+                const tooltipContent = pricesInOtherCurrencies.length > 0 ? (
+                    <div style={{ fontSize: 12 }}>
+                        {pricesInOtherCurrencies.map((item) => (
+                            <div key={item.currency.id} style={{ marginBottom: 2 }}>
+                                <strong>{item.currency.symbol}:</strong> {formatVenezuelanPrice(item.price, item.currency.symbol, 2, true)}
+                            </div>
+                        ))}
+                    </div>
+                ) : null;
+
+                return (
+                    <Space direction="vertical" size={0} style={{ textAlign: 'right', width: '100%' }}>
+                        <Tooltip title={tooltipContent} placement="top">
+                            <span style={{ fontWeight: 'bold', color: '#2ecc71', cursor: tooltipContent ? 'help' : 'default' }}>
+                                {/* Fix: Pass currency symbol explicitly to avoid double suffix */}
+                                {formatVenezuelanPrice(record.salePrice, record.currency.symbol)}
+                            </span>
+                        </Tooltip>
+                    </Space>
+                );
+            },
             align: 'right' as const,
         },
         {
@@ -146,7 +211,7 @@ export const ServicesPage = () => {
                     columns={columns}
                     dataSource={filteredServices}
                     rowKey="id"
-                    loading={isLoading}
+                    loading={isLoadingServices}
                     pagination={{ pageSize: 10 }}
                     scroll={{ x: 'max-content' }}
                 />

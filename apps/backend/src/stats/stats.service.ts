@@ -310,6 +310,7 @@ export class StatsService {
         // Factor = RefRate / TargetRate. 
         // Example: USD=60, EUR=65. 1 USD = 0.92 EUR.
         let crossRateFactor = 1;
+        const currentRefRate = Number(refCurrency?.exchangeRate || 1);
 
         if (targetCurrency && refCurrency && targetCurrency.code !== refCurrency.code) {
             const refRate = Number(refCurrency.exchangeRate || 0);
@@ -356,7 +357,11 @@ export class StatsService {
                 let amount = Number(sale.total);
                 if (currencyCode !== 'VES') {
                     // 1. Convert VES to Historical Reference Currency (USD)
-                    const historicalRate = Number(sale.exchangeRate) || 1;
+                    // Fallback to current system rate if historical is 1.0 (error case)
+                    const historicalRate = (Number(sale.exchangeRate) && Number(sale.exchangeRate) !== 1)
+                        ? Number(sale.exchangeRate)
+                        : currentRefRate;
+
                     let amountInRef = amount / historicalRate;
 
                     // 2. Convert Reference to Target (if different) using current cross-rate
@@ -383,13 +388,12 @@ export class StatsService {
                 if (currencyCode === 'VES') {
                     monthlyPurchases += amountInVES;
                 } else {
-                    // 1. Convert to Historical Reference (USD) using the stored rate (approximation)
-                    // If the purchase has its own specific rate, we use that. 
-                    // But for consistency with sales, we need to bring it to Ref Currency first.
-                    // Ideally, we divide VES Amount by the Historical Ref Rate.
-                    // But Purchase.exchangeRate IS the historical Ref Rate ideally.
+                    // Fallback to current system rate if historical is 1.0
+                    const historicalRate = (Number(p.exchangeRate) && Number(p.exchangeRate) !== 1)
+                        ? Number(p.exchangeRate)
+                        : currentRefRate;
 
-                    let amountInRef = amountInVES / (Number(p.exchangeRate) || 1);
+                    let amountInRef = amountInVES / historicalRate;
 
                     monthlyPurchases += (amountInRef * crossRateFactor);
                 }

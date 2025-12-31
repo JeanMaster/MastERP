@@ -89,6 +89,7 @@ const ServiceFormModalContent = ({ open, service, onClose }: ServiceFormModalPro
                 categoryId: service.categoryId,
                 subcategoryId: service.subcategoryId,
                 currencyId: service.currencyId,
+                costPrice: service.costPrice,
                 salePrice: service.salePrice,
             });
         } else {
@@ -113,7 +114,7 @@ const ServiceFormModalContent = ({ open, service, onClose }: ServiceFormModalPro
                 categoryId: values.categoryId,
                 subcategoryId: values.subcategoryId,
                 currencyId: values.currencyId,
-                costPrice: 0, // Cost 0 for services
+                costPrice: values.costPrice || 0,
                 salePrice: values.salePrice,
                 stock: 0,
                 // Optional fields as null/undefined
@@ -208,21 +209,21 @@ const ServiceFormModalContent = ({ open, service, onClose }: ServiceFormModalPro
                 </Row>
 
                 <Row gutter={16}>
-                    <Col span={12}>
+                    <Col span={8}>
                         <Form.Item
-                            label="Moneda"
-                            name="currencyId"
-                            rules={[{ required: true, message: 'Requerido' }]}
+                            label="Costo (Técnico)"
+                            name="costPrice"
+                            rules={[{ required: true, message: 'Requerido' }, { type: 'number', min: 0 }]}
                         >
-                            <Select
-                                options={currencies.map(curr => ({
-                                    value: curr.id,
-                                    label: `${curr.name} (${curr.symbol})`,
-                                }))}
+                            <InputNumber
+                                style={{ width: '100%' }}
+                                precision={2}
+                                min={0}
+                                placeholder="0.00"
                             />
                         </Form.Item>
                     </Col>
-                    <Col span={12}>
+                    <Col span={8}>
                         <Form.Item
                             label="Precio de Venta"
                             name="salePrice"
@@ -232,7 +233,21 @@ const ServiceFormModalContent = ({ open, service, onClose }: ServiceFormModalPro
                                 style={{ width: '100%' }}
                                 precision={2}
                                 min={0}
-                                prefix="$"
+                                placeholder="0.00"
+                            />
+                        </Form.Item>
+                    </Col>
+                    <Col span={8}>
+                        <Form.Item
+                            label="Moneda"
+                            name="currencyId"
+                            rules={[{ required: true, message: 'Requerido' }]}
+                        >
+                            <Select
+                                options={currencies.map(curr => ({
+                                    value: curr.id,
+                                    label: `${curr.code} (${curr.symbol})`,
+                                }))}
                             />
                         </Form.Item>
                     </Col>
