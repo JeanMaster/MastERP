@@ -151,7 +151,7 @@ export class StatsService {
         };
     }
 
-    async getInventoryReport() {
+    async getInventoryReport(currencyCode: string = 'VES') {
         // Stock by department - get all active products with cost and currency info
         const products = await this.prisma.product.findMany({
             where: { active: true },
@@ -163,6 +163,13 @@ export class StatsService {
                 currency: { select: { isPrimary: true, exchangeRate: true } }
             },
         });
+
+        const targetCurrency = await this.prisma.currency.findUnique({ where: { code: currencyCode } });
+        const targetRate = Number(targetCurrency?.exchangeRate || 1);
+        // If target is primary, rate is 1 (or whatever it is stored as, usually 1)
+        // Logic: Value(Primary) / Rate(Target) = Value(Target)
+        // If Target is USD (Rate 50), Value 5000 / 50 = 100 USD.
+        // If Target is Primary, Rate 1, Value 5000 / 1 = 5000.
 
         // Group by department/category and calculate value in Primary Currency
         const deptMap = new Map<string, { units: number; value: number }>();
@@ -176,7 +183,13 @@ export class StatsService {
             // If currency is not primary, multiply by rate (e.g. 10 USD * 40 Bs/USD = 400 Bs)
             const rate = p.currency?.isPrimary ? 1 : Number(p.currency?.exchangeRate || 1);
             const costInPrimary = Number(p.costPrice || 0) * rate;
-            const productValue = p.stock * costInPrimary;
+
+            // Convert to Target Currency
+            // Primary -> Target: Primary / TargetRate
+            // (Assumes TargetRate is Primary per Target Unit, e.g. 50 Bs/$)
+            const costInTarget = targetCurrency?.isPrimary ? costInPrimary : costInPrimary / targetRate;
+
+            const productValue = p.stock * costInTarget;
 
             existing.units += p.stock;
             existing.value += productValue;
@@ -211,61 +224,182 @@ export class StatsService {
         };
     }
 
-    async getFinanceReport() {
-        const monthStart = dayjs().startOf('month').toDate();
+    async getFinanceReport(currencyCode: string = 'VES', startDate?: string, endDate?: string) {
+        const dateFilter: any = {};
 
-        // Monthly sales
-        const monthlySales = await this.prisma.sale.findMany({
-            where: { createdAt: { gte: monthStart } },
+        if (startDate || endDate) {
+            if (startDate) {
+                dateFilter.gte = dayjs(startDate).startOf('day').toDate();
+            }
+            if (endDate) {
+                dateFilter.lte = dayjs(endDate).endOf('day').toDate();
+            }
+        } else {
+            // Default to current month if no range provided
+            dateFilter.gte = dayjs().startOf('month').toDate();
+        }
+
+        // 1. Get Target Rate Info
+        const targetCurrency = await this.prisma.currency.findUnique({ where: { code: currencyCode } });
+        // We need a cross-rate if target is NOT active/primary?
+        // Let's assume simplest:
+        // If Target=VES: Amount = AmountVES.
+        // If Target=USD: Amount = AmountVES / HistoricalRate (if available) OR AmountVES / CurrentTargetRate.
+
+        // Sales for the selected range
+        const salesInRange = await this.prisma.sale.findMany({
+            where: {
+                active: true,
+                createdAt: dateFilter
+            },
             select: {
                 total: true,
                 paymentMethod: true,
                 createdAt: true,
+                exchangeRate: true,
+                items: {
+                    select: {
+                        cost: true,
+                        quantity: true,
+                        product: {
+                            select: {
+                                id: true,
+                                costPrice: true,
+                                currency: true
+                            }
+                        }
+                    }
+                }
             },
         });
 
-        // Payment methods breakdown - properly parse multi-payment sales
-        // Format can be: "CASH" or "CASH:600, DEBIT:300, TRANSFER:300"
+        // Payment methods breakdown
         const paymentBreakdown: Record<string, number> = {};
+        const dailySales: Record<string, number> = {};
+        let totalSalesAmount = 0;
+        let totalCostOfSales = 0;
 
-        monthlySales.forEach((sale) => {
+        salesInRange.forEach((sale) => {
+            const date = dayjs(sale.createdAt).format('YYYY-MM-DD');
+            let saleTotal = Number(sale.total);
+
+            // CONVERSION LOGIC
+            if (currencyCode !== 'VES') {
+                const rate = (Number(sale.exchangeRate) && Number(sale.exchangeRate) !== 1)
+                    ? Number(sale.exchangeRate)
+                    : Number(targetCurrency?.exchangeRate || 1);
+
+                // If rate is 0 or 1 and we are not in VES, it's risky.
+                // Assuming rate is VES/USD.
+                if (rate > 0) {
+                    saleTotal = saleTotal / rate;
+                }
+            }
+
+            totalSalesAmount += saleTotal;
+            dailySales[date] = (dailySales[date] || 0) + saleTotal;
+
+            // Calculate COGS (normalized to target currency)
+            sale.items.forEach(item => {
+                let itemCostInVES = Number(item.cost || 0);
+
+                // Fallback for old sales where cost was not captured
+                if (itemCostInVES === 0 && item.product) {
+                    const productRate = item.product.currency?.isPrimary ? 1 : Number(item.product.currency?.exchangeRate || 1);
+                    itemCostInVES = Number(item.product.costPrice || 0) * productRate;
+                }
+
+                let itemCostTarget = itemCostInVES * Number(item.quantity);
+
+                if (currencyCode !== 'VES') {
+                    const rate = (Number(sale.exchangeRate) && Number(sale.exchangeRate) !== 1)
+                        ? Number(sale.exchangeRate)
+                        : Number(targetCurrency?.exchangeRate || 1);
+
+                    if (rate > 0) {
+                        itemCostTarget = itemCostTarget / rate;
+                    }
+                }
+                totalCostOfSales += itemCostTarget;
+            });
+
             const paymentStr = sale.paymentMethod || 'CASH';
-
-            // Split by comma to handle multi-payment sales
             const paymentMethods = paymentStr.split(', ');
 
             paymentMethods.forEach((payment) => {
-                // Extract method and amount if format is "METHOD:amount"
                 const parts = payment.trim().split(':');
                 const method = parts[0].trim();
-                const amount = parts.length > 1 ? parseFloat(parts[1]) : Number(sale.total);
+                // If multipart, amount is in string. If single, use saleTotal?
+                // Warning: The string amount "USD:20" might be raw.
+                // But `sale.total` is in VES.
+                // We should proportionally distribute `saleTotal` (converted) based on the breakdown?
+                // Or just convert the parsed amount?
+                // Let's convert the parsed amount using the SAME rate as the sale.
+
+                let amount = parts.length > 1 ? parseFloat(parts[1]) : Number(sale.total);
+
+                // Convert using same sale rate logic
+                if (currencyCode !== 'VES') {
+                    const rate = (Number(sale.exchangeRate) && Number(sale.exchangeRate) !== 1)
+                        ? Number(sale.exchangeRate)
+                        : Number(targetCurrency?.exchangeRate || 1);
+                    if (rate > 0) amount = amount / rate;
+                }
 
                 paymentBreakdown[method] = (paymentBreakdown[method] || 0) + amount;
             });
         });
 
-        // Monthly purchases
-        const monthlyPurchases = await this.prisma.purchase.aggregate({
-            where: { createdAt: { gte: monthStart } },
-            _sum: { total: true },
+        // Purchases for the selected range
+        const purchasesInRangeList = await this.prisma.purchase.findMany({
+            where: {
+                createdAt: dateFilter,
+                status: 'COMPLETED'
+            },
+            select: { total: true, exchangeRate: true, currencyCode: true }
         });
 
-        // Daily sales this month
-        const dailySales = monthlySales.reduce(
-            (acc, sale) => {
-                const date = dayjs(sale.createdAt).format('YYYY-MM-DD');
-                acc[date] = (acc[date] || 0) + Number(sale.total);
-                return acc;
+        // Expenses for the selected range
+        const expensesInRangeList = await this.prisma.expense.findMany({
+            where: {
+                date: dateFilter
             },
-            {} as Record<string, number>,
-        );
+            select: { amount: true, exchangeRate: true, currencyCode: true }
+        });
+
+        let totalPurchasesAmount = 0;
+        purchasesInRangeList.forEach(p => {
+            let val = Number(p.total);
+            const pRate = Number(p.exchangeRate) || 1;
+            const valInVES = p.currencyCode === 'VES' ? val : val * pRate;
+
+            if (currencyCode === 'VES') {
+                totalPurchasesAmount += valInVES;
+            } else {
+                const targetRate = Number(targetCurrency?.exchangeRate || 1);
+                totalPurchasesAmount += (valInVES / targetRate);
+            }
+        });
+
+        let totalExpensesAmount = 0;
+        expensesInRangeList.forEach(e => {
+            let val = Number(e.amount);
+            const eRate = Number(e.exchangeRate) || 1;
+            const valInVES = e.currencyCode === 'VES' ? val : val * eRate;
+
+            if (currencyCode === 'VES') {
+                totalExpensesAmount += valInVES;
+            } else {
+                const targetRate = Number(targetCurrency?.exchangeRate || 1);
+                totalExpensesAmount += (valInVES / targetRate);
+            }
+        });
 
         return {
-            monthlySalesTotal: monthlySales.reduce(
-                (sum, s) => sum + Number(s.total),
-                0,
-            ),
-            monthlyPurchasesTotal: Number(monthlyPurchases._sum.total || 0),
+            monthlySalesTotal: totalSalesAmount,
+            monthlyPurchasesTotal: totalPurchasesAmount,
+            totalCostOfSales,
+            totalExpenses: totalExpensesAmount,
             paymentMethodsBreakdown: Object.entries(paymentBreakdown).map(
                 ([method, amount]) => ({
                     method,
@@ -281,6 +415,139 @@ export class StatsService {
         };
     }
 
+    async getCOGSReport(currencyCode: string = 'VES', startDate?: string, endDate?: string) {
+        const dateFilter: any = {};
+
+        if (startDate || endDate) {
+            if (startDate) dateFilter.gte = dayjs(startDate).startOf('day').toDate();
+            if (endDate) dateFilter.lte = dayjs(endDate).endOf('day').toDate();
+        } else {
+            dateFilter.gte = dayjs().startOf('month').toDate();
+        }
+
+        const targetCurrency = await this.prisma.currency.findUnique({ where: { code: currencyCode } });
+
+        // 1. Fetch Sales and their Items for COGS
+        const sales = await this.prisma.sale.findMany({
+            where: { active: true, createdAt: dateFilter },
+            include: {
+                items: {
+                    include: {
+                        product: {
+                            include: {
+                                category: true,
+                                currency: true
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        const productBreakdown: Record<string, {
+            name: string;
+            sku: string | null;
+            category: string;
+            quantity: number;
+            totalCost: number;
+            totalRevenue: number;
+        }> = {};
+
+        let totalSales = 0;
+        let totalCOGS = 0;
+
+        sales.forEach(sale => {
+            const saleRate = (Number(sale.exchangeRate) && Number(sale.exchangeRate) !== 1)
+                ? Number(sale.exchangeRate)
+                : Number(targetCurrency?.exchangeRate || 1);
+
+            sale.items.forEach(item => {
+                let itemCostInVES = Number(item.cost || 0);
+
+                // Fallback for old sales where cost was not captured
+                if (itemCostInVES === 0 && item.product) {
+                    const productRate = item.product.currency?.isPrimary ? 1 : Number(item.product.currency?.exchangeRate || 1);
+                    itemCostInVES = Number(item.product.costPrice || 0) * productRate;
+                }
+
+                let cost = itemCostInVES * Number(item.quantity);
+                let revenue = Number(item.total);
+
+                if (currencyCode !== 'VES' && saleRate > 0) {
+                    cost = cost / saleRate;
+                    revenue = revenue / saleRate;
+                }
+
+                totalSales += revenue;
+                totalCOGS += cost;
+
+                const pid = item.product.id;
+                if (!productBreakdown[pid]) {
+                    productBreakdown[pid] = {
+                        name: item.product.name,
+                        sku: item.product.sku,
+                        category: item.product.category?.name || 'S/C',
+                        quantity: 0,
+                        totalCost: 0,
+                        totalRevenue: 0
+                    };
+                }
+
+                productBreakdown[pid].quantity += Number(item.quantity);
+                productBreakdown[pid].totalCost += cost;
+                productBreakdown[pid].totalRevenue += revenue;
+            });
+        });
+
+        // 2. Fetch Purchases
+        const purchases = await this.prisma.purchase.findMany({
+            where: { createdAt: dateFilter, status: 'COMPLETED' },
+            select: { total: true, exchangeRate: true, currencyCode: true }
+        });
+
+        let totalPurchases = 0;
+        purchases.forEach(p => {
+            let val = Number(p.total);
+            const pRate = Number(p.exchangeRate) || 1;
+            const valInVES = p.currencyCode === 'VES' ? val : val * pRate;
+
+            if (currencyCode === 'VES') {
+                totalPurchases += valInVES;
+            } else {
+                const targetRate = Number(targetCurrency?.exchangeRate || 1);
+                totalPurchases += (valInVES / targetRate);
+            }
+        });
+
+        // 3. Fetch Expenses
+        const expenses = await this.prisma.expense.findMany({
+            where: { date: dateFilter },
+            select: { amount: true, exchangeRate: true, currencyCode: true }
+        });
+
+        let totalExpenses = 0;
+        expenses.forEach(e => {
+            let val = Number(e.amount);
+            const eRate = Number(e.exchangeRate) || 1;
+            const valInVES = e.currencyCode === 'VES' ? val : val * eRate;
+
+            if (currencyCode === 'VES') {
+                totalExpenses += valInVES;
+            } else {
+                const targetRate = Number(targetCurrency?.exchangeRate || 1);
+                totalExpenses += (valInVES / targetRate);
+            }
+        });
+
+        return {
+            totalSales,
+            totalCOGS,
+            totalPurchases,
+            totalExpenses,
+            products: Object.values(productBreakdown).sort((a, b) => b.totalCost - a.totalCost)
+        };
+    }
+
     async getBalanceReport(currencyCode: string = 'VES') {
         const balanceData: {
             month: string;
@@ -288,6 +555,7 @@ export class StatsService {
             expenses: number;
             purchases: number;
             total: number;
+            cogs: number;
             profitMargin: number;
             operatingCostRatio: number;
         }[] = [];
@@ -328,7 +596,17 @@ export class StatsService {
             // 1. SALES (Ingresos)
             const sales = await this.prisma.sale.findMany({
                 where: { createdAt: { gte: start, lte: end }, active: true },
-                select: { total: true, exchangeRate: true }
+                include: {
+                    items: {
+                        include: {
+                            product: {
+                                include: {
+                                    currency: true
+                                }
+                            }
+                        }
+                    }
+                }
             });
 
             // 2. PURCHASES (Compras - Costos de Venta)
@@ -351,24 +629,36 @@ export class StatsService {
             let monthlyIncome = 0;
             let monthlyOperationalExpenses = 0;
             let monthlyPurchases = 0;
+            let monthlyCOGS = 0;
 
             // Calculate Income
             sales.forEach(sale => {
                 let amount = Number(sale.total);
+                let totalCostVES = 0;
+                sale.items.forEach(item => {
+                    let itemCostInVES = Number(item.cost || 0);
+
+                    // Fallback for old sales where cost was not captured
+                    // We use the current product cost converted to VES
+                    if (itemCostInVES === 0 && item.product) {
+                        const productRate = item.product.currency?.isPrimary ? 1 : Number(item.product.currency?.exchangeRate || 1);
+                        itemCostInVES = Number(item.product.costPrice || 0) * productRate;
+                    }
+
+                    totalCostVES += (itemCostInVES * Number(item.quantity));
+                });
+
                 if (currencyCode !== 'VES') {
-                    // 1. Convert VES to Historical Reference Currency (USD)
-                    // Fallback to current system rate if historical is 1.0 (error case)
                     const historicalRate = (Number(sale.exchangeRate) && Number(sale.exchangeRate) !== 1)
                         ? Number(sale.exchangeRate)
                         : currentRefRate;
 
-                    let amountInRef = amount / historicalRate;
-
-                    // 2. Convert Reference to Target (if different) using current cross-rate
-                    // If Target is Ref (USD), factor is 1. If Target is EUR, factor is ~0.9.
-                    amount = amountInRef * crossRateFactor;
+                    monthlyIncome += (amount / historicalRate) * crossRateFactor;
+                    monthlyCOGS += (totalCostVES / historicalRate) * crossRateFactor;
+                } else {
+                    monthlyIncome += amount;
+                    monthlyCOGS += totalCostVES;
                 }
-                monthlyIncome += amount;
             });
 
             // Calculate Expenses (Purchases + Expenses)
@@ -414,10 +704,10 @@ export class StatsService {
             });
 
             // Metrics
-            const totalExpenses = monthlyOperationalExpenses + monthlyPurchases;
-            const profit = monthlyIncome - totalExpenses;
-            // Profit Margin % = (Net Income / Revenue) * 100
-            const profitMargin = monthlyIncome > 0 ? (profit / monthlyIncome) * 100 : 0;
+            // Real Profit = Income - Operational Expenses - COGS
+            const realProfit = monthlyIncome - monthlyOperationalExpenses - monthlyCOGS;
+            // Profit Margin % = (Real Profit / Revenue) * 100
+            const profitMargin = monthlyIncome > 0 ? (realProfit / monthlyIncome) * 100 : 0;
             // Operating Cost Ratio % = (Expenses / Revenue) * 100
             const operatingCostRatio = monthlyIncome > 0 ? (monthlyOperationalExpenses / monthlyIncome) * 100 : 0;
 
@@ -426,12 +716,98 @@ export class StatsService {
                 income: Number(monthlyIncome.toFixed(2)),
                 expenses: Number(monthlyOperationalExpenses.toFixed(2)),
                 purchases: Number(monthlyPurchases.toFixed(2)),
-                total: Number(profit.toFixed(2)),
+                total: Number(realProfit.toFixed(2)),
+                cogs: Number(monthlyCOGS.toFixed(2)),
                 profitMargin: Number(profitMargin.toFixed(1)),
                 operatingCostRatio: Number(operatingCostRatio.toFixed(1))
             });
         }
 
         return balanceData;
+    }
+
+    async getTopProducts(startDate?: string, endDate?: string, sortBy: 'units' | 'profit' = 'units', limit: number = 10, currency: string = 'VES') {
+        // Default to last 30 days if no dates provided
+        const start = startDate ? new Date(startDate) : dayjs().subtract(30, 'day').startOf('day').toDate();
+        const end = endDate ? new Date(endDate) : dayjs().endOf('day').toDate();
+        // Ensure end date covers the whole day
+        const endFinal = endDate ? dayjs(endDate).endOf('day').toDate() : end;
+
+        // Determine if we need to convert to ANY target currency
+        // We will fetch the target currency's current rate to convert the Report totals.
+        // This answers "What is that past revenue worth in today's X currency?"
+
+        const rawResults = await this.prisma.$queryRaw<any[]>`
+            SELECT 
+                p.id,
+                p.name,
+                SUM(si.quantity) as units,
+                
+                -- Profit Calculation
+                -- 1. Calculate Profit in Primary Currency (VES)
+                --    Profit(VES) = Total(VES) - Cost(VES_Normalized)
+                -- 2. Convert to Target Currency using Current Rate of Target Currency
+                --    Profit(Target) = Profit(VES) / TargetRate
+                
+                SUM(
+                    (si.total - (COALESCE(NULLIF(si.cost, 0), (p."costPrice" * COALESCE(c."exchangeRate", 1)), 0) * si.quantity)) 
+                    / (CASE 
+                        WHEN tc."isPrimary" IS TRUE THEN 1 
+                        ELSE COALESCE(tc."exchangeRate", 1) 
+                       END)
+                ) as profit,
+
+                -- Total Cost Calculation
+                SUM(
+                    (COALESCE(NULLIF(si.cost, 0), (p."costPrice" * COALESCE(c."exchangeRate", 1)), 0) * si.quantity)
+                    / (CASE 
+                        WHEN tc."isPrimary" IS TRUE THEN 1 
+                        ELSE COALESCE(tc."exchangeRate", 1) 
+                       END)
+                ) as total_cost,
+
+                -- Revenue Calculation
+                SUM(
+                    si.total 
+                    / (CASE 
+                        WHEN tc."isPrimary" IS TRUE THEN 1 
+                        ELSE COALESCE(tc."exchangeRate", 1) 
+                       END)
+                ) as revenue
+
+            FROM "sale_items" si
+            JOIN "products" p ON si."productId" = p.id
+            LEFT JOIN "currencies" c ON p."currencyId" = c.id
+            CROSS JOIN "currencies" tc
+            JOIN "sales" s ON si."saleId" = s.id
+            WHERE s.active = true
+            AND tc.code = ${currency} -- Filter to get the target currency rate
+            AND s."createdAt" >= ${start}
+            AND s."createdAt" <= ${endFinal}
+            GROUP BY p.id, p.name, tc.id, tc."exchangeRate", tc."isPrimary"
+        `;
+
+        // Sort in JS to avoid dynamic SQL injection issues
+        const sorted = rawResults.sort((a, b) => {
+            const valA = Number(sortBy === 'profit' ? a.profit : a.units);
+            const valB = Number(sortBy === 'profit' ? b.profit : b.units);
+            return valB - valA;
+        });
+
+        return sorted.slice(0, limit).map(item => {
+            const revenue = Number(item.revenue);
+            const profit = Number(item.profit);
+            const margin = revenue > 0 ? (profit / revenue) * 100 : 0;
+
+            return {
+                id: item.id,
+                name: item.name,
+                units: Number(item.units),
+                totalCost: Number(item.total_cost), // Mapped from snake_case alias
+                profit: profit,
+                revenue: revenue,
+                margin: Number(margin.toFixed(2))
+            };
+        });
     }
 }

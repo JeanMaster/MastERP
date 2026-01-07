@@ -1,28 +1,35 @@
 import { useEffect, useState } from 'react';
 import { Card, Table, Spin, Empty, Row, Col, Statistic, Tooltip } from 'antd';
-import { ShopOutlined, DollarOutlined, WarningOutlined, InfoCircleOutlined } from '@ant-design/icons';
+import { ShopOutlined, DollarOutlined, WarningOutlined } from '@ant-design/icons';
 import { statsApi, type InventoryReport } from '../../../services/statsApi';
-import { currenciesApi } from '../../../services/currenciesApi';
-import { useQuery } from '@tanstack/react-query';
-import { formatVenezuelanPrice, formatVenezuelanPriceOnly } from '../../../utils/formatters';
+import { usePOSStore } from '../../../store/posStore';
+import { ReportCurrencySelector } from './ReportCurrencySelector';
+import { formatVenezuelanPriceOnly } from '../../../utils/formatters';
 
 export const InventoryReports = () => {
     const [report, setReport] = useState<InventoryReport | null>(null);
     const [loading, setLoading] = useState(true);
+    const { primaryCurrency, currencies } = usePOSStore();
+    const [selectedCurrency, setSelectedCurrency] = useState<string>('VES');
 
-    const { data: currencies = [] } = useQuery({
-        queryKey: ['currencies'],
-        queryFn: () => currenciesApi.getAll(),
-    });
+    const currentCurrencyObj = currencies.find(c => c.code === selectedCurrency);
+    const currencySymbol = currentCurrencyObj?.symbol || 'Bs';
+
+    // Initialize to primary
+    useEffect(() => {
+        if (primaryCurrency && selectedCurrency === 'VES') {
+            setSelectedCurrency(primaryCurrency.code);
+        }
+    }, [primaryCurrency]);
 
     useEffect(() => {
         fetchReport();
-    }, []);
+    }, [selectedCurrency]);
 
     const fetchReport = async () => {
         try {
             setLoading(true);
-            const data = await statsApi.getInventoryReport();
+            const data = await statsApi.getInventoryReport(selectedCurrency);
             setReport(data);
         } catch (error) {
             console.error('Error fetching inventory report:', error);
@@ -60,7 +67,7 @@ export const InventoryReports = () => {
             dataIndex: 'value',
             key: 'value',
             align: 'right' as const,
-            render: (value: number) => `Bs. ${formatVenezuelanPrice(value)}`,
+            render: (value: number) => `${currencySymbol} ${formatVenezuelanPriceOnly(value)}`,
         },
     ];
 
@@ -97,33 +104,26 @@ export const InventoryReports = () => {
                         <Tooltip
                             title={
                                 <div>
-                                    <div style={{ marginBottom: 4, fontWeight: 'bold' }}>Valor en otras monedas:</div>
-                                    {currencies
-                                        .filter(c => !c.isPrimary)
-                                        .map(c => {
-                                            const val = report.totalInventoryValue / Number(c.exchangeRate || 1);
-                                            return (
-                                                <div key={c.code}>
-                                                    {c.symbol} {formatVenezuelanPriceOnly(val)}
-                                                </div>
-                                            );
-                                        })}
+                                    <div style={{ marginBottom: 4, fontWeight: 'bold' }}>Moneda del Reporte:</div>
+                                    <ReportCurrencySelector
+                                        value={selectedCurrency}
+                                        onChange={setSelectedCurrency}
+                                    />
                                 </div>
                             }
                         >
-                            <div style={{ cursor: 'help' }}>
+                            <div style={{ cursor: 'pointer' }}>
                                 <Statistic
                                     title={
                                         <span>
-                                            Valor Total de Inventario <InfoCircleOutlined style={{ fontSize: 12, marginLeft: 4 }} />
+                                            Valor Total de Inventario <DollarOutlined style={{ fontSize: 12, marginLeft: 4 }} />
                                         </span>
                                     }
                                     value={report.totalInventoryValue}
                                     precision={2}
-                                    prefix="Bs."
+                                    prefix={currencySymbol}
                                     valueStyle={{ color: '#1890ff' }}
                                     styles={{ content: { color: '#1890ff' } }}
-                                    suffix={<DollarOutlined />}
                                 />
                             </div>
                         </Tooltip>

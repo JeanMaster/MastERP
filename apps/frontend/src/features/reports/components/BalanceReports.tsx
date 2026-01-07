@@ -1,23 +1,18 @@
-import { Card, Table, Statistic, Row, Col, Typography, Tag, Space, Spin, Empty, Select, Progress } from 'antd';
+import { Card, Table, Statistic, Row, Col, Typography, Tag, Space, Spin, Empty, Progress } from 'antd';
 import { useQuery } from '@tanstack/react-query';
 import { statsApi } from '../../../services/statsApi';
 import { formatVenezuelanPrice } from '../../../utils/formatters';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { ArrowUpOutlined, ArrowDownOutlined, GlobalOutlined } from '@ant-design/icons';
 import { useState } from 'react';
-import { currenciesApi } from '../../../services/currenciesApi';
+import { ReportCurrencySelector } from './ReportCurrencySelector';
+import { usePOSStore } from '../../../store/posStore';
 
 const { Text, Title } = Typography;
-const { Option } = Select;
 
 export const BalanceReports = () => {
     const [selectedCurrency, setSelectedCurrency] = useState<string>('VES');
-
-    // Fetch currencies for selector
-    const { data: currencies } = useQuery({
-        queryKey: ['currencies'],
-        queryFn: currenciesApi.getAll,
-    });
+    const { currencies } = usePOSStore();
 
     const { data, isLoading, error } = useQuery({
         queryKey: ['balanceReport', selectedCurrency],
@@ -30,9 +25,12 @@ export const BalanceReports = () => {
     const totalIncome = data.reduce((sum, item) => sum + item.income, 0);
     const totalExpenses = data.reduce((sum, item) => sum + item.expenses, 0);
     const totalPurchases = data.reduce((sum, item) => sum + (item.purchases || 0), 0);
-    const netBalance = totalIncome - totalExpenses - totalPurchases;
+    const totalCOGS = data.reduce((sum, item) => sum + (item.cogs || 0), 0);
+    const netBalance = totalIncome - totalCOGS - totalExpenses;
+    // Removed unused cashFlow variable
 
-    const currencySymbol = selectedCurrency === 'VES' ? 'Bs.' : selectedCurrency;
+    const currentCurrencyObj = currencies.find(c => c.code === selectedCurrency);
+    const currencySymbol = currentCurrencyObj?.symbol || 'Bs';
 
     const columns = [
         {
@@ -49,10 +47,17 @@ export const BalanceReports = () => {
             align: 'right' as const,
         },
         {
-            title: 'Costos (Mercancía)',
+            title: 'Costo de Ventas (COGS)',
+            dataIndex: 'cogs',
+            key: 'cogs',
+            render: (val: number) => <Text style={{ color: '#1890ff' }}>{formatVenezuelanPrice(val, currencySymbol)}</Text>,
+            align: 'right' as const,
+        },
+        {
+            title: 'Inversión Stock',
             dataIndex: 'purchases',
             key: 'purchases',
-            render: (val: number | undefined) => <Text style={{ color: '#fa8c16' }}>{formatVenezuelanPrice(val || 0, currencySymbol)}</Text>,
+            render: (val: number | undefined) => <Text style={{ color: '#722ed1' }}>{formatVenezuelanPrice(val || 0, currencySymbol)}</Text>,
             align: 'right' as const,
         },
         {
@@ -101,6 +106,10 @@ export const BalanceReports = () => {
         },
     ];
 
+    const filteredData = data.filter(item =>
+        item.income > 0 || item.expenses > 0 || item.purchases > 0 || item.cogs > 0
+    );
+
     return (
         <Space direction="vertical" size="large" style={{ width: '100%' }}>
             <Card>
@@ -113,58 +122,72 @@ export const BalanceReports = () => {
                         <Space>
                             <GlobalOutlined />
                             <Text strong>Moneda de Visualización:</Text>
-                            <Select
+                            <ReportCurrencySelector
                                 value={selectedCurrency}
                                 onChange={setSelectedCurrency}
-                                style={{ width: 120 }}
-                                loading={!currencies}
-                            >
-                                <Option value="VES">Bolívares</Option>
-                                {currencies?.filter(c => c.code !== 'VES').map(c => (
-                                    <Option key={c.id} value={c.code}>{c.name}</Option>
-                                ))}
-                            </Select>
+                                style={{ width: 150 }}
+                            />
                         </Space>
                     </Col>
                 </Row>
             </Card>
 
-            <Row gutter={16}>
-                <Col span={8}>
-                    <Card>
+            <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
+                <Col xs={24} sm={12} lg={4}>
+                    <Card bordered={false}>
                         <Statistic
-                            title="Ingresos Totales (12m)"
+                            title="Ingresos Totales"
                             value={totalIncome}
                             precision={2}
                             prefix={currencySymbol}
                             valueStyle={{ color: '#52c41a' }}
-                            styles={{ content: { color: '#52c41a' } }}
                         />
                     </Card>
                 </Col>
-                <Col span={8}>
-                    <Card>
+                <Col xs={24} sm={12} lg={4}>
+                    <Card bordered={false}>
                         <Statistic
-                            title="Egresos Totales (12m)"
+                            title="Costo Ventas (COGS)"
+                            value={totalCOGS}
+                            precision={2}
+                            prefix={currencySymbol}
+                            valueStyle={{ color: '#1890ff' }}
+                        />
+                    </Card>
+                </Col>
+                <Col xs={24} sm={12} lg={4}>
+                    <Card bordered={false}>
+                        <Statistic
+                            title="Gastos Operativos"
                             value={totalExpenses}
                             precision={2}
                             prefix={currencySymbol}
                             valueStyle={{ color: '#ff4d4f' }}
-                            styles={{ content: { color: '#ff4d4f' } }}
                         />
                     </Card>
                 </Col>
-                <Col span={8}>
-                    <Card>
+                <Col xs={24} sm={12} lg={4}>
+                    <Card bordered={false}>
                         <Statistic
-                            title="Utilidad Neta Acumulada"
+                            title="Inversión Stock"
+                            value={totalPurchases}
+                            precision={2}
+                            prefix={currencySymbol}
+                            valueStyle={{ color: '#722ed1' }}
+                        />
+                    </Card>
+                </Col>
+                <Col xs={24} sm={12} lg={8}>
+                    <Card bordered={false} style={{ background: '#f6ffed' }}>
+                        <Statistic
+                            title="Utilidad Real Acumulada"
                             value={netBalance}
                             precision={2}
                             prefix={currencySymbol}
-                            valueStyle={{ color: netBalance >= 0 ? '#1890ff' : '#cf1322' }}
-                            styles={{ content: { color: netBalance >= 0 ? '#1890ff' : '#cf1322' } }}
+                            valueStyle={{ color: netBalance >= 0 ? '#52c41a' : '#cf1322' }}
                             suffix={netBalance >= 0 ? <ArrowUpOutlined /> : <ArrowDownOutlined />}
                         />
+                        <div style={{ fontSize: 10, color: '#666' }}>Ventas - COGS - Gastos</div>
                     </Card>
                 </Col>
             </Row>
@@ -179,7 +202,9 @@ export const BalanceReports = () => {
                             <Tooltip formatter={(value: number) => `${currencySymbol} ${formatVenezuelanPrice(value)}`} />
                             <Legend />
                             <Bar name="Ingresos" dataKey="income" fill="#52c41a" radius={[4, 4, 0, 0]} />
-                            <Bar name="Egresos" dataKey="expenses" fill="#ff4d4f" radius={[4, 4, 0, 0]} />
+                            <Bar name="COGS" dataKey="cogs" fill="#1890ff" radius={[4, 4, 0, 0]} />
+                            <Bar name="Gastos" dataKey="expenses" fill="#ff4d4f" radius={[4, 4, 0, 0]} />
+                            <Bar name="Inversión" dataKey="purchases" fill="#722ed1" radius={[4, 4, 0, 0]} />
                         </BarChart>
                     </ResponsiveContainer>
                 </div>
@@ -187,7 +212,7 @@ export const BalanceReports = () => {
 
             <Card title="Detalle Mensual de Balance">
                 <Table
-                    dataSource={data}
+                    dataSource={filteredData}
                     columns={columns}
                     pagination={false}
                     rowKey="month"
@@ -195,12 +220,17 @@ export const BalanceReports = () => {
                         let totalIncome = 0;
                         let totalExpenses = 0;
                         let totalPurchases = 0;
+                        let totalCOGS = 0;
 
-                        pageData.forEach(({ income, expenses, purchases }) => {
+                        pageData.forEach(({ income, expenses, purchases, cogs }) => {
                             totalIncome += income;
                             totalExpenses += expenses;
                             totalPurchases += (purchases || 0);
+                            totalCOGS += (cogs || 0);
                         });
+
+                        const totalNetBalance = totalIncome - totalCOGS - totalExpenses;
+                        const totalMargin = totalIncome > 0 ? (totalNetBalance / totalIncome) * 100 : 0;
 
                         return (
                             <Table.Summary fixed>
@@ -210,18 +240,25 @@ export const BalanceReports = () => {
                                         <Text strong style={{ color: '#52c41a' }}>{formatVenezuelanPrice(totalIncome, currencySymbol)}</Text>
                                     </Table.Summary.Cell>
                                     <Table.Summary.Cell index={2} align="right">
-                                        <Text strong style={{ color: '#fa8c16' }}>{formatVenezuelanPrice(totalPurchases, currencySymbol)}</Text>
+                                        <Text strong style={{ color: '#1890ff' }}>{formatVenezuelanPrice(totalCOGS, currencySymbol)}</Text>
                                     </Table.Summary.Cell>
                                     <Table.Summary.Cell index={3} align="right">
+                                        <Text strong style={{ color: '#722ed1' }}>{formatVenezuelanPrice(totalPurchases, currencySymbol)}</Text>
+                                    </Table.Summary.Cell>
+                                    <Table.Summary.Cell index={4} align="right">
                                         <Text strong style={{ color: '#ff4d4f' }}>{formatVenezuelanPrice(totalExpenses, currencySymbol)}</Text>
                                     </Table.Summary.Cell>
-                                    <Table.Summary.Cell index={4}></Table.Summary.Cell>
-                                    <Table.Summary.Cell index={5} align="right">
-                                        <Text strong style={{ color: (totalIncome - (totalExpenses + totalPurchases)) >= 0 ? '#1890ff' : '#cf1322' }}>
-                                            {formatVenezuelanPrice(totalIncome - (totalExpenses + totalPurchases), currencySymbol)}
+                                    <Table.Summary.Cell index={5}></Table.Summary.Cell>
+                                    <Table.Summary.Cell index={6} align="right">
+                                        <Text strong style={{ color: totalNetBalance >= 0 ? '#52c41a' : '#cf1322' }}>
+                                            {formatVenezuelanPrice(totalNetBalance, currencySymbol)}
                                         </Text>
                                     </Table.Summary.Cell>
-                                    <Table.Summary.Cell index={5}></Table.Summary.Cell>
+                                    <Table.Summary.Cell index={7} align="right">
+                                        <Tag color={totalMargin > 20 ? 'gold' : 'default'} style={{ fontWeight: 'bold' }}>
+                                            {totalMargin.toFixed(1)}%
+                                        </Tag>
+                                    </Table.Summary.Cell>
                                 </Table.Summary.Row>
                             </Table.Summary>
                         );

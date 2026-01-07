@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Button, Row, Col, Card, Spin, Popover, Image } from 'antd';
+import { Button, Row, Col, Card, Spin, Popover, Image, Tooltip } from 'antd';
 import { ShopOutlined, ArrowLeftOutlined, AppstoreOutlined, PictureOutlined } from '@ant-design/icons';
 import { departmentsApi } from '../../../services/departmentsApi';
 import type { Department } from '../../../services/departmentsApi';
@@ -72,6 +72,11 @@ export const POSRightPanel = () => {
 
     const handleProductClick = (product: Product) => {
         addItem(product, false);
+        // Explicitly clear search after adding to avoid visual artifacts
+        if (isSearching) {
+            setSearchTerm('');
+            setSearchResults([]);
+        }
     };
 
     const handleBack = () => {
@@ -96,9 +101,9 @@ export const POSRightPanel = () => {
         <Col xs={12} sm={8} lg={6} key={prod.id}>
             <Card
                 hoverable
-                onClick={() => handleProductClick(prod)}
+                onMouseDown={() => handleProductClick(prod)}
                 bodyStyle={{ padding: '12px 8px', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', position: 'relative' }}
-                style={{ textAlign: 'center', height: 110 }}
+                style={{ textAlign: 'center', height: 110, cursor: 'pointer' }}
             >
                 {prod.imageUrl && (
                     <div style={{ position: 'absolute', top: 4, right: 4, zIndex: 20 }} onClick={(e) => e.stopPropagation()}>
@@ -119,7 +124,9 @@ export const POSRightPanel = () => {
                         </Popover>
                     </div>
                 )}
-                <div style={{ fontSize: 12, fontWeight: 'bold', overflow: 'hidden', maxHeight: 40, width: '100%', paddingLeft: prod.imageUrl ? 24 : 0, paddingRight: prod.imageUrl ? 24 : 0 }}>{prod.name}</div>
+                <Tooltip title={prod.name} mouseEnterDelay={0.5}>
+                    <div style={{ fontSize: 12, fontWeight: 'bold', overflow: 'hidden', maxHeight: 40, width: '100%', paddingLeft: prod.imageUrl ? 24 : 0, paddingRight: prod.imageUrl ? 24 : 0 }}>{prod.name}</div>
+                </Tooltip>
                 <TagPrice product={prod} />
             </Card>
         </Col>
@@ -194,7 +201,8 @@ export const POSRightPanel = () => {
         const { calculatePriceInPrimary, calculatePriceInCurrency, preferredSecondaryCurrency, primaryCurrency } = usePOSStore();
 
         // 1. Calculate Price in Primary Currency (Bs)
-        const priceInPrimary = calculatePriceInPrimary(product, false);
+        const rawPriceInPrimary = calculatePriceInPrimary(product, false);
+        const priceInPrimary = Math.ceil(rawPriceInPrimary / 10) * 10;
 
         // 2. Calculate Price in Preferred Secondary Currency
         const priceInSecondary = preferredSecondaryCurrency

@@ -16,14 +16,24 @@ export class StatsController {
 
     @Get('inventory')
     @ApiOperation({ summary: 'Get inventory report' })
-    getInventoryReport() {
-        return this.statsService.getInventoryReport();
+    @ApiQuery({ name: 'currency', required: false })
+    getInventoryReport(
+        @Query('currency') currency: string = 'VES'
+    ) {
+        return this.statsService.getInventoryReport(currency);
     }
 
     @Get('finance')
     @ApiOperation({ summary: 'Get finance report' })
-    getFinanceReport() {
-        return this.statsService.getFinanceReport();
+    @ApiQuery({ name: 'currency', required: false })
+    @ApiQuery({ name: 'startDate', required: false })
+    @ApiQuery({ name: 'endDate', required: false })
+    getFinanceReport(
+        @Query('currency') currency: string = 'VES',
+        @Query('startDate') startDate?: string,
+        @Query('endDate') endDate?: string
+    ) {
+        return this.statsService.getFinanceReport(currency, startDate, endDate);
     }
 
     @Get('balance')
@@ -32,5 +42,34 @@ export class StatsController {
     getBalanceReport(@Query('currency') currency?: string) {
         console.log(`[STATS] getBalanceReport called with currency: '${currency}'`);
         return this.statsService.getBalanceReport(currency);
+    }
+
+    @Get('top-products')
+    @ApiOperation({ summary: 'Get top selling products' })
+    @ApiQuery({ name: 'startDate', required: false })
+    @ApiQuery({ name: 'endDate', required: false })
+    @ApiQuery({ name: 'sortBy', required: false, enum: ['units', 'profit'] })
+    @ApiQuery({ name: 'limit', required: false })
+    getTopProducts(
+        @Query('startDate') startDate?: string,
+        @Query('endDate') endDate?: string,
+        @Query('sortBy') sortBy: 'units' | 'profit' = 'units',
+        @Query('limit') limit: any = 10,
+        @Query('currency') currency: string = 'VES'
+    ) {
+        return this.statsService.getTopProducts(startDate, endDate, sortBy, Number(limit), currency);
+    }
+
+    @Get('cogs')
+    @ApiOperation({ summary: 'Get COGS and restock report' })
+    @ApiQuery({ name: 'currency', required: false })
+    @ApiQuery({ name: 'startDate', required: false })
+    @ApiQuery({ name: 'endDate', required: false })
+    getCOGSReport(
+        @Query('currency') currency: string = 'VES',
+        @Query('startDate') startDate?: string,
+        @Query('endDate') endDate?: string
+    ) {
+        return this.statsService.getCOGSReport(currency, startDate, endDate);
     }
 }

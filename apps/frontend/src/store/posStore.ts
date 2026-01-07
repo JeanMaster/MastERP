@@ -178,7 +178,9 @@ export const usePOSStore = create<POSState>()(
                 );
 
                 // Calculate price normalized to Primary Currency (Bs)
-                const priceInPrimary = calculatePriceInPrimary(product, isSecondary);
+                const rawPriceInPrimary = calculatePriceInPrimary(product, isSecondary);
+                // Round up to nearest 10
+                const priceInPrimary = Math.ceil(rawPriceInPrimary / 10) * 10;
 
                 if (existingItem) {
                     get().updateQuantity(product.id, existingItem.quantity + 1);
@@ -277,7 +279,9 @@ export const usePOSStore = create<POSState>()(
                 }
 
                 const newIsSecondaryUnit = !item.isSecondaryUnit;
-                const newPriceInPrimary = calculatePriceInPrimary(item.product, newIsSecondaryUnit);
+                const rawNewPriceInPrimary = calculatePriceInPrimary(item.product, newIsSecondaryUnit);
+                // Round up to nearest 10
+                const newPriceInPrimary = Math.ceil(rawNewPriceInPrimary / 10) * 10;
 
                 const newCart = cart.map((cartItem) => {
                     if (cartItem.product.id === productId) {

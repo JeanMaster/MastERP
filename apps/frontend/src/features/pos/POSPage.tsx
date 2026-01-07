@@ -22,7 +22,7 @@ export const POSPage = () => {
     const [isClientModalOpen, setIsClientModalOpen] = useState(false);
     const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
     const [completedSale, setCompletedSale] = useState<Sale | null>(null);
-    const { processSale, setCustomer, refreshInvoiceNumber } = usePOSStore();
+    const { processSale, setCustomer, refreshInvoiceNumber, initialize } = usePOSStore();
 
     const handleCheckoutProcess = async (paymentData: any) => {
         try {
@@ -49,6 +49,7 @@ export const POSPage = () => {
     };
 
     useEffect(() => {
+        initialize(); // Sincronizar tasas y datos iniciales al entrar al POS
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, []);

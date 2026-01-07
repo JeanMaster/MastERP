@@ -60,7 +60,7 @@ export const CheckoutModal = ({ open, onCancel, onProcess }: CheckoutModalProps)
         if (open) {
             setPayments([]);
             setSelectedPaymentId(null);
-            setInputAmount(null);
+            setInputAmount(totals.total);
             setSelectedMethod(null);
         }
     }, [open]);
@@ -202,13 +202,25 @@ export const CheckoutModal = ({ open, onCancel, onProcess }: CheckoutModalProps)
             originalCurrency: currencyId ? originalCurrency : undefined
         };
 
-        setPayments([...payments, newPayment]);
-        setInputAmount(null);
+        const newPayments = [...payments, newPayment];
+        setPayments(newPayments);
+
+        // Calculate new remaining and set as default for next payment
+        const newTotalPaid = newPayments.reduce((sum, p) => sum + p.amount, 0);
+        const newRemaining = Math.max(0, totals.total - newTotalPaid);
+        setInputAmount(newRemaining > 0 ? newRemaining : null);
         setSelectedMethod(null);
     };
 
     const removePayment = (id: string) => {
-        setPayments(payments.filter(p => p.id !== id));
+        const newPayments = payments.filter(p => p.id !== id);
+        setPayments(newPayments);
+
+        // Recalculate remaining and update input
+        const newTotalPaid = newPayments.reduce((sum, p) => sum + p.amount, 0);
+        const newRemaining = Math.max(0, totals.total - newTotalPaid);
+        setInputAmount(newRemaining);
+
         if (selectedPaymentId === id) {
             setSelectedPaymentId(null);
         }

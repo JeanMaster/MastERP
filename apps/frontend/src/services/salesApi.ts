@@ -112,4 +112,13 @@ export const salesApi = {
         const { data } = await axios.get(`${API_URL}/sales/client/${clientId}/recent?limit=${limit}`);
         return data;
     },
+
+    updatePaymentMethod: async (id: string, paymentMethod: string): Promise<Sale> => {
+        const { data } = await axios.patch(`${API_URL}/sales/${id}/payment-method`, { paymentMethod });
+        return data;
+    },
+
+    remove: async (id: string): Promise<void> => {
+        await axios.delete(`${API_URL}/sales/${id}`);
+    },
 };

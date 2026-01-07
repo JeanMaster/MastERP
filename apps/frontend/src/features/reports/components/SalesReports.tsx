@@ -18,9 +18,12 @@ import {
     DownloadOutlined,
     DollarOutlined,
     ShoppingOutlined,
-    PrinterOutlined
+    PrinterOutlined,
+    EditOutlined,
+    DeleteOutlined
 } from '@ant-design/icons';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
+import { Modal, message } from 'antd';
 import { salesApi, type Sale, type SalesFilters } from '../../../services/salesApi';
 import { productsApi } from '../../../services/productsApi';
 import { clientsApi } from '../../../services/clientsApi';
@@ -40,6 +43,53 @@ export const SalesReports = () => {
     const [selectedSale, setSelectedSale] = useState<Sale | null>(null);
     const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
     const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
+    const [isEditPaymentModalOpen, setIsEditPaymentModalOpen] = useState(false);
+    const [newPaymentMethod, setNewPaymentMethod] = useState<string>('');
+    const queryClient = useQueryClient();
+
+    const updatePaymentSchema = useMutation({
+        mutationFn: (variables: { id: string, method: string }) =>
+            salesApi.updatePaymentMethod(variables.id, variables.method),
+        onSuccess: () => {
+            message.success('Método de pago actualizado');
+            setIsEditPaymentModalOpen(false);
+            queryClient.invalidateQueries({ queryKey: ['sales-reports'] });
+        },
+        onError: () => {
+            message.error('Error al actualizar método de pago');
+        }
+    });
+
+    const handleEditPayment = () => {
+        if (selectedSale && newPaymentMethod) {
+            updatePaymentSchema.mutate({
+                id: selectedSale.id,
+                method: newPaymentMethod
+            });
+        }
+    };
+
+    const deleteSaleMutation = useMutation({
+        mutationFn: (id: string) => salesApi.remove(id),
+        onSuccess: () => {
+            message.success('Venta eliminada y stock restaurado');
+            queryClient.invalidateQueries({ queryKey: ['sales-reports'] });
+        },
+        onError: () => {
+            message.error('Error al eliminar la venta');
+        }
+    });
+
+    const handleDeleteSale = (sale: Sale) => {
+        Modal.confirm({
+            title: '¿Eliminar Venta?',
+            content: `Esta acción anulará la factura ${sale.invoiceNumber}, restaurará el stock de los productos y, si fue la última venta, permitirá reutilizar el número de factura.`,
+            okText: 'Sí, Eliminar',
+            okType: 'danger',
+            cancelText: 'No',
+            onOk: () => deleteSaleMutation.mutate(sale.id)
+        });
+    };
 
     // Fetch sales data with filters
     const { data: sales = [], isLoading, refetch } = useQuery({
@@ -167,21 +217,44 @@ export const SalesReports = () => {
         {
             title: 'Acciones',
             key: 'actions',
-            width: 80,
+            width: 100,
             align: 'center' as const,
             fixed: isMobile ? false : ('right' as const),
             render: (_: any, record: Sale) => (
-                <Button
-                    type="text"
-                    icon={<PrinterOutlined />}
-                    onClick={(e) => {
-                        e.stopPropagation();
-                        setSelectedSale(record);
-                        setIsInvoiceModalOpen(true);
-                    }}
-                    title="Reimprimir Factura"
-                    style={{ color: '#1890ff' }}
-                />
+                <Space>
+                    <Button
+                        type="text"
+                        icon={<EditOutlined />}
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedSale(record);
+                            setNewPaymentMethod(record.paymentMethod.split(',')[0]); // Default to first method
+                            setIsEditPaymentModalOpen(true);
+                        }}
+                        title="Editar Método de Pago"
+                    />
+                    <Button
+                        type="text"
+                        danger
+                        icon={<DeleteOutlined />}
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteSale(record);
+                        }}
+                        title="Eliminar Venta"
+                    />
+                    <Button
+                        type="text"
+                        icon={<PrinterOutlined />}
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedSale(record);
+                            setIsInvoiceModalOpen(true);
+                        }}
+                        title="Reimprimir Factura"
+                        style={{ color: '#1890ff' }}
+                    />
+                </Space>
             )
         }
     ];
@@ -366,6 +439,35 @@ export const SalesReports = () => {
                 sale={selectedSale}
                 onClose={() => setIsInvoiceModalOpen(false)}
             />
+
+            <Modal
+                title="Editar Método de Pago"
+                open={isEditPaymentModalOpen}
+                onCancel={() => setIsEditPaymentModalOpen(false)}
+                onOk={handleEditPayment}
+                confirmLoading={updatePaymentSchema.isPending}
+            >
+                <Text>Seleccione el nuevo método de pago para la factura <Text strong>{selectedSale?.invoiceNumber}</Text>:</Text>
+                <Select
+                    style={{ width: '100%', marginTop: 16 }}
+                    value={newPaymentMethod}
+                    onChange={setNewPaymentMethod}
+                >
+                    <Select.Option value="CASH">Efectivo (Bs)</Select.Option>
+                    <Select.Option value="DEBIT">Tarjeta Débito</Select.Option>
+                    <Select.Option value="CREDIT">Tarjeta Crédito</Select.Option>
+                    <Select.Option value="TRANSFER">Transferencia</Select.Option>
+                    <Select.Option value="MOBILE">Pago Móvil</Select.Option>
+                    <Select.Option value="CURRENCY_USD">Efectivo USD</Select.Option>
+                    <Select.Option value="CURRENCY_EUR">Efectivo EUR</Select.Option>
+                </Select>
+                <div style={{ marginTop: 12 }}>
+                    <Text type="warning" style={{ fontSize: 12 }}>
+                        Nota: Esta acción solo actualiza la etiqueta del reporte.
+                        Los movimientos de caja originales no se modificarán automáticamente.
+                    </Text>
+                </div>
+            </Modal>
         </div>
     );
 };

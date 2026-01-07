@@ -1,6 +1,7 @@
-import { Layout, Typography, Row, Col, Space, Popover, Grid } from 'antd';
+import { Layout, Typography, Row, Col, Space, Popover, Grid, Button } from 'antd';
 import { useState, useEffect } from 'react';
 import { usePOSStore } from '../../../store/posStore';
+import { SyncOutlined } from '@ant-design/icons';
 import { formatVenezuelanPrice, formatVenezuelanPriceOnly } from '../../../utils/formatters';
 import { ClientPurchaseHistoryCompact } from '../../../components/ClientPurchaseHistory';
 
@@ -10,7 +11,17 @@ const { Title, Text } = Typography;
 export const POSHeader = () => {
     const screens = Grid.useBreakpoint();
     const isMobile = !screens.lg;
-    const { totals, activeCustomer, customerId, preferredSecondaryCurrency, currencies, primaryCurrency, nextInvoiceNumber } = usePOSStore();
+    const { totals, activeCustomer, customerId, preferredSecondaryCurrency, currencies, primaryCurrency, nextInvoiceNumber, initialize } = usePOSStore();
+    const [isRefreshing, setIsRefreshing] = useState(false);
+
+    const handleSync = async () => {
+        setIsRefreshing(true);
+        try {
+            await initialize();
+        } finally {
+            setIsRefreshing(false);
+        }
+    };
     const [currentTime, setCurrentTime] = useState(new Date());
 
     useEffect(() => {
@@ -109,6 +120,19 @@ export const POSHeader = () => {
                                             );
                                         })
                                     }
+                                    <div style={{ marginTop: 12, textAlign: 'center' }}>
+                                        <Button
+                                            type="primary"
+                                            ghost
+                                            size="small"
+                                            icon={<SyncOutlined spin={isRefreshing} />}
+                                            onClick={handleSync}
+                                            loading={isRefreshing}
+                                            style={{ width: '100%' }}
+                                        >
+                                            Sincronizar Tasas
+                                        </Button>
+                                    </div>
                                 </div>
                             }
                         >

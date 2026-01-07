@@ -14,6 +14,9 @@ import { useNavigate } from 'react-router-dom';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { statsApi, type DashboardStats } from '../services/statsApi';
 import { formatVenezuelanPrice } from '../utils/formatters';
+import { Select } from 'antd';
+import { currenciesApi, type Currency } from '../services/currenciesApi';
+import { companySettingsApi } from '../services/companySettingsApi';
 
 export const DashboardPage = () => {
     const navigate = useNavigate();
@@ -21,13 +24,55 @@ export const DashboardPage = () => {
     const [loading, setLoading] = useState(true);
     const [range, setRange] = useState('7days');
 
+    // Currency State
+    const [currencies, setCurrencies] = useState<Currency[]>([]);
+    const [selectedCurrencyId, setSelectedCurrencyId] = useState<string | null>(null);
+    const [primaryCurrency, setPrimaryCurrency] = useState<Currency | null>(null);
+
+    useEffect(() => {
+        const initialize = async () => {
+            setLoading(true);
+            try {
+                // 1. Fetch Currencies & Settings
+                const [allCurrencies] = await Promise.all([
+                    currenciesApi.getAll(),
+                    companySettingsApi.getSettings()
+                ]);
+                setCurrencies(allCurrencies);
+
+                const primary = allCurrencies.find(c => c.isPrimary) || null;
+                setPrimaryCurrency(primary);
+
+                // Default to Primary, or user preference if we stored it (not implemented yet)
+                // Or maybe default to the preferred secondary if set?
+                // Let's default to Primary (null means "Raw/Primary" in our logic usually, but here we want explicit ID)
+                if (primary) {
+                    setSelectedCurrencyId(primary.id);
+                }
+
+            } catch (error) {
+                console.error("Error initializing dashboard:", error);
+            } finally {
+                // Initial fetch of stats happens in separate effect or here?
+                // Let's let the other effect handle stats fetching to keep it clean,
+                // but we need to ensure loading state is managed.
+                // Actually, fetchStats handles its own loading.
+            }
+        };
+
+        initialize();
+    }, []);
+
     useEffect(() => {
         fetchStats();
     }, [range]);
 
     const fetchStats = async () => {
         try {
-            setLoading(true);
+            // Only set global loading if it's the first load or range change?
+            // Dashboard refresh might ideally be background.
+            // keeping simple for now.
+            if (!stats) setLoading(true);
             const data = await statsApi.getDashboardStats(range);
             setStats(data);
         } catch (error) {
@@ -36,6 +81,28 @@ export const DashboardPage = () => {
             setLoading(false);
         }
     };
+
+    // Helper: Convert Amount
+    const getConvertedAmount = (amountInBs: number) => {
+        if (!selectedCurrencyId || !primaryCurrency) return amountInBs;
+        if (selectedCurrencyId === primaryCurrency.id) return amountInBs;
+
+        const targetCurrency = currencies.find(c => c.id === selectedCurrencyId);
+        if (!targetCurrency || !targetCurrency.exchangeRate) return amountInBs;
+
+        // Conversion: Amount in Bs / Exchange Rate
+        const rate = Number(targetCurrency.exchangeRate);
+        if (!rate) return amountInBs;
+        return amountInBs / rate;
+    };
+
+    const getCurrencySymbol = () => {
+        if (!selectedCurrencyId) return 'Bs.';
+        const currency = currencies.find(c => c.id === selectedCurrencyId);
+        return currency ? currency.symbol : 'Bs.';
+    };
+
+    const currentSymbol = getCurrencySymbol();
 
     const rangeLabels: Record<string, string> = {
         '7days': 'Últimos 7 días',
@@ -89,9 +156,15 @@ export const DashboardPage = () => {
                             Resumen de tu negocio
                         </p>
                     </Col>
-                    <Col xs={24} sm={12} style={{ textAlign: 'right', marginTop: 16 }}>
+                    <Col xs={24} sm={12} style={{ textAlign: 'right', marginTop: 16, display: 'flex', gap: 10, justifyContent: 'flex-end', alignItems: 'center' }}>
+                        <Select
+                            style={{ width: 120 }}
+                            value={selectedCurrencyId}
+                            onChange={setSelectedCurrencyId}
+                            options={currencies.map(c => ({ label: c.code, value: c.id }))}
+                            loading={currencies.length === 0}
+                        />
                         <Segmented
-                            block
                             options={[
                                 { label: '7 D (7D)', value: '7days' },
                                 { label: '1 M', value: '30days' },
@@ -111,9 +184,9 @@ export const DashboardPage = () => {
                     <Card>
                         <Statistic
                             title="Ventas Hoy"
-                            value={stats.todaySales}
+                            value={getConvertedAmount(stats.todaySales)}
                             precision={2}
-                            prefix="Bs."
+                            prefix={currentSymbol}
                             valueStyle={{ color: '#3f8600' }}
                             styles={{ content: { color: '#3f8600' } }}
                             suffix={<ShoppingCartOutlined />}
@@ -124,9 +197,9 @@ export const DashboardPage = () => {
                     <Card>
                         <Statistic
                             title="Ventas Este Mes"
-                            value={stats.thisMonthSales}
+                            value={getConvertedAmount(stats.thisMonthSales)}
                             precision={2}
-                            prefix="Bs."
+                            prefix={currentSymbol}
                             valueStyle={{ color: '#1890ff' }}
                             styles={{ content: { color: '#1890ff' } }}
                             suffix={
@@ -147,9 +220,9 @@ export const DashboardPage = () => {
                     <Card>
                         <Statistic
                             title="Balance de Caja"
-                            value={stats.cashBalance}
+                            value={getConvertedAmount(stats.cashBalance)}
                             precision={2}
-                            prefix="Bs."
+                            prefix={currentSymbol}
                             valueStyle={{ color: '#722ed1' }}
                             styles={{ content: { color: '#722ed1' } }}
                             suffix={<BankOutlined />}
@@ -184,11 +257,12 @@ export const DashboardPage = () => {
                                 <XAxis dataKey="date" />
                                 <YAxis />
                                 <Tooltip
-                                    formatter={(value: number) => formatVenezuelanPrice(value)}
+                                    formatter={(value: number) => formatVenezuelanPrice(value, currentSymbol)}
                                 />
                                 <Line
                                     type="monotone"
-                                    dataKey="sales"
+                                    dataKey={(data) => getConvertedAmount(data.sales)}
+                                    name="Ventas"
                                     stroke="#1890ff"
                                     strokeWidth={2}
                                     dot={{ fill: '#1890ff' }}

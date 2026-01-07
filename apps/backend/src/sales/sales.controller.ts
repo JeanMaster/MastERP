@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param, Query } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Query, Patch, Delete } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { SalesService } from './sales.service';
 import { InvoiceService } from '../invoice/invoice.service';
@@ -70,6 +70,23 @@ export class SalesController {
         @Query('limit') limit?: string
     ) {
         return this.salesService.getClientRecentPurchases(clientId, parseInt(limit || '5'));
+    }
+
+    @Patch(':id/payment-method')
+    @ApiOperation({ summary: 'Actualizar método de pago de una venta' })
+    @ApiResponse({ status: 200, description: 'Método de pago actualizado' })
+    updatePaymentMethod(
+        @Param('id') id: string,
+        @Body('paymentMethod') paymentMethod: string
+    ) {
+        return this.salesService.updatePaymentMethod(id, paymentMethod);
+    }
+
+    @Delete(':id')
+    @ApiOperation({ summary: 'Eliminar/Anular una venta' })
+    @ApiResponse({ status: 200, description: 'Venta eliminada' })
+    remove(@Param('id') id: string) {
+        return this.salesService.remove(id);
     }
 
     @Get(':id')

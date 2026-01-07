@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Card, Spin, Empty, Row, Col, Statistic } from 'antd';
+import { Card, Spin, Empty, Row, Col, Statistic, Radio } from 'antd';
 import {
     DollarOutlined,
     ShoppingOutlined,
@@ -9,21 +9,57 @@ import {
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
 import { statsApi, type FinanceReport } from '../../../services/statsApi';
 import { formatVenezuelanPrice } from '../../../utils/formatters';
+import { usePOSStore } from '../../../store/posStore';
+import { ReportCurrencySelector } from './ReportCurrencySelector';
+import dayjs from 'dayjs';
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8'];
 
 export const FinancialReports = () => {
     const [report, setReport] = useState<FinanceReport | null>(null);
     const [loading, setLoading] = useState(true);
+    const { primaryCurrency, currencies } = usePOSStore();
+    const [selectedCurrency, setSelectedCurrency] = useState<string>('VES');
+    const [dateFilter, setDateFilter] = useState<string>('month');
+
+    const currentCurrencyObj = currencies.find(c => c.code === selectedCurrency);
+    const currencySymbol = currentCurrencyObj?.symbol || 'Bs';
+
+    // Initialize to primary
+    useEffect(() => {
+        if (primaryCurrency && selectedCurrency === 'VES') {
+            setSelectedCurrency(primaryCurrency.code);
+        }
+    }, [primaryCurrency]);
 
     useEffect(() => {
         fetchReport();
-    }, []);
+    }, [selectedCurrency, dateFilter]);
 
     const fetchReport = async () => {
         try {
             setLoading(true);
-            const data = await statsApi.getFinanceReport();
+            let startDate: string | undefined;
+            let endDate: string | undefined;
+
+            if (dateFilter === 'day') {
+                startDate = dayjs().format('YYYY-MM-DD');
+                endDate = dayjs().format('YYYY-MM-DD');
+            } else if (dateFilter === 'month') {
+                startDate = dayjs().startOf('month').format('YYYY-MM-DD');
+                endDate = dayjs().endOf('month').format('YYYY-MM-DD');
+            }
+            // 'all' leaves dates as undefined, backend handles it as everything or we could set a very early date
+            // However, my backend logic defaults to current month if undefined. 
+            // I should explicitly set a very early date for 'all' or adjust backend.
+            // Let's adjust backend to handle 'all' if no dates provided? 
+            // No, better to be explicit here.
+            if (dateFilter === 'all') {
+                startDate = '2000-01-01'; // Good enough for "Todo"
+                endDate = dayjs().format('YYYY-MM-DD');
+            }
+
+            const data = await statsApi.getFinanceReport(selectedCurrency, startDate, endDate);
             setReport(data);
         } catch (error) {
             console.error('Error fetching finance report:', error);
@@ -44,7 +80,7 @@ export const FinancialReports = () => {
         return <Empty description="Error al cargar reporte financiero" />;
     }
 
-    const cashFlow = report.monthlySalesTotal - report.monthlyPurchasesTotal;
+    const profit = report.monthlySalesTotal - report.totalCostOfSales - report.totalExpenses;
     const paymentData = report.paymentMethodsBreakdown.map((item) => ({
         name: item.method,
         value: item.amount,
@@ -97,54 +133,110 @@ export const FinancialReports = () => {
 
     return (
         <div>
+            {/* Filters */}
+            <div style={{ marginBottom: 20 }}>
+                <Row gutter={[16, 16]} align="middle" justify="space-between">
+                    <Col xs={24} md={12}>
+                        <Radio.Group
+                            value={dateFilter}
+                            onChange={(e) => setDateFilter(e.target.value)}
+                            buttonStyle="solid"
+                        >
+                            <Radio.Button value="day">Hoy</Radio.Button>
+                            <Radio.Button value="month">Este Mes</Radio.Button>
+                            <Radio.Button value="all">Todo</Radio.Button>
+                        </Radio.Group>
+                    </Col>
+                    <Col xs={24} md={12}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, justifyContent: 'flex-end' }}>
+                            <span style={{ fontWeight: 'bold' }}>Moneda del Reporte:</span>
+                            <ReportCurrencySelector
+                                value={selectedCurrency}
+                                onChange={setSelectedCurrency}
+                                style={{ width: 200 }}
+                            />
+                        </div>
+                    </Col>
+                </Row>
+            </div>
+
             {/* Summary Cards */}
-            <Row gutter={16} style={{ marginBottom: 24 }}>
-                <Col xs={24} sm={12} lg={6}>
+            <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
+                <Col xs={24} sm={12} lg={4}>
                     <Card>
                         <Statistic
-                            title="Ventas del Mes"
+                            title="Ingresos (Ventas)"
                             value={report.monthlySalesTotal}
                             precision={2}
-                            prefix="Bs."
+                            prefix={currencySymbol}
                             valueStyle={{ color: '#52c41a' }}
                             styles={{ content: { color: '#52c41a' } }}
                             suffix={<DollarOutlined />}
                         />
                     </Card>
                 </Col>
-                <Col xs={24} sm={12} lg={6}>
+                <Col xs={24} sm={12} lg={4}>
                     <Card>
                         <Statistic
-                            title="Compras del Mes"
-                            value={report.monthlyPurchasesTotal}
+                            title="Costo Productos"
+                            value={report.totalCostOfSales}
                             precision={2}
-                            prefix="Bs."
+                            prefix={currencySymbol}
+                            valueStyle={{ color: '#faad14' }}
+                            styles={{ content: { color: '#faad14' } }}
+                            suffix={<ShoppingOutlined />}
+                        />
+                    </Card>
+                </Col>
+                <Col xs={24} sm={12} lg={4}>
+                    <Card>
+                        <Statistic
+                            title="Gastos Operativos"
+                            value={report.totalExpenses}
+                            precision={2}
+                            prefix={currencySymbol}
                             valueStyle={{ color: '#ff4d4f' }}
                             styles={{ content: { color: '#ff4d4f' } }}
                             suffix={<ShoppingOutlined />}
                         />
                     </Card>
                 </Col>
-                <Col xs={24} sm={12} lg={6}>
+                <Col xs={24} sm={12} lg={4}>
                     <Card>
                         <Statistic
-                            title="Flujo de Caja"
-                            value={cashFlow}
+                            title="Utilidad Real"
+                            value={profit}
                             precision={2}
-                            prefix="Bs."
-                            valueStyle={{ color: cashFlow >= 0 ? '#52c41a' : '#ff4d4f' }}
-                            styles={{ content: { color: cashFlow >= 0 ? '#52c41a' : '#ff4d4f' } }}
+                            prefix={currencySymbol}
+                            valueStyle={{ color: profit >= 0 ? '#52c41a' : '#ff4d4f' }}
+                            styles={{ content: { color: profit >= 0 ? '#52c41a' : '#ff4d4f' } }}
                             suffix={<RiseOutlined />}
                         />
-                        <div style={{ marginTop: 8, fontSize: 12, color: '#666' }}>
-                            Ventas - Compras
+                        <div style={{ marginTop: 8, fontSize: 10, color: '#666' }}>
+                            Ventas - Costos - Gastos
                         </div>
                     </Card>
                 </Col>
-                <Col xs={24} sm={12} lg={6}>
+                <Col xs={24} sm={12} lg={4}>
                     <Card>
                         <Statistic
-                            title="Métodos de Pago"
+                            title="Inversión Stock"
+                            value={report.monthlyPurchasesTotal}
+                            precision={2}
+                            prefix={currencySymbol}
+                            valueStyle={{ color: '#1890ff' }}
+                            styles={{ content: { color: '#1890ff' } }}
+                            suffix={<ShoppingOutlined />}
+                        />
+                        <div style={{ marginTop: 8, fontSize: 10, color: '#666' }}>
+                            Compras realizadas
+                        </div>
+                    </Card>
+                </Col>
+                <Col xs={24} sm={12} lg={4}>
+                    <Card>
+                        <Statistic
+                            title="Métodos Pago"
                             value={report.paymentMethodsBreakdown.length}
                             valueStyle={{ color: '#1890ff' }}
                             styles={{ content: { color: '#1890ff' } }}
@@ -157,7 +249,7 @@ export const FinancialReports = () => {
             {/* Charts */}
             <Row gutter={16} style={{ marginBottom: 16 }}>
                 <Col xs={24} lg={14}>
-                    <Card title="Ventas Diarias del Mes">
+                    <Card title={`Tendencia de Ventas (${dateFilter === 'day' ? 'Hoy' : dateFilter === 'month' ? 'Mes' : 'Todo'})`}>
                         <ResponsiveContainer width="100%" height={300}>
                             <BarChart data={report.dailySalesData}>
                                 <CartesianGrid strokeDasharray="3 3" />
@@ -233,7 +325,7 @@ export const FinancialReports = () => {
                                                 {info.displayName}
                                             </div>
                                             <div style={{ fontSize: 22, fontWeight: 'bold', color: '#262626', marginBottom: 4 }}>
-                                                Bs. {formatVenezuelanPrice(payment.amount)}
+                                                {currencySymbol} {formatVenezuelanPrice(payment.amount)}
                                             </div>
                                             <div style={{ fontSize: 12, color: '#8c8c8c' }}>
                                                 {percentage}% del total

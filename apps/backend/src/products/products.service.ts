@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, ConflictException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
@@ -51,6 +51,9 @@ export class ProductsService {
                 },
             });
         } catch (error) {
+            if (error.code === 'P2002') {
+                throw new ConflictException('error sku duplicado');
+            }
             throw error;
         }
     }
@@ -139,32 +142,39 @@ export class ProductsService {
             this.validatePrices(updateProductDto);
         }
 
-        const updatedProduct = await this.prisma.product.update({
-            where: { id },
-            data: {
-                ...updateProductDto,
-                costPrice: updateProductDto.costPrice
-                    ? new Decimal(updateProductDto.costPrice)
-                    : undefined,
-                salePrice: updateProductDto.salePrice
-                    ? new Decimal(updateProductDto.salePrice)
-                    : undefined,
-                offerPrice: updateProductDto.offerPrice
-                    ? new Decimal(updateProductDto.offerPrice)
-                    : undefined,
-                wholesalePrice: updateProductDto.wholesalePrice
-                    ? new Decimal(updateProductDto.wholesalePrice)
-                    : undefined,
-            },
-            include: {
-                category: { select: { id: true, name: true } },
-                subcategory: { select: { id: true, name: true } },
-                currency: { select: { id: true, name: true, symbol: true } },
-                unit: { select: { id: true, name: true, abbreviation: true } },
-            },
-        });
+        try {
+            const updatedProduct = await this.prisma.product.update({
+                where: { id },
+                data: {
+                    ...updateProductDto,
+                    costPrice: updateProductDto.costPrice
+                        ? new Decimal(updateProductDto.costPrice)
+                        : undefined,
+                    salePrice: updateProductDto.salePrice
+                        ? new Decimal(updateProductDto.salePrice)
+                        : undefined,
+                    offerPrice: updateProductDto.offerPrice
+                        ? new Decimal(updateProductDto.offerPrice)
+                        : undefined,
+                    wholesalePrice: updateProductDto.wholesalePrice
+                        ? new Decimal(updateProductDto.wholesalePrice)
+                        : undefined,
+                },
+                include: {
+                    category: { select: { id: true, name: true } },
+                    subcategory: { select: { id: true, name: true } },
+                    currency: { select: { id: true, name: true, symbol: true } },
+                    unit: { select: { id: true, name: true, abbreviation: true } },
+                },
+            });
 
-        return this.convertDecimalsToNumber(updatedProduct);
+            return this.convertDecimalsToNumber(updatedProduct);
+        } catch (error) {
+            if (error.code === 'P2002') {
+                throw new ConflictException('error sku duplicado');
+            }
+            throw error;
+        }
     }
 
     async remove(id: string) {

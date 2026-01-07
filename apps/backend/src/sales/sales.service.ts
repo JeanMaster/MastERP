@@ -19,20 +19,32 @@ export class SalesService {
     async create(createSaleDto: CreateSaleDto) {
         const { items, invoiceNumber: reservedInvoiceNumber, ...saleData } = createSaleDto;
 
-        // Validar que los productos existen y tienen stock suficiente
+        // Validar productos, stock y preparar items con costo
+        const itemsWithCost: any[] = [];
+
         for (const item of items) {
             const product = await this.prisma.product.findUnique({
                 where: { id: item.productId },
+                include: { currency: true }
             });
 
             if (!product) {
                 throw new BadRequestException(`Producto con ID ${item.productId} no encontrado`);
             }
 
-            // Solo validar stock si el producto tiene control de inventario (stock > 0) y NO es un servicio
+            // Validar stock (si aplica)
             if (product.type !== 'SERVICE' && product.stock > 0 && product.stock < item.quantity) {
                 throw new BadRequestException(`Stock insuficiente para ${product.name}. Disponible: ${product.stock}`);
             }
+
+            // Calculate cost in Primary Currency
+            const rate = product.currency?.isPrimary ? 1 : Number(product.currency?.exchangeRate || 1);
+            const costInPrimary = Number(product.costPrice || 0) * rate;
+
+            itemsWithCost.push({
+                ...item,
+                cost: costInPrimary, // Capturar costo normalizado
+            });
         }
 
         // Obtener sesión de caja activa (si existe)
@@ -53,7 +65,7 @@ export class SalesService {
                     invoiceNumber,
                     cashSessionId: activeSession?.id,
                     items: {
-                        create: items,
+                        create: itemsWithCost,
                     },
                 },
                 include: {
@@ -303,6 +315,76 @@ export class SalesService {
 
         return sale;
     }
+
+    /**
+     * Actualizar el método de pago de una venta
+     */
+    async updatePaymentMethod(id: string, paymentMethod: string) {
+        // Verificar que la venta existe
+        const sale = await this.prisma.sale.findUnique({ where: { id } });
+        if (!sale) {
+            throw new BadRequestException(`Venta con ID ${id} no encontrada`);
+        }
+
+        return this.prisma.sale.update({
+            where: { id },
+            data: { paymentMethod }
+        });
+    }
+
+    /**
+     * Eliminar una venta y restaurar stock. 
+     * Si es la última venta, permite retroceder el contador de facturas.
+     */
+    async remove(id: string) {
+        const sale = await this.prisma.sale.findUnique({
+            where: { id },
+            include: { items: true }
+        });
+
+        if (!sale) {
+            throw new BadRequestException(`Venta con ID ${id} no encontrada`);
+        }
+
+        return await this.prisma.$transaction(async (prisma) => {
+            // 1. Restaurar stock
+            for (const item of sale.items) {
+                const product = await prisma.product.findUnique({ where: { id: item.productId } });
+                if (product && product.type !== 'SERVICE') {
+                    await prisma.product.update({
+                        where: { id: item.productId },
+                        data: { stock: { increment: Number(item.quantity) } }
+                    });
+                }
+            }
+
+            // 2. Eliminar movimientos de caja asociados
+            await prisma.cashMovement.deleteMany({ where: { saleId: id } });
+
+            // 3. Eliminar factura a crédito si existe
+            await prisma.invoice.deleteMany({ where: { saleId: id } });
+
+            // 4. Verificar si es la última factura para retroceder el contador
+            const latestSale = await prisma.sale.findFirst({
+                orderBy: { createdAt: 'desc' }
+            });
+
+            if (latestSale && latestSale.id === id) {
+                const counter = await prisma.invoiceCounter.findFirst();
+                if (counter && counter.currentNumber > 1) {
+                    await prisma.invoiceCounter.update({
+                        where: { id: counter.id },
+                        data: { currentNumber: { decrement: 1 } }
+                    });
+                }
+            }
+
+            // 5. Eliminar items y venta
+            await prisma.saleItem.deleteMany({ where: { saleId: id } });
+            return prisma.sale.delete({ where: { id } });
+        });
+    }
+
 
     /**
      * Helper: Detectar si el método de pago incluye crédito

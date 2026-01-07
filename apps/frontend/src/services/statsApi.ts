@@ -25,6 +25,8 @@ export interface InventoryReport {
 export interface FinanceReport {
     monthlySalesTotal: number;
     monthlyPurchasesTotal: number;
+    totalCostOfSales: number;
+    totalExpenses: number;
     paymentMethodsBreakdown: { method: string; amount: number }[];
     dailySalesData: { date: string; amount: number }[];
 }
@@ -35,8 +37,34 @@ export interface BalanceEntry {
     expenses: number;
     purchases: number;
     total: number;
+    cogs: number;
     profitMargin: number;
     operatingCostRatio: number;
+}
+
+export interface TopProduct {
+    id: string;
+    name: string;
+    units: number;
+    profit: number;
+    revenue: number;
+    totalCost: number;
+    margin: number;
+}
+
+export interface COGSReport {
+    totalSales: number;
+    totalCOGS: number;
+    totalPurchases: number;
+    totalExpenses: number;
+    products: {
+        name: string;
+        sku: string | null;
+        category: string;
+        quantity: number;
+        totalCost: number;
+        totalRevenue: number;
+    }[];
 }
 
 export const statsApi = {
@@ -47,19 +75,39 @@ export const statsApi = {
         return response.data;
     },
 
-    getInventoryReport: async (): Promise<InventoryReport> => {
-        const response = await apiClient.get('/stats/inventory');
+    getInventoryReport: async (currency?: string): Promise<InventoryReport> => {
+        const response = await apiClient.get('/stats/inventory', { params: { currency } });
         return response.data;
     },
 
-    getFinanceReport: async (): Promise<FinanceReport> => {
-        const response = await apiClient.get('/stats/finance');
+    getFinanceReport: async (currency?: string, startDate?: string, endDate?: string): Promise<FinanceReport> => {
+        const response = await apiClient.get('/stats/finance', {
+            params: { currency, startDate, endDate }
+        });
         return response.data;
     },
 
     getBalanceReport: async (currency?: string): Promise<BalanceEntry[]> => {
         const response = await apiClient.get('/stats/balance', {
             params: { currency }
+        });
+        return response.data;
+    },
+
+    getTopProducts: async (filters: {
+        startDate?: string;
+        endDate?: string;
+        sortBy?: 'units' | 'profit';
+        limit?: number;
+        currency?: string;
+    }): Promise<TopProduct[]> => {
+        const response = await apiClient.get('/stats/top-products', { params: filters });
+        return response.data;
+    },
+
+    getCOGSReport: async (currency?: string, startDate?: string, endDate?: string): Promise<COGSReport> => {
+        const response = await apiClient.get('/stats/cogs', {
+            params: { currency, startDate, endDate }
         });
         return response.data;
     },

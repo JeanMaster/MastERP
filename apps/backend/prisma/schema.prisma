@@ -365,6 +365,7 @@ model SaleItem {
 
   quantity  Decimal @db.Decimal(10, 2)
   unitPrice Decimal @db.Decimal(10, 2)
+  cost      Decimal @db.Decimal(10, 2) @default(0) // Costo al momento de la venta
   total     Decimal @db.Decimal(10, 2)
 
   createdAt DateTime @default(now())

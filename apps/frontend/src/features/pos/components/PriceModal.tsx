@@ -43,10 +43,12 @@ export const PriceModal = ({ open, cartItem, onOk, onCancel }: PriceModalProps) 
         return priceVal;
     };
 
+    const roundPrice = (price: number) => Math.ceil(price / 10) * 10;
+
     const costInPrimary = getConvertedPrice(isSecondaryUnit ? product.secondaryCostPrice : product.costPrice);
-    const normalPrice = getConvertedPrice(isSecondaryUnit ? product.secondarySalePrice : product.salePrice);
-    const offerPrice = getConvertedPrice(isSecondaryUnit ? product.secondaryOfferPrice : product.offerPrice);
-    const wholesalePrice = getConvertedPrice(isSecondaryUnit ? product.secondaryWholesalePrice : product.wholesalePrice);
+    const normalPrice = roundPrice(getConvertedPrice(isSecondaryUnit ? product.secondarySalePrice : product.salePrice));
+    const offerPrice = roundPrice(getConvertedPrice(isSecondaryUnit ? product.secondaryOfferPrice : product.offerPrice));
+    const wholesalePrice = roundPrice(getConvertedPrice(isSecondaryUnit ? product.secondaryWholesalePrice : product.wholesalePrice));
 
     const validateCustomPrice = (price: number | null): string | null => {
         if (price === null || price <= 0) return null;

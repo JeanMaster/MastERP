@@ -70,7 +70,7 @@ export const ProductsPage = () => {
             title: 'Nombre',
             dataIndex: 'name',
             key: 'name',
-            width: '25%',
+            width: '20%',
             render: (text: string, record: Product) => (
                 <Space>
                     {record.imageUrl && (
@@ -105,7 +105,7 @@ export const ProductsPage = () => {
         {
             title: 'Categoría',
             key: 'category',
-            width: '15%',
+            width: '12%',
             render: (_: any, record: Product) => (
                 <div>
                     <div>{record.category.name}</div>
@@ -203,7 +203,7 @@ export const ProductsPage = () => {
         {
             title: 'Acciones',
             key: 'actions',
-            width: '13%',
+            width: '10%',
             render: (_: any, record: Product) => (
                 <Space>
                     <Button
@@ -287,7 +287,7 @@ export const ProductsPage = () => {
                 dataSource={filteredData}
                 rowKey="id"
                 loading={isLoading}
-                scroll={{ x: 800 }}
+                scroll={{ x: isMobile ? 800 : undefined }}
                 pagination={{
                     pageSize: 15,
                     size: isMobile ? 'small' : 'default',

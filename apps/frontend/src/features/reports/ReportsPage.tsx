@@ -3,6 +3,8 @@ import { Card, Tabs } from 'antd';
 import { InventoryReports } from './components/InventoryReports';
 import { FinancialReports } from './components/FinancialReports';
 import { BalanceReports } from './components/BalanceReports';
+import { TopProductsReport } from './components/TopProductsReport';
+import COGSReport from './components/COGSReport';
 
 export const ReportsPage = () => {
     const [activeTab, setActiveTab] = useState('inventory');
@@ -22,6 +24,16 @@ export const ReportsPage = () => {
             key: 'balance',
             label: 'Balance General',
             children: <BalanceReports />
+        },
+        {
+            key: 'top-products',
+            label: 'Productos Más Vendidos',
+            children: <TopProductsReport />
+        },
+        {
+            key: 'cogs',
+            label: 'Reposición (COGS)',
+            children: <COGSReport />
         }
     ];
 
