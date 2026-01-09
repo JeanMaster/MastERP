@@ -131,4 +131,15 @@ export const productsApi = {
     delete: async (id: string): Promise<void> => {
         await api.delete(`/products/${id}`);
     },
+
+    batchUpdatePrices: async (updates: Array<{
+        productId: string;
+        newCostPrice: number;
+        salePriceMargin: number;
+        offerPriceMargin?: number;
+        wholesalePriceMargin?: number;
+    }>) => {
+        const { data } = await api.post(`/products/batch-update-prices`, updates);
+        return data;
+    },
 };

@@ -10,6 +10,7 @@ import { purchasesApi } from '../../../services/purchasesApi';
 import type { CreatePurchaseDto } from '../../../services/purchasesApi';
 import { currenciesApi } from '../../../services/currenciesApi';
 import type { Currency } from '../../../services/currenciesApi';
+import { PriceUpdateConfirmModal } from './PriceUpdateConfirmModal';
 
 interface CreatePurchaseModalProps {
     visible: boolean;
@@ -27,6 +28,9 @@ export const CreatePurchaseModal: React.FC<CreatePurchaseModalProps> = ({ visibl
     const [selectedItems, setSelectedItems] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
     const [searchText, setSearchText] = useState('');
+    const [priceUpdateModalVisible, setPriceUpdateModalVisible] = useState(false);
+    const [productsWithCostChange, setProductsWithCostChange] = useState<any[]>([]);
+    const [priceUpdateLoading, setPriceUpdateLoading] = useState(false);
 
     // Load initial data
     useEffect(() => {
@@ -138,15 +142,50 @@ export const CreatePurchaseModal: React.FC<CreatePurchaseModalProps> = ({ visibl
                 exchangeRate: exchangeRate
             };
 
-            await purchasesApi.create(purchaseData);
+            const result: any = await purchasesApi.create(purchaseData);
             message.success('Compra registrada exitosamente');
-            onSuccess();
+
+            // Check if there are products with cost changes
+            if (result.productsWithCostChange && result.productsWithCostChange.length > 0) {
+                setProductsWithCostChange(result.productsWithCostChange);
+                setPriceUpdateModalVisible(true);
+            } else {
+                onSuccess();
+            }
         } catch (error) {
             console.error(error);
             message.error('Error al registrar la compra');
         } finally {
             setLoading(false);
         }
+    };
+
+    const handlePriceUpdateConfirm = async () => {
+        try {
+            setPriceUpdateLoading(true);
+            const updates = productsWithCostChange.map(p => ({
+                productId: p.productId,
+                newCostPrice: p.newCost,
+                salePriceMargin: p.salePriceMargin,
+                offerPriceMargin: p.offerPriceMargin,
+                wholesalePriceMargin: p.wholesalePriceMargin,
+            }));
+
+            await productsApi.batchUpdatePrices(updates);
+            message.success('Precios actualizados exitosamente');
+            setPriceUpdateModalVisible(false);
+            onSuccess();
+        } catch (error) {
+            console.error(error);
+            message.error('Error al actualizar precios');
+        } finally {
+            setPriceUpdateLoading(false);
+        }
+    };
+
+    const handlePriceUpdateCancel = () => {
+        setPriceUpdateModalVisible(false);
+        onSuccess(); // Close main modal and refresh
     };
 
     const columns = [
@@ -321,6 +360,15 @@ export const CreatePurchaseModal: React.FC<CreatePurchaseModalProps> = ({ visibl
                         </Table.Summary.Row>
                     );
                 }}
+            />
+
+            <PriceUpdateConfirmModal
+                visible={priceUpdateModalVisible}
+                products={productsWithCostChange}
+                currencySymbol={selectedCurrency?.symbol || '$'}
+                onConfirm={handlePriceUpdateConfirm}
+                onCancel={handlePriceUpdateCancel}
+                loading={priceUpdateLoading}
             />
         </Modal>
     );

@@ -76,6 +76,9 @@ export class PurchasesService {
         const balance = total - paidAmount;
         const paymentStatus = balance <= 0 ? 'PAID' : (paidAmount > 0 ? 'PARTIAL' : 'UNPAID');
 
+        // Track products with cost changes for price update suggestions
+        const productsWithCostChange: any[] = [];
+
         return this.prisma.$transaction(async (tx) => {
             // 1. Create Purchase
             const purchase = await tx.purchase.create({
@@ -118,6 +121,53 @@ export class PurchasesService {
 
             // 2. Update Stock and Cost for each product
             for (const item of itemsWithTotal) {
+                const product = await tx.product.findUnique({
+                    where: { id: item.productId },
+                    select: {
+                        id: true,
+                        name: true,
+                        costPrice: true,
+                        salePrice: true,
+                        offerPrice: true,
+                        wholesalePrice: true,
+                    }
+                });
+
+                if (!product) continue;
+
+                // Detect cost change
+                const oldCost = Number(product.costPrice);
+                const newCost = Number(item.cost);
+                const costChanged = Math.abs(oldCost - newCost) > 0.001; // Tolerance for float comparison
+
+                if (costChanged && oldCost > 0) {
+                    // Calculate current margins (only if sale prices exist)
+                    const salePrice = Number(product.salePrice);
+                    const offerPrice = product.offerPrice ? Number(product.offerPrice) : null;
+                    const wholesalePrice = product.wholesalePrice ? Number(product.wholesalePrice) : null;
+
+                    const salePriceMargin = salePrice > 0 ? ((salePrice - oldCost) / oldCost) * 100 : 0;
+                    const offerPriceMargin = offerPrice && offerPrice > 0 ? ((offerPrice - oldCost) / oldCost) * 100 : null;
+                    const wholesalePriceMargin = wholesalePrice && wholesalePrice > 0 ? ((wholesalePrice - oldCost) / oldCost) * 100 : null;
+
+                    productsWithCostChange.push({
+                        productId: product.id,
+                        productName: product.name,
+                        oldCost,
+                        newCost,
+                        currentSalePrice: salePrice,
+                        currentOfferPrice: offerPrice,
+                        currentWholesalePrice: wholesalePrice,
+                        salePriceMargin,
+                        offerPriceMargin,
+                        wholesalePriceMargin,
+                        // Calculate suggested new prices
+                        suggestedSalePrice: newCost * (1 + salePriceMargin / 100),
+                        suggestedOfferPrice: offerPriceMargin !== null ? newCost * (1 + offerPriceMargin / 100) : null,
+                        suggestedWholesalePrice: wholesalePriceMargin !== null ? newCost * (1 + wholesalePriceMargin / 100) : null,
+                    });
+                }
+
                 await tx.product.update({
                     where: { id: item.productId },
                     data: {
@@ -128,7 +178,10 @@ export class PurchasesService {
                 });
             }
 
-            return purchase;
+            return {
+                ...purchase,
+                productsWithCostChange, // Include this in response for frontend
+            };
         });
     }
 

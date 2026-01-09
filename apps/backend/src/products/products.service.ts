@@ -234,4 +234,67 @@ export class ProductsService {
             unitsPerSecondaryUnit: product.unitsPerSecondaryUnit ? Number(product.unitsPerSecondaryUnit) : null,
         };
     }
+
+    /**
+     * Batch update product prices using margin percentages
+     */
+    async batchUpdatePrices(updates: Array<{
+        productId: string;
+        newCostPrice: number;
+        salePriceMargin: number;
+        offerPriceMargin?: number;
+        wholesalePriceMargin?: number;
+    }>) {
+        const results = [];
+
+        for (const update of updates) {
+            const { productId, newCostPrice, salePriceMargin, offerPriceMargin, wholesalePriceMargin } = update;
+
+            // Calculate new prices based on margins
+            const newSalePrice = newCostPrice * (1 + salePriceMargin / 100);
+            const newOfferPrice = offerPriceMargin !== undefined && offerPriceMargin !== null
+                ? newCostPrice * (1 + offerPriceMargin / 100)
+                : null;
+            const newWholesalePrice = wholesalePriceMargin !== undefined && wholesalePriceMargin !== null
+                ? newCostPrice * (1 + wholesalePriceMargin / 100)
+                : null;
+
+            try {
+                const updatedProduct = await this.prisma.product.update({
+                    where: { id: productId },
+                    data: {
+                        costPrice: new Decimal(newCostPrice),
+                        salePrice: new Decimal(newSalePrice),
+                        offerPrice: newOfferPrice ? new Decimal(newOfferPrice) : null,
+                        wholesalePrice: newWholesalePrice ? new Decimal(newWholesalePrice) : null,
+                    },
+                    select: {
+                        id: true,
+                        name: true,
+                        costPrice: true,
+                        salePrice: true,
+                        offerPrice: true,
+                        wholesalePrice: true,
+                    }
+                });
+
+                results.push({
+                    success: true,
+                    product: this.convertDecimalsToNumber(updatedProduct),
+                });
+            } catch (error) {
+                results.push({
+                    success: false,
+                    productId,
+                    error: error.message,
+                });
+            }
+        }
+
+        return {
+            updated: results.filter(r => r.success).length,
+            failed: results.filter(r => !r.success).length,
+            results,
+        };
+    }
 }

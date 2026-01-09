@@ -64,4 +64,17 @@ export class ProductsController {
     remove(@Param('id') id: string) {
         return this.productsService.remove(id);
     }
+
+    @Post('batch-update-prices')
+    @ApiOperation({ summary: 'Actualizar precios de venta en lote usando márgenes' })
+    @ApiResponse({ status: 200, description: 'Precios actualizados exitosamente' })
+    batchUpdatePrices(@Body() updates: Array<{
+        productId: string;
+        newCostPrice: number;
+        salePriceMargin: number;
+        offerPriceMargin?: number;
+        wholesalePriceMargin?: number;
+    }>) {
+        return this.productsService.batchUpdatePrices(updates);
+    }
 }
