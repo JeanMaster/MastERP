@@ -20,13 +20,13 @@ export class InventoryAdjustmentsService {
         }
 
         // 2. Calcular nuevo stock
-        const previousStock = product.stock;
+        const previousStock = Number(product.stock);
         let newStock = previousStock;
 
         if (createAdjustmentDto.type === AdjustmentType.INCREASE) {
-            newStock += createAdjustmentDto.quantity;
+            newStock += Number(createAdjustmentDto.quantity);
         } else {
-            newStock -= createAdjustmentDto.quantity;
+            newStock -= Number(createAdjustmentDto.quantity);
 
             if (newStock < 0) {
                 throw new BadRequestException(

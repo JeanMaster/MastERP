@@ -6,8 +6,8 @@ class CreateSaleItemDto {
     @IsNotEmpty()
     productId: string;
 
-    @IsNumber({ maxDecimalPlaces: 2 })
-    @Min(0.01)
+    @IsNumber({ maxDecimalPlaces: 3 })
+    @Min(0.001)
     quantity: number;
 
     @IsNumber({ maxDecimalPlaces: 2 })

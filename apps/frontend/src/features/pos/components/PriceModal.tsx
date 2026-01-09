@@ -1,5 +1,6 @@
-import { Modal, Radio, InputNumber, Button } from 'antd';
-import { useEffect, useState, useRef } from 'react';
+import { Modal, Radio, Button } from 'antd';
+import { useEffect, useState } from 'react';
+import { CalculatorInput } from '../../../components/common/CalculatorInput';
 import { usePOSStore, type CartItem } from '../../../store/posStore';
 
 interface PriceModalProps {
@@ -12,9 +13,8 @@ interface PriceModalProps {
 export const PriceModal = ({ open, cartItem, onOk, onCancel }: PriceModalProps) => {
     const { primaryCurrency } = usePOSStore();
     const [selectedTier, setSelectedTier] = useState<'normal' | 'offer' | 'wholesale' | 'custom'>('normal');
-    const [customPrice, setCustomPrice] = useState<number | null>(null);
+    const [customPrice, setCustomPrice] = useState<number>(0);
     const [customPriceError, setCustomPriceError] = useState<string | null>(null);
-    const inputRef = useRef<any>(null);
 
     // Calculate prices in Primary Currency
     // Note: calculatePriceInPrimary uses 'salePrice' or 'secondarySalePrice' depending on unit.
@@ -65,10 +65,30 @@ export const PriceModal = ({ open, cartItem, onOk, onCancel }: PriceModalProps) 
         return null;
     };
 
+    // Keyboard listener for F9
+    useEffect(() => {
+        const handleGlobalKeyDown = (e: KeyboardEvent) => {
+            if (open && e.key === 'F9') {
+                e.stopPropagation();
+                e.preventDefault();
+                handleSubmit();
+            }
+        };
+
+        if (open) {
+            window.addEventListener('keydown', handleGlobalKeyDown, true);
+        }
+
+        return () => {
+            window.removeEventListener('keydown', handleGlobalKeyDown, true);
+        };
+    }, [open, cartItem, normalPrice, offerPrice, wholesalePrice, selectedTier, customPrice, customPriceError]);
+
+    // Initialization logic (only when modal opens)
     useEffect(() => {
         if (open) {
             setSelectedTier('normal');
-            setCustomPrice(null);
+            setCustomPrice(0);
             setCustomPriceError(null);
             // Default to matching the current price?
             if (Math.abs(cartItem.price - normalPrice) < 0.01) setSelectedTier('normal');
@@ -77,7 +97,6 @@ export const PriceModal = ({ open, cartItem, onOk, onCancel }: PriceModalProps) 
             else {
                 setSelectedTier('custom');
                 setCustomPrice(cartItem.price);
-                setTimeout(() => inputRef.current?.focus(), 50);
             }
         }
     }, [open, cartItem, normalPrice, offerPrice, wholesalePrice]);
@@ -132,7 +151,7 @@ export const PriceModal = ({ open, cartItem, onOk, onCancel }: PriceModalProps) 
             width={400}
             footer={[
                 <Button key="back" onClick={onCancel}>Cancelar</Button>,
-                <Button key="submit" type="primary" onClick={handleSubmit}>Aceptar</Button>
+                <Button key="submit" type="primary" onClick={handleSubmit}>Aceptar (F9)</Button>
             ]}
             centered
         >
@@ -143,9 +162,6 @@ export const PriceModal = ({ open, cartItem, onOk, onCancel }: PriceModalProps) 
                     value={selectedTier}
                     onChange={e => {
                         setSelectedTier(e.target.value);
-                        if (e.target.value === 'custom') {
-                            setTimeout(() => inputRef.current?.focus(), 50);
-                        }
                     }}
                     style={{ display: 'flex', flexDirection: 'column', gap: 10 }}
                 >
@@ -173,17 +189,16 @@ export const PriceModal = ({ open, cartItem, onOk, onCancel }: PriceModalProps) 
                 {selectedTier === 'custom' && (
                     <div style={{ marginLeft: 28 }}>
                         <span style={{ marginRight: 8 }}>Monto:</span>
-                        <InputNumber
-                            ref={inputRef}
+                        <CalculatorInput
                             value={customPrice}
                             onChange={val => {
                                 setCustomPrice(val);
                                 setCustomPriceError(validateCustomPrice(val));
                             }}
-                            min={0}
                             style={{ width: 150 }}
                             onPressEnter={handleSubmit}
                             status={customPriceError ? 'error' : ''}
+                            autoFocus
                         />
                         {customPriceError && (
                             <div style={{ fontSize: 11, color: '#ff4d4f', marginTop: 2 }}>

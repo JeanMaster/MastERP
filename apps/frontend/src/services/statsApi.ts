@@ -28,6 +28,7 @@ export interface FinanceReport {
     totalCostOfSales: number;
     totalExpenses: number;
     paymentMethodsBreakdown: { method: string; amount: number }[];
+    currencyTypeBreakdown: { LOCAL: number; FOREIGN: number };
     dailySalesData: { date: string; amount: number }[];
 }
 

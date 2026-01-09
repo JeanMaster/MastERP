@@ -291,8 +291,69 @@ export const FinancialReports = () => {
                 </Col>
             </Row>
 
+            {/* Currency Type Summary Breakdown */}
+            <Card title="Resumen por Tipo de Moneda" style={{ marginBottom: 24 }}>
+                <Row gutter={[16, 16]}>
+                    {Object.entries(report.currencyTypeBreakdown).map(([type, amount]) => {
+                        const typeKey = type as 'LOCAL' | 'FOREIGN';
+                        const info = {
+                            LOCAL: { displayName: 'Moneda Local (Bs.)', icon: '🇻🇪', color: '#52c41a', bgColor: '#f6ffed' },
+                            FOREIGN: { displayName: 'Divisas (USD/Zelle/etc)', icon: '💵', color: '#1890ff', bgColor: '#e6f7ff' }
+                        }[typeKey];
+
+                        const percentage = ((amount / report.monthlySalesTotal) * 100).toFixed(1);
+
+                        if (amount === 0) return null;
+
+                        return (
+                            <Col xs={24} sm={12} key={type}>
+                                <Card
+                                    style={{
+                                        borderLeft: `4px solid ${info.color}`,
+                                        backgroundColor: info.bgColor,
+                                        boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+                                    }}
+                                    styles={{ body: { padding: 16 } }}
+                                >
+                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                        <div style={{ flex: 1 }}>
+                                            <div style={{
+                                                fontSize: 16,
+                                                fontWeight: 600,
+                                                marginBottom: 8,
+                                                color: info.color,
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: 8
+                                            }}>
+                                                <span style={{ fontSize: 24 }}>{info.icon}</span>
+                                                {info.displayName}
+                                            </div>
+                                            <div style={{ fontSize: 26, fontWeight: 'bold', color: '#262626', marginBottom: 4 }}>
+                                                {currencySymbol} {formatVenezuelanPrice(amount)}
+                                            </div>
+                                            <div style={{ fontSize: 13, color: '#8c8c8c' }}>
+                                                {percentage}% del ingreso total
+                                            </div>
+                                        </div>
+                                        <div style={{
+                                            fontSize: 32,
+                                            fontWeight: 'bold',
+                                            color: info.color,
+                                            opacity: 0.3,
+                                        }}>
+                                            {percentage}%
+                                        </div>
+                                    </div>
+                                </Card>
+                            </Col>
+                        );
+                    })}
+                </Row>
+            </Card>
+
             {/* Payment Methods Cards */}
-            <Card title="Desglose de Métodos de Pago">
+            <Card title="Desglose Detallado de Métodos de Pago">
                 <Row gutter={[16, 16]}>
                     {report.paymentMethodsBreakdown.map((payment) => {
                         const info = getPaymentMethodInfo(payment.method);
@@ -302,43 +363,34 @@ export const FinancialReports = () => {
                             <Col xs={24} sm={12} lg={8} key={payment.method}>
                                 <Card
                                     style={{
-                                        borderLeft: `4px solid ${info.color}`,
+                                        borderLeft: `2px solid ${info.color}`, // Subtle border for detailed view
                                         backgroundColor: info.bgColor,
-                                        boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+                                        boxShadow: '0 1px 4px rgba(0,0,0,0.05)',
                                         transition: 'all 0.3s ease',
                                     }}
                                     hoverable
-                                    styles={{ body: { padding: 16 } }}
+                                    styles={{ body: { padding: 12 } }}
                                 >
                                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                                         <div style={{ flex: 1 }}>
                                             <div style={{
-                                                fontSize: 14,
+                                                fontSize: 13,
                                                 fontWeight: 500,
-                                                marginBottom: 8,
+                                                marginBottom: 4,
                                                 color: info.color,
                                                 display: 'flex',
                                                 alignItems: 'center',
-                                                gap: 8
+                                                gap: 6
                                             }}>
-                                                <span style={{ fontSize: 20 }}>{info.icon}</span>
+                                                <span style={{ fontSize: 18 }}>{info.icon}</span>
                                                 {info.displayName}
                                             </div>
-                                            <div style={{ fontSize: 22, fontWeight: 'bold', color: '#262626', marginBottom: 4 }}>
+                                            <div style={{ fontSize: 18, fontWeight: 'bold', color: '#262626' }}>
                                                 {currencySymbol} {formatVenezuelanPrice(payment.amount)}
                                             </div>
-                                            <div style={{ fontSize: 12, color: '#8c8c8c' }}>
-                                                {percentage}% del total
+                                            <div style={{ fontSize: 11, color: '#8c8c8c' }}>
+                                                {percentage}%
                                             </div>
-                                        </div>
-                                        <div style={{
-                                            fontSize: 28,
-                                            fontWeight: 'bold',
-                                            color: info.color,
-                                            opacity: 0.3,
-                                            marginLeft: 12
-                                        }}>
-                                            {percentage}%
                                         </div>
                                     </div>
                                 </Card>

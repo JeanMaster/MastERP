@@ -1,5 +1,6 @@
-import { Modal, InputNumber, Button, Space, Alert, Typography, Segmented } from 'antd';
-import { useEffect, useRef, useState } from 'react';
+import { Modal, Button, Space, Alert, Typography, Segmented } from 'antd';
+import { useEffect, useState } from 'react';
+import { CalculatorInput } from '../../../components/common/CalculatorInput';
 import type { Product } from '../../../services/productsApi';
 import { usePOSStore } from '../../../store/posStore';
 
@@ -19,16 +20,32 @@ export const DiscountModal = ({ open, product, currentPrice, isSecondaryUnit, on
     const [mode, setMode] = useState<DiscountMode>('PERCENT');
     const [inputValue, setInputValue] = useState(0);
     const [error, setError] = useState<string | null>(null);
-    const inputRef = useRef<any>(null);
 
+    // Keyboard listener for F9
+    useEffect(() => {
+        const handleGlobalKeyDown = (e: KeyboardEvent) => {
+            if (open && e.key === 'F9') {
+                e.stopPropagation();
+                e.preventDefault();
+                handleSubmit();
+            }
+        };
+
+        if (open) {
+            window.addEventListener('keydown', handleGlobalKeyDown, true);
+        }
+
+        return () => {
+            window.removeEventListener('keydown', handleGlobalKeyDown, true);
+        };
+    }, [open, inputValue, mode, error]); // Include dependencies used in handleSubmit/validate indirectly
+
+    // Initialization logic (only when modal opens)
     useEffect(() => {
         if (open) {
             setMode('PERCENT');
             setInputValue(0);
             setError(null);
-            setTimeout(() => {
-                inputRef.current?.focus();
-            }, 50);
         }
     }, [open]);
 
@@ -97,9 +114,6 @@ export const DiscountModal = ({ open, product, currentPrice, isSecondaryUnit, on
         setMode(newMode as DiscountMode);
         setInputValue(0);
         setError(null);
-        setTimeout(() => {
-            inputRef.current?.focus();
-        }, 50);
     };
 
     return (
@@ -126,11 +140,9 @@ export const DiscountModal = ({ open, product, currentPrice, isSecondaryUnit, on
                         ]}
                     />
 
-                    <InputNumber
-                        ref={inputRef}
+                    <CalculatorInput
                         value={inputValue}
                         onChange={handleChange}
-                        min={0}
                         precision={mode === 'PERCENT' ? 1 : 2}
                         size="large"
                         style={{ width: '100%' }}
@@ -186,7 +198,7 @@ export const DiscountModal = ({ open, product, currentPrice, isSecondaryUnit, on
                             size="large"
                             style={{ paddingLeft: 30, paddingRight: 30 }}
                         >
-                            Aplicar
+                            Aplicar (F9)
                         </Button>
                     </div>
                 </Space>

@@ -66,6 +66,7 @@ interface POSState {
     calculatePriceInPrimary: (product: Product, isSecondaryUnit: boolean) => number;
     calculateCostInPrimary: (product: Product, isSecondaryUnit: boolean) => number;
     calculatePriceInCurrency: (priceInPrimary: number, targetCurrencyId: string) => number;
+    getNormalizedQuantity: (quantity: number, product: Product, isSecondary: boolean) => number;
 }
 
 export const usePOSStore = create<POSState>()(
@@ -169,6 +170,21 @@ export const usePOSStore = create<POSState>()(
                 }
 
                 return priceInPrimary;
+            },
+
+            getNormalizedQuantity: (quantity: number, product: Product, isSecondary: boolean) => {
+                if (!isSecondary || !product.unitsPerSecondaryUnit) return quantity;
+
+                const factor = Number(product.unitsPerSecondaryUnit);
+                if (product.conversionDirection === 'secondary_to_primary') {
+                    // Example: 1 Rollo (Primary) = 100 Meters (Secondary)
+                    // Meters -> Rollo: Divide by factor
+                    return quantity / factor;
+                } else {
+                    // Example: 1 Caja (Secondary) = 12 Units (Primary)
+                    // Caja -> Unit: Multiply by factor
+                    return quantity * factor;
+                }
             },
 
             addItem: (product, isSecondary) => {
@@ -515,12 +531,28 @@ export const usePOSStore = create<POSState>()(
 
                 const saleDto: CreateSaleDto = {
                     clientId: customerId || undefined,
-                    items: cart.map(item => ({
-                        productId: item.product.id,
-                        quantity: Math.round(item.quantity * 100) / 100,
-                        unitPrice: Math.round(item.price * 100) / 100,
-                        total: Math.round(item.total * 100) / 100
-                    })),
+                    items: cart.map(item => {
+                        const quantitySent = get().getNormalizedQuantity(item.quantity, item.product, item.isSecondaryUnit);
+                        let unitPriceSent = item.price;
+
+                        if (item.isSecondaryUnit && item.product.unitsPerSecondaryUnit) {
+                            const factor = Number(item.product.unitsPerSecondaryUnit);
+                            if (item.product.conversionDirection === 'secondary_to_primary') {
+                                // Rollo = 100 Metros -> PriceRollo = PriceMeter * 100
+                                unitPriceSent = item.price * factor;
+                            } else {
+                                // Caja = 12 Units -> PriceUnit = PriceCaja / 12
+                                unitPriceSent = item.price / factor;
+                            }
+                        }
+
+                        return {
+                            productId: item.product.id,
+                            quantity: Math.round(quantitySent * 1000) / 1000,
+                            unitPrice: Math.round(unitPriceSent * 100) / 100,
+                            total: Math.round(item.total * 100) / 100
+                        };
+                    }),
                     subtotal: Math.round(totals.subtotal * 100) / 100,
                     discount: Math.round(totals.discount * 100) / 100,
                     tax: Math.round(totals.tax * 100) / 100,

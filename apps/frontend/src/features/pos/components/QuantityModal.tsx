@@ -13,6 +13,26 @@ export const QuantityModal = ({ open, currentQuantity, productName, onOk, onCanc
     const [quantity, setQuantity] = useState(1);
     const inputRef = useRef<any>(null);
 
+    // Keyboard listener for F9
+    useEffect(() => {
+        const handleGlobalKeyDown = (e: KeyboardEvent) => {
+            if (open && e.key === 'F9') {
+                e.stopPropagation();
+                e.preventDefault();
+                handleSubmit();
+            }
+        };
+
+        if (open) {
+            window.addEventListener('keydown', handleGlobalKeyDown, true);
+        }
+
+        return () => {
+            window.removeEventListener('keydown', handleGlobalKeyDown, true);
+        };
+    }, [open, quantity]);
+
+    // Initialization logic (only when modal opens)
     useEffect(() => {
         if (open) {
             setQuantity(currentQuantity);
@@ -46,8 +66,9 @@ export const QuantityModal = ({ open, currentQuantity, productName, onOk, onCanc
                     <InputNumber
                         ref={inputRef}
                         value={quantity}
+                        precision={3}
                         onChange={(val) => setQuantity(val || 1)}
-                        min={0.01}
+                        min={0.001}
                         size="large"
                         style={{ width: '100%' }}
                         onPressEnter={handleSubmit}
@@ -56,7 +77,7 @@ export const QuantityModal = ({ open, currentQuantity, productName, onOk, onCanc
 
                     <div style={{ marginTop: 15, display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
                         <Button onClick={onCancel}>Cancelar</Button>
-                        <Button type="primary" onClick={handleSubmit}>Aceptar</Button>
+                        <Button type="primary" onClick={handleSubmit}>Aceptar (F9)</Button>
                     </div>
                 </Space>
             </div>

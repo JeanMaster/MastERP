@@ -581,9 +581,9 @@ export const ProductFormModal = ({ open, product, onClose }: ProductFormModalPro
                             rules={[{ type: 'number', min: 0, message: 'Debe ser mayor o igual a 0' }]}
                         >
                             <InputNumber
-                                placeholder="0"
+                                placeholder="0.000"
                                 style={{ width: '100%' }}
-                                precision={0}
+                                precision={3}
                                 min={0}
                             />
                         </Form.Item>

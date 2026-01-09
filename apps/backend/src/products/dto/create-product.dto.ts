@@ -73,7 +73,7 @@ export class CreateProductDto {
     @ApiProperty({ example: 100, description: 'Stock inicial' })
     @IsOptional()
     @Type(() => Number)
-    @IsInt()
+    @IsNumber()
     @Min(0, { message: 'El stock debe ser mayor o igual a 0' })
     stock?: number;
 
@@ -92,8 +92,8 @@ export class CreateProductDto {
     @ApiProperty({ example: 12, required: false, description: 'Cantidad para conversión entre unidades' })
     @ValidateIf(o => o.secondaryUnitId)
     @Type(() => Number)
-    @IsInt()
-    @Min(1, { message: 'Debe haber al menos 1 en la conversión' })
+    @IsNumber()
+    @Min(0.001, { message: 'Debe haber al menos 0.001 en la conversión' })
     unitsPerSecondaryUnit?: number;
 
     @ApiProperty({

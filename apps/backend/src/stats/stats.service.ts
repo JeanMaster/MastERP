@@ -189,9 +189,9 @@ export class StatsService {
             // (Assumes TargetRate is Primary per Target Unit, e.g. 50 Bs/$)
             const costInTarget = targetCurrency?.isPrimary ? costInPrimary : costInPrimary / targetRate;
 
-            const productValue = p.stock * costInTarget;
+            const productValue = Number(p.stock) * costInTarget;
 
-            existing.units += p.stock;
+            existing.units += Number(p.stock);
             existing.value += productValue;
 
             deptMap.set(deptName, existing);
@@ -275,6 +275,7 @@ export class StatsService {
 
         // Payment methods breakdown
         const paymentBreakdown: Record<string, number> = {};
+        const currencyTypeBreakdown: Record<'LOCAL' | 'FOREIGN', number> = { LOCAL: 0, FOREIGN: 0 };
         const dailySales: Record<string, number> = {};
         let totalSalesAmount = 0;
         let totalCostOfSales = 0;
@@ -328,13 +329,7 @@ export class StatsService {
 
             paymentMethods.forEach((payment) => {
                 const parts = payment.trim().split(':');
-                const method = parts[0].trim();
-                // If multipart, amount is in string. If single, use saleTotal?
-                // Warning: The string amount "USD:20" might be raw.
-                // But `sale.total` is in VES.
-                // We should proportionally distribute `saleTotal` (converted) based on the breakdown?
-                // Or just convert the parsed amount?
-                // Let's convert the parsed amount using the SAME rate as the sale.
+                const method = parts[0].trim().toUpperCase();
 
                 let amount = parts.length > 1 ? parseFloat(parts[1]) : Number(sale.total);
 
@@ -347,6 +342,11 @@ export class StatsService {
                 }
 
                 paymentBreakdown[method] = (paymentBreakdown[method] || 0) + amount;
+
+                // Currency Type Categorization
+                const isDivisa = method.startsWith('CURRENCY_') || method === 'ZELLE';
+                const type = isDivisa ? 'FOREIGN' : 'LOCAL';
+                currencyTypeBreakdown[type] += amount;
             });
         });
 
@@ -406,6 +406,7 @@ export class StatsService {
                     amount,
                 }),
             ),
+            currencyTypeBreakdown, // Added new breakdown
             dailySalesData: Object.entries(dailySales).map(
                 ([date, amount]) => ({
                     date: dayjs(date).format('DD/MM'),

@@ -230,6 +230,8 @@ export class ProductsService {
             secondarySalePrice: product.secondarySalePrice ? Number(product.secondarySalePrice) : null,
             secondaryOfferPrice: product.secondaryOfferPrice ? Number(product.secondaryOfferPrice) : null,
             secondaryWholesalePrice: product.secondaryWholesalePrice ? Number(product.secondaryWholesalePrice) : null,
+            stock: Number(product.stock),
+            unitsPerSecondaryUnit: product.unitsPerSecondaryUnit ? Number(product.unitsPerSecondaryUnit) : null,
         };
     }
 }

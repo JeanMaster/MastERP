@@ -113,7 +113,7 @@ export class ReturnsService {
                 }
             });
 
-            const totalReturned = previousReturns.reduce((sum, item) => sum + item.quantity, 0);
+            const totalReturned = previousReturns.reduce((sum, item) => sum + Number(item.quantity), 0);
             const availableToReturn = Number(saleItem.quantity) - totalReturned;
 
             if (returnItem.quantity > availableToReturn) {
