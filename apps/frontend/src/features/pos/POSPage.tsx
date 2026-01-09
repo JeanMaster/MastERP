@@ -22,7 +22,7 @@ export const POSPage = () => {
     const [isClientModalOpen, setIsClientModalOpen] = useState(false);
     const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
     const [completedSale, setCompletedSale] = useState<Sale | null>(null);
-    const { processSale, setCustomer, refreshInvoiceNumber, initialize } = usePOSStore();
+    const { processSale, setCustomer, refreshInvoiceNumber, initialize, resetPOS } = usePOSStore();
 
     const handleCheckoutProcess = async (paymentData: any) => {
         try {
@@ -45,6 +45,8 @@ export const POSPage = () => {
         } else if (e.key === 'F9') {
             e.preventDefault();
             setIsCheckoutOpen(true);
+        } else if (e.key === 'Escape') {
+            resetPOS();
         }
     };
 
