@@ -144,13 +144,19 @@ export const ProductFormModal = ({ open, product, onClose }: ProductFormModalPro
                 secondaryWholesaleProfitPercent: Number(secondaryWholesaleProfitPercent.toFixed(2)),
                 imageUrl: product.imageUrl,
             });
+
+            if (product.currency) {
+                setSelectedCurrency(product.currency);
+            }
         } else {
+            form.resetFields();
             setSelectedCategory(undefined);
             setHasSecondaryUnit(false);
+            setConversionDirection('primary_to_secondary');
             setImageUrl(undefined);
-            form.resetFields();
+            setSelectedCurrency(null);
         }
-    }, [product, form]);
+    }, [product, form, open]);
 
     const handleSubmit = async () => {
         try {
@@ -428,7 +434,17 @@ export const ProductFormModal = ({ open, product, onClose }: ProductFormModalPro
                 cancelText="Cancelar"
                 width={900}
             >
-                <Form form={form} layout="vertical" style={{ marginTop: 20 }}>
+                <Form
+                    form={form}
+                    layout="vertical"
+                    style={{ marginTop: 20 }}
+                    onValuesChange={(changedValues) => {
+                        if (changedValues.currencyId) {
+                            const currency = currencies.find(c => c.id === changedValues.currencyId);
+                            setSelectedCurrency(currency);
+                        }
+                    }}
+                >
                     {/* Información básica */}
                     <Row gutter={16}>
                         <Col span={12}>
