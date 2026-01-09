@@ -245,7 +245,12 @@ export class ProductsService {
         offerPriceMargin?: number;
         wholesalePriceMargin?: number;
     }>) {
-        const results = [];
+        const results: Array<{
+            success: boolean;
+            product?: any;
+            productId?: string;
+            error?: string;
+        }> = [];
 
         for (const update of updates) {
             const { productId, newCostPrice, salePriceMargin, offerPriceMargin, wholesalePriceMargin } = update;
