@@ -29,6 +29,7 @@ export const POSLeftPanel = () => {
         calculatePriceInPrimary,
         calculatePriceInCurrency,
         calculateCostInPrimary,
+        getNormalizedQuantity,
         searchTerm,
         setSearchTerm,
         setSearchResults,
@@ -75,14 +76,19 @@ export const POSLeftPanel = () => {
             }
 
             // Check if adding would exceed available stock
-            const existingItem = cart.find(item => item.product.id === product.id);
-            const currentQuantity = existingItem ? existingItem.quantity : 0;
+            const existingItemsForThisProduct = cart.filter(item => item.product.id === product.id);
+            const currentNormalizedQuantity = existingItemsForThisProduct.reduce((acc, item) =>
+                acc + getNormalizedQuantity(item.quantity, item.product, item.isSecondaryUnit), 0
+            );
 
-            if (product.type !== 'SERVICE' && currentQuantity >= product.stock) {
+            // Quantity being added (1 unit of primary unit)
+            const addedNormalizedQuantity = getNormalizedQuantity(1, product, false);
+
+            if (product.type !== 'SERVICE' && (currentNormalizedQuantity + addedNormalizedQuantity) > product.stock) {
                 Modal.warning({
                     title: 'Stock insuficiente',
                     icon: <WarningOutlined style={{ color: '#faad14' }} />,
-                    content: `Ya tienes ${currentQuantity} unidades en el carrito. Stock disponible: ${product.stock}`,
+                    content: `Ya tienes el equivalente a ${currentNormalizedQuantity.toFixed(3)} uds en el carrito. Stock disponible: ${product.stock}`,
                 });
                 return;
             }
@@ -145,7 +151,11 @@ export const POSLeftPanel = () => {
             key: 'quantity',
             width: 70,
             align: 'center' as const,
-            render: (text: number) => <span style={{ fontSize: 14, fontWeight: 'bold' }}>{text}</span>
+            render: (text: number) => (
+                <span style={{ fontSize: 14, fontWeight: 'bold' }}>
+                    {text % 1 === 0 ? text : text.toFixed(3).replace(/\.?0+$/, "")}
+                </span>
+            )
         },
         {
             title: 'Descripción',
@@ -157,7 +167,7 @@ export const POSLeftPanel = () => {
                     {record.isSecondaryUnit && <div style={{ fontSize: 10, color: '#888' }}>({product.secondaryUnit?.name || 'Sec.'})</div>}
                     {record.discount > 0 && (
                         <div style={{ fontSize: 11, color: 'green' }}>
-                            Desc: {record.discountPercent}% (-{formatVenezuelanPriceOnly(record.discount, 2, true)})
+                            Desc: {record.discountPercent}% (-{formatVenezuelanPriceOnly(record.discount, 2, false)})
                         </div>
                     )}
                 </div>
@@ -171,7 +181,8 @@ export const POSLeftPanel = () => {
             render: (_: any, record: CartItem) => {
                 const isService = record.product.type === 'SERVICE';
                 const stock = record.product.stock;
-                const hasStockIssue = !isService && record.quantity > stock;
+                const normalizedQuantity = getNormalizedQuantity(record.quantity, record.product, record.isSecondaryUnit);
+                const hasStockIssue = !isService && normalizedQuantity > stock;
                 return (
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
                         <Tag color={
@@ -213,7 +224,7 @@ export const POSLeftPanel = () => {
                             }}
                             title={formatVenezuelanPriceOnly(value, 2, false)}
                         >
-                            {formatVenezuelanPriceOnly(value, 2, true)}
+                            {formatVenezuelanPriceOnly(value, 2, false)}
                         </div>
                         {preferredSecondaryCurrency && secondaryValue > 0 && (
                             <div
@@ -226,7 +237,7 @@ export const POSLeftPanel = () => {
                                 }}
                                 title={formatVenezuelanPrice(secondaryValue, preferredSecondaryCurrency.symbol, 2, false)}
                             >
-                                {formatVenezuelanPrice(secondaryValue, preferredSecondaryCurrency.symbol, 2, true)}
+                                {formatVenezuelanPrice(secondaryValue, preferredSecondaryCurrency.symbol, 2, false)}
                             </div>
                         )}
                     </div>
@@ -264,10 +275,10 @@ export const POSLeftPanel = () => {
 
                     const secondarySymbol = preferredSecondaryCurrency?.symbol || '$';
 
-                    let priceString = `${originalSymbol}${formatVenezuelanPriceOnly(Number(originalPrice), 2, true)}`;
+                    let priceString = `${originalSymbol}${formatVenezuelanPriceOnly(Number(originalPrice), 2, false)}`;
 
                     if (preferredSecondaryCurrency && priceInSecondary > 0 && d.currency?.name !== preferredSecondaryCurrency.code) {
-                        priceString += ` | ${formatVenezuelanPrice(priceInSecondary, secondarySymbol, 2, true)}`;
+                        priceString += ` | ${formatVenezuelanPrice(priceInSecondary, secondarySymbol, 2, false)}`;
                     }
 
                     // Stock indicator
@@ -359,7 +370,7 @@ export const POSLeftPanel = () => {
                         style={{ fontSize: 16, color: 'white' }}
                         title={formatVenezuelanPriceOnly(totals.subtotal || 0, 2, false)}
                     >
-                        {formatVenezuelanPriceOnly(totals.subtotal || 0, 2, true)}
+                        {formatVenezuelanPriceOnly(totals.subtotal || 0, 2, false)}
                     </strong>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5 }}>
@@ -374,7 +385,7 @@ export const POSLeftPanel = () => {
                         style={{ fontSize: 20, color: 'yellow' }}
                         title={formatVenezuelanPriceOnly(totals.total || 0, 2, false)}
                     >
-                        {formatVenezuelanPriceOnly(totals.total || 0, 2, true)}
+                        {formatVenezuelanPriceOnly(totals.total || 0, 2, false)}
                     </strong>
                 </div>
                 {preferredSecondaryCurrency && (
@@ -383,7 +394,7 @@ export const POSLeftPanel = () => {
                             style={{ fontSize: 12, color: '#aaa' }}
                             title={formatVenezuelanPrice(totals.totalUsd || 0, preferredSecondaryCurrency.symbol, 2, false)}
                         >
-                            {formatVenezuelanPrice(totals.totalUsd || 0, preferredSecondaryCurrency.symbol, 2, true)}
+                            {formatVenezuelanPrice(totals.totalUsd || 0, preferredSecondaryCurrency.symbol, 2, false)}
                         </span>
                     </div>
                 )}
@@ -400,6 +411,22 @@ export const POSLeftPanel = () => {
                         currentQuantity={selectedCartItem.quantity}
                         productName={selectedCartItem.product.name}
                         onOk={(qty) => {
+                            // Stock Validation
+                            const normalizedQty = getNormalizedQuantity(qty, selectedCartItem.product, selectedCartItem.isSecondaryUnit);
+                            // Important: Calculate total normalized quantity of OTHER items of same product
+                            const otherItems = cart.filter(item => item.product.id === selectedCartItem.product.id && item !== selectedCartItem);
+                            const otherNormalizedQty = otherItems.reduce((acc, item) =>
+                                acc + getNormalizedQuantity(item.quantity, item.product, item.isSecondaryUnit), 0
+                            );
+
+                            if (selectedCartItem.product.type !== 'SERVICE' && (normalizedQty + otherNormalizedQty) > selectedCartItem.product.stock) {
+                                Modal.warning({
+                                    title: 'Stock insuficiente',
+                                    content: `La cantidad solicitada excede el stock disponible (${selectedCartItem.product.stock}).`
+                                });
+                                return;
+                            }
+
                             updateQuantity(selectedCartItem.product.id, qty);
                             setIsQuantityModalOpen(false);
                         }}
