@@ -208,8 +208,9 @@ export const ClientsPage = () => {
                     scroll={{ x: 'max-content' }}
                     size={isMobile ? 'small' : 'middle'}
                     pagination={{
-                        pageSize: 10,
+                        defaultPageSize: 10,
                         showSizeChanger: true,
+                        pageSizeOptions: ['10', '20', '50', '100'],
                         size: isMobile ? 'small' : 'default',
                         showTotal: (total) => `Total: ${total} clientes`,
                     }}
