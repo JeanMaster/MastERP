@@ -289,9 +289,13 @@ export const ProductsPage = () => {
                 loading={isLoading}
                 scroll={{ x: isMobile ? 800 : undefined }}
                 pagination={{
-                    pageSize: 15,
+                    defaultPageSize: 15,
+                    showSizeChanger: true,
+                    pageSizeOptions: ['10', '15', '20', '50', '100'],
+                    showTotal: (total, range) => `${range[0]}-${range[1]} de ${total} productos`,
                     size: isMobile ? 'small' : 'default',
-                    responsive: true
+                    responsive: true,
+                    position: ['bottomRight']
                 }}
             />
 
