@@ -5,7 +5,7 @@ export class CreateSupplierDto {
     @ApiProperty({ example: 'J-98765432-1', description: 'RIF del proveedor (único)' })
     @IsNotEmpty({ message: 'El RIF es requerido' })
     @IsString()
-    @Length(10, 12, { message: 'El RIF debe tener entre 10 y 12 caracteres' })
+    @Length(6, 15, { message: 'El RIF debe tener entre 6 y 15 caracteres' })
     rif: string;
 
     @ApiProperty({ example: 'Distribuidora ABC', description: 'Nombre comercial' })
