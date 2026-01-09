@@ -44,4 +44,4 @@ ENV NODE_ENV=production
 EXPOSE 3000
 
 # Script to push schema, seed and start the app
-CMD npx prisma db push && npx prisma db seed && node dist/src/main
+CMD npx prisma db push --accept-data-loss && npx prisma db seed && node dist/src/main
