@@ -138,16 +138,16 @@ export const AccountsReceivablePage = () => {
             dataIndex: 'total',
             key: 'total',
             align: 'right' as const,
-            render: (amount: number) => `Bs. ${formatVenezuelanPrice(amount)}`,
+            render: (amount: number, record: Invoice) => `${record.currencyCode === 'VES' ? 'Bs.' : record.currencyCode} ${formatVenezuelanPrice(amount)}`,
         },
         {
             title: 'Balance',
             dataIndex: 'balance',
             key: 'balance',
             align: 'right' as const,
-            render: (amount: number) => (
+            render: (amount: number, record: Invoice) => (
                 <strong style={{ color: '#ff4d4f' }}>
-                    Bs. {formatVenezuelanPrice(amount)}
+                    {record.currencyCode === 'VES' ? 'Bs.' : record.currencyCode} {formatVenezuelanPrice(amount)}
                 </strong>
             ),
         },

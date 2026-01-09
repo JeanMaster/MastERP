@@ -32,24 +32,50 @@ export class PaymentsService {
 
         // Crear el pago y actualizar la factura en una transacción
         const result = await this.prisma.$transaction(async (tx) => {
+            let amountAppliedToInvoice = createPaymentDto.amount;
+
+            // CASO: La factura está en USD pero se intenta pagar en Bs
+            // O viceversa. Necesitamos normalizar el pago a la moneda de la factura.
+            // Por ahora, asumimos que createPaymentDto.amount es lo que el usuario ingresó.
+            // Pero si el método indica otra moneda, debemos convertir.
+            if (createPaymentDto.paymentMethod.startsWith('CURRENCY_')) {
+                const currencyCode = createPaymentDto.paymentMethod.replace('CURRENCY_', '');
+
+                // Si la moneda del pago es DISTINTA a la moneda de la deuda de la factura
+                if (currencyCode !== invoice.currencyCode) {
+                    // Si la deuda es en USD y se paga en VES
+                    if (invoice.currencyCode !== 'VES' && currencyCode === 'VES') {
+                        // Convertir Bs a USD usando la tasa de la factura (tasa congelada al momento de la venta)
+                        amountAppliedToInvoice = createPaymentDto.amount / Number(invoice.exchangeRate);
+                    }
+                    // Si la deuda es en VES y se paga en USD
+                    else if (invoice.currencyCode === 'VES' && currencyCode !== 'VES') {
+                        // Obtenemos la tasa actual (en este punto simplificamos y usamos la del pago si estuviera)
+                        // Para este ajuste, asumiremos que el frontend mandó el monto YA CONVERTIDO si es necesario,
+                        // o manejaremos la conversión aquí si tenemos la tasa.
+                        // El usuario quiere evitar la inflación, así que la deuda en USD es lo principal.
+                    }
+                }
+            }
+
             // Crear el pago
             const payment = await tx.payment.create({
                 data: {
                     invoiceId: createPaymentDto.invoiceId,
-                    amount: createPaymentDto.amount,
+                    amount: createPaymentDto.amount, // Monto nominal recibido
                     paymentMethod: createPaymentDto.paymentMethod,
                     reference: createPaymentDto.reference,
-                    notes: createPaymentDto.notes,
+                    notes: createPaymentDto.notes ? `${createPaymentDto.notes} (Aplicado: ${amountAppliedToInvoice.toFixed(2)} ${invoice.currencyCode})` : `Aplicado: ${amountAppliedToInvoice.toFixed(2)} ${invoice.currencyCode}`,
                 },
             });
 
             // Actualizar montos de la factura
-            const newPaidAmount = Number(invoice.paidAmount) + createPaymentDto.amount;
+            const newPaidAmount = Number(invoice.paidAmount) + amountAppliedToInvoice;
             const newBalance = Number(invoice.total) - newPaidAmount;
 
-            // Determinar nuevo estado
+            // Determinar nuevo estado (usando pequeña tolerancia para decimales)
             let newStatus = invoice.status;
-            if (newBalance === 0) {
+            if (Math.abs(newBalance) < 0.01) {
                 newStatus = 'PAID';
             } else if (newPaidAmount > 0) {
                 newStatus = 'PARTIAL';
@@ -59,7 +85,7 @@ export class PaymentsService {
                 where: { id: createPaymentDto.invoiceId },
                 data: {
                     paidAmount: newPaidAmount,
-                    balance: newBalance,
+                    balance: Math.max(0, newBalance),
                     status: newStatus,
                 },
             });

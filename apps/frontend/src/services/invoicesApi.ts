@@ -22,6 +22,8 @@ export interface Invoice {
     dueDate?: string;
     paidAmount: number;
     balance: number;
+    currencyCode: string;
+    exchangeRate: number;
     notes?: string;
     payments?: Payment[];
     createdAt: string;
@@ -48,6 +50,8 @@ export interface CreateInvoiceDto {
     total: number;
     dueDate?: string;
     notes?: string;
+    currencyCode?: string;
+    exchangeRate?: number;
 }
 
 export const invoicesApi = {

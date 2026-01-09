@@ -126,6 +126,8 @@ export class InvoiceService {
         dueDate?: Date;
         notes?: string;
         invoiceNumber?: string; // Optional: specify invoice number
+        currencyCode?: string;
+        exchangeRate?: number;
     }) {
         // Use provided invoice number or generate a new one
         const invoiceNumber = data.invoiceNumber || await this.generateInvoiceNumber();
@@ -144,6 +146,8 @@ export class InvoiceService {
                 dueDate: data.dueDate,
                 notes: data.notes,
                 status: 'PENDING',
+                currencyCode: data.currencyCode || 'VES',
+                exchangeRate: data.exchangeRate || 1,
             },
             include: {
                 client: true,

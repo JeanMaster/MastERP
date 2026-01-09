@@ -173,7 +173,7 @@ model Product {
   wholesalePrice  Decimal?    @db.Decimal(10, 2)
   
   // Inventario
-  stock           Int         @default(0)
+  stock           Decimal     @default(0) @db.Decimal(10, 3)
   
   // Unidad principal (obligatoria para productos)
   unitId          String?
@@ -408,6 +408,10 @@ model Invoice {
   paidAmount      Decimal  @db.Decimal(10, 2) @default(0)
   balance         Decimal  @db.Decimal(10, 2) // total - paidAmount
   
+  // Currency info for the debt
+  currencyCode    String   @default("VES")
+  exchangeRate    Decimal  @default(1) @db.Decimal(10, 4)
+  
   // Pagos relacionados
   payments        Payment[]
   
@@ -494,7 +498,7 @@ model ReturnItem {
   productId        String
   product          Product @relation(fields: [productId], references: [id])
   
-  quantity         Int
+  quantity         Decimal @db.Decimal(10, 3)
   unitPrice        Decimal @db.Decimal(10, 2)
   total            Decimal @db.Decimal(10, 2)
   
@@ -581,9 +585,9 @@ model InventoryAdjustment {
   
   // Adjustment details
   type          String   // "INCREASE" or "DECREASE"
-  quantity      Int      // Absolute value
-  previousStock Int      // Stock before adjustment
-  newStock      Int      // Stock after adjustment
+  quantity      Decimal  @db.Decimal(10, 3) // Absolute value
+  previousStock Decimal  @db.Decimal(10, 3) // Stock before adjustment
+  newStock      Decimal  @db.Decimal(10, 3) // Stock after adjustment
   
   // Reason and context
   reason        String   // "DAMAGE", "LOSS", "ERROR", "INITIAL", "RETURN", "OTHER"

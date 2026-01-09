@@ -3,6 +3,7 @@ import { Modal, Form, Input, InputNumber, Button, App, Row, Col, Typography } fr
 import type { Invoice } from '../../../services/invoicesApi';
 import { paymentsApi } from '../../../services/paymentsApi';
 import { usePOSStore } from '../../../store/posStore';
+import { formatVenezuelanPrice } from '../../../utils/formatters';
 
 const { Text } = Typography;
 
@@ -91,16 +92,16 @@ export const RegisterPaymentModal: React.FC<RegisterPaymentModalProps> = ({
                     <div style={{ marginBottom: 16, padding: 12, backgroundColor: '#f5f5f5', borderRadius: 4 }}>
                         <p style={{ margin: 0 }}><strong>Cliente:</strong> {invoice.client?.name}</p>
                         <p style={{ margin: 0 }}><strong>Factura:</strong> {invoice.number}</p>
-                        <p style={{ margin: 0 }}><strong>Total:</strong> Bs. {Number(invoice.total).toFixed(2)}</p>
-                        <p style={{ margin: 0 }}><strong>Pagado:</strong> Bs. {Number(invoice.paidAmount).toFixed(2)}</p>
+                        <p style={{ margin: 0 }}><strong>Total:</strong> {invoice.currencyCode === 'VES' ? 'Bs' : invoice.currencyCode}. {Number(invoice.total).toFixed(2)}</p>
+                        <p style={{ margin: 0 }}><strong>Pagado:</strong> {invoice.currencyCode === 'VES' ? 'Bs' : invoice.currencyCode}. {Number(invoice.paidAmount).toFixed(2)}</p>
                         <p style={{ margin: 0, color: '#ff4d4f', fontSize: 16 }}>
-                            <strong>Balance Pendiente:</strong> Bs. {Number(invoice.balance).toFixed(2)}
+                            <strong>Balance Pendiente:</strong> {invoice.currencyCode === 'VES' ? 'Bs' : invoice.currencyCode}. {Number(invoice.balance).toFixed(2)}
                         </p>
                     </div>
 
                     <Form form={form} layout="vertical">
                         {/* Amount Input */}
-                        <Form.Item label="Monto a Pagar">
+                        <Form.Item label={`Monto a Pagar (${invoice.currencyCode})`}>
                             <InputNumber
                                 style={{ width: '100%' }}
                                 size="large"
@@ -109,9 +110,14 @@ export const RegisterPaymentModal: React.FC<RegisterPaymentModalProps> = ({
                                 min={0}
                                 max={Number(invoice.balance)}
                                 precision={2}
-                                prefix="Bs."
+                                prefix={invoice.currencyCode === 'VES' ? 'Bs' : invoice.currencyCode}
                                 placeholder="0.00"
                             />
+                            {invoice.currencyCode !== 'VES' && (
+                                <Text type="secondary" style={{ fontSize: '12px' }}>
+                                    Tasa congelada de la factura: {formatVenezuelanPrice(invoice.exchangeRate)} Bs/USD
+                                </Text>
+                            )}
                         </Form.Item>
 
                         {/* Bs Payment Methods */}

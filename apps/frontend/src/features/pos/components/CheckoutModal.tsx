@@ -21,6 +21,7 @@ interface PaymentEntry {
     currencySymbol: string;
     originalAmount?: number; // Original amount if paid in foreign currency
     originalCurrency?: string;
+    originalCurrencyId?: string;
 }
 
 interface CheckoutModalProps {
@@ -49,6 +50,7 @@ export const CheckoutModal = ({ open, onCancel, onProcess }: CheckoutModalProps)
     const [inputAmount, setInputAmount] = useState<number | null>(null);
     const [selectedMethod, setSelectedMethod] = useState<string | null>(null);
     const [isProcessing, setIsProcessing] = useState(false);
+    const [creditCurrencyId, setCreditCurrencyId] = useState<string | null>(null);
 
     // Calculate remaining amount
     const totalPaid = payments.reduce((sum, p) => sum + p.amount, 0);
@@ -62,8 +64,9 @@ export const CheckoutModal = ({ open, onCancel, onProcess }: CheckoutModalProps)
             setSelectedPaymentId(null);
             setInputAmount(totals.total);
             setSelectedMethod(null);
+            setCreditCurrencyId(primaryCurrency?.id || null);
         }
-    }, [open]);
+    }, [open, primaryCurrency]);
 
     // Auto-focus on amount input when modal opens
     useEffect(() => {
@@ -113,7 +116,8 @@ export const CheckoutModal = ({ open, onCancel, onProcess }: CheckoutModalProps)
                 } else if (e.key === 'F8' && inputAmount) {
                     if (!customerId) return;
                     setSelectedMethod('ACCOUNT_CREDIT');
-                    addPayment('ACCOUNT_CREDIT', 'F8 Crédito (Cuenta)');
+                    // No agregar automáticamente si queremos elegir moneda, o usar la por defecto
+                    addPayment('ACCOUNT_CREDIT', 'F8 Crédito (Cuenta)', creditCurrencyId || undefined);
                 } else if (e.key === 'F6' && payments.length > 0) {
                     if (selectedPaymentId) {
                         // Remove selected payment
@@ -194,13 +198,24 @@ export const CheckoutModal = ({ open, onCancel, onProcess }: CheckoutModalProps)
 
         const newPayment: PaymentEntry = {
             id: Date.now().toString(),
-            method,
+            method: method === 'ACCOUNT_CREDIT' && currencyId && currencyId !== primaryCurrency?.id
+                ? `ACCOUNT_CREDIT_${currencies.find(c => c.id === currencyId)?.code}`
+                : method,
             methodLabel,
             amount: amountInBs,
             currencySymbol,
             originalAmount: currencyId ? originalAmount : undefined,
-            originalCurrency: currencyId ? originalCurrency : undefined
+            originalCurrency: currencyId ? originalCurrency : undefined,
+            originalCurrencyId: currencyId
         };
+
+        // If it's plural payment, we need a way to store the rate too for backend
+        if (method.startsWith('ACCOUNT_CREDIT') && currencyId && currencyId !== primaryCurrency?.id) {
+            const currency = currencies.find(c => c.id === currencyId);
+            if (currency) {
+                newPayment.method = `ACCOUNT_CREDIT_${currency.code}:${originalAmount}:${currency.exchangeRate}`;
+            }
+        }
 
         const newPayments = [...payments, newPayment];
         setPayments(newPayments);
@@ -407,45 +422,58 @@ export const CheckoutModal = ({ open, onCancel, onProcess }: CheckoutModalProps)
                             <Text type="secondary" style={{ fontSize: '0.9em' }}>Pagos en {primaryCurrency?.name || 'Bolívares'}</Text>
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 8 }}>
                                 {bsPaymentMethods.map(method => {
-                                    const suggestedAmount = remaining;
                                     const isCreditMethod = method.key === 'ACCOUNT_CREDIT';
                                     const isDisabled = isFullyPaid || !inputAmount || inputAmount <= 0 || (isCreditMethod && !customerId);
 
                                     return (
-                                        <Button
-                                            key={method.key}
-                                            size="large"
-                                            onClick={() => {
-                                                if (isCreditMethod && !customerId) return;
-                                                setSelectedMethod(method.key);
-                                                addPayment(method.key, method.label);
-                                            }}
-                                            disabled={isDisabled}
-                                            title={isCreditMethod && !customerId ? 'Debe seleccionar un cliente para venta a crédito' : ''}
-                                            style={{
-                                                height: 80,
-                                                display: 'flex',
-                                                flexDirection: 'column',
-                                                alignItems: 'center',
-                                                justifyContent: 'center',
-                                                gap: 4
-                                            }}
-                                        >
-                                            <Space size={4}>
-                                                {method.icon}
-                                                <span>{method.label}</span>
-                                            </Space>
-                                            <div style={{ textAlign: 'center' }}>
-                                                <Text type="secondary" style={{ fontSize: '0.75em' }}>
-                                                    {formatVenezuelanPrice(inputAmount || 0, primaryCurrency?.symbol)}
-                                                </Text>
-                                                {!isFullyPaid && (
-                                                    <div style={{ fontSize: '0.65em', color: '#52c41a', marginTop: 2 }}>
-                                                        Sugerido: {formatVenezuelanPrice(suggestedAmount, primaryCurrency?.symbol)}
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </Button>
+                                        <div key={method.key}>
+                                            <Button
+                                                size="large"
+                                                onClick={() => {
+                                                    if (isCreditMethod && !customerId) return;
+                                                    setSelectedMethod(method.key);
+                                                    addPayment(method.key, method.label, isCreditMethod ? creditCurrencyId || undefined : undefined);
+                                                }}
+                                                disabled={isDisabled}
+                                                title={isCreditMethod && !customerId ? 'Debe seleccionar un cliente para venta a crédito' : ''}
+                                                style={{
+                                                    height: 80,
+                                                    width: '100%',
+                                                    display: 'flex',
+                                                    flexDirection: 'column',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    gap: 4,
+                                                    border: isCreditMethod ? '1px solid #ff4d4f' : undefined
+                                                }}
+                                            >
+                                                <Space size={4}>
+                                                    {method.icon}
+                                                    <span>{method.label}</span>
+                                                </Space>
+                                                <div style={{ textAlign: 'center' }}>
+                                                    <Text type="secondary" style={{ fontSize: '0.75em' }}>
+                                                        {formatVenezuelanPrice(inputAmount || 0, isCreditMethod ? currencies.find(c => c.id === creditCurrencyId)?.symbol : primaryCurrency?.symbol)}
+                                                    </Text>
+                                                </div>
+                                            </Button>
+
+                                            {isCreditMethod && (
+                                                <div style={{ marginTop: 4, display: 'flex', gap: 4 }}>
+                                                    {currencies.filter(c => c.active).map(curr => (
+                                                        <Button
+                                                            key={curr.id}
+                                                            size="small"
+                                                            type={creditCurrencyId === curr.id ? 'primary' : 'default'}
+                                                            onClick={() => setCreditCurrencyId(curr.id)}
+                                                            style={{ fontSize: '10px', padding: '0 4px', flex: 1 }}
+                                                        >
+                                                            {curr.code}
+                                                        </Button>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
                                     );
                                 })}
                             </div>

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Button, Row, Col, Card, Spin, Popover, Image, Tooltip } from 'antd';
+import { Button, Row, Col, Card, Spin, Popover, Image, Tooltip, Modal } from 'antd';
 import { ShopOutlined, ArrowLeftOutlined, AppstoreOutlined, PictureOutlined } from '@ant-design/icons';
 import { departmentsApi } from '../../../services/departmentsApi';
 import type { Department } from '../../../services/departmentsApi';
@@ -71,6 +71,23 @@ export const POSRightPanel = () => {
     };
 
     const handleProductClick = (product: Product) => {
+        // Stock Validation
+        const store = usePOSStore.getState();
+        const existingItemsForThisProduct = store.cart.filter(item => item.product.id === product.id);
+        const currentNormalizedQuantity = existingItemsForThisProduct.reduce((acc, item) =>
+            acc + store.getNormalizedQuantity(item.quantity, item.product, item.isSecondaryUnit), 0
+        );
+
+        const addedNormalizedQuantity = store.getNormalizedQuantity(1, product, false);
+
+        if (product.type !== 'SERVICE' && (currentNormalizedQuantity + addedNormalizedQuantity) > Number(product.stock)) {
+            Modal.warning({
+                title: 'Stock insuficiente',
+                content: `${product.name} no tiene stock suficiente. Disponible: ${product.stock}`,
+            });
+            return;
+        }
+
         addItem(product, false);
         // Explicitly clear search after adding to avoid visual artifacts
         if (isSearching) {
@@ -98,15 +115,15 @@ export const POSRightPanel = () => {
     };
 
     const renderProductCard = (prod: Product) => (
-        <Col xs={12} sm={8} lg={6} key={prod.id}>
+        <Col xs={12} sm={8} lg={8} key={prod.id}>
             <Card
                 hoverable
                 onMouseDown={() => handleProductClick(prod)}
-                bodyStyle={{ padding: '12px 8px', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', position: 'relative' }}
-                style={{ textAlign: 'center', height: 110, cursor: 'pointer' }}
+                bodyStyle={{ padding: '12px 10px', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', position: 'relative' }}
+                style={{ textAlign: 'center', height: 135, cursor: 'pointer', overflow: 'hidden' }}
             >
                 {prod.imageUrl && (
-                    <div style={{ position: 'absolute', top: 4, right: 4, zIndex: 20 }} onClick={(e) => e.stopPropagation()}>
+                    <div style={{ position: 'absolute', top: 6, right: 6, zIndex: 20 }} onClick={(e) => e.stopPropagation()}>
                         <Popover
                             content={
                                 <Image
@@ -125,7 +142,22 @@ export const POSRightPanel = () => {
                     </div>
                 )}
                 <Tooltip title={prod.name} mouseEnterDelay={0.5}>
-                    <div style={{ fontSize: 12, fontWeight: 'bold', overflow: 'hidden', maxHeight: 40, width: '100%', paddingLeft: prod.imageUrl ? 24 : 0, paddingRight: prod.imageUrl ? 24 : 0 }}>{prod.name}</div>
+                    <div style={{
+                        fontSize: 13,
+                        fontWeight: 'bold',
+                        lineHeight: '1.2',
+                        overflow: 'hidden',
+                        display: '-webkit-box',
+                        WebkitLineClamp: 2,
+                        WebkitBoxOrient: 'vertical',
+                        maxHeight: 32,
+                        width: '100%',
+                        paddingLeft: prod.imageUrl ? 24 : 4,
+                        paddingRight: prod.imageUrl ? 24 : 4,
+                        marginBottom: 4
+                    }}>
+                        {prod.name}
+                    </div>
                 </Tooltip>
                 <TagPrice product={prod} />
             </Card>
@@ -155,14 +187,14 @@ export const POSRightPanel = () => {
         // VIEW: ROOT (Departments)
         if (viewMode === 'ROOT') {
             return departments.map(dept => (
-                <Col xs={12} sm={8} lg={6} key={dept.id}>
+                <Col xs={12} sm={8} lg={8} key={dept.id}>
                     <Card
                         hoverable
                         onClick={() => handleDeptClick(dept)}
-                        style={{ background: '#e6f7ff', borderColor: '#91caff', textAlign: 'center', height: 100, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                        style={{ background: '#e6f7ff', borderColor: '#91caff', textAlign: 'center', height: 120, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                     >
-                        <ShopOutlined style={{ fontSize: 24, color: '#1890ff' }} />
-                        <div style={{ fontWeight: 'bold', marginTop: 5 }}>{dept.name}</div>
+                        <ShopOutlined style={{ fontSize: 32, color: '#1890ff' }} />
+                        <div style={{ fontWeight: 'bold', marginTop: 8, fontSize: 14 }}>{dept.name}</div>
                     </Card>
                 </Col>
             ));
@@ -174,14 +206,14 @@ export const POSRightPanel = () => {
             const subDepts = currentDept.children || [];
 
             const subDeptNodes = subDepts.map(sub => (
-                <Col xs={12} sm={8} lg={6} key={sub.id}>
+                <Col xs={12} sm={8} lg={8} key={sub.id}>
                     <Card
                         hoverable
                         onClick={() => handleSubDeptClick(sub)}
-                        style={{ background: '#f9f0ff', borderColor: '#d3adf7', textAlign: 'center', height: 100, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                        style={{ background: '#f9f0ff', borderColor: '#d3adf7', textAlign: 'center', height: 120, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                     >
-                        <AppstoreOutlined style={{ fontSize: 24, color: '#722ed1' }} />
-                        <div style={{ fontWeight: 'bold', marginTop: 5 }}>{sub.name}</div>
+                        <AppstoreOutlined style={{ fontSize: 32, color: '#722ed1' }} />
+                        <div style={{ fontWeight: 'bold', marginTop: 8, fontSize: 14 }}>{sub.name}</div>
                     </Card>
                 </Col>
             ));

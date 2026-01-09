@@ -33,7 +33,7 @@ export class SalesService {
             }
 
             // Validar stock (si aplica)
-            if (product.type !== 'SERVICE' && product.stock > 0 && product.stock < item.quantity) {
+            if (product.type !== 'SERVICE' && Number(product.stock) > 0 && Number(product.stock) < item.quantity) {
                 throw new BadRequestException(`Stock insuficiente para ${product.name}. Disponible: ${product.stock}`);
             }
 
@@ -84,7 +84,7 @@ export class SalesService {
                     where: { id: item.productId },
                 });
 
-                if (product && product.type !== 'SERVICE' && product.stock > 0) {
+                if (product && product.type !== 'SERVICE' && Number(product.stock) > 0) {
                     await prisma.product.update({
                         where: { id: item.productId },
                         data: {
@@ -112,7 +112,11 @@ export class SalesService {
         // Detectar si hay crédito en el método de pago y crear factura automáticamente
         if (this.hasCredit(saleData.paymentMethod)) {
             try {
-                const creditAmount = this.extractCreditAmount(saleData.paymentMethod, Number(sale.total));
+                const creditInfo = this.extractCreditInfo(saleData.paymentMethod, Number(sale.total));
+
+                // Si es un crédito en divisa (ej: USD), el monto de la factura debe ser en esa divisa
+                // para protegerse de la inflación, tal como pidió el usuario.
+                const invoiceAmount = creditInfo.originalAmount || creditInfo.amount;
 
                 // Calcular fecha de vencimiento (30 días por defecto)
                 const dueDate = new Date();
@@ -124,10 +128,12 @@ export class SalesService {
                     subtotal: Number(sale.subtotal),
                     discount: Number(sale.discount),
                     tax: Number(sale.tax),
-                    total: creditAmount,
+                    total: invoiceAmount,
                     dueDate,
                     notes: `Factura generada automáticamente por venta a crédito - ${sale.invoiceNumber}`,
                     invoiceNumber: sale.invoiceNumber, // Use SAME number as sale
+                    currencyCode: creditInfo.currencyCode,
+                    exchangeRate: creditInfo.exchangeRate,
                 });
             } catch (error) {
                 console.error('Error creating credit invoice:', error);
@@ -394,23 +400,36 @@ export class SalesService {
     }
 
     /**
-     * Helper: Extraer el monto a crédito del método de pago
+     * Helper: Extraer información detallada del crédito (monto, moneda, tasa)
      */
-    private extractCreditAmount(paymentMethod: string, totalAmount: number): number {
+    private extractCreditInfo(paymentMethod: string, totalAmount: number): {
+        amount: number, // en Bs
+        currencyCode: string,
+        exchangeRate: number,
+        originalAmount?: number // en divisa si aplica
+    } {
         const methods = paymentMethod.split(', ');
 
         for (const methodPart of methods) {
             if (methodPart.toUpperCase().includes('ACCOUNT_CREDIT')) {
-                // Si tiene formato "ACCOUNT_CREDIT:500", extraer el monto
-                if (methodPart.includes(':')) {
-                    const parts = methodPart.split(':');
-                    return parseFloat(parts[1]);
-                }
-                // Si solo dice "ACCOUNT_CREDIT", asumir que es el total
-                return totalAmount;
+                // Formato: ACCOUNT_CREDIT_USD:10.5:45.5 (Metodo_MONEDA:MONTO_DIVISA:TASA)
+                // O simple: ACCOUNT_CREDIT:500 (Metodo:MONTO_BS)
+                const mainParts = methodPart.split(':');
+                const methodKey = mainParts[0]; // ACCOUNT_CREDIT o ACCOUNT_CREDIT_USD
+                const amount = mainParts[1] ? parseFloat(mainParts[1]) : totalAmount;
+                const rate = mainParts[2] ? parseFloat(mainParts[2]) : 1;
+
+                const currencyCode = methodKey.includes('_') ? methodKey.split('_')[2] : 'VES';
+
+                return {
+                    amount: currencyCode === 'VES' ? amount : amount * rate,
+                    currencyCode,
+                    exchangeRate: rate,
+                    originalAmount: currencyCode === 'VES' ? undefined : amount
+                };
             }
         }
 
-        return totalAmount;
+        return { amount: totalAmount, currencyCode: 'VES', exchangeRate: 1 };
     }
 }
