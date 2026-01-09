@@ -116,7 +116,7 @@ export class ProductsService {
     }
 
     async update(id: string, updateProductDto: UpdateProductDto) {
-        await this.findOne(id);
+        const existingProduct = await this.findOne(id);
 
         // Validar subcategoría si está presente
         if (updateProductDto.subcategoryId && updateProductDto.categoryId) {
@@ -140,6 +140,40 @@ export class ProductsService {
             updateProductDto.wholesalePrice !== undefined
         ) {
             this.validatePrices(updateProductDto);
+        }
+
+        // Detect cost change and calculate margins
+        let costChangeInfo = null;
+        if (updateProductDto.costPrice !== undefined) {
+            const oldCost = Number(existingProduct.costPrice);
+            const newCost = Number(updateProductDto.costPrice);
+            const costChanged = Math.abs(oldCost - newCost) > 0.001;
+
+            if (costChanged && oldCost > 0) {
+                const salePrice = Number(existingProduct.salePrice);
+                const offerPrice = existingProduct.offerPrice ? Number(existingProduct.offerPrice) : null;
+                const wholesalePrice = existingProduct.wholesalePrice ? Number(existingProduct.wholesalePrice) : null;
+
+                const salePriceMargin = salePrice > 0 ? ((salePrice - oldCost) / oldCost) * 100 : 0;
+                const offerPriceMargin = offerPrice && offerPrice > 0 ? ((offerPrice - oldCost) / oldCost) * 100 : null;
+                const wholesalePriceMargin = wholesalePrice && wholesalePrice > 0 ? ((wholesalePrice - oldCost) / oldCost) * 100 : null;
+
+                costChangeInfo = {
+                    productId: existingProduct.id,
+                    productName: existingProduct.name,
+                    oldCost,
+                    newCost,
+                    currentSalePrice: salePrice,
+                    currentOfferPrice: offerPrice,
+                    currentWholesalePrice: wholesalePrice,
+                    salePriceMargin,
+                    offerPriceMargin,
+                    wholesalePriceMargin,
+                    suggestedSalePrice: newCost * (1 + salePriceMargin / 100),
+                    suggestedOfferPrice: offerPriceMargin !== null ? newCost * (1 + offerPriceMargin / 100) : null,
+                    suggestedWholesalePrice: wholesalePriceMargin !== null ? newCost * (1 + wholesalePriceMargin / 100) : null,
+                };
+            }
         }
 
         try {
@@ -168,7 +202,18 @@ export class ProductsService {
                 },
             });
 
-            return this.convertDecimalsToNumber(updatedProduct);
+            const result = this.convertDecimalsToNumber(updatedProduct);
+
+            // Include cost change info if detected
+            if (costChangeInfo) {
+                return {
+                    ...result,
+                    costChangeDetected: true,
+                    costChangeInfo,
+                };
+            }
+
+            return result;
         } catch (error) {
             if (error.code === 'P2002') {
                 throw new ConflictException('error sku duplicado');

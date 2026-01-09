@@ -7,6 +7,7 @@ import type { Product, CreateProductDto, UpdateProductDto } from '../../services
 import { departmentsApi } from '../../services/departmentsApi';
 import { currenciesApi } from '../../services/currenciesApi';
 import { unitsApi } from '../../services/unitsApi';
+import { PriceUpdateConfirmModal } from '../purchases/components/PriceUpdateConfirmModal';
 
 interface ProductFormModalProps {
     open: boolean;
@@ -21,6 +22,10 @@ export const ProductFormModal = ({ open, product, onClose }: ProductFormModalPro
     const [hasSecondaryUnit, setHasSecondaryUnit] = useState(false);
     const [conversionDirection, setConversionDirection] = useState<string>('primary_to_secondary');
     const [imageUrl, setImageUrl] = useState<string | undefined>(undefined);
+    const [priceUpdateModalVisible, setPriceUpdateModalVisible] = useState(false);
+    const [costChangeInfo, setCostChangeInfo] = useState<any>(null);
+    const [priceUpdateLoading, setPriceUpdateLoading] = useState(false);
+    const [selectedCurrency, setSelectedCurrency] = useState<any>(null);
 
     // Fetch departments
     const { data: departments = [] } = useQuery({
@@ -64,11 +69,17 @@ export const ProductFormModal = ({ open, product, onClose }: ProductFormModalPro
     const updateMutation = useMutation({
         mutationFn: ({ id, dto }: { id: string; dto: UpdateProductDto }) =>
             productsApi.update(id, dto),
-        onSuccess: () => {
-            message.success('Producto actualizado exitosamente');
-            queryClient.invalidateQueries({ queryKey: ['products'] });
-            onClose();
-            form.resetFields();
+        onSuccess: (data: any) => {
+            // Check if cost change was detected
+            if (data.costChangeDetected && data.costChangeInfo) {
+                setCostChangeInfo(data.costChangeInfo);
+                setPriceUpdateModalVisible(true);
+            } else {
+                message.success('Producto actualizado exitosamente');
+                queryClient.invalidateQueries({ queryKey: ['products'] });
+                onClose();
+                form.resetFields();
+            }
         },
         onError: (error: any) => {
             message.error(error.response?.data?.message || 'Error al actualizar producto');
@@ -175,6 +186,41 @@ export const ProductFormModal = ({ open, product, onClose }: ProductFormModalPro
         } catch (error) {
             console.error('Validation failed:', error);
         }
+    };
+
+    const handlePriceUpdateConfirm = async () => {
+        try {
+            setPriceUpdateLoading(true);
+            if (costChangeInfo) {
+                const updates = [{
+                    productId: costChangeInfo.productId,
+                    newCostPrice: costChangeInfo.newCost,
+                    salePriceMargin: costChangeInfo.salePriceMargin,
+                    offerPriceMargin: costChangeInfo.offerPriceMargin,
+                    wholesalePriceMargin: costChangeInfo.wholesalePriceMargin,
+                }];
+
+                await productsApi.batchUpdatePrices(updates);
+                message.success('Precios actualizados exitosamente');
+                setPriceUpdateModalVisible(false);
+                queryClient.invalidateQueries({ queryKey: ['products'] });
+                onClose();
+                form.resetFields();
+            }
+        } catch (error) {
+            console.error(error);
+            message.error('Error al actualizar precios');
+        } finally {
+            setPriceUpdateLoading(false);
+        }
+    };
+
+    const handlePriceUpdateCancel = () => {
+        setPriceUpdateModalVisible(false);
+        message.success('Producto actualizado (precios sin cambios)');
+        queryClient.invalidateQueries({ queryKey: ['products'] });
+        onClose();
+        form.resetFields();
     };
 
     const handleCategoryChange = (value: string) => {
@@ -371,618 +417,629 @@ export const ProductFormModal = ({ open, product, onClose }: ProductFormModalPro
     };
 
     return (
-        <Modal
-            title={product ? 'Editar Producto' : 'Nuevo Producto'}
-            open={open}
-            onOk={handleSubmit}
-            onCancel={onClose}
-            confirmLoading={createMutation.isPending || updateMutation.isPending}
-            okText={product ? 'Actualizar' : 'Crear'}
-            cancelText="Cancelar"
-            width={900}
-        >
-            <Form form={form} layout="vertical" style={{ marginTop: 20 }}>
-                {/* Información básica */}
-                <Row gutter={16}>
-                    <Col span={12}>
-                        <Form.Item
-                            label="SKU"
-                            name="sku"
-                            rules={[{ required: true, message: 'El SKU es requerido' }]}
-                        >
-                            <Input placeholder="Ej: PROD-001" />
-                        </Form.Item>
-                    </Col>
-                    <Col span={12}>
-                        <Form.Item
-                            label="Nombre"
-                            name="name"
-                            rules={[{ required: true, message: 'El nombre es requerido' }]}
-                        >
-                            <Input placeholder="Ej: Martillo 16oz" />
-                        </Form.Item>
-                    </Col>
-                </Row>
-
-                <Form.Item label="Descripción" name="description">
-                    <Input.TextArea rows={2} placeholder="Descripción del producto..." />
-                </Form.Item>
-
-                {/* Imagen del producto */}
-                <Form.Item label="Imagen del producto (opcional)">
-                    <Row gutter={16} align="middle">
-                        <Col>
-                            <Upload
-                                name="image"
-                                listType="picture-card"
-                                showUploadList={false}
-                                beforeUpload={async (file) => {
-                                    try {
-                                        // Compression configuration
-                                        const maxWidth = 800;
-                                        const maxHeight = 800;
-                                        const quality = 0.7;
-
-                                        // Create a promise to handle the image loading and compression
-                                        const compressImage = (file: File): Promise<string> => {
-                                            return new Promise((resolve, reject) => {
-                                                const reader = new FileReader();
-                                                reader.readAsDataURL(file);
-                                                reader.onload = (event) => {
-                                                    const img = document.createElement('img');
-                                                    img.src = event.target?.result as string;
-                                                    img.onload = () => {
-                                                        let width = img.width;
-                                                        let height = img.height;
-
-                                                        // Resize logic
-                                                        if (width > height) {
-                                                            if (width > maxWidth) {
-                                                                height = Math.round((height * maxWidth) / width);
-                                                                width = maxWidth;
-                                                            }
-                                                        } else {
-                                                            if (height > maxHeight) {
-                                                                width = Math.round((width * maxHeight) / height);
-                                                                height = maxHeight;
-                                                            }
-                                                        }
-
-                                                        const canvas = document.createElement('canvas');
-                                                        canvas.width = width;
-                                                        canvas.height = height;
-                                                        const ctx = canvas.getContext('2d');
-                                                        ctx?.drawImage(img, 0, 0, width, height);
-
-                                                        // Compress to JPEG
-                                                        const compressedDataUrl = canvas.toDataURL('image/jpeg', quality);
-                                                        resolve(compressedDataUrl);
-                                                    };
-                                                    img.onerror = (error) => reject(error);
-                                                };
-                                                reader.onerror = (error) => reject(error);
-                                            });
-                                        };
-
-                                        message.loading({ content: 'Comprimiendo imagen...', key: 'compression' });
-                                        const compressedImage = await compressImage(file);
-                                        setImageUrl(compressedImage);
-                                        message.success({ content: 'Imagen procesada', key: 'compression' });
-                                    } catch (error) {
-                                        console.error('Error compressing image:', error);
-                                        message.error('Error al procesar la imagen');
-                                    }
-                                    return false; // Prevent default upload
-                                }}
-                                accept="image/*"
-                            >
-                                {imageUrl ? (
-                                    <img src={imageUrl} alt="producto" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                                ) : (
-                                    <div>
-                                        <PlusOutlined />
-                                        <div style={{ marginTop: 8 }}>Subir</div>
-                                    </div>
-                                )}
-                            </Upload>
-                        </Col>
-                        {imageUrl && (
-                            <Col>
-                                <a onClick={() => setImageUrl(undefined)} style={{ color: '#ff4d4f' }}>Eliminar imagen</a>
-                            </Col>
-                        )}
-                    </Row>
-                </Form.Item>
-
-                {/* Categorización */}
-                <Row gutter={16}>
-                    <Col span={12}>
-                        <Form.Item
-                            label="Categoría"
-                            name="categoryId"
-                            rules={[{ required: true, message: 'La categoría es requerida' }]}
-                        >
-                            <Select
-                                placeholder="Seleccionar categoría"
-                                onChange={handleCategoryChange}
-                                showSearch
-                                filterOption={(input, option) =>
-                                    (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
-                                }
-                                options={categories.map(cat => ({
-                                    value: cat.id,
-                                    label: cat.name,
-                                }))}
-                            />
-                        </Form.Item>
-                    </Col>
-                    <Col span={12}>
-                        <Form.Item label="Subcategoría (Opcional)" name="subcategoryId">
-                            <Select
-                                placeholder="Seleccionar subcategoría"
-                                allowClear
-                                disabled={!selectedCategory}
-                                showSearch
-                                filterOption={(input, option) =>
-                                    (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
-                                }
-                                options={subcategories.map(subcat => ({
-                                    value: subcat.id,
-                                    label: subcat.name,
-                                }))}
-                            />
-                        </Form.Item>
-                    </Col>
-                </Row>
-
-                <Divider>Precios e Inventario</Divider>
-
-                {/* Layout en 2 columnas */}
-                <Row gutter={16}>
-                    {/* Columna Izquierda */}
-                    <Col span={12}>
-                        <Form.Item
-                            label="Moneda"
-                            name="currencyId"
-                            rules={[{ required: true, message: 'La moneda es requerida' }]}
-                        >
-                            <Select
-                                placeholder="Seleccionar moneda"
-                                showSearch
-                                filterOption={(input, option) =>
-                                    (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
-                                }
-                                options={currencies.map(curr => ({
-                                    value: curr.id,
-                                    label: `${curr.name} (${curr.symbol})`,
-                                }))}
-                            />
-                        </Form.Item>
-
-                        <Form.Item
-                            label="Precio de Costo"
-                            name="costPrice"
-                            rules={[
-                                { required: true, message: 'El precio de costo es requerido' },
-                                { type: 'number', min: 0, message: 'Debe ser mayor o igual a 0' },
-                            ]}
-                        >
-                            <InputNumber
-                                placeholder="0.00"
-                                style={{ width: '100%' }}
-                                precision={2}
-                                min={0}
-                            />
-                        </Form.Item>
-
-                        <Form.Item
-                            label="Stock Inicial"
-                            name="stock"
-                            rules={[{ type: 'number', min: 0, message: 'Debe ser mayor o igual a 0' }]}
-                        >
-                            <InputNumber
-                                placeholder="0.000"
-                                style={{ width: '100%' }}
-                                precision={3}
-                                min={0}
-                            />
-                        </Form.Item>
-
-                        <Row gutter={8}>
-                            <Col span={12}>
-                                <Form.Item
-                                    label="Unidad Principal"
-                                    name="unitId"
-                                    rules={[{ required: true, message: 'La unidad es requerida' }]}
-                                >
-                                    <Select
-                                        placeholder="Seleccionar unidad"
-                                        showSearch
-                                        filterOption={(input, option) =>
-                                            (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
-                                        }
-                                        options={units.map(unit => ({
-                                            value: unit.id,
-                                            label: `${unit.name} (${unit.abbreviation})`,
-                                        }))}
-                                    />
-                                </Form.Item>
-                            </Col>
-                            <Col span={12}>
-                                <Form.Item label="Unidad Secundaria (Opcional)" name="secondaryUnitId">
-                                    <Select
-                                        placeholder="Ej: Caja, Paquete"
-                                        allowClear
-                                        showSearch
-                                        onChange={handleSecondaryUnitChange}
-                                        filterOption={(input, option) =>
-                                            (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
-                                        }
-                                        options={units.map(unit => ({
-                                            value: unit.id,
-                                            label: `${unit.name} (${unit.abbreviation})`,
-                                        }))}
-                                    />
-                                </Form.Item>
-                            </Col>
-                        </Row>
-                    </Col>
-
-                    {/* Columna Derecha */}
-                    <Col span={12}>
-                        {/* Precio de Venta Normal */}
-                        <Form.Item label="Precio de Venta (Normal)" style={{ marginBottom: 8 }}>
-                            <Row gutter={8}>
-                                <Col span={12}>
-                                    <Form.Item
-                                        name="salePrice"
-                                        noStyle
-                                        rules={[
-                                            { required: true, message: 'Requerido' },
-                                            { type: 'number', min: 0, message: 'Debe ser >= 0' },
-                                            ({ getFieldValue }) => ({
-                                                validator(_, value) {
-                                                    const costPrice = getFieldValue('costPrice');
-                                                    if (!value || value >= costPrice) {
-                                                        return Promise.resolve();
-                                                    }
-                                                    return Promise.reject(new Error('Debe ser >= costo'));
-                                                },
-                                            }),
-                                        ]}
-                                    >
-                                        <InputNumber
-                                            placeholder="Precio"
-                                            style={{ width: '100%' }}
-                                            precision={2}
-                                            min={0}
-                                            onChange={handleSalePriceChange}
-                                        />
-                                    </Form.Item>
-                                </Col>
-                                <Col span={12}>
-                                    <Form.Item name="saleProfitPercent" noStyle>
-                                        <InputNumber
-                                            placeholder="% Ganancia"
-                                            style={{ width: '100%' }}
-                                            precision={2}
-                                            min={-100}
-                                            max={10000}
-                                            onChange={handleSaleProfitPercentChange}
-                                            addonAfter="%"
-                                        />
-                                    </Form.Item>
-                                </Col>
-                            </Row>
-                        </Form.Item>
-
-                        {/* Precio de Oferta */}
-                        <Form.Item label="Precio en Oferta (Opcional)" style={{ marginBottom: 8 }}>
-                            <Row gutter={8}>
-                                <Col span={12}>
-                                    <Form.Item
-                                        name="offerPrice"
-                                        noStyle
-                                        rules={[
-                                            { type: 'number', min: 0, message: 'Debe ser >= 0' },
-                                            ({ getFieldValue }) => ({
-                                                validator(_, value) {
-                                                    if (!value) return Promise.resolve();
-                                                    const costPrice = getFieldValue('costPrice');
-                                                    if (value >= costPrice) {
-                                                        return Promise.resolve();
-                                                    }
-                                                    return Promise.reject(new Error('Debe ser >= costo'));
-                                                },
-                                            }),
-                                        ]}
-                                    >
-                                        <InputNumber
-                                            placeholder="Precio"
-                                            style={{ width: '100%' }}
-                                            precision={2}
-                                            min={0}
-                                            onChange={handleOfferPriceChange}
-                                        />
-                                    </Form.Item>
-                                </Col>
-                                <Col span={12}>
-                                    <Form.Item name="offerProfitPercent" noStyle>
-                                        <InputNumber
-                                            placeholder="% Ganancia"
-                                            style={{ width: '100%' }}
-                                            precision={2}
-                                            min={-100}
-                                            max={10000}
-                                            onChange={handleOfferProfitPercentChange}
-                                            addonAfter="%"
-                                        />
-                                    </Form.Item>
-                                </Col>
-                            </Row>
-                        </Form.Item>
-
-                        {/* Precio al Mayor */}
-                        <Form.Item label="Precio al Mayor (Opcional)" style={{ marginBottom: 8 }}>
-                            <Row gutter={8}>
-                                <Col span={12}>
-                                    <Form.Item
-                                        name="wholesalePrice"
-                                        noStyle
-                                        rules={[
-                                            { type: 'number', min: 0, message: 'Debe ser >= 0' },
-                                            ({ getFieldValue }) => ({
-                                                validator(_, value) {
-                                                    if (!value) return Promise.resolve();
-                                                    const costPrice = getFieldValue('costPrice');
-                                                    if (value >= costPrice) {
-                                                        return Promise.resolve();
-                                                    }
-                                                    return Promise.reject(new Error('Debe ser >= costo'));
-                                                },
-                                            }),
-                                        ]}
-                                    >
-                                        <InputNumber
-                                            placeholder="Precio"
-                                            style={{ width: '100%' }}
-                                            precision={2}
-                                            min={0}
-                                            onChange={handleWholesalePriceChange}
-                                        />
-                                    </Form.Item>
-                                </Col>
-                                <Col span={12}>
-                                    <Form.Item name="wholesaleProfitPercent" noStyle>
-                                        <InputNumber
-                                            placeholder="% Ganancia"
-                                            style={{ width: '100%' }}
-                                            precision={2}
-                                            min={-100}
-                                            max={10000}
-                                            onChange={handleWholesaleProfitPercentChange}
-                                            addonAfter="%"
-                                        />
-                                    </Form.Item>
-                                </Col>
-                            </Row>
-                        </Form.Item>
-                    </Col>
-                </Row>
-
-                {/* Unidad Secundaria */}
-                {hasSecondaryUnit && (
-                    <>
-                        <Divider>Unidad Secundaria</Divider>
-                        <Alert
-                            message="Configuración de Conversión"
-                            description={
-                                conversionDirection === 'primary_to_secondary'
-                                    ? `La Unidad Secundaria (ej: Caja) contiene varias Unidades Principales.`
-                                    : `La Unidad Principal (ej: Rollo) contiene varias Unidades Secundarias.`
-                            }
-                            type="info"
-                            showIcon
-                            style={{ marginBottom: 16 }}
-                        />
-                        <Row gutter={16}>
-                            <Col span={12}>
-                                <Form.Item
-                                    label="Tipo de Conversión"
-                                    name="conversionDirection"
-                                    initialValue="primary_to_secondary"
-                                >
-                                    <Select
-                                        onChange={(value) => {
-                                            setConversionDirection(value);
-                                            calculateSecondaryPrices();
-                                        }}
-                                        options={[
-                                            { value: 'primary_to_secondary', label: 'Principal → Secundaria (Multiplicar)' },
-                                            { value: 'secondary_to_primary', label: 'Secundaria → Principal (Dividir)' },
-                                        ]}
-                                    />
-                                </Form.Item>
-                            </Col>
-                            <Col span={12}>
-                                <Form.Item
-                                    label="Cantidad en la Conversión"
-                                    name="unitsPerSecondaryUnit"
-                                    help={
-                                        conversionDirection === 'primary_to_secondary'
-                                            ? 'Ej: 1 Caja = 12 Unidades'
-                                            : 'Ej: 1 Rollo = 50 Metros'
-                                    }
-                                    rules={[{ required: hasSecondaryUnit, message: 'Requerido' }]}
-                                >
-                                    <InputNumber
-                                        placeholder="Cantidad"
-                                        style={{ width: '100%' }}
-                                        precision={0}
-                                        min={1}
-                                        onChange={handleUnitsPerSecondaryChange}
-                                    />
-                                </Form.Item>
-                            </Col>
-                        </Row>
-
-                        <Card title="Precios para Unidad Secundaria" size="small">
-                            {/* Precio de Costo Secundario */}
+        <>
+            <Modal
+                title={product ? 'Editar Producto' : 'Nuevo Producto'}
+                open={open}
+                onOk={handleSubmit}
+                onCancel={onClose}
+                confirmLoading={createMutation.isPending || updateMutation.isPending}
+                okText={product ? 'Actualizar' : 'Crear'}
+                cancelText="Cancelar"
+                width={900}
+            >
+                <Form form={form} layout="vertical" style={{ marginTop: 20 }}>
+                    {/* Información básica */}
+                    <Row gutter={16}>
+                        <Col span={12}>
                             <Form.Item
-                                label="Precio de Costo (Empaque)"
-                                name="secondaryCostPrice"
-                                rules={[{ type: 'number', min: 0, message: 'Debe ser >= 0' }]}
+                                label="SKU"
+                                name="sku"
+                                rules={[{ required: true, message: 'El SKU es requerido' }]}
                             >
-                                <InputNumber
-                                    placeholder="Auto-calculado"
-                                    style={{ width: '100%' }}
-                                    precision={2}
-                                    min={0}
-                                    onChange={handleUnitsPerSecondaryChange}
+                                <Input placeholder="Ej: PROD-001" />
+                            </Form.Item>
+                        </Col>
+                        <Col span={12}>
+                            <Form.Item
+                                label="Nombre"
+                                name="name"
+                                rules={[{ required: true, message: 'El nombre es requerido' }]}
+                            >
+                                <Input placeholder="Ej: Martillo 16oz" />
+                            </Form.Item>
+                        </Col>
+                    </Row>
+
+                    <Form.Item label="Descripción" name="description">
+                        <Input.TextArea rows={2} placeholder="Descripción del producto..." />
+                    </Form.Item>
+
+                    {/* Imagen del producto */}
+                    <Form.Item label="Imagen del producto (opcional)">
+                        <Row gutter={16} align="middle">
+                            <Col>
+                                <Upload
+                                    name="image"
+                                    listType="picture-card"
+                                    showUploadList={false}
+                                    beforeUpload={async (file) => {
+                                        try {
+                                            // Compression configuration
+                                            const maxWidth = 800;
+                                            const maxHeight = 800;
+                                            const quality = 0.7;
+
+                                            // Create a promise to handle the image loading and compression
+                                            const compressImage = (file: File): Promise<string> => {
+                                                return new Promise((resolve, reject) => {
+                                                    const reader = new FileReader();
+                                                    reader.readAsDataURL(file);
+                                                    reader.onload = (event) => {
+                                                        const img = document.createElement('img');
+                                                        img.src = event.target?.result as string;
+                                                        img.onload = () => {
+                                                            let width = img.width;
+                                                            let height = img.height;
+
+                                                            // Resize logic
+                                                            if (width > height) {
+                                                                if (width > maxWidth) {
+                                                                    height = Math.round((height * maxWidth) / width);
+                                                                    width = maxWidth;
+                                                                }
+                                                            } else {
+                                                                if (height > maxHeight) {
+                                                                    width = Math.round((width * maxHeight) / height);
+                                                                    height = maxHeight;
+                                                                }
+                                                            }
+
+                                                            const canvas = document.createElement('canvas');
+                                                            canvas.width = width;
+                                                            canvas.height = height;
+                                                            const ctx = canvas.getContext('2d');
+                                                            ctx?.drawImage(img, 0, 0, width, height);
+
+                                                            // Compress to JPEG
+                                                            const compressedDataUrl = canvas.toDataURL('image/jpeg', quality);
+                                                            resolve(compressedDataUrl);
+                                                        };
+                                                        img.onerror = (error) => reject(error);
+                                                    };
+                                                    reader.onerror = (error) => reject(error);
+                                                });
+                                            };
+
+                                            message.loading({ content: 'Comprimiendo imagen...', key: 'compression' });
+                                            const compressedImage = await compressImage(file);
+                                            setImageUrl(compressedImage);
+                                            message.success({ content: 'Imagen procesada', key: 'compression' });
+                                        } catch (error) {
+                                            console.error('Error compressing image:', error);
+                                            message.error('Error al procesar la imagen');
+                                        }
+                                        return false; // Prevent default upload
+                                    }}
+                                    accept="image/*"
+                                >
+                                    {imageUrl ? (
+                                        <img src={imageUrl} alt="producto" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                    ) : (
+                                        <div>
+                                            <PlusOutlined />
+                                            <div style={{ marginTop: 8 }}>Subir</div>
+                                        </div>
+                                    )}
+                                </Upload>
+                            </Col>
+                            {imageUrl && (
+                                <Col>
+                                    <a onClick={() => setImageUrl(undefined)} style={{ color: '#ff4d4f' }}>Eliminar imagen</a>
+                                </Col>
+                            )}
+                        </Row>
+                    </Form.Item>
+
+                    {/* Categorización */}
+                    <Row gutter={16}>
+                        <Col span={12}>
+                            <Form.Item
+                                label="Categoría"
+                                name="categoryId"
+                                rules={[{ required: true, message: 'La categoría es requerida' }]}
+                            >
+                                <Select
+                                    placeholder="Seleccionar categoría"
+                                    onChange={handleCategoryChange}
+                                    showSearch
+                                    filterOption={(input, option) =>
+                                        (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+                                    }
+                                    options={categories.map(cat => ({
+                                        value: cat.id,
+                                        label: cat.name,
+                                    }))}
+                                />
+                            </Form.Item>
+                        </Col>
+                        <Col span={12}>
+                            <Form.Item label="Subcategoría (Opcional)" name="subcategoryId">
+                                <Select
+                                    placeholder="Seleccionar subcategoría"
+                                    allowClear
+                                    disabled={!selectedCategory}
+                                    showSearch
+                                    filterOption={(input, option) =>
+                                        (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+                                    }
+                                    options={subcategories.map(subcat => ({
+                                        value: subcat.id,
+                                        label: subcat.name,
+                                    }))}
+                                />
+                            </Form.Item>
+                        </Col>
+                    </Row>
+
+                    <Divider>Precios e Inventario</Divider>
+
+                    {/* Layout en 2 columnas */}
+                    <Row gutter={16}>
+                        {/* Columna Izquierda */}
+                        <Col span={12}>
+                            <Form.Item
+                                label="Moneda"
+                                name="currencyId"
+                                rules={[{ required: true, message: 'La moneda es requerida' }]}
+                            >
+                                <Select
+                                    placeholder="Seleccionar moneda"
+                                    showSearch
+                                    filterOption={(input, option) =>
+                                        (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+                                    }
+                                    options={currencies.map(curr => ({
+                                        value: curr.id,
+                                        label: `${curr.name} (${curr.symbol})`,
+                                    }))}
                                 />
                             </Form.Item>
 
-                            {/* Precio de Venta Secundario */}
-                            <Form.Item label="Precio de Venta" style={{ marginBottom: 8 }}>
+                            <Form.Item
+                                label="Precio de Costo"
+                                name="costPrice"
+                                rules={[
+                                    { required: true, message: 'El precio de costo es requerido' },
+                                    { type: 'number', min: 0, message: 'Debe ser mayor o igual a 0' },
+                                ]}
+                            >
+                                <InputNumber
+                                    placeholder="0.00"
+                                    style={{ width: '100%' }}
+                                    precision={2}
+                                    min={0}
+                                />
+                            </Form.Item>
+
+                            <Form.Item
+                                label="Stock Inicial"
+                                name="stock"
+                                rules={[{ type: 'number', min: 0, message: 'Debe ser mayor o igual a 0' }]}
+                            >
+                                <InputNumber
+                                    placeholder="0.000"
+                                    style={{ width: '100%' }}
+                                    precision={3}
+                                    min={0}
+                                />
+                            </Form.Item>
+
+                            <Row gutter={8}>
+                                <Col span={12}>
+                                    <Form.Item
+                                        label="Unidad Principal"
+                                        name="unitId"
+                                        rules={[{ required: true, message: 'La unidad es requerida' }]}
+                                    >
+                                        <Select
+                                            placeholder="Seleccionar unidad"
+                                            showSearch
+                                            filterOption={(input, option) =>
+                                                (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+                                            }
+                                            options={units.map(unit => ({
+                                                value: unit.id,
+                                                label: `${unit.name} (${unit.abbreviation})`,
+                                            }))}
+                                        />
+                                    </Form.Item>
+                                </Col>
+                                <Col span={12}>
+                                    <Form.Item label="Unidad Secundaria (Opcional)" name="secondaryUnitId">
+                                        <Select
+                                            placeholder="Ej: Caja, Paquete"
+                                            allowClear
+                                            showSearch
+                                            onChange={handleSecondaryUnitChange}
+                                            filterOption={(input, option) =>
+                                                (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+                                            }
+                                            options={units.map(unit => ({
+                                                value: unit.id,
+                                                label: `${unit.name} (${unit.abbreviation})`,
+                                            }))}
+                                        />
+                                    </Form.Item>
+                                </Col>
+                            </Row>
+                        </Col>
+
+                        {/* Columna Derecha */}
+                        <Col span={12}>
+                            {/* Precio de Venta Normal */}
+                            <Form.Item label="Precio de Venta (Normal)" style={{ marginBottom: 8 }}>
                                 <Row gutter={8}>
                                     <Col span={12}>
                                         <Form.Item
-                                            name="secondarySalePrice"
+                                            name="salePrice"
                                             noStyle
                                             rules={[
+                                                { required: true, message: 'Requerido' },
                                                 { type: 'number', min: 0, message: 'Debe ser >= 0' },
                                                 ({ getFieldValue }) => ({
                                                     validator(_, value) {
-                                                        if (!value) return Promise.resolve();
-                                                        const secondaryCost = getFieldValue('secondaryCostPrice');
-                                                        if (!secondaryCost || value >= secondaryCost) {
+                                                        const costPrice = getFieldValue('costPrice');
+                                                        if (!value || value >= costPrice) {
                                                             return Promise.resolve();
                                                         }
-                                                        return Promise.reject(new Error('Debe ser >= costo empaque'));
+                                                        return Promise.reject(new Error('Debe ser >= costo'));
                                                     },
                                                 }),
                                             ]}
                                         >
                                             <InputNumber
-                                                placeholder="Auto-calculado"
+                                                placeholder="Precio"
                                                 style={{ width: '100%' }}
                                                 precision={2}
                                                 min={0}
-                                                onChange={handleSecondarySalePriceChange}
+                                                onChange={handleSalePriceChange}
                                             />
                                         </Form.Item>
                                     </Col>
                                     <Col span={12}>
-                                        <Form.Item name="secondarySaleProfitPercent" noStyle>
+                                        <Form.Item name="saleProfitPercent" noStyle>
                                             <InputNumber
                                                 placeholder="% Ganancia"
                                                 style={{ width: '100%' }}
                                                 precision={2}
                                                 min={-100}
                                                 max={10000}
+                                                onChange={handleSaleProfitPercentChange}
                                                 addonAfter="%"
-                                                onChange={handleSecondarySaleProfitPercentChange}
                                             />
                                         </Form.Item>
                                     </Col>
                                 </Row>
                             </Form.Item>
 
-                            {/* Precio en Oferta Secundario */}
-                            <Form.Item label="Precio en Oferta" style={{ marginBottom: 8 }}>
+                            {/* Precio de Oferta */}
+                            <Form.Item label="Precio en Oferta (Opcional)" style={{ marginBottom: 8 }}>
                                 <Row gutter={8}>
                                     <Col span={12}>
                                         <Form.Item
-                                            name="secondaryOfferPrice"
+                                            name="offerPrice"
                                             noStyle
                                             rules={[
                                                 { type: 'number', min: 0, message: 'Debe ser >= 0' },
                                                 ({ getFieldValue }) => ({
                                                     validator(_, value) {
                                                         if (!value) return Promise.resolve();
-                                                        const secondaryCost = getFieldValue('secondaryCostPrice');
-                                                        if (!secondaryCost || value >= secondaryCost) {
+                                                        const costPrice = getFieldValue('costPrice');
+                                                        if (value >= costPrice) {
                                                             return Promise.resolve();
                                                         }
-                                                        return Promise.reject(new Error('Debe ser >= costo empaque'));
+                                                        return Promise.reject(new Error('Debe ser >= costo'));
                                                     },
                                                 }),
                                             ]}
                                         >
                                             <InputNumber
-                                                placeholder="Auto-calculado"
+                                                placeholder="Precio"
                                                 style={{ width: '100%' }}
                                                 precision={2}
                                                 min={0}
-                                                onChange={handleSecondaryOfferPriceChange}
+                                                onChange={handleOfferPriceChange}
                                             />
                                         </Form.Item>
                                     </Col>
                                     <Col span={12}>
-                                        <Form.Item name="secondaryOfferProfitPercent" noStyle>
+                                        <Form.Item name="offerProfitPercent" noStyle>
                                             <InputNumber
                                                 placeholder="% Ganancia"
                                                 style={{ width: '100%' }}
                                                 precision={2}
                                                 min={-100}
                                                 max={10000}
+                                                onChange={handleOfferProfitPercentChange}
                                                 addonAfter="%"
-                                                onChange={handleSecondaryOfferProfitPercentChange}
                                             />
                                         </Form.Item>
                                     </Col>
                                 </Row>
                             </Form.Item>
 
-                            {/* Precio al Mayor Secundario */}
-                            <Form.Item label="Precio al Mayor" style={{ marginBottom: 8 }}>
+                            {/* Precio al Mayor */}
+                            <Form.Item label="Precio al Mayor (Opcional)" style={{ marginBottom: 8 }}>
                                 <Row gutter={8}>
                                     <Col span={12}>
                                         <Form.Item
-                                            name="secondaryWholesalePrice"
+                                            name="wholesalePrice"
                                             noStyle
                                             rules={[
                                                 { type: 'number', min: 0, message: 'Debe ser >= 0' },
                                                 ({ getFieldValue }) => ({
                                                     validator(_, value) {
                                                         if (!value) return Promise.resolve();
-                                                        const secondaryCost = getFieldValue('secondaryCostPrice');
-                                                        if (!secondaryCost || value >= secondaryCost) {
+                                                        const costPrice = getFieldValue('costPrice');
+                                                        if (value >= costPrice) {
                                                             return Promise.resolve();
                                                         }
-                                                        return Promise.reject(new Error('Debe ser >= costo empaque'));
+                                                        return Promise.reject(new Error('Debe ser >= costo'));
                                                     },
                                                 }),
                                             ]}
                                         >
                                             <InputNumber
-                                                placeholder="Auto-calculado"
+                                                placeholder="Precio"
                                                 style={{ width: '100%' }}
                                                 precision={2}
                                                 min={0}
-                                                onChange={handleSecondaryWholesalePriceChange}
+                                                onChange={handleWholesalePriceChange}
                                             />
                                         </Form.Item>
                                     </Col>
                                     <Col span={12}>
-                                        <Form.Item name="secondaryWholesaleProfitPercent" noStyle>
+                                        <Form.Item name="wholesaleProfitPercent" noStyle>
                                             <InputNumber
                                                 placeholder="% Ganancia"
                                                 style={{ width: '100%' }}
                                                 precision={2}
                                                 min={-100}
                                                 max={10000}
+                                                onChange={handleWholesaleProfitPercentChange}
                                                 addonAfter="%"
-                                                onChange={handleSecondaryWholesaleProfitPercentChange}
                                             />
                                         </Form.Item>
                                     </Col>
                                 </Row>
                             </Form.Item>
-                        </Card>
-                    </>
-                )}
-            </Form>
-        </Modal>
+                        </Col>
+                    </Row>
+
+                    {/* Unidad Secundaria */}
+                    {hasSecondaryUnit && (
+                        <>
+                            <Divider>Unidad Secundaria</Divider>
+                            <Alert
+                                message="Configuración de Conversión"
+                                description={
+                                    conversionDirection === 'primary_to_secondary'
+                                        ? `La Unidad Secundaria (ej: Caja) contiene varias Unidades Principales.`
+                                        : `La Unidad Principal (ej: Rollo) contiene varias Unidades Secundarias.`
+                                }
+                                type="info"
+                                showIcon
+                                style={{ marginBottom: 16 }}
+                            />
+                            <Row gutter={16}>
+                                <Col span={12}>
+                                    <Form.Item
+                                        label="Tipo de Conversión"
+                                        name="conversionDirection"
+                                        initialValue="primary_to_secondary"
+                                    >
+                                        <Select
+                                            onChange={(value) => {
+                                                setConversionDirection(value);
+                                                calculateSecondaryPrices();
+                                            }}
+                                            options={[
+                                                { value: 'primary_to_secondary', label: 'Principal → Secundaria (Multiplicar)' },
+                                                { value: 'secondary_to_primary', label: 'Secundaria → Principal (Dividir)' },
+                                            ]}
+                                        />
+                                    </Form.Item>
+                                </Col>
+                                <Col span={12}>
+                                    <Form.Item
+                                        label="Cantidad en la Conversión"
+                                        name="unitsPerSecondaryUnit"
+                                        help={
+                                            conversionDirection === 'primary_to_secondary'
+                                                ? 'Ej: 1 Caja = 12 Unidades'
+                                                : 'Ej: 1 Rollo = 50 Metros'
+                                        }
+                                        rules={[{ required: hasSecondaryUnit, message: 'Requerido' }]}
+                                    >
+                                        <InputNumber
+                                            placeholder="Cantidad"
+                                            style={{ width: '100%' }}
+                                            precision={0}
+                                            min={1}
+                                            onChange={handleUnitsPerSecondaryChange}
+                                        />
+                                    </Form.Item>
+                                </Col>
+                            </Row>
+
+                            <Card title="Precios para Unidad Secundaria" size="small">
+                                {/* Precio de Costo Secundario */}
+                                <Form.Item
+                                    label="Precio de Costo (Empaque)"
+                                    name="secondaryCostPrice"
+                                    rules={[{ type: 'number', min: 0, message: 'Debe ser >= 0' }]}
+                                >
+                                    <InputNumber
+                                        placeholder="Auto-calculado"
+                                        style={{ width: '100%' }}
+                                        precision={2}
+                                        min={0}
+                                        onChange={handleUnitsPerSecondaryChange}
+                                    />
+                                </Form.Item>
+
+                                {/* Precio de Venta Secundario */}
+                                <Form.Item label="Precio de Venta" style={{ marginBottom: 8 }}>
+                                    <Row gutter={8}>
+                                        <Col span={12}>
+                                            <Form.Item
+                                                name="secondarySalePrice"
+                                                noStyle
+                                                rules={[
+                                                    { type: 'number', min: 0, message: 'Debe ser >= 0' },
+                                                    ({ getFieldValue }) => ({
+                                                        validator(_, value) {
+                                                            if (!value) return Promise.resolve();
+                                                            const secondaryCost = getFieldValue('secondaryCostPrice');
+                                                            if (!secondaryCost || value >= secondaryCost) {
+                                                                return Promise.resolve();
+                                                            }
+                                                            return Promise.reject(new Error('Debe ser >= costo empaque'));
+                                                        },
+                                                    }),
+                                                ]}
+                                            >
+                                                <InputNumber
+                                                    placeholder="Auto-calculado"
+                                                    style={{ width: '100%' }}
+                                                    precision={2}
+                                                    min={0}
+                                                    onChange={handleSecondarySalePriceChange}
+                                                />
+                                            </Form.Item>
+                                        </Col>
+                                        <Col span={12}>
+                                            <Form.Item name="secondarySaleProfitPercent" noStyle>
+                                                <InputNumber
+                                                    placeholder="% Ganancia"
+                                                    style={{ width: '100%' }}
+                                                    precision={2}
+                                                    min={-100}
+                                                    max={10000}
+                                                    addonAfter="%"
+                                                    onChange={handleSecondarySaleProfitPercentChange}
+                                                />
+                                            </Form.Item>
+                                        </Col>
+                                    </Row>
+                                </Form.Item>
+
+                                {/* Precio en Oferta Secundario */}
+                                <Form.Item label="Precio en Oferta" style={{ marginBottom: 8 }}>
+                                    <Row gutter={8}>
+                                        <Col span={12}>
+                                            <Form.Item
+                                                name="secondaryOfferPrice"
+                                                noStyle
+                                                rules={[
+                                                    { type: 'number', min: 0, message: 'Debe ser >= 0' },
+                                                    ({ getFieldValue }) => ({
+                                                        validator(_, value) {
+                                                            if (!value) return Promise.resolve();
+                                                            const secondaryCost = getFieldValue('secondaryCostPrice');
+                                                            if (!secondaryCost || value >= secondaryCost) {
+                                                                return Promise.resolve();
+                                                            }
+                                                            return Promise.reject(new Error('Debe ser >= costo empaque'));
+                                                        },
+                                                    }),
+                                                ]}
+                                            >
+                                                <InputNumber
+                                                    placeholder="Auto-calculado"
+                                                    style={{ width: '100%' }}
+                                                    precision={2}
+                                                    min={0}
+                                                    onChange={handleSecondaryOfferPriceChange}
+                                                />
+                                            </Form.Item>
+                                        </Col>
+                                        <Col span={12}>
+                                            <Form.Item name="secondaryOfferProfitPercent" noStyle>
+                                                <InputNumber
+                                                    placeholder="% Ganancia"
+                                                    style={{ width: '100%' }}
+                                                    precision={2}
+                                                    min={-100}
+                                                    max={10000}
+                                                    addonAfter="%"
+                                                    onChange={handleSecondaryOfferProfitPercentChange}
+                                                />
+                                            </Form.Item>
+                                        </Col>
+                                    </Row>
+                                </Form.Item>
+
+                                {/* Precio al Mayor Secundario */}
+                                <Form.Item label="Precio al Mayor" style={{ marginBottom: 8 }}>
+                                    <Row gutter={8}>
+                                        <Col span={12}>
+                                            <Form.Item
+                                                name="secondaryWholesalePrice"
+                                                noStyle
+                                                rules={[
+                                                    { type: 'number', min: 0, message: 'Debe ser >= 0' },
+                                                    ({ getFieldValue }) => ({
+                                                        validator(_, value) {
+                                                            if (!value) return Promise.resolve();
+                                                            const secondaryCost = getFieldValue('secondaryCostPrice');
+                                                            if (!secondaryCost || value >= secondaryCost) {
+                                                                return Promise.resolve();
+                                                            }
+                                                            return Promise.reject(new Error('Debe ser >= costo empaque'));
+                                                        },
+                                                    }),
+                                                ]}
+                                            >
+                                                <InputNumber
+                                                    placeholder="Auto-calculado"
+                                                    style={{ width: '100%' }}
+                                                    precision={2}
+                                                    min={0}
+                                                    onChange={handleSecondaryWholesalePriceChange}
+                                                />
+                                            </Form.Item>
+                                        </Col>
+                                        <Col span={12}>
+                                            <Form.Item name="secondaryWholesaleProfitPercent" noStyle>
+                                                <InputNumber
+                                                    placeholder="% Ganancia"
+                                                    style={{ width: '100%' }}
+                                                    precision={2}
+                                                    min={-100}
+                                                    max={10000}
+                                                    addonAfter="%"
+                                                    onChange={handleSecondaryWholesaleProfitPercentChange}
+                                                />
+                                            </Form.Item>
+                                        </Col>
+                                    </Row>
+                                </Form.Item>
+                            </Card>
+                        </>
+                    ))}
+                </Form>
+            </Modal>
+
+            <PriceUpdateConfirmModal
+                visible={priceUpdateModalVisible}
+                products={costChangeInfo ? [costChangeInfo] : []}
+                currencySymbol={selectedCurrency?.symbol || product?.currency?.symbol || '$'}
+                onConfirm={handlePriceUpdateConfirm}
+                onCancel={handlePriceUpdateCancel}
+                loading={priceUpdateLoading}
+            />
+        </>
     );
 };
