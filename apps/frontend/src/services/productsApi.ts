@@ -1,6 +1,4 @@
-import axios from 'axios';
-
-import { BASE_URL as API_URL } from './apiConfig';
+import { api } from './apiConfig';
 
 export interface Product {
     id: string;
@@ -111,26 +109,26 @@ export const productsApi = {
         if (subcategoryId) params.append('subcategoryId', subcategoryId);
         if (type) params.append('type', type);
 
-        const { data } = await axios.get(`${API_URL}/products`, { params });
+        const { data } = await api.get(`/products`, { params });
         return data;
     },
 
     getOne: async (id: string): Promise<Product> => {
-        const { data } = await axios.get(`${API_URL}/products/${id}`);
+        const { data } = await api.get(`/products/${id}`);
         return data;
     },
 
     create: async (dto: CreateProductDto): Promise<Product> => {
-        const { data } = await axios.post(`${API_URL}/products`, dto);
+        const { data } = await api.post(`/products`, dto);
         return data;
     },
 
     update: async (id: string, dto: UpdateProductDto): Promise<Product> => {
-        const { data } = await axios.patch(`${API_URL}/products/${id}`, dto);
+        const { data } = await api.patch(`/products/${id}`, dto);
         return data;
     },
 
     delete: async (id: string): Promise<void> => {
-        await axios.delete(`${API_URL}/products/${id}`);
+        await api.delete(`/products/${id}`);
     },
 };

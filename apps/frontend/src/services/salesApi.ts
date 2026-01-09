@@ -1,6 +1,4 @@
-import axios from 'axios';
-
-import { BASE_URL as API_URL } from './apiConfig';
+import { api } from './apiConfig';
 
 export interface SaleItem {
     id: string;
@@ -69,7 +67,7 @@ export interface SalesFilters {
 
 export const salesApi = {
     getAll: async (): Promise<Sale[]> => {
-        const { data } = await axios.get(`${API_URL}/sales`);
+        const { data } = await api.get(`/sales`);
         return data;
     },
 
@@ -84,41 +82,41 @@ export const salesApi = {
         if (filters.minAmount) params.append('minAmount', filters.minAmount.toString());
         if (filters.maxAmount) params.append('maxAmount', filters.maxAmount.toString());
 
-        const { data } = await axios.get(`${API_URL}/sales?${params.toString()}`);
+        const { data } = await api.get(`/sales?${params.toString()}`);
         return data;
     },
 
     getOne: async (id: string): Promise<Sale> => {
-        const { data } = await axios.get(`${API_URL}/sales/${id}`);
+        const { data } = await api.get(`/sales/${id}`);
         return data;
     },
 
     getNextInvoiceNumber: async (): Promise<string> => {
-        const { data } = await axios.get(`${API_URL}/sales/next-invoice-number`);
+        const { data } = await api.get(`/sales/next-invoice-number`);
         return data;
     },
 
     reserveInvoiceNumber: async (): Promise<string> => {
-        const { data } = await axios.get(`${API_URL}/sales/reserve-invoice-number`);
+        const { data } = await api.get(`/sales/reserve-invoice-number`);
         return data;
     },
 
     create: async (dto: CreateSaleDto): Promise<Sale> => {
-        const { data } = await axios.post(`${API_URL}/sales`, dto);
+        const { data } = await api.post(`/sales`, dto);
         return data;
     },
 
     getClientRecentPurchases: async (clientId: string, limit: number = 5): Promise<Sale[]> => {
-        const { data } = await axios.get(`${API_URL}/sales/client/${clientId}/recent?limit=${limit}`);
+        const { data } = await api.get(`/sales/client/${clientId}/recent?limit=${limit}`);
         return data;
     },
 
     updatePaymentMethod: async (id: string, paymentMethod: string): Promise<Sale> => {
-        const { data } = await axios.patch(`${API_URL}/sales/${id}/payment-method`, { paymentMethod });
+        const { data } = await api.patch(`/sales/${id}/payment-method`, { paymentMethod });
         return data;
     },
 
     remove: async (id: string): Promise<void> => {
-        await axios.delete(`${API_URL}/sales/${id}`);
+        await api.delete(`/sales/${id}`);
     },
 };

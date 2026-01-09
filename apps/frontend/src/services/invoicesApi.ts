@@ -1,9 +1,4 @@
-import axios from 'axios';
-import { BASE_URL } from './apiConfig';
-
-const apiClient = axios.create({
-    baseURL: BASE_URL,
-});
+import { api } from './apiConfig';
 
 export interface Invoice {
     id: string;
@@ -56,27 +51,27 @@ export interface CreateInvoiceDto {
 
 export const invoicesApi = {
     createCreditInvoice: async (data: CreateInvoiceDto): Promise<Invoice> => {
-        const response = await apiClient.post('/invoice', data);
+        const response = await api.post('/invoice', data);
         return response.data;
     },
 
     getClientInvoices: async (clientId: string): Promise<Invoice[]> => {
-        const response = await apiClient.get(`/invoice/client/${clientId}`);
+        const response = await api.get(`/invoice/client/${clientId}`);
         return response.data;
     },
 
     getPendingInvoices: async (): Promise<Invoice[]> => {
-        const response = await apiClient.get('/invoice/pending');
+        const response = await api.get('/invoice/pending');
         return response.data;
     },
 
     getOverdueInvoices: async (): Promise<Invoice[]> => {
-        const response = await apiClient.get('/invoice/overdue');
+        const response = await api.get('/invoice/overdue');
         return response.data;
     },
 
     getInvoiceById: async (id: string): Promise<Invoice> => {
-        const response = await apiClient.get(`/invoice/${id}`);
+        const response = await api.get(`/invoice/${id}`);
         return response.data;
     },
 };

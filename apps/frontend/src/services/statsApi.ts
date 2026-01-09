@@ -1,9 +1,4 @@
-import axios from 'axios';
-import { BASE_URL } from './apiConfig';
-
-const apiClient = axios.create({
-    baseURL: BASE_URL,
-});
+import { api } from './apiConfig';
 
 export interface DashboardStats {
     todaySales: number;
@@ -70,26 +65,26 @@ export interface COGSReport {
 
 export const statsApi = {
     getDashboardStats: async (range?: string): Promise<DashboardStats> => {
-        const response = await apiClient.get('/stats/dashboard', {
+        const response = await api.get('/stats/dashboard', {
             params: { range }
         });
         return response.data;
     },
 
     getInventoryReport: async (currency?: string): Promise<InventoryReport> => {
-        const response = await apiClient.get('/stats/inventory', { params: { currency } });
+        const response = await api.get('/stats/inventory', { params: { currency } });
         return response.data;
     },
 
     getFinanceReport: async (currency?: string, startDate?: string, endDate?: string): Promise<FinanceReport> => {
-        const response = await apiClient.get('/stats/finance', {
+        const response = await api.get('/stats/finance', {
             params: { currency, startDate, endDate }
         });
         return response.data;
     },
 
     getBalanceReport: async (currency?: string): Promise<BalanceEntry[]> => {
-        const response = await apiClient.get('/stats/balance', {
+        const response = await api.get('/stats/balance', {
             params: { currency }
         });
         return response.data;
@@ -102,12 +97,12 @@ export const statsApi = {
         limit?: number;
         currency?: string;
     }): Promise<TopProduct[]> => {
-        const response = await apiClient.get('/stats/top-products', { params: filters });
+        const response = await api.get('/stats/top-products', { params: filters });
         return response.data;
     },
 
     getCOGSReport: async (currency?: string, startDate?: string, endDate?: string): Promise<COGSReport> => {
-        const response = await apiClient.get('/stats/cogs', {
+        const response = await api.get('/stats/cogs', {
             params: { currency, startDate, endDate }
         });
         return response.data;
