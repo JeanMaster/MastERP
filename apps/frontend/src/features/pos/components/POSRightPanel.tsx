@@ -267,7 +267,7 @@ export const POSRightPanel = () => {
                     }}
                     title={formatVenezuelanPrice(priceInPrimary, primaryCurrency?.symbol, 2, false)}
                 >
-                    {formatVenezuelanPrice(priceInPrimary, primaryCurrency?.symbol, 2, true)}
+                    {formatVenezuelanPrice(priceInPrimary, primaryCurrency?.symbol, 2, false)}
                 </div>
 
                 {/* Secondary & Ref Prices Row */}
@@ -284,7 +284,7 @@ export const POSRightPanel = () => {
                     {!isOriginalSameAsPrimary && (
                         <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                             Ref: <strong style={{ color: '#595959' }}>
-                                {formatVenezuelanPrice(Number(originalPrice), originalSymbol, 2, true)}
+                                {formatVenezuelanPrice(Number(originalPrice), originalSymbol, 2, false)}
                             </strong>
                         </span>
                     )}
