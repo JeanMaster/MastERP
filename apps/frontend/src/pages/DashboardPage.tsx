@@ -17,9 +17,19 @@ import { formatVenezuelanPrice } from '../utils/formatters';
 import { Select } from 'antd';
 import { currenciesApi, type Currency } from '../services/currenciesApi';
 import { companySettingsApi } from '../services/companySettingsApi';
+import { useAuth } from '../features/auth/AuthProvider';
 
 export const DashboardPage = () => {
     const navigate = useNavigate();
+    const { user } = useAuth();
+
+    // Redirect Cashiers to POS as they shouldn't see the dashboard
+    useEffect(() => {
+        if (user?.role === 'CASHIER') {
+            navigate('/sales/pos', { replace: true });
+        }
+    }, [user, navigate]);
+
     const [stats, setStats] = useState<DashboardStats | null>(null);
     const [loading, setLoading] = useState(true);
     const [range, setRange] = useState('7days');

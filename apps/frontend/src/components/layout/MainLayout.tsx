@@ -143,9 +143,11 @@ export const MainLayout = () => {
         </>
     );
 
+    const isCashier = user?.role === 'CASHIER';
+
     return (
         <Layout style={{ minHeight: '100vh' }}>
-            {!isMobile ? (
+            {!isMobile && !isCashier && (
                 <Sider
                     trigger={null}
                     collapsible
@@ -163,7 +165,9 @@ export const MainLayout = () => {
                 >
                     {sidebarMenu}
                 </Sider>
-            ) : (
+            )}
+
+            {isMobile && !isCashier && (
                 <Drawer
                     placement="left"
                     onClose={() => setDrawerVisible(false)}
@@ -179,68 +183,70 @@ export const MainLayout = () => {
             )}
 
             <Layout style={{
-                marginLeft: isMobile ? 0 : (collapsed ? 80 : 200),
+                marginLeft: isMobile || isCashier ? 0 : (collapsed ? 80 : 200),
                 transition: 'margin-left 0.2s',
                 minWidth: 0
             }}>
-                <Header style={{
-                    padding: isMobile ? '0 12px' : '0 24px',
-                    background: isDarkMode ? '#001529' : '#fff',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-                    position: 'sticky',
-                    top: 0,
-                    zIndex: 99,
-                    width: '100%',
-                }}>
-                    <Button
-                        type="text"
-                        icon={isMobile ? <MenuUnfoldOutlined /> : (collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />)}
-                        onClick={() => isMobile ? setDrawerVisible(true) : setCollapsed(!collapsed)}
-                        style={{ fontSize: '16px', width: 64, height: 64, color: isDarkMode ? '#fff' : '#000' }}
-                    />
-
-                    <Space size="large">
+                {!isCashier && (
+                    <Header style={{
+                        padding: isMobile ? '0 12px' : '0 24px',
+                        background: isDarkMode ? '#001529' : '#fff',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                        position: 'sticky',
+                        top: 0,
+                        zIndex: 99,
+                        width: '100%',
+                    }}>
                         <Button
                             type="text"
-                            icon={isDarkMode ? <span>☀️</span> : <span>🌙</span>}
-                            onClick={toggleTheme}
-                            size={isMobile ? "middle" : "large"}
-                            title={isDarkMode ? 'Modo Claro' : 'Modo Oscuro'}
-                            style={{ color: isDarkMode ? '#fff' : '#000' }}
+                            icon={isMobile ? <MenuUnfoldOutlined /> : (collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />)}
+                            onClick={() => isMobile ? setDrawerVisible(true) : setCollapsed(!collapsed)}
+                            style={{ fontSize: '16px', width: 64, height: 64, color: isDarkMode ? '#fff' : '#000' }}
                         />
-                        <Button type="text" icon={<BellOutlined />} size={isMobile ? "middle" : "large"} style={{ color: isDarkMode ? '#fff' : '#000' }} />
-                        <Dropdown menu={{
-                            items: [
-                                {
-                                    key: 'logout',
-                                    label: 'Cerrar Sesión',
-                                    icon: <LogoutOutlined />,
-                                    onClick: logout,
-                                    danger: true
-                                }
-                            ]
-                        }}>
-                            <Space style={{ cursor: 'pointer' }}>
-                                <Avatar icon={<UserOutlined />} size={isMobile ? "small" : "default"} />
-                                {!isMobile && (
-                                    <Text strong style={{ color: isDarkMode ? '#fff' : '#000' }}>
-                                        {user?.name || 'Usuario'}
-                                    </Text>
-                                )}
-                            </Space>
-                        </Dropdown>
-                    </Space>
-                </Header>
+
+                        <Space size="large">
+                            <Button
+                                type="text"
+                                icon={isDarkMode ? <span>☀️</span> : <span>🌙</span>}
+                                onClick={toggleTheme}
+                                size={isMobile ? "middle" : "large"}
+                                title={isDarkMode ? 'Modo Claro' : 'Modo Oscuro'}
+                                style={{ color: isDarkMode ? '#fff' : '#000' }}
+                            />
+                            <Button type="text" icon={<BellOutlined />} size={isMobile ? "middle" : "large"} style={{ color: isDarkMode ? '#fff' : '#000' }} />
+                            <Dropdown menu={{
+                                items: [
+                                    {
+                                        key: 'logout',
+                                        label: 'Cerrar Sesión',
+                                        icon: <LogoutOutlined />,
+                                        onClick: logout,
+                                        danger: true
+                                    }
+                                ]
+                            }}>
+                                <Space style={{ cursor: 'pointer' }}>
+                                    <Avatar icon={<UserOutlined />} size={isMobile ? "small" : "default"} />
+                                    {!isMobile && (
+                                        <Text strong style={{ color: isDarkMode ? '#fff' : '#000' }}>
+                                            {user?.name || 'Usuario'}
+                                        </Text>
+                                    )}
+                                </Space>
+                            </Dropdown>
+                        </Space>
+                    </Header>
+                )}
 
                 <Content style={{
-                    margin: location.pathname.includes('/pos') ? '0' : (isMobile ? '4px' : '24px 16px'),
-                    padding: location.pathname.includes('/pos') ? 0 : (isMobile ? 12 : 24),
+                    margin: location.pathname.includes('/pos') || isCashier ? '0' : (isMobile ? '4px' : '24px 16px'),
+                    padding: location.pathname.includes('/pos') || isCashier ? 0 : (isMobile ? 12 : 24),
                     background: '#fff',
                     minHeight: 280,
-                    borderRadius: isMobile ? 8 : 0,
+                    borderRadius: isMobile || isCashier ? 0 : 8,
                     overflow: 'auto'
                 }}>
                     <Outlet />

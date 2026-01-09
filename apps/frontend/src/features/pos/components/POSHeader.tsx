@@ -1,9 +1,10 @@
 import { Layout, Typography, Row, Col, Space, Popover, Grid, Button } from 'antd';
 import { useState, useEffect } from 'react';
 import { usePOSStore } from '../../../store/posStore';
-import { SyncOutlined } from '@ant-design/icons';
+import { SyncOutlined, LogoutOutlined } from '@ant-design/icons';
 import { formatVenezuelanPrice, formatVenezuelanPriceOnly } from '../../../utils/formatters';
 import { ClientPurchaseHistoryCompact } from '../../../components/ClientPurchaseHistory';
+import { useAuth } from '../../auth/AuthProvider';
 
 const { Header } = Layout;
 const { Title, Text } = Typography;
@@ -11,6 +12,7 @@ const { Title, Text } = Typography;
 export const POSHeader = () => {
     const screens = Grid.useBreakpoint();
     const isMobile = !screens.lg;
+    const { user, logout } = useAuth();
     const { totals, activeCustomer, customerId, preferredSecondaryCurrency, currencies, primaryCurrency, nextInvoiceNumber, initialize } = usePOSStore();
     const [isRefreshing, setIsRefreshing] = useState(false);
 
@@ -153,6 +155,19 @@ export const POSHeader = () => {
                                 </Text>
                             </div>
                         </Popover>
+
+                        {user?.role === 'CASHIER' && (
+                            <Button
+                                danger
+                                type="primary"
+                                icon={<LogoutOutlined />}
+                                onClick={logout}
+                                size={isMobile ? "small" : "middle"}
+                                title="Cerrar Sesión"
+                            >
+                                {!isMobile && 'Salir'}
+                            </Button>
+                        )}
                     </div>
                 </Col>
             </Row>
