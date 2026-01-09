@@ -1028,7 +1028,7 @@ export const ProductFormModal = ({ open, product, onClose }: ProductFormModalPro
                                 </Form.Item>
                             </Card>
                         </>
-                    ))}
+                    )}
                 </Form>
             </Modal>
 
