@@ -131,6 +131,7 @@ export const CheckoutModal = ({ open, onCancel, onProcess }: CheckoutModalProps)
                     }
                 } else if (e.ctrlKey && e.key === 'F9' && inputAmount && foreignCurrencies.length > 0) {
                     // Ctrl+F9 = first foreign currency (index 0)
+                    const currency = foreignCurrencies[0];
                     if (currency) {
                         setSelectedMethod(`CURRENCY_${currency.id}`);
                         const finalAmount = (inputAmount === remaining) && currency.exchangeRate ? remaining / currency.exchangeRate : inputAmount;
@@ -138,6 +139,7 @@ export const CheckoutModal = ({ open, onCancel, onProcess }: CheckoutModalProps)
                     }
                 } else if (e.ctrlKey && e.key === 'F10' && inputAmount && foreignCurrencies.length > 1) {
                     // Ctrl+F10 = second foreign currency (index 1)
+                    const currency = foreignCurrencies[1];
                     if (currency) {
                         setSelectedMethod(`CURRENCY_${currency.id}`);
                         const finalAmount = (inputAmount === remaining) && currency.exchangeRate ? remaining / currency.exchangeRate : inputAmount;
@@ -145,6 +147,7 @@ export const CheckoutModal = ({ open, onCancel, onProcess }: CheckoutModalProps)
                     }
                 } else if (e.ctrlKey && e.key === 'F11' && inputAmount && foreignCurrencies.length > 2) {
                     // Ctrl+F11 = third foreign currency (index 2)
+                    const currency = foreignCurrencies[2];
                     if (currency) {
                         setSelectedMethod(`CURRENCY_${currency.id}`);
                         const finalAmount = (inputAmount === remaining) && currency.exchangeRate ? remaining / currency.exchangeRate : inputAmount;
@@ -152,6 +155,7 @@ export const CheckoutModal = ({ open, onCancel, onProcess }: CheckoutModalProps)
                     }
                 } else if (e.ctrlKey && e.key === 'F12' && inputAmount && foreignCurrencies.length > 3) {
                     // Ctrl+F12 = fourth foreign currency (index 3)
+                    const currency = foreignCurrencies[3];
                     if (currency) {
                         setSelectedMethod(`CURRENCY_${currency.id}`);
                         const finalAmount = (inputAmount === remaining) && currency.exchangeRate ? remaining / currency.exchangeRate : inputAmount;
