@@ -1,7 +1,6 @@
-
 import { useState } from 'react';
-import { Card, Table, Button, Input, Tag, Typography, Statistic, Row, Col, Space, Grid } from 'antd';
-import { PlusOutlined, ReloadOutlined, SearchOutlined, DollarOutlined } from '@ant-design/icons';
+import { Card, Table, Button, Input, Tag, Typography, Statistic, Row, Col, Space, Grid, Tooltip } from 'antd';
+import { PlusOutlined, ReloadOutlined, SearchOutlined, DollarOutlined, EditOutlined } from '@ant-design/icons';
 import { useQuery } from '@tanstack/react-query';
 import dayjs from 'dayjs';
 import { expensesApi, type Expense } from '../../services/expensesApi';
@@ -14,12 +13,23 @@ export const ExpensesPage = () => {
     const screens = Grid.useBreakpoint();
     const isMobile = !screens.lg;
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+    const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
     const [searchText, setSearchText] = useState('');
 
     const { data: expenses = [], isLoading, refetch } = useQuery({
         queryKey: ['expenses'],
         queryFn: expensesApi.getAll
     });
+
+    const handleCreate = () => {
+        setEditingExpense(null);
+        setIsCreateModalOpen(true);
+    };
+
+    const handleEdit = (expense: Expense) => {
+        setEditingExpense(expense);
+        setIsCreateModalOpen(true);
+    };
 
     // Defensive check to ensure expenses is an array
     const safeExpenses = Array.isArray(expenses) ? expenses : [];
@@ -143,6 +153,21 @@ export const ExpensesPage = () => {
             title: 'Ref.',
             dataIndex: 'reference',
             key: 'reference',
+        },
+        {
+            title: 'Acciones',
+            key: 'actions',
+            width: 80,
+            render: (_: any, record: Expense) => (
+                <Tooltip title="Editar Gasto">
+                    <Button
+                        icon={<EditOutlined />}
+                        onClick={() => handleEdit(record)}
+                        size="small"
+                        type="text"
+                    />
+                </Tooltip>
+            )
         }
     ];
 
@@ -197,7 +222,7 @@ export const ExpensesPage = () => {
                             <Button
                                 type="primary"
                                 icon={<PlusOutlined />}
-                                onClick={() => setIsCreateModalOpen(true)}
+                                onClick={handleCreate}
                                 danger
                                 block={isMobile}
                             >
@@ -220,6 +245,7 @@ export const ExpensesPage = () => {
             <CreateExpenseModal
                 open={isCreateModalOpen}
                 onCancel={() => setIsCreateModalOpen(false)}
+                expense={editingExpense}
             />
         </div>
     );

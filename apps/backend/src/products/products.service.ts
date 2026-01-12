@@ -143,7 +143,7 @@ export class ProductsService {
         }
 
         // Detect cost change and calculate margins
-        let costChangeInfo = null;
+        let costChangeInfo: any = null;
         if (updateProductDto.costPrice !== undefined) {
             const oldCost = Number(existingProduct.costPrice);
             const newCost = Number(updateProductDto.costPrice);

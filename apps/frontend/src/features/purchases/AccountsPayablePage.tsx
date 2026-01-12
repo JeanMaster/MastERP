@@ -5,7 +5,7 @@ import { SearchOutlined, ReloadOutlined, DollarOutlined } from '@ant-design/icon
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { purchasesApi } from '../../services/purchasesApi';
 import type { Purchase } from '../../services/purchasesApi';
-import { formatVenezuelanPrice, formatDate } from '../../utils/formatters';
+import { formatVenezuelanNumber, formatDate } from '../../utils/formatters';
 import { RegisterPurchasePaymentModal } from './components/RegisterPurchasePaymentModal';
 
 export const AccountsPayablePage = () => {
@@ -57,31 +57,38 @@ export const AccountsPayablePage = () => {
             dataIndex: 'total',
             key: 'total',
             align: 'right' as const,
-            render: (val: number, record: Purchase) => (
-                <b>{record.currencyCode === 'USD' ? '$' : 'Bs'} {formatVenezuelanPrice(val)}</b>
-            )
+            render: (val: number, record: Purchase) => {
+                const symbol = record.currencyCode === 'VES' ? 'Bs.' : record.currencyCode;
+                return <b>{symbol} {formatVenezuelanNumber(val)}</b>;
+            }
         },
         {
             title: 'Pagado',
             dataIndex: 'paidAmount',
             key: 'paidAmount',
             align: 'right' as const,
-            render: (val: number, record: Purchase) => (
-                <span style={{ color: 'green' }}>
-                    {record.currencyCode === 'USD' ? '$' : 'Bs'} {formatVenezuelanPrice(val)}
-                </span>
-            )
+            render: (val: number, record: Purchase) => {
+                const symbol = record.currencyCode === 'VES' ? 'Bs.' : record.currencyCode;
+                return (
+                    <span style={{ color: 'green' }}>
+                        {symbol} {formatVenezuelanNumber(val)}
+                    </span>
+                );
+            }
         },
         {
             title: 'Saldo',
             dataIndex: 'balance',
             key: 'balance',
             align: 'right' as const,
-            render: (val: number, record: Purchase) => (
-                <span style={{ color: val > 0 ? 'red' : 'gray', fontWeight: 'bold' }}>
-                    {record.currencyCode === 'USD' ? '$' : 'Bs'} {formatVenezuelanPrice(val)}
-                </span>
-            )
+            render: (val: number, record: Purchase) => {
+                const symbol = record.currencyCode === 'VES' ? 'Bs.' : record.currencyCode;
+                return (
+                    <span style={{ color: val > 0 ? 'red' : 'gray', fontWeight: 'bold' }}>
+                        {symbol} {formatVenezuelanNumber(val)}
+                    </span>
+                );
+            }
         },
         {
             title: 'Vencimiento',

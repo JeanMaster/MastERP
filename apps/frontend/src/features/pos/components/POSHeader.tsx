@@ -1,7 +1,7 @@
-import { Layout, Typography, Row, Col, Space, Popover, Grid, Button } from 'antd';
+import { Layout, Typography, Row, Col, Space, Popover, Grid, Button, Tooltip } from 'antd';
 import { useState, useEffect } from 'react';
 import { usePOSStore } from '../../../store/posStore';
-import { SyncOutlined, LogoutOutlined } from '@ant-design/icons';
+import { SyncOutlined, LogoutOutlined, FullscreenOutlined, FullscreenExitOutlined } from '@ant-design/icons';
 import { formatVenezuelanPrice, formatVenezuelanPriceOnly } from '../../../utils/formatters';
 import { ClientPurchaseHistoryCompact } from '../../../components/ClientPurchaseHistory';
 import { useAuth } from '../../auth/AuthProvider';
@@ -25,14 +25,33 @@ export const POSHeader = () => {
         }
     };
     const [currentTime, setCurrentTime] = useState(new Date());
+    const [isFullscreen, setIsFullscreen] = useState(false);
 
     useEffect(() => {
         const timer = setInterval(() => {
             setCurrentTime(new Date());
         }, 1000);
 
-        return () => clearInterval(timer);
+        const handleFullscreenChange = () => {
+            setIsFullscreen(!!document.fullscreenElement);
+        };
+        document.addEventListener('fullscreenchange', handleFullscreenChange);
+
+        return () => {
+            clearInterval(timer);
+            document.removeEventListener('fullscreenchange', handleFullscreenChange);
+        };
     }, []);
+
+    const toggleFullscreen = () => {
+        if (!document.fullscreenElement) {
+            document.documentElement.requestFullscreen();
+        } else {
+            if (document.exitFullscreen) {
+                document.exitFullscreen();
+            }
+        }
+    };
 
     return (
         <Header style={{
@@ -155,6 +174,14 @@ export const POSHeader = () => {
                                 </Text>
                             </div>
                         </Popover>
+
+                        <Tooltip title={isFullscreen ? "Salir de Pantalla Completa" : "Pantalla Completa (Modo Kiosco)"}>
+                            <Button
+                                icon={isFullscreen ? <FullscreenExitOutlined /> : <FullscreenOutlined />}
+                                onClick={toggleFullscreen}
+                                size={isMobile ? "small" : "middle"}
+                            />
+                        </Tooltip>
 
                         {user?.role === 'CASHIER' && (
                             <Button

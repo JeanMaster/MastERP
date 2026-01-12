@@ -103,7 +103,7 @@ export const POSFooter = ({ onClientClick, onCheckoutClick }: POSFooterProps) =>
 
             {!isMobile && (
                 <FunctionKey
-                    fKey="ESC"
+                    fKey="SUPR"
                     label="Reset"
                     icon={<ReloadOutlined />}
                     color="#fff1f0"

@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react';
 import { Card, Tabs, Table, Button, Tag, App, Space, Statistic, Row, Col } from 'antd';
-import { DollarOutlined, FileTextOutlined, ClockCircleOutlined, ReloadOutlined } from '@ant-design/icons';
+import { FileTextOutlined, ClockCircleOutlined, ReloadOutlined } from '@ant-design/icons';
 import { invoicesApi, type Invoice } from '../../services/invoicesApi';
 import { paymentsApi } from '../../services/paymentsApi';
+import { currenciesApi } from '../../services/currenciesApi';
 import { RegisterPaymentModal } from './components/RegisterPaymentModal';
 import { ClientStatementModal } from './components/ClientStatementModal';
-import { formatVenezuelanPrice } from '../../utils/formatters';
+import { formatVenezuelanNumber } from '../../utils/formatters';
 import dayjs from 'dayjs';
+import { useQuery } from '@tanstack/react-query';
 
 export const AccountsReceivablePage = () => {
     const { message } = App.useApp();
@@ -22,6 +24,11 @@ export const AccountsReceivablePage = () => {
     const [statementModalVisible, setStatementModalVisible] = useState(false);
     const [statementClient, setStatementClient] = useState<string>('');
     const [statementInvoices, setStatementInvoices] = useState<Invoice[]>([]);
+
+    const { data: currencies = [] } = useQuery({
+        queryKey: ['currencies'],
+        queryFn: currenciesApi.getAll,
+    });
 
     useEffect(() => {
         fetchPendingInvoices();
@@ -76,8 +83,18 @@ export const AccountsReceivablePage = () => {
         }
     };
 
-    // Calculate totals
-    const totalReceivable = pendingInvoices.reduce((sum, inv) => sum + Number(inv.balance), 0);
+    // Calculate totals - Always convert to VES
+    const totalReceivable = pendingInvoices.reduce((sum, inv) => {
+        if (inv.currencyCode === 'VES') {
+            return sum + Number(inv.balance);
+        }
+        // Find currency rate
+        const currency = currencies.find(c => c.code === inv.currencyCode);
+        const rate = currency?.exchangeRate || 0;
+        return sum + (Number(inv.balance) * rate);
+    }, 0);
+
+
     const overdueInvoices = pendingInvoices.filter(inv =>
         inv.dueDate && dayjs(inv.dueDate).isBefore(dayjs())
     );
@@ -138,18 +155,25 @@ export const AccountsReceivablePage = () => {
             dataIndex: 'total',
             key: 'total',
             align: 'right' as const,
-            render: (amount: number, record: Invoice) => `${record.currencyCode === 'VES' ? 'Bs.' : record.currencyCode} ${formatVenezuelanPrice(amount)}`,
+            render: (amount: number, record: Invoice) => {
+                const symbol = record.currencyCode === 'VES' ? 'Bs.' : record.currencyCode;
+                // Avoid "UDT 2.00 Bs" issue. Just show Symbol + Amount
+                return `${symbol} ${formatVenezuelanNumber(amount)}`;
+            }
         },
         {
             title: 'Balance',
             dataIndex: 'balance',
             key: 'balance',
             align: 'right' as const,
-            render: (amount: number, record: Invoice) => (
-                <strong style={{ color: '#ff4d4f' }}>
-                    {record.currencyCode === 'VES' ? 'Bs.' : record.currencyCode} {formatVenezuelanPrice(amount)}
-                </strong>
-            ),
+            render: (amount: number, record: Invoice) => {
+                const symbol = record.currencyCode === 'VES' ? 'Bs.' : record.currencyCode;
+                return (
+                    <strong style={{ color: '#ff4d4f' }}>
+                        {symbol} {formatVenezuelanNumber(amount)}
+                    </strong>
+                );
+            },
         },
         {
             title: 'Acciones',
@@ -196,7 +220,7 @@ export const AccountsReceivablePage = () => {
             dataIndex: 'amount',
             key: 'amount',
             align: 'right' as const,
-            render: (amount: number) => `Bs. ${formatVenezuelanPrice(amount)}`,
+            render: (amount: number) => `Bs. ${formatVenezuelanNumber(amount)}`,
         },
         {
             title: 'Método',
@@ -212,58 +236,60 @@ export const AccountsReceivablePage = () => {
     ];
 
     return (
-        <div>
-            {/* KPIs */}
-            <Row gutter={16} style={{ marginBottom: 24 }}>
-                <Col xs={24} sm={12} lg={8}>
-                    <Card>
-                        <Statistic
-                            title="Total por Cobrar"
-                            value={totalReceivable}
-                            precision={2}
-                            prefix="Bs."
-                            styles={{ content: { color: '#ff4d4f' } }}
-                            suffix={<DollarOutlined />}
-                        />
-                    </Card>
-                </Col>
-                <Col xs={24} sm={12} lg={8}>
-                    <Card>
-                        <Statistic
-                            title="Facturas Pendientes"
-                            value={pendingInvoices.length}
-                            styles={{ content: { color: '#1890ff' } }}
-                            suffix={<FileTextOutlined />}
-                        />
-                    </Card>
-                </Col>
-                <Col xs={24} sm={12} lg={8}>
-                    <Card>
-                        <Statistic
-                            title="Facturas Vencidas"
-                            value={overdueInvoices.length}
-                            styles={{ content: { color: overdueInvoices.length > 0 ? '#ff4d4f' : '#52c41a' } }}
-                            suffix={<ClockCircleOutlined />}
-                        />
-                    </Card>
-                </Col>
-            </Row>
+        <div style={{ padding: '24px' }}>
+            <div style={{ marginBottom: 24 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                    <h2 style={{ fontSize: 24, margin: 0 }}>Cuentas por Cobrar</h2>
+                    <Space>
 
-            {/* Tabs */}
-            <Card
-                title="Cuentas por Cobrar"
-                extra={
-                    <Button
-                        icon={<ReloadOutlined />}
-                        onClick={() => {
-                            fetchPendingInvoices();
-                            fetchAllPayments();
-                        }}
-                    >
-                        Actualizar
-                    </Button>
-                }
-            >
+                        <Button
+                            icon={<ReloadOutlined />}
+                            onClick={() => {
+                                fetchPendingInvoices();
+                                fetchAllPayments();
+                            }}
+                        >
+                            Actualizar
+                        </Button>
+                    </Space>
+                </div>
+
+                <Row gutter={16}>
+                    <Col span={8}>
+                        <Card>
+                            <Statistic
+                                title="Total por Cobrar"
+                                value={totalReceivable}
+                                precision={2}
+                                prefix="Bs."
+                                valueStyle={{ color: '#cf1322' }}
+                            />
+                        </Card>
+                    </Col>
+                    <Col span={8}>
+                        <Card>
+                            <Statistic
+                                title="Facturas Pendientes"
+                                value={pendingInvoices.length}
+                                prefix={<FileTextOutlined />}
+                                valueStyle={{ color: '#1890ff' }}
+                            />
+                        </Card>
+                    </Col>
+                    <Col span={8}>
+                        <Card>
+                            <Statistic
+                                title="Facturas Vencidas"
+                                value={overdueInvoices.length}
+                                prefix={<ClockCircleOutlined />}
+                                valueStyle={{ color: '#52c41a' }}
+                            />
+                        </Card>
+                    </Col>
+                </Row>
+            </div>
+
+            <Card>
                 <Tabs activeKey={activeTab} onChange={setActiveTab}>
                     <Tabs.TabPane tab="Facturas Pendientes" key="pending">
                         <Table

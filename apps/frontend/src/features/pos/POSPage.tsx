@@ -45,7 +45,7 @@ export const POSPage = () => {
         } else if (e.key === 'F9') {
             e.preventDefault();
             setIsCheckoutOpen(true);
-        } else if (e.key === 'Escape') {
+        } else if (e.key === 'Delete') {
             resetPOS();
         }
     };

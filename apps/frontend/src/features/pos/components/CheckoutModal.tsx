@@ -131,31 +131,31 @@ export const CheckoutModal = ({ open, onCancel, onProcess }: CheckoutModalProps)
                     }
                 } else if (e.ctrlKey && e.key === 'F9' && inputAmount && foreignCurrencies.length > 0) {
                     // Ctrl+F9 = first foreign currency (index 0)
-                    const currency = foreignCurrencies[0];
                     if (currency) {
                         setSelectedMethod(`CURRENCY_${currency.id}`);
-                        addPayment(`CURRENCY_${currency.code}`, `CT+F9 ${currency.name}`, currency.id);
+                        const finalAmount = (inputAmount === remaining) && currency.exchangeRate ? remaining / currency.exchangeRate : inputAmount;
+                        addPayment(`CURRENCY_${currency.code}`, `CT+F9 ${currency.name}`, currency.id, finalAmount || undefined);
                     }
                 } else if (e.ctrlKey && e.key === 'F10' && inputAmount && foreignCurrencies.length > 1) {
                     // Ctrl+F10 = second foreign currency (index 1)
-                    const currency = foreignCurrencies[1];
                     if (currency) {
                         setSelectedMethod(`CURRENCY_${currency.id}`);
-                        addPayment(`CURRENCY_${currency.code}`, `CT+F10 ${currency.name}`, currency.id);
+                        const finalAmount = (inputAmount === remaining) && currency.exchangeRate ? remaining / currency.exchangeRate : inputAmount;
+                        addPayment(`CURRENCY_${currency.code}`, `CT+F10 ${currency.name}`, currency.id, finalAmount || undefined);
                     }
                 } else if (e.ctrlKey && e.key === 'F11' && inputAmount && foreignCurrencies.length > 2) {
                     // Ctrl+F11 = third foreign currency (index 2)
-                    const currency = foreignCurrencies[2];
                     if (currency) {
                         setSelectedMethod(`CURRENCY_${currency.id}`);
-                        addPayment(`CURRENCY_${currency.code}`, `CT+F11 ${currency.name}`, currency.id);
+                        const finalAmount = (inputAmount === remaining) && currency.exchangeRate ? remaining / currency.exchangeRate : inputAmount;
+                        addPayment(`CURRENCY_${currency.code}`, `CT+F11 ${currency.name}`, currency.id, finalAmount || undefined);
                     }
                 } else if (e.ctrlKey && e.key === 'F12' && inputAmount && foreignCurrencies.length > 3) {
                     // Ctrl+F12 = fourth foreign currency (index 3)
-                    const currency = foreignCurrencies[3];
                     if (currency) {
                         setSelectedMethod(`CURRENCY_${currency.id}`);
-                        addPayment(`CURRENCY_${currency.code}`, `CT+F12 ${currency.name}`, currency.id);
+                        const finalAmount = (inputAmount === remaining) && currency.exchangeRate ? remaining / currency.exchangeRate : inputAmount;
+                        addPayment(`CURRENCY_${currency.code}`, `CT+F12 ${currency.name}`, currency.id, finalAmount || undefined);
                     }
                 } else if (e.key === 'F9' && isFullyPaid) {
                     handleProcessSale();
@@ -171,12 +171,13 @@ export const CheckoutModal = ({ open, onCancel, onProcess }: CheckoutModalProps)
         return () => window.removeEventListener('keydown', handleKeyDown, true);
     }, [open, selectedPaymentId, isFullyPaid, payments, inputAmount]);
 
-    const addPayment = (method: string, methodLabel: string, currencyId?: string) => {
-        if (!inputAmount || inputAmount <= 0) return;
+    const addPayment = (method: string, methodLabel: string, currencyId?: string, amountOverride?: number) => {
+        const amountToProcess = amountOverride !== undefined ? amountOverride : inputAmount;
+        if (!amountToProcess || amountToProcess <= 0) return;
         if (isFullyPaid) return; // Don't allow more payments if already paid
 
-        let amountInBs = inputAmount;
-        let originalAmount = inputAmount;
+        let amountInBs = amountToProcess;
+        let originalAmount = amountToProcess;
         let originalCurrency = primaryCurrency?.symbol || 'Bs';
         let currencySymbol = primaryCurrency?.symbol || 'Bs';
 
@@ -184,9 +185,9 @@ export const CheckoutModal = ({ open, onCancel, onProcess }: CheckoutModalProps)
         if (currencyId && currencyId !== primaryCurrency?.id) {
             const currency = currencies.find(c => c.id === currencyId);
             if (currency && currency.exchangeRate) {
-                originalAmount = inputAmount;
+                originalAmount = amountToProcess;
                 originalCurrency = currency.symbol;
-                amountInBs = inputAmount * currency.exchangeRate; // Convert to Bs
+                amountInBs = amountToProcess * currency.exchangeRate; // Convert to Bs
                 currencySymbol = currency.symbol;
             }
         }
@@ -494,7 +495,10 @@ export const CheckoutModal = ({ open, onCancel, onProcess }: CheckoutModalProps)
                                                 size="large"
                                                 onClick={() => {
                                                     setSelectedMethod(`CURRENCY_${currency.id}`);
-                                                    addPayment(`CURRENCY_${currency.code}`, `CT+F${index + 9} ${currency.name}`, currency.id);
+                                                    const finalAmount = (inputAmount === remaining) && currency.exchangeRate
+                                                        ? remaining / currency.exchangeRate
+                                                        : inputAmount;
+                                                    addPayment(`CURRENCY_${currency.code}`, `CT+F${index + 9} ${currency.name}`, currency.id, finalAmount || undefined);
                                                 }}
                                                 disabled={isFullyPaid || !inputAmount || inputAmount <= 0}
                                                 style={{

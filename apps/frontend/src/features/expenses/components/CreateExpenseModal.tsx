@@ -3,13 +3,14 @@ import { useState, useEffect } from 'react';
 import { Modal, Form, Input, InputNumber, DatePicker, Select, message, Space } from 'antd';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import dayjs from 'dayjs';
-import { expensesApi, type CreateExpenseDto } from '../../../services/expensesApi';
+import { expensesApi, type UpdateExpenseDto, type Expense } from '../../../services/expensesApi';
 import { currenciesApi } from '../../../services/currenciesApi';
 import { formatVenezuelanPrice } from '../../../utils/formatters';
 
 interface CreateExpenseModalProps {
     open: boolean;
     onCancel: () => void;
+    expense?: Expense | null; // Expense to edit
 }
 
 const EXPENSE_CATEGORIES = [
@@ -34,7 +35,7 @@ const PAYMENT_METHODS = [
     { value: 'USDT', label: 'USDT (Binance)' },
 ];
 
-export const CreateExpenseModal = ({ open, onCancel }: CreateExpenseModalProps) => {
+export const CreateExpenseModal = ({ open, onCancel, expense }: CreateExpenseModalProps) => {
     const [form] = Form.useForm();
     const queryClient = useQueryClient();
     const [loading, setLoading] = useState(false);
@@ -52,34 +53,52 @@ export const CreateExpenseModal = ({ open, onCancel }: CreateExpenseModalProps) 
 
     // Set default values when modal opens
     useEffect(() => {
-        if (open && currencies.length > 0) {
-            // Default to USD usually if available, or Primary
-            const primary = currencies.find(c => c.isPrimary);
+        if (open) {
+            if (expense) {
+                // Edit Mode: Populate fields
+                const currency = currencies.find(c => c.code === expense.currencyCode);
+                form.setFieldsValue({
+                    description: expense.description,
+                    amount: expense.amount,
+                    currencyId: currency?.id,
+                    exchangeRate: expense.exchangeRate,
+                    date: dayjs(expense.date),
+                    category: expense.category,
+                    paymentMethod: expense.paymentMethod,
+                    reference: expense.reference,
+                    notes: expense.notes,
+                });
+            } else if (currencies.length > 0) {
+                // Create Mode: Set Defaults
+                form.resetFields();
 
-            // Try to set USD as default if primary is VES, because user said options are usually USD
-            const usd = currencies.find(c => c.code === 'USD');
-            const defaultCurrency = usd || primary || currencies[0];
+                // Default to USD usually if available, or Primary
+                const primary = currencies.find(c => c.isPrimary);
 
-            form.setFieldValue('currencyId', defaultCurrency.id);
+                // Try to set USD as default if primary is VES, because user said options are usually USD
+                const usd = currencies.find(c => c.code === 'USD');
+                const defaultCurrency = usd || primary || currencies[0];
 
-            // Set Exchange Rate: Always attempt to set the USD Rate (Secondary)
-            const usdCurrency = currencies.find(c => c.code === 'USD');
-            if (usdCurrency) {
-                form.setFieldValue('exchangeRate', usdCurrency.exchangeRate || 1);
-            } else {
-                form.setFieldValue('exchangeRate', 1);
+                form.setFieldValue('currencyId', defaultCurrency.id);
+
+                // Set Exchange Rate: Always attempt to set the USD Rate (Secondary)
+                const usdCurrency = currencies.find(c => c.code === 'USD');
+                if (usdCurrency) {
+                    form.setFieldValue('exchangeRate', usdCurrency.exchangeRate || 1);
+                } else {
+                    form.setFieldValue('exchangeRate', 1);
+                }
+
+                // Set other defaults
+                form.setFieldsValue({
+                    date: dayjs(),
+                    paymentMethod: 'CASH',
+                    category: 'OTROS'
+                });
             }
         }
-    }, [open, currencies, form]);
+    }, [open, expense, currencies, form]);
 
-    // Update rate when currency changes? 
-    // NO. If we are in Venezuela, the rate is "The Rate". 
-    // It doesn't change because I decided to pay in Bs. The Rate today is 50.
-    // If I pay in Bs, Rate is 50. If I pay in $, Rate is 50.
-    // So we REMOVE the logic that overwrites the rate when switching currency.
-    // UNLESS the user switches to Euro? 
-    // Let's assume the user knows what they are doing. 
-    // We only set the default on load.
     const handleCurrencyChange = () => {
         // Do nothing to the rate. Preserve the manually entered or default system rate.
     };
@@ -98,11 +117,26 @@ export const CreateExpenseModal = ({ open, onCancel }: CreateExpenseModalProps) 
         }
     });
 
+    const updateExpenseMutation = useMutation({
+        mutationFn: ({ id, data }: { id: string; data: UpdateExpenseDto }) => expensesApi.update(id, data),
+        onSuccess: () => {
+            message.success('Gasto actualizado exitosamente');
+            queryClient.invalidateQueries({ queryKey: ['expenses'] });
+            form.resetFields();
+            onCancel();
+        },
+        onError: (error) => {
+            message.error('Error al actualizar el gasto');
+            console.error(error);
+        }
+    });
+
     const handleSubmit = async (values: any) => {
         setLoading(true);
         try {
             const selectedCurrency = currencies.find(c => c.id === values.currencyId);
-            const expenseData: CreateExpenseDto = {
+
+            const commonData = {
                 description: values.description,
                 amount: Number(values.amount),
                 currencyCode: selectedCurrency?.code || 'VES',
@@ -113,7 +147,12 @@ export const CreateExpenseModal = ({ open, onCancel }: CreateExpenseModalProps) 
                 reference: values.reference,
                 notes: values.notes,
             };
-            await createExpenseMutation.mutateAsync(expenseData);
+
+            if (expense) {
+                await updateExpenseMutation.mutateAsync({ id: expense.id, data: commonData });
+            } else {
+                await createExpenseMutation.mutateAsync(commonData);
+            }
         } finally {
             setLoading(false);
         }
@@ -123,30 +162,14 @@ export const CreateExpenseModal = ({ open, onCancel }: CreateExpenseModalProps) 
     const selectedCurrencyObj = currencies.find(c => c.id === selectedCurrencyId);
     let conversionPreview = null;
 
-    // Logic: 
-    // If currency is NOT primary (e.g. USD), show equivalent in Primary (VES) = amount * rate.
-    // If currency IS primary (VES), show equivalent in Secondary (USD) = amount / rate (assuming rate is stored as VES/USD).
-    // The user said: "1000 bs and rate is 500 per $, that is 2 dollars". So Rate is VES per USD.
-
     if (selectedCurrencyObj && amount && exchangeRate) {
         if (selectedCurrencyObj.isPrimary) {
-            // It's VES. Convert to USD (assuming USD is secondary with rate > 1)
-            // Find secondary currency
             const secondary = currencies.find(c => !c.isPrimary);
             if (secondary) {
-                // Usually secondary rate in system is stored on the secondary currency.
-                // If VES is primary (rate 1), USD is secondary (rate 50).
-                // We are inputting VES amount.
-                // Wait, if I am selecting VES, the exchange rate field should probably be disabled or 1?
-                // No, in hyperinflation, the rate changes daily.
-                // If I pay in Bs, the rate doesn't really matter for the transaction itself, but for REPORTING in USD.
-                // So if I pay 500 Bs, and rate is 50, that's $10.
-                // So conversion = amount / rate (if rate is Bs/$).
-                const usdAmount = amount / exchangeRate; // Simplified assumption
+                const usdAmount = amount / exchangeRate;
                 conversionPreview = `Equivalente en Divisa: ${formatVenezuelanPrice(usdAmount, '$')}`;
             }
         } else {
-            // It's USD. Convert to VES.
             const vesAmount = amount * exchangeRate;
             conversionPreview = `Equivalente en Bs: ${formatVenezuelanPrice(vesAmount, 'Bs.')}`;
         }
@@ -154,12 +177,12 @@ export const CreateExpenseModal = ({ open, onCancel }: CreateExpenseModalProps) 
 
     return (
         <Modal
-            title="Registrar Nuevo Gasto"
+            title={expense ? "Editar Gasto" : "Registrar Nuevo Gasto"}
             open={open}
             onCancel={onCancel}
             onOk={() => form.submit()}
             confirmLoading={loading}
-            okText="Registrar"
+            okText={expense ? "Guardar Cambios" : "Registrar"}
             cancelText="Cancelar"
             width={600}
         >
@@ -167,11 +190,6 @@ export const CreateExpenseModal = ({ open, onCancel }: CreateExpenseModalProps) 
                 form={form}
                 layout="vertical"
                 onFinish={handleSubmit}
-                initialValues={{
-                    date: dayjs(),
-                    paymentMethod: 'CASH',
-                    category: 'OTROS'
-                }}
             >
                 <Form.Item
                     name="description"
@@ -274,3 +292,4 @@ export const CreateExpenseModal = ({ open, onCancel }: CreateExpenseModalProps) 
         </Modal>
     );
 };
+

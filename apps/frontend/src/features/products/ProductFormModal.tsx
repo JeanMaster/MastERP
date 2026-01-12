@@ -208,16 +208,24 @@ export const ProductFormModal = ({ open, product, onClose }: ProductFormModalPro
 
                 await productsApi.batchUpdatePrices(updates);
                 message.success('Precios actualizados exitosamente');
+
                 setPriceUpdateModalVisible(false);
-                queryClient.invalidateQueries({ queryKey: ['products'] });
-                onClose();
+                await queryClient.invalidateQueries({ queryKey: ['products'] });
+
                 form.resetFields();
+                // Usar setTimeout para asegurar que el modal interno se cierre antes de cerrar el principal
+                setTimeout(() => {
+                    onClose();
+                }, 100);
             }
         } catch (error) {
             console.error(error);
             message.error('Error al actualizar precios');
         } finally {
-            setPriceUpdateLoading(false);
+            // Check if component is still mounted logic handled by React, but we can skip this if we closed
+            // setPriceUpdateLoading(false); // Can cause warning if unmounted, but harmless.
+            // Better to leave it or check a ref. For now standard practice.
+            if (open) setPriceUpdateLoading(false);
         }
     };
 
@@ -225,8 +233,10 @@ export const ProductFormModal = ({ open, product, onClose }: ProductFormModalPro
         setPriceUpdateModalVisible(false);
         message.success('Producto actualizado (precios sin cambios)');
         queryClient.invalidateQueries({ queryKey: ['products'] });
-        onClose();
         form.resetFields();
+        setTimeout(() => {
+            onClose();
+        }, 100);
     };
 
     const handleCategoryChange = (value: string) => {
