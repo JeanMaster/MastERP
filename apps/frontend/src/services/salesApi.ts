@@ -63,6 +63,7 @@ export interface SalesFilters {
     paymentMethod?: string;
     minAmount?: number;
     maxAmount?: number;
+    invoiceNumber?: string;
 }
 
 export const salesApi = {
@@ -81,6 +82,7 @@ export const salesApi = {
         if (filters.paymentMethod) params.append('paymentMethod', filters.paymentMethod);
         if (filters.minAmount) params.append('minAmount', filters.minAmount.toString());
         if (filters.maxAmount) params.append('maxAmount', filters.maxAmount.toString());
+        if (filters.invoiceNumber) params.append('invoiceNumber', filters.invoiceNumber);
 
         const { data } = await api.get(`/sales?${params.toString()}`);
         return data;

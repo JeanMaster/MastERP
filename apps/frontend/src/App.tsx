@@ -27,6 +27,7 @@ import { EmployeesPage } from './features/hr/pages/EmployeesPage';
 import { PayrollPage } from './features/hr/pages/PayrollPage';
 import { PayrollDetailPage } from './features/hr/pages/PayrollDetailPage';
 import { AccountsPayablePage } from './features/purchases/AccountsPayablePage';
+import { PurchaseOrdersPage } from './features/purchases/PurchaseOrdersPage';
 import { BanksPage } from './features/banks/BanksPage'; // Importación
 import { UsersPage } from './features/users/UsersPage';
 import {
@@ -76,6 +77,7 @@ function App() {
 
           <Route path="purchases" element={<ModulePage title="Compras" icon={<ShoppingOutlined />} />} />
           <Route path="suppliers" element={<SuppliersPage />} />
+          <Route path="purchases/orders" element={<PurchaseOrdersPage />} />
           <Route path="purchases/history" element={<PurchasesPage />} />
           <Route path="accounts-payable" element={<AccountsPayablePage />} />
 

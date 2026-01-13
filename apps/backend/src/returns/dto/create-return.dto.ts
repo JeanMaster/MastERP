@@ -72,6 +72,13 @@ export class CreateReturnDto {
     @Type(() => CreateReturnItemDto)
     items: CreateReturnItemDto[];
 
+    @ApiProperty({ type: [CreateReturnItemDto], required: false, description: 'Items entregados en cambio' })
+    @IsOptional()
+    @IsArray()
+    @ValidateNested({ each: true })
+    @Type(() => CreateReturnItemDto)
+    replacementItems?: CreateReturnItemDto[];
+
     @ApiProperty({ description: 'Monto a reembolsar' })
     @IsNumber()
     @Min(0)

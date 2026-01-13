@@ -165,7 +165,10 @@ export class ReturnsService {
                 requestedBy: createReturnDto.requestedBy,
                 items: {
                     create: createReturnDto.items
-                }
+                },
+                replacementItems: createReturnDto.replacementItems ? {
+                    create: createReturnDto.replacementItems
+                } : undefined
             },
             include: {
                 items: {
@@ -270,13 +273,55 @@ export class ReturnsService {
         }
 
         await this.prisma.$transaction(async (prisma) => {
-            // NOTA: Se eliminó la actualización automática de inventario a petición del usuario.
-            // Los ajustes de stock deben realizarse manualmente en el módulo "Ajustes de Inventario".
+            // Restore stock for each item returned
+            for (const item of returnRecord.items) {
+                if (item.product.type !== 'SERVICE') {
+                    // Increment stock for returned item
+                    await prisma.product.update({
+                        where: { id: item.productId },
+                        data: {
+                            stock: {
+                                increment: Number(item.quantity),
+                            },
+                        },
+                    });
 
-            /* Lógica anterior eliminada:
-             * - Incremento por restock
-             * - Decremento por cambio de producto
-             */
+                    // If it's a SAME item exchange, decrement stock for the replacement
+                    if (returnRecord.returnType === 'EXCHANGE_SAME') {
+                        await prisma.product.update({
+                            where: { id: item.productId },
+                            data: {
+                                stock: {
+                                    decrement: Number(item.quantity),
+                                },
+                            },
+                        });
+                    }
+                }
+            }
+
+            // Restore stock for replacement items in EXCHANGE_DIFFERENT
+            if (returnRecord.returnType === 'EXCHANGE_DIFFERENT') {
+                const returnWithReplacements = await prisma.return.findUnique({
+                    where: { id },
+                    include: { replacementItems: { include: { product: true } } }
+                });
+
+                if (returnWithReplacements?.replacementItems) {
+                    for (const replItem of returnWithReplacements.replacementItems) {
+                        if (replItem.product.type !== 'SERVICE') {
+                            await prisma.product.update({
+                                where: { id: replItem.productId },
+                                data: {
+                                    stock: {
+                                        decrement: Number(replItem.quantity),
+                                    },
+                                },
+                            });
+                        }
+                    }
+                }
+            }
 
             // Actualizar estado de la devolución
             await prisma.return.update({

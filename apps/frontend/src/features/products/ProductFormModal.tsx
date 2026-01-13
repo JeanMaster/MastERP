@@ -26,6 +26,9 @@ export const ProductFormModal = ({ open, product, onClose }: ProductFormModalPro
     const [costChangeInfo, setCostChangeInfo] = useState<any>(null);
     const [priceUpdateLoading, setPriceUpdateLoading] = useState(false);
     const [selectedCurrency, setSelectedCurrency] = useState<any>(null);
+    const [similarProductSearch, setSimilarProductSearch] = useState<string>('');
+    const [similarProducts, setSimilarProducts] = useState<Product[]>([]);
+    const [isSearchingSimilar, setIsSearchingSimilar] = useState(false);
 
     // Fetch departments
     const { data: departments = [] } = useQuery({
@@ -158,6 +161,22 @@ export const ProductFormModal = ({ open, product, onClose }: ProductFormModalPro
         }
     }, [product, form, open]);
 
+    // Keyboard Shortcuts
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (!open) return;
+
+            if (e.key === 'F9') {
+                e.preventDefault();
+                e.stopPropagation();
+                handleSubmit();
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown, true);
+        return () => window.removeEventListener('keydown', handleKeyDown, true);
+    }, [open, form]);
+
     const handleSubmit = async () => {
         try {
             const values = await form.validateFields();
@@ -242,6 +261,67 @@ export const ProductFormModal = ({ open, product, onClose }: ProductFormModalPro
     const handleCategoryChange = (value: string) => {
         setSelectedCategory(value);
         form.setFieldValue('subcategoryId', undefined);
+    };
+
+    const handleSearchSimilar = (value: string) => {
+        setSimilarProductSearch(value);
+        if (value.length > 2) {
+            setIsSearchingSimilar(true);
+            productsApi.getAll({ search: value, limit: 10 }).then(data => {
+                // Filter out current product if editing
+                const filtered = data.filter((p: Product) => p.id !== product?.id);
+                setSimilarProducts(filtered);
+                setIsSearchingSimilar(false);
+            }).catch(() => {
+                setIsSearchingSimilar(false);
+            });
+        } else {
+            setSimilarProducts([]);
+        }
+    };
+
+    const handleImportFromProduct = (productId: string) => {
+        const found = similarProducts.find(p => p.id === productId);
+        if (!found) return;
+
+        Modal.confirm({
+            title: '¿Importar configuración de precios?',
+            content: `Se copiará la moneda, costo y precios de venta de "${found.name}". Los valores actuales se sobrescribirán.`,
+            onOk: () => {
+                const costPrice = found.costPrice;
+                const saleProfitPercent = costPrice > 0 ? ((found.salePrice - costPrice) / costPrice) * 100 : 0;
+                const offerProfitPercent = found.offerPrice && costPrice > 0
+                    ? ((found.offerPrice - costPrice) / costPrice) * 100
+                    : 0;
+                const wholesaleProfitPercent = found.wholesalePrice && costPrice > 0
+                    ? ((found.wholesalePrice - costPrice) / costPrice) * 100
+                    : 0;
+
+                form.setFieldsValue({
+                    currencyId: found.currencyId,
+                    costPrice: found.costPrice,
+                    salePrice: found.salePrice,
+                    saleProfitPercent: Number(saleProfitPercent.toFixed(2)),
+                    offerPrice: found.offerPrice,
+                    offerProfitPercent: Number(offerProfitPercent.toFixed(2)),
+                    wholesalePrice: found.wholesalePrice,
+                    wholesaleProfitPercent: Number(wholesaleProfitPercent.toFixed(2)),
+                    // Also secondary if available
+                    secondaryCostPrice: found.secondaryCostPrice,
+                    secondarySalePrice: found.secondarySalePrice,
+                    secondaryOfferPrice: found.secondaryOfferPrice,
+                    secondaryWholesalePrice: found.secondaryWholesalePrice,
+                });
+
+                if (found.currency) {
+                    setSelectedCurrency(found.currency);
+                }
+
+                message.success('Información de precios importada');
+                setSimilarProducts([]);
+                setSimilarProductSearch('');
+            }
+        });
     };
 
     // Calcular precio desde porcentaje
@@ -440,7 +520,7 @@ export const ProductFormModal = ({ open, product, onClose }: ProductFormModalPro
                 onOk={handleSubmit}
                 onCancel={onClose}
                 confirmLoading={createMutation.isPending || updateMutation.isPending}
-                okText={product ? 'Actualizar' : 'Crear'}
+                okText={product ? 'Actualizar (F9)' : 'Crear (F9)'}
                 cancelText="Cancelar"
                 width={900}
             >
@@ -608,7 +688,35 @@ export const ProductFormModal = ({ open, product, onClose }: ProductFormModalPro
                         </Col>
                     </Row>
 
-                    <Divider>Precios e Inventario</Divider>
+                    <Divider orientation={"left" as any} style={{ margin: '12px 0' }}>
+                        <span style={{ fontSize: '14px', color: '#666' }}>Precios e Inventario</span>
+                    </Divider>
+
+                    {/* Buscador de Producto Similar */}
+                    <Card size="small" style={{ marginBottom: 16, background: '#f9f9f9', border: '1px dashed #d9d9d9' }}>
+                        <Form.Item
+                            label={<span style={{ fontWeight: 500 }}>Importar precios de producto similar</span>}
+                            tooltip="Busca un producto existente para copiar su configuración de precios y moneda"
+                            style={{ marginBottom: 0 }}
+                        >
+                            <Select
+                                showSearch
+                                value={similarProductSearch || undefined}
+                                placeholder="Escribe SKU o nombre del producto..."
+                                defaultActiveFirstOption={false}
+                                suffixIcon={null}
+                                filterOption={false}
+                                onSearch={handleSearchSimilar}
+                                onChange={handleImportFromProduct}
+                                notFoundContent={isSearchingSimilar ? 'Buscando...' : null}
+                                options={similarProducts.map(p => ({
+                                    value: p.id,
+                                    label: `${p.sku} - ${p.name} (${p.currency?.symbol}${p.salePrice})`,
+                                }))}
+                                style={{ width: '100%' }}
+                            />
+                        </Form.Item>
+                    </Card>
 
                     {/* Layout en 2 columnas */}
                     <Row gutter={16}>

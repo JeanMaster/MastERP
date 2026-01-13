@@ -59,6 +59,7 @@ export interface CreatePurchaseDto {
     paymentStatus?: string;
     paidAmount?: number;
     dueDate?: Date;
+    purchaseOrderId?: string;
 }
 
 export interface CreatePurchasePaymentDto {

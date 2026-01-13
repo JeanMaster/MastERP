@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Modal, Form, Select, DatePicker, Input, Button, Table, InputNumber, message, Divider, Row, Col, Typography } from 'antd';
-import { DeleteOutlined } from '@ant-design/icons';
+import { DeleteOutlined, SearchOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { suppliersApi } from '../../../services/suppliersApi';
 import type { Supplier } from '../../../services/suppliersApi';
@@ -11,6 +11,8 @@ import type { CreatePurchaseDto } from '../../../services/purchasesApi';
 import { currenciesApi } from '../../../services/currenciesApi';
 import type { Currency } from '../../../services/currenciesApi';
 import { PriceUpdateConfirmModal } from './PriceUpdateConfirmModal';
+import { purchaseOrdersApi } from '../../../services/purchaseOrdersApi';
+import type { PurchaseOrder } from '../../../services/purchaseOrdersApi';
 
 interface CreatePurchaseModalProps {
     visible: boolean;
@@ -31,19 +33,69 @@ export const CreatePurchaseModal: React.FC<CreatePurchaseModalProps> = ({ visibl
     const [priceUpdateModalVisible, setPriceUpdateModalVisible] = useState(false);
     const [productsWithCostChange, setProductsWithCostChange] = useState<any[]>([]);
     const [priceUpdateLoading, setPriceUpdateLoading] = useState(false);
+    const [pendingOrders, setPendingOrders] = useState<PurchaseOrder[]>([]);
+    const [orderSelectionVisible, setOrderSelectionVisible] = useState(false);
+    const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
 
     // Load initial data
     useEffect(() => {
         if (visible) {
             loadSuppliers();
             loadCurrencies();
+            loadPendingOrders();
             setSelectedItems([]);
             form.resetFields();
             form.setFieldValue('invoiceDate', dayjs());
             setExchangeRate(1);
             setSelectedCurrency(null);
+            setSelectedOrderId(null);
         }
     }, [visible]);
+
+    const loadPendingOrders = async () => {
+        try {
+            const data = await purchaseOrdersApi.getAll();
+            setPendingOrders(data.filter((o: PurchaseOrder) => o.status === 'PENDING'));
+        } catch (error) {
+            console.error('Error loading orders', error);
+        }
+    };
+
+    const handleSelectOrder = (orderId: string) => {
+        const order = pendingOrders.find(o => o.id === orderId);
+        if (!order) return;
+
+        setSelectedOrderId(order.id);
+
+        // Populating the form
+        form.setFieldsValue({
+            supplierId: order.supplierId,
+            currencyCode: order.currencyCode,
+            // invoiceNumber: order.id.slice(0, 8), // Optional: default to order ID?
+        });
+
+        // Set currency and rate
+        const curr = currencies.find(c => c.code === order.currencyCode);
+        if (curr) {
+            setSelectedCurrency(curr);
+            setExchangeRate(Number(order.exchangeRate) || 1);
+        }
+
+        // Populating items
+        const newItems = order.items.map(item => ({
+            productId: item.productId,
+            productName: item.product?.name || 'Producto Desconocido',
+            sku: item.product?.sku || 'N/A',
+            quantity: Number(item.quantity),
+            cost: Number(item.cost),
+            subtotal: Number(item.total),
+            currentCost: 0 // We don't have current cost here easily unless we fetch products, but it's okay for now
+        }));
+
+        setSelectedItems(newItems);
+        setOrderSelectionVisible(false);
+        message.success('Pedido cargado correctamente. Verifique artículos y cantidades.');
+    };
 
     const loadCurrencies = async () => {
         const data = await currenciesApi.getAll();
@@ -139,7 +191,8 @@ export const CreatePurchaseModal: React.FC<CreatePurchaseModalProps> = ({ visibl
                     cost: item.cost
                 })),
                 currencyCode: selectedCurrency?.code || 'VES',
-                exchangeRate: exchangeRate
+                exchangeRate: exchangeRate,
+                purchaseOrderId: selectedOrderId || undefined
             };
 
             const result: any = await purchasesApi.create(purchaseData);
@@ -173,19 +226,27 @@ export const CreatePurchaseModal: React.FC<CreatePurchaseModalProps> = ({ visibl
 
             await productsApi.batchUpdatePrices(updates);
             message.success('Precios actualizados exitosamente');
+
+            // Reset loading and close sub-modal first
+            setPriceUpdateLoading(false);
             setPriceUpdateModalVisible(false);
-            onSuccess();
+
+            // Small delay to ensure state updates propagate before closing parent
+            setTimeout(() => {
+                onSuccess();
+            }, 300);
         } catch (error) {
             console.error(error);
             message.error('Error al actualizar precios');
-        } finally {
             setPriceUpdateLoading(false);
         }
     };
 
     const handlePriceUpdateCancel = () => {
         setPriceUpdateModalVisible(false);
-        onSuccess(); // Close main modal and refresh
+        setTimeout(() => {
+            onSuccess();
+        }, 300);
     };
 
     const columns = [
@@ -235,7 +296,23 @@ export const CreatePurchaseModal: React.FC<CreatePurchaseModalProps> = ({ visibl
 
     return (
         <Modal
-            title="Registrar Compra / Recepción"
+            title={
+                <Row align="middle" justify="space-between" style={{ marginRight: 32 }}>
+                    <Col>Registrar Compra / Recepción</Col>
+                    <Col>
+                        {pendingOrders.length > 0 && (
+                            <Button
+                                size="small"
+                                icon={<SearchOutlined />}
+                                onClick={() => setOrderSelectionVisible(true)}
+                                type="dashed"
+                            >
+                                Cargar desde Pedido ({pendingOrders.length})
+                            </Button>
+                        )}
+                    </Col>
+                </Row>
+            }
             open={visible}
             onCancel={onCancel}
             width={900}
@@ -370,6 +447,35 @@ export const CreatePurchaseModal: React.FC<CreatePurchaseModalProps> = ({ visibl
                 onCancel={handlePriceUpdateCancel}
                 loading={priceUpdateLoading}
             />
+
+            {/* Order Selection Modal */}
+            <Modal
+                title="Seleccionar Pedido Pendiente"
+                open={orderSelectionVisible}
+                onCancel={() => setOrderSelectionVisible(false)}
+                footer={null}
+                width={700}
+            >
+                <Table
+                    dataSource={pendingOrders}
+                    rowKey="id"
+                    size="small"
+                    columns={[
+                        { title: 'Pedido #', dataIndex: 'id', render: (id) => id.slice(0, 8) },
+                        { title: 'Proveedor', dataIndex: ['supplier', 'comercialName'] },
+                        { title: 'Fecha', dataIndex: 'orderDate', render: (d) => dayjs(d).format('DD/MM/YYYY') },
+                        { title: 'Total', dataIndex: 'total', render: (t, r) => `${r.currencyCode} ${t}` },
+                        {
+                            title: 'Acción',
+                            render: (_, record) => (
+                                <Button type="primary" size="small" onClick={() => handleSelectOrder(record.id)}>
+                                    Seleccionar
+                                </Button>
+                            )
+                        }
+                    ]}
+                />
+            </Modal>
         </Modal>
     );
 };

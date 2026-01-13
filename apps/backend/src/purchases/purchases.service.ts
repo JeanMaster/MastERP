@@ -7,7 +7,7 @@ export class PurchasesService {
     constructor(private prisma: PrismaService) { }
 
     async create(createPurchaseDto: CreatePurchaseDto) {
-        const { supplierId, items, ...purchaseData } = createPurchaseDto;
+        const { supplierId, items, purchaseOrderId, ...purchaseData } = createPurchaseDto;
 
         // Verify supplier exists
         const supplier = await this.prisma.supplier.findUnique({
@@ -89,10 +89,10 @@ export class PurchasesService {
                     taxAmount,
                     total,
                     // Payment tracking
-                    paymentStatus,
                     paidAmount,
                     balance,
                     dueDate: purchaseData.dueDate,
+                    purchaseOrderId,
 
                     items: {
                         create: itemsWithTotal.map(item => ({
@@ -175,6 +175,14 @@ export class PurchasesService {
                         costPrice: item.cost, // Update to new cost in SELECTED currency
                         currencyId: currency.id, // Update product currency to purchase currency
                     },
+                });
+            }
+
+            // 3. Mark the order as COMPLETED if linked
+            if (purchaseOrderId) {
+                await tx.purchaseOrder.update({
+                    where: { id: purchaseOrderId },
+                    data: { status: 'COMPLETED' }
                 });
             }
 

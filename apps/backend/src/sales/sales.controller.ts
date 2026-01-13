@@ -12,6 +12,7 @@ export interface SalesFilters {
     paymentMethod?: string;
     minAmount?: number;
     maxAmount?: number;
+    invoiceNumber?: string;
 }
 
 @ApiTags('sales')
@@ -40,7 +41,8 @@ export class SalesController {
         @Query('productId') productId?: string,
         @Query('paymentMethod') paymentMethod?: string,
         @Query('minAmount') minAmount?: string,
-        @Query('maxAmount') maxAmount?: string
+        @Query('maxAmount') maxAmount?: string,
+        @Query('invoiceNumber') invoiceNumber?: string
     ) {
         const filters: SalesFilters = {};
 
@@ -51,6 +53,7 @@ export class SalesController {
         if (paymentMethod) filters.paymentMethod = paymentMethod;
         if (minAmount) filters.minAmount = parseFloat(minAmount);
         if (maxAmount) filters.maxAmount = parseFloat(maxAmount);
+        if (invoiceNumber) filters.invoiceNumber = invoiceNumber;
 
         return this.salesService.findWithFilters(filters);
     }

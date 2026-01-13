@@ -1,51 +1,49 @@
-import axios from 'axios';
+import { api } from './apiConfig';
+import type { Product } from './productsApi';
 
-import { BASE_URL as API_URL } from './apiConfig';
+export type ReturnType = 'REFUND' | 'EXCHANGE_SAME' | 'EXCHANGE_DIFFERENT';
+
+export const ReturnType = {
+    REFUND: 'REFUND' as ReturnType,
+    EXCHANGE_SAME: 'EXCHANGE_SAME' as ReturnType,
+    EXCHANGE_DIFFERENT: 'EXCHANGE_DIFFERENT' as ReturnType
+};
+
+export type ReturnReason = 'DEFECTIVE' | 'UNSATISFIED' | 'ERROR' | 'EXPIRED' | 'OTHER';
+
+export const ReturnReason = {
+    DEFECTIVE: 'DEFECTIVE' as ReturnReason,
+    UNSATISFIED: 'UNSATISFIED' as ReturnReason,
+    ERROR: 'ERROR' as ReturnReason,
+    EXPIRED: 'EXPIRED' as ReturnReason,
+    OTHER: 'OTHER' as ReturnReason
+};
+
+export type ProductCondition = 'EXCELLENT' | 'GOOD' | 'DEFECTIVE' | 'DAMAGED';
+
+export const ProductCondition = {
+    EXCELLENT: 'EXCELLENT' as ProductCondition,
+    GOOD: 'GOOD' as ProductCondition,
+    DEFECTIVE: 'DEFECTIVE' as ProductCondition,
+    DAMAGED: 'DAMAGED' as ProductCondition
+};
+
+export type ReturnStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'COMPLETED';
+
+export const ReturnStatus = {
+    PENDING: 'PENDING' as ReturnStatus,
+    APPROVED: 'APPROVED' as ReturnStatus,
+    REJECTED: 'REJECTED' as ReturnStatus,
+    COMPLETED: 'COMPLETED' as ReturnStatus
+};
 
 export interface ReturnItem {
     id: string;
     productId: string;
-    product: {
-        id: string;
-        name: string;
-        sku: string;
-    };
+    product?: Product;
     quantity: number;
     unitPrice: number;
     total: number;
-    restockQuantity: number;
-}
-
-export interface Return {
-    id: string;
-    creditNoteNumber: string;
-    originalSaleId: string;
-    originalSale: {
-        id: string;
-        invoiceNumber: string;
-        date: string;
-        total: number;
-        client?: {
-            id: string;
-            name: string;
-        };
-    };
-    returnType: 'REFUND' | 'EXCHANGE_SAME' | 'EXCHANGE_DIFFERENT';
-    reason: 'DEFECTIVE' | 'UNSATISFIED' | 'ERROR' | 'EXPIRED' | 'OTHER';
-    productCondition: 'EXCELLENT' | 'GOOD' | 'DEFECTIVE' | 'DAMAGED';
-    refundAmount: number;
-    refundMethod?: 'CASH' | 'TRANSFER' | 'CREDIT_NOTE';
-    newSaleId?: string;
-    newSale?: any;
-    status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'COMPLETED';
-    requestedBy?: string;
-    approvedBy?: string;
-    approvedAt?: string;
-    notes?: string;
-    items: ReturnItem[];
-    active: boolean;
-    createdAt: string;
-    updatedAt: string;
 }
 
 export interface CreateReturnItemDto {
@@ -55,14 +53,42 @@ export interface CreateReturnItemDto {
     total: number;
 }
 
+export interface Return {
+    id: string;
+    originalSaleId: string;
+    creditNoteNumber: string;
+    returnType: ReturnType;
+    reason: ReturnReason;
+    productCondition: ProductCondition;
+    status: ReturnStatus;
+    items: ReturnItem[];
+    refundAmount: number;
+    refundMethod?: string;
+    notes?: string;
+    requestedBy?: string;
+    approvedBy?: string;
+    approvedAt?: string;
+    originalSale: {
+        invoiceNumber: string;
+        date: string;
+        total: number;
+        client?: {
+            id: string;
+            name: string;
+        };
+    };
+    createdAt: string;
+}
+
 export interface CreateReturnDto {
     originalSaleId: string;
-    returnType: 'REFUND' | 'EXCHANGE_SAME' | 'EXCHANGE_DIFFERENT';
-    reason: 'DEFECTIVE' | 'UNSATISFIED' | 'ERROR' | 'EXPIRED' | 'OTHER';
-    productCondition: 'EXCELLENT' | 'GOOD' | 'DEFECTIVE' | 'DAMAGED';
+    returnType: ReturnType;
+    reason: ReturnReason;
+    productCondition: ProductCondition;
     items: CreateReturnItemDto[];
+    replacementItems?: CreateReturnItemDto[];
     refundAmount: number;
-    refundMethod?: 'CASH' | 'TRANSFER' | 'CREDIT_NOTE';
+    refundMethod?: string;
     notes?: string;
     requestedBy?: string;
 }
@@ -74,50 +100,39 @@ export interface ReturnFilters {
     endDate?: string;
 }
 
-export interface ValidationResult {
-    eligible: boolean;
-    message?: string;
-}
-
 export const returnsApi = {
-    create: async (dto: CreateReturnDto): Promise<Return> => {
-        const { data } = await axios.post(`${API_URL}/returns`, dto);
-        return data;
-    },
-
     getAll: async (filters?: ReturnFilters): Promise<Return[]> => {
-        const params = new URLSearchParams();
-        if (filters?.status) params.append('status', filters.status);
-        if (filters?.returnType) params.append('returnType', filters.returnType);
-        if (filters?.startDate) params.append('startDate', filters.startDate);
-        if (filters?.endDate) params.append('endDate', filters.endDate);
-
-        const { data } = await axios.get(`${API_URL}/returns?${params.toString()}`);
+        const { data } = await api.get('/returns', { params: filters });
         return data;
     },
 
     getOne: async (id: string): Promise<Return> => {
-        const { data } = await axios.get(`${API_URL}/returns/${id}`);
+        const { data } = await api.get(`/returns/${id}`);
+        return data;
+    },
+
+    create: async (dto: CreateReturnDto): Promise<Return> => {
+        const { data } = await api.post('/returns', dto);
         return data;
     },
 
     approve: async (id: string, approvedBy: string): Promise<Return> => {
-        const { data } = await axios.patch(`${API_URL}/returns/${id}/approve`, { approvedBy });
+        const { data } = await api.patch(`/returns/${id}/approve`, { approvedBy });
         return data;
     },
 
     reject: async (id: string, reason: string): Promise<Return> => {
-        const { data } = await axios.patch(`${API_URL}/returns/${id}/reject`, { reason });
+        const { data } = await api.patch(`/returns/${id}/reject`, { reason });
         return data;
     },
 
     process: async (id: string): Promise<Return> => {
-        const { data } = await axios.post(`${API_URL}/returns/${id}/process`);
+        const { data } = await api.post(`/returns/${id}/process`);
         return data;
     },
 
-    validate: async (saleId: string, items: CreateReturnItemDto[]): Promise<ValidationResult> => {
-        const { data } = await axios.post(`${API_URL}/returns/validate`, { saleId, items });
+    validateEligibility: async (saleId: string, items: any[]): Promise<{ eligible: boolean; message?: string }> => {
+        const { data } = await api.post('/returns/validate', { saleId, items });
         return data;
     }
 };

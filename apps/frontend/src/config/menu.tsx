@@ -76,6 +76,10 @@ export const menuItems: AppMenuItem[] = [
                 label: 'Historial de Ventas',
             },
             {
+                key: '/sales/returns',
+                label: 'Cambios y Devoluciones',
+            },
+            {
                 key: '/accounts-receivable',
                 label: 'Cuentas por Cobrar',
             },
@@ -97,6 +101,10 @@ export const menuItems: AppMenuItem[] = [
             {
                 key: '/suppliers',
                 label: 'Proveedores',
+            },
+            {
+                key: '/purchases/orders',
+                label: 'Pedidos',
             },
             {
                 key: '/purchases/history',
