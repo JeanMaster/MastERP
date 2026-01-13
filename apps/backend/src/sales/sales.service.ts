@@ -213,6 +213,14 @@ export class SalesService {
     async findWithFilters(filters: any) {
         const where: any = {};
 
+        // Filtro por número de factura
+        if (filters.invoiceNumber) {
+            where.invoiceNumber = {
+                contains: filters.invoiceNumber,
+                mode: 'insensitive'
+            };
+        }
+
         // Filtro por rango de fechas
         if (filters.startDate || filters.endDate) {
             where.date = {};

@@ -27,6 +27,7 @@ import { UsersModule } from './users/users.module';
 import { AuthModule } from './auth/auth.module';
 import { HrModule } from './hr/hr.module';
 import { SystemModule } from './system/system.module';
+import { PurchaseOrdersModule } from './purchase-orders/purchase-orders.module';
 
 @Module({
   imports: [
@@ -58,6 +59,7 @@ import { SystemModule } from './system/system.module';
     UsersModule,
     AuthModule,
     SystemModule,
+    PurchaseOrdersModule,
   ],
   controllers: [AppController, DevToolsController],
   providers: [AppService, DevToolsService],

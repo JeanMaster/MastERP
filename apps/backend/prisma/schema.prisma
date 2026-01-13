@@ -69,6 +69,7 @@ model Supplier {
 
   // Compras asociadas
   purchases     Purchase[]
+  purchaseOrders PurchaseOrder[]
 
   @@map("suppliers")
 }
@@ -99,12 +100,66 @@ model Purchase {
   items           PurchaseItem[]
   payments        PurchasePayment[]
   
+  // Link to Purchase Order (optional)
+  purchaseOrderId String?  @unique
+  purchaseOrder   PurchaseOrder? @relation(fields: [purchaseOrderId], references: [id])
+  
   userId          String?  // Usuario que registró la compra
   
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
   @@map("purchases")
+}
+
+model PurchaseOrder {
+  id              String   @id @default(uuid())
+  supplierId      String
+  supplier        Supplier @relation(fields: [supplierId], references: [id])
+  
+  orderDate       DateTime @default(now())
+  expectedDate    DateTime?
+  
+  subtotal        Decimal  @db.Decimal(10, 2)
+  taxAmount       Decimal  @db.Decimal(10, 2)
+  total           Decimal  @db.Decimal(10, 2)
+  
+  currencyCode    String   @default("VES")
+  exchangeRate    Decimal  @default(1.0)   @db.Decimal(10, 4)
+  
+  status          String   @default("PENDING") // PENDING, COMPLETED, CANCELLED, SENT
+  
+  notes           String?
+  
+  items           PurchaseOrderItem[]
+  
+  // Link to the resulting Purchase
+  purchase        Purchase?
+
+  userId          String?
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("purchase_orders")
+}
+
+model PurchaseOrderItem {
+  id              String   @id @default(uuid())
+  purchaseOrderId String
+  purchaseOrder   PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  
+  productId       String
+  product         Product  @relation(fields: [productId], references: [id])
+  
+  quantity        Decimal  @db.Decimal(10, 3)
+  cost            Decimal  @db.Decimal(10, 2)
+  total           Decimal  @db.Decimal(10, 2) // quantity * cost
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("purchase_order_items")
 }
 
 model PurchasePayment {
@@ -200,12 +255,14 @@ model Product {
 
   // Relaciones con devoluciones
   returnItems          ReturnItem[]
+  replacementReturnItems ReturnReplacementItem[]
   
   // Relación con ajustes de inventario
   adjustments InventoryAdjustment[]
   
-  // Relación con items de compra
+  // Relación con items de compra y pedidos
   purchaseItems PurchaseItem[]
+  purchaseOrderItems PurchaseOrderItem[]
 
   // Imagen del producto (URL o base64)
   imageUrl        String?
@@ -465,6 +522,9 @@ model Return {
   // Items devueltos
   items             ReturnItem[]
   
+  // Items entregados en cambio (para EXCHANGE_DIFFERENT)
+  replacementItems  ReturnReplacementItem[]
+  
   // Financiero
   refundAmount      Decimal? @db.Decimal(10, 2)
   refundMethod      String?  // "CASH", "TRANSFER", "CREDIT_NOTE"
@@ -505,6 +565,21 @@ model ReturnItem {
   restockQuantity  Int     @default(0) // Cantidad que se regresa al stock
   
   @@map("return_items")
+}
+
+model ReturnReplacementItem {
+  id               String  @id @default(uuid())
+  returnId         String
+  return           Return  @relation(fields: [returnId], references: [id], onDelete: Cascade)
+  
+  productId        String
+  product          Product @relation(fields: [productId], references: [id])
+  
+  quantity         Decimal @db.Decimal(10, 3)
+  unitPrice        Decimal @db.Decimal(10, 2)
+  total            Decimal @db.Decimal(10, 2)
+  
+  @@map("return_replacement_items")
 }
 
 model CashRegister {

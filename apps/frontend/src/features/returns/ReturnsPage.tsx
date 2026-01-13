@@ -227,7 +227,7 @@ export const ReturnsPage = () => {
 
     return (
         <div style={{ padding: isMobile ? '8px' : '24px' }}>
-            <Title level={isMobile ? 3 : 2}>Devoluciones</Title>
+            <Title level={isMobile ? 3 : 2}>📦 Cambios y Devoluciones</Title>
 
             {/* Filters */}
             <Card style={{ marginBottom: 16 }}>

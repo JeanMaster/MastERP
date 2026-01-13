@@ -16,13 +16,14 @@ import {
     Alert,
     Checkbox
 } from 'antd';
-import { SearchOutlined } from '@ant-design/icons';
+import { SearchOutlined, CloseCircleOutlined } from '@ant-design/icons';
 import { salesApi, type Sale } from '../../../services/salesApi';
 import { returnsApi, type CreateReturnDto, type CreateReturnItemDto } from '../../../services/returnsApi';
+import { productsApi } from '../../../services/productsApi';
 import { formatVenezuelanPrice } from '../../../utils/formatters';
 import dayjs from 'dayjs';
 
-const { Title } = Typography;
+const { Title, Text } = Typography;
 const { TextArea } = Input;
 
 interface CreateReturnModalProps {
@@ -47,6 +48,10 @@ export const CreateReturnModal = ({ open, onCancel, onSuccess }: CreateReturnMod
     const [condition, setCondition] = useState<string>('GOOD');
     const [refundMethod, setRefundMethod] = useState<string>('CASH');
     const [notes, setNotes] = useState('');
+    const [replacementItems, setReplacementItems] = useState<SelectedItem[]>([]);
+    const [replacementSearch, setReplacementSearch] = useState('');
+    const [replacementSearchResults, setReplacementSearchResults] = useState<any[]>([]);
+    const [isSearchingProducts, setIsSearchingProducts] = useState(false);
 
     const resetModal = () => {
         setCurrentStep(0);
@@ -58,6 +63,9 @@ export const CreateReturnModal = ({ open, onCancel, onSuccess }: CreateReturnMod
         setCondition('GOOD');
         setRefundMethod('CASH');
         setNotes('');
+        setReplacementItems([]);
+        setReplacementSearch('');
+        setReplacementSearchResults([]);
     };
 
     const handleCancel = () => {
@@ -133,6 +141,54 @@ export const CreateReturnModal = ({ open, onCancel, onSuccess }: CreateReturnMod
         ));
     };
 
+    const handleSearchProducts = async (value: string) => {
+        if (!value.trim()) {
+            setReplacementSearchResults([]);
+            return;
+        }
+
+        setIsSearchingProducts(true);
+        try {
+            const results = await productsApi.getAll({ search: value, active: true, type: 'PRODUCT' });
+            setReplacementSearchResults(results);
+        } catch (error) {
+            console.error('Error searching products:', error);
+            message.error('Error al buscar productos');
+        } finally {
+            setIsSearchingProducts(false);
+        }
+    };
+
+    const addReplacementItem = (product: any) => {
+        if (replacementItems.some(i => i.productId === product.id)) {
+            message.warning('Producto ya agregado');
+            return;
+        }
+
+        const newItem: SelectedItem = {
+            productId: product.id,
+            productName: product.name,
+            productSku: product.sku,
+            quantity: 1,
+            unitPrice: Number(product.salePrice),
+            total: Number(product.salePrice)
+        };
+        setReplacementItems([...replacementItems, newItem]);
+        setReplacementSearch('');
+        setReplacementSearchResults([]);
+    };
+
+    const updateReplacementQuantity = (productId: string, quantity: number) => {
+        setReplacementItems(replacementItems.map(item =>
+            item.productId === productId
+                ? { ...item, quantity, total: quantity * item.unitPrice }
+                : item
+        ));
+    };
+
+    const removeReplacementItem = (productId: string) => {
+        setReplacementItems(replacementItems.filter(i => i.productId !== productId));
+    };
 
     // Step 3: Choose return type
     const handleNext = () => {
@@ -154,7 +210,20 @@ export const CreateReturnModal = ({ open, onCancel, onSuccess }: CreateReturnMod
             returnType,
             reason: reason as any,
             productCondition: condition as any,
-            items: selectedItems.map(({ productName, productSku, ...item }) => item),
+            items: selectedItems.map(item => ({
+                productId: item.productId,
+                quantity: item.quantity,
+                unitPrice: item.unitPrice,
+                total: item.total
+            })),
+            replacementItems: returnType === 'EXCHANGE_DIFFERENT'
+                ? replacementItems.map(item => ({
+                    productId: item.productId,
+                    quantity: item.quantity,
+                    unitPrice: item.unitPrice,
+                    total: item.total
+                }))
+                : undefined,
             refundAmount,
             refundMethod: returnType === 'REFUND' ? refundMethod as any : undefined,
             notes,
@@ -367,6 +436,91 @@ export const CreateReturnModal = ({ open, onCancel, onSuccess }: CreateReturnMod
             )
         },
         {
+            title: 'Seleccionar Cambio',
+            content: (
+                <div>
+                    <Title level={5}>Buscar productos para el cambio</Title>
+                    <Select
+                        showSearch
+                        placeholder="Buscar por nombre o SKU..."
+                        value={replacementSearch}
+                        onSearch={handleSearchProducts}
+                        onChange={(value) => {
+                            const product = replacementSearchResults.find(p => p.id === value);
+                            if (product) addReplacementItem(product);
+                        }}
+                        filterOption={false}
+                        style={{ width: '100%', marginBottom: 16 }}
+                        loading={isSearchingProducts}
+                        notFoundContent={isSearchingProducts ? <Spin size="small" /> : null}
+                    >
+                        {replacementSearchResults.map(product => (
+                            <Select.Option key={product.id} value={product.id}>
+                                {product.name} ({product.sku}) - {formatVenezuelanPrice(Number(product.salePrice))}
+                            </Select.Option>
+                        ))}
+                    </Select>
+
+                    {replacementItems.length > 0 && (
+                        <div>
+                            <Title level={5}>Productos seleccionados para el cambio</Title>
+                            <Table
+                                dataSource={replacementItems}
+                                rowKey="productId"
+                                pagination={false}
+                                size="small"
+                                columns={[
+                                    { title: 'Producto', key: 'product', render: (_, r) => <div><strong>{r.productName}</strong><br /><small>{r.productSku}</small></div> },
+                                    { title: 'Precio', key: 'price', render: (_, r) => formatVenezuelanPrice(r.unitPrice) },
+                                    {
+                                        title: 'Cant.',
+                                        key: 'qty',
+                                        render: (_, r) => (
+                                            <InputNumber
+                                                min={1}
+                                                value={r.quantity}
+                                                onChange={(val) => updateReplacementQuantity(r.productId, val || 1)}
+                                                size="small"
+                                            />
+                                        )
+                                    },
+                                    { title: 'Total', key: 'total', render: (_, r) => formatVenezuelanPrice(r.total) },
+                                    {
+                                        title: '',
+                                        key: 'actions',
+                                        render: (_, r) => (
+                                            <Button
+                                                type="text"
+                                                danger
+                                                icon={<CloseCircleOutlined />}
+                                                onClick={() => removeReplacementItem(r.productId)}
+                                            />
+                                        )
+                                    }
+                                ]}
+                            />
+
+                            <div style={{ marginTop: 10, textAlign: 'right' }}>
+                                <Text strong>Diferencia a favor del cliente: </Text>
+                                <Text strong style={{ color: '#52c41a' }}>
+                                    {formatVenezuelanPrice(
+                                        Math.max(0, selectedItems.reduce((sum, i) => sum + i.total, 0) - replacementItems.reduce((sum, i) => sum + i.total, 0))
+                                    )}
+                                </Text>
+                                <br />
+                                <Text strong>Diferencia a pagar por el cliente: </Text>
+                                <Text strong style={{ color: '#f5222d' }}>
+                                    {formatVenezuelanPrice(
+                                        Math.max(0, replacementItems.reduce((sum, i) => sum + i.total, 0) - selectedItems.reduce((sum, i) => sum + i.total, 0))
+                                    )}
+                                </Text>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            )
+        },
+        {
             title: 'Confirmar',
             content: (
                 <div>
@@ -381,9 +535,17 @@ export const CreateReturnModal = ({ open, onCancel, onSuccess }: CreateReturnMod
                                             'Cambio por producto diferente'
                                 }</p>
                                 <p><strong>Items a devolver:</strong> {selectedItems.length}</p>
-                                <p><strong>Monto total:</strong> {formatVenezuelanPrice(
+                                <p><strong>Monto devuelto:</strong> {formatVenezuelanPrice(
                                     selectedItems.reduce((sum, item) => sum + item.total, 0)
                                 )}</p>
+                                {returnType === 'EXCHANGE_DIFFERENT' && (
+                                    <>
+                                        <p><strong>Items a cambio:</strong> {replacementItems.length}</p>
+                                        <p><strong>Monto cambio:</strong> {formatVenezuelanPrice(
+                                            replacementItems.reduce((sum, item) => sum + item.total, 0)
+                                        )}</p>
+                                    </>
+                                )}
                                 {returnType === 'REFUND' && (
                                     <p><strong>Método de reembolso:</strong> {
                                         refundMethod === 'CASH' ? 'Efectivo' :
@@ -401,6 +563,13 @@ export const CreateReturnModal = ({ open, onCancel, onSuccess }: CreateReturnMod
         }
     ];
 
+    const filteredSteps = steps.filter(step => {
+        if (step.title === 'Seleccionar Cambio') {
+            return returnType === 'EXCHANGE_DIFFERENT';
+        }
+        return true;
+    });
+
     return (
         <Modal
             title="Nueva Devolución"
@@ -416,12 +585,12 @@ export const CreateReturnModal = ({ open, onCancel, onSuccess }: CreateReturnMod
                                 Atrás
                             </Button>
                         )}
-                        {currentStep < steps.length - 1 && currentStep > 0 && (
+                        {currentStep < filteredSteps.length - 1 && (
                             <Button type="primary" onClick={handleNext}>
                                 Siguiente
                             </Button>
                         )}
-                        {currentStep === steps.length - 1 && (
+                        {currentStep === filteredSteps.length - 1 && (
                             <Button type="primary" onClick={handleSubmit} loading={loading}>
                                 Crear Devolución
                             </Button>
@@ -430,14 +599,14 @@ export const CreateReturnModal = ({ open, onCancel, onSuccess }: CreateReturnMod
                 </div>
             }
         >
-            <Steps current={currentStep} items={steps.map(s => ({ title: s.title }))} style={{ marginBottom: 24 }} />
+            <Steps current={currentStep} items={filteredSteps.map(s => ({ title: s.title }))} style={{ marginBottom: 24 }} />
 
             {loading && currentStep === 0 ? (
                 <div style={{ textAlign: 'center', padding: 50 }}>
                     <Spin size="large" />
                 </div>
             ) : (
-                steps[currentStep].content
+                filteredSteps[currentStep]?.content
             )}
         </Modal>
     );

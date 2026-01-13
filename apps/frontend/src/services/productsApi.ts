@@ -100,14 +100,16 @@ export interface UpdateProductDto {
 }
 
 export const productsApi = {
-    getAll: async (filters: { active?: boolean; search?: string; categoryId?: string; subcategoryId?: string; type?: 'PRODUCT' | 'SERVICE' } = {}): Promise<Product[]> => {
-        const { active, search, categoryId, subcategoryId, type } = filters;
+    getAll: async (filters: { active?: boolean; search?: string; categoryId?: string; subcategoryId?: string; type?: 'PRODUCT' | 'SERVICE'; limit?: number; offset?: number } = {}): Promise<Product[]> => {
+        const { active, search, categoryId, subcategoryId, type, limit, offset } = filters;
         const params = new URLSearchParams();
         if (active !== undefined) params.append('active', String(active));
         if (search) params.append('search', search);
         if (categoryId) params.append('categoryId', categoryId);
         if (subcategoryId) params.append('subcategoryId', subcategoryId);
         if (type) params.append('type', type);
+        if (limit) params.append('limit', String(limit));
+        if (offset) params.append('offset', String(offset));
 
         const { data } = await api.get(`/products`, { params });
         return data;
