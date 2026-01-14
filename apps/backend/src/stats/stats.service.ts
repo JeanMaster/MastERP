@@ -9,6 +9,9 @@ export class StatsService {
     // Razones donde el producto vuelve al stock (producto vendible)
     private readonly SELLABLE_RETURN_REASONS = ['ERROR', 'UNSATISFIED', 'OTHER'];
 
+    // Razones de ajuste de inventario que afectan COGS (pérdidas reales)
+    private readonly LOSS_ADJUSTMENT_REASONS = ['DAMAGE', 'LOSS'];
+
     async getDashboardStats(range: string = '7days') {
         const today = dayjs().startOf('day').toDate();
         const monthStart = dayjs().startOf('month').toDate();
@@ -430,13 +433,42 @@ export class StatsService {
             });
         });
 
-        const adjustedCostOfSales = totalCostOfSales - returnedCostOfSales;
+        let adjustedCostOfSales = totalCostOfSales - returnedCostOfSales;
+
+        // Add inventory losses (DAMAGE, LOSS) to cost of sales
+        const inventoryLosses = await this.prisma.inventoryAdjustment.findMany({
+            where: {
+                createdAt: dateFilter,
+                type: 'DECREASE',
+                reason: { in: this.LOSS_ADJUSTMENT_REASONS }
+            },
+            include: {
+                product: { include: { currency: true } }
+            }
+        });
+
+        let inventoryLossCost = 0;
+        inventoryLosses.forEach(adj => {
+            const productRate = adj.product.currency?.isPrimary ? 1 : Number(adj.product.currency?.exchangeRate || 1);
+            let lossCostInVES = Number(adj.product.costPrice || 0) * productRate * Number(adj.quantity);
+
+            if (currencyCode !== 'VES') {
+                const targetRate = Number(targetCurrency?.exchangeRate || 1);
+                if (targetRate > 0) {
+                    lossCostInVES = lossCostInVES / targetRate;
+                }
+            }
+            inventoryLossCost += lossCostInVES;
+        });
+
+        adjustedCostOfSales += inventoryLossCost;
 
         return {
             monthlySalesTotal: totalSalesAmount,
             monthlyPurchasesTotal: totalPurchasesAmount,
             totalCostOfSales: adjustedCostOfSales,
             returnedCostOfSales,
+            inventoryLossCost,
             totalExpenses: totalExpensesAmount,
             paymentMethodsBreakdown: Object.entries(paymentBreakdown).map(
                 ([method, amount]) => ({
@@ -613,12 +645,44 @@ export class StatsService {
         });
 
         // Adjusted COGS = Sales COGS - Returned COGS
-        const adjustedCOGS = totalCOGS - returnedCOGS;
+        let adjustedCOGS = totalCOGS - returnedCOGS;
+
+        // Add inventory losses (DAMAGE, LOSS) to COGS
+        const inventoryLosses = await this.prisma.inventoryAdjustment.findMany({
+            where: {
+                createdAt: dateFilter,
+                type: 'DECREASE',
+                reason: { in: this.LOSS_ADJUSTMENT_REASONS }
+            },
+            include: {
+                product: {
+                    include: { currency: true }
+                }
+            }
+        });
+
+        let inventoryLossCOGS = 0;
+        inventoryLosses.forEach(adj => {
+            const productRate = adj.product.currency?.isPrimary ? 1 : Number(adj.product.currency?.exchangeRate || 1);
+            let lossCostInVES = Number(adj.product.costPrice || 0) * productRate * Number(adj.quantity);
+
+            if (currencyCode !== 'VES') {
+                const targetRate = Number(targetCurrency?.exchangeRate || 1);
+                if (targetRate > 0) {
+                    lossCostInVES = lossCostInVES / targetRate;
+                }
+            }
+            inventoryLossCOGS += lossCostInVES;
+        });
+
+        // Final COGS = Sales COGS - Returns + Inventory Losses
+        adjustedCOGS += inventoryLossCOGS;
 
         return {
             totalSales,
             totalCOGS: adjustedCOGS,
             returnedCOGS,
+            inventoryLossCOGS,
             totalPurchases,
             totalExpenses,
             products: Object.values(productBreakdown).sort((a, b) => b.totalCost - a.totalCost)
@@ -810,8 +874,34 @@ export class StatsService {
                 });
             });
 
-            // Adjusted COGS
-            const adjustedMonthlyCOGS = monthlyCOGS - monthlyReturnedCOGS;
+            // Adjusted COGS = COGS - Returns
+            let adjustedMonthlyCOGS = monthlyCOGS - monthlyReturnedCOGS;
+
+            // Add inventory losses (DAMAGE, LOSS) to COGS
+            const monthlyInventoryLosses = await this.prisma.inventoryAdjustment.findMany({
+                where: {
+                    createdAt: { gte: start, lte: end },
+                    type: 'DECREASE',
+                    reason: { in: this.LOSS_ADJUSTMENT_REASONS }
+                },
+                include: {
+                    product: { include: { currency: true } }
+                }
+            });
+
+            let monthlyInventoryLossCOGS = 0;
+            monthlyInventoryLosses.forEach(adj => {
+                const productRate = adj.product.currency?.isPrimary ? 1 : Number(adj.product.currency?.exchangeRate || 1);
+                let lossCostInVES = Number(adj.product.costPrice || 0) * productRate * Number(adj.quantity);
+
+                if (currencyCode !== 'VES') {
+                    monthlyInventoryLossCOGS += (lossCostInVES / currentRefRate) * crossRateFactor;
+                } else {
+                    monthlyInventoryLossCOGS += lossCostInVES;
+                }
+            });
+
+            adjustedMonthlyCOGS += monthlyInventoryLossCOGS;
 
             // Metrics
             // Real Profit = Income - Operational Expenses - COGS
