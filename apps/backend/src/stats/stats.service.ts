@@ -6,6 +6,9 @@ import dayjs from 'dayjs';
 export class StatsService {
     constructor(private prisma: PrismaService) { }
 
+    // Razones donde el producto vuelve al stock (producto vendible)
+    private readonly SELLABLE_RETURN_REASONS = ['ERROR', 'UNSATISFIED', 'OTHER'];
+
     async getDashboardStats(range: string = '7days') {
         const today = dayjs().startOf('day').toDate();
         const monthStart = dayjs().startOf('month').toDate();
@@ -395,10 +398,45 @@ export class StatsService {
             }
         });
 
+        // Subtract returned sellable products from totalCostOfSales
+        const completedReturns = await this.prisma.return.findMany({
+            where: {
+                status: 'COMPLETED',
+                updatedAt: dateFilter,
+                reason: { in: this.SELLABLE_RETURN_REASONS }
+            },
+            include: {
+                items: {
+                    include: {
+                        product: { include: { currency: true } }
+                    }
+                }
+            }
+        });
+
+        let returnedCostOfSales = 0;
+        completedReturns.forEach(ret => {
+            ret.items.forEach(item => {
+                const productRate = item.product.currency?.isPrimary ? 1 : Number(item.product.currency?.exchangeRate || 1);
+                let itemCostInVES = Number(item.product.costPrice || 0) * productRate * Number(item.quantity);
+
+                if (currencyCode !== 'VES') {
+                    const targetRate = Number(targetCurrency?.exchangeRate || 1);
+                    if (targetRate > 0) {
+                        itemCostInVES = itemCostInVES / targetRate;
+                    }
+                }
+                returnedCostOfSales += itemCostInVES;
+            });
+        });
+
+        const adjustedCostOfSales = totalCostOfSales - returnedCostOfSales;
+
         return {
             monthlySalesTotal: totalSalesAmount,
             monthlyPurchasesTotal: totalPurchasesAmount,
-            totalCostOfSales,
+            totalCostOfSales: adjustedCostOfSales,
+            returnedCostOfSales,
             totalExpenses: totalExpensesAmount,
             paymentMethodsBreakdown: Object.entries(paymentBreakdown).map(
                 ([method, amount]) => ({
@@ -540,9 +578,47 @@ export class StatsService {
             }
         });
 
+        // Calculate returned COGS (products that went back to stock)
+        const completedReturns = await this.prisma.return.findMany({
+            where: {
+                status: 'COMPLETED',
+                updatedAt: dateFilter,
+                reason: { in: this.SELLABLE_RETURN_REASONS }
+            },
+            include: {
+                items: {
+                    include: {
+                        product: {
+                            include: { currency: true }
+                        }
+                    }
+                }
+            }
+        });
+
+        let returnedCOGS = 0;
+        completedReturns.forEach(ret => {
+            ret.items.forEach(item => {
+                const productRate = item.product.currency?.isPrimary ? 1 : Number(item.product.currency?.exchangeRate || 1);
+                let itemCostInVES = Number(item.product.costPrice || 0) * productRate * Number(item.quantity);
+
+                if (currencyCode !== 'VES') {
+                    const targetRate = Number(targetCurrency?.exchangeRate || 1);
+                    if (targetRate > 0) {
+                        itemCostInVES = itemCostInVES / targetRate;
+                    }
+                }
+                returnedCOGS += itemCostInVES;
+            });
+        });
+
+        // Adjusted COGS = Sales COGS - Returned COGS
+        const adjustedCOGS = totalCOGS - returnedCOGS;
+
         return {
             totalSales,
-            totalCOGS,
+            totalCOGS: adjustedCOGS,
+            returnedCOGS,
             totalPurchases,
             totalExpenses,
             products: Object.values(productBreakdown).sort((a, b) => b.totalCost - a.totalCost)
@@ -704,9 +780,42 @@ export class StatsService {
                 }
             });
 
+            // Subtract returned sellable products from monthlyCOGS
+            const monthlyReturns = await this.prisma.return.findMany({
+                where: {
+                    status: 'COMPLETED',
+                    updatedAt: { gte: start, lte: end },
+                    reason: { in: this.SELLABLE_RETURN_REASONS }
+                },
+                include: {
+                    items: {
+                        include: {
+                            product: { include: { currency: true } }
+                        }
+                    }
+                }
+            });
+
+            let monthlyReturnedCOGS = 0;
+            monthlyReturns.forEach(ret => {
+                ret.items.forEach(item => {
+                    const productRate = item.product.currency?.isPrimary ? 1 : Number(item.product.currency?.exchangeRate || 1);
+                    let itemCostInVES = Number(item.product.costPrice || 0) * productRate * Number(item.quantity);
+
+                    if (currencyCode !== 'VES') {
+                        monthlyReturnedCOGS += (itemCostInVES / currentRefRate) * crossRateFactor;
+                    } else {
+                        monthlyReturnedCOGS += itemCostInVES;
+                    }
+                });
+            });
+
+            // Adjusted COGS
+            const adjustedMonthlyCOGS = monthlyCOGS - monthlyReturnedCOGS;
+
             // Metrics
             // Real Profit = Income - Operational Expenses - COGS
-            const realProfit = monthlyIncome - monthlyOperationalExpenses - monthlyCOGS;
+            const realProfit = monthlyIncome - monthlyOperationalExpenses - adjustedMonthlyCOGS;
             // Profit Margin % = (Real Profit / Revenue) * 100
             const profitMargin = monthlyIncome > 0 ? (realProfit / monthlyIncome) * 100 : 0;
             // Operating Cost Ratio % = (Expenses / Revenue) * 100
@@ -718,7 +827,7 @@ export class StatsService {
                 expenses: Number(monthlyOperationalExpenses.toFixed(2)),
                 purchases: Number(monthlyPurchases.toFixed(2)),
                 total: Number(realProfit.toFixed(2)),
-                cogs: Number(monthlyCOGS.toFixed(2)),
+                cogs: Number(adjustedMonthlyCOGS.toFixed(2)),
                 profitMargin: Number(profitMargin.toFixed(1)),
                 operatingCostRatio: Number(operatingCostRatio.toFixed(1))
             });
