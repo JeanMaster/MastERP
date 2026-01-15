@@ -247,10 +247,22 @@ export class StatsService {
 
         // 1. Get Target Rate Info
         const targetCurrency = await this.prisma.currency.findUnique({ where: { code: currencyCode } });
-        // We need a cross-rate if target is NOT active/primary?
-        // Let's assume simplest:
-        // If Target=VES: Amount = AmountVES.
-        // If Target=USD: Amount = AmountVES / HistoricalRate (if available) OR AmountVES / CurrentTargetRate.
+
+        // 2. Get Reference Currency (The one stored in sale.exchangeRate, usually USD)
+        const companySettings = await this.prisma.companySettings.findFirst({
+            include: { preferredSecondaryCurrency: true }
+        });
+        const refCurrency = companySettings?.preferredSecondaryCurrency;
+        const currentRefRate = Number(refCurrency?.exchangeRate || 1);
+
+        // Calculate Cross-Rate Factor (Ref -> Target)
+        let crossRateFactor = 1;
+        if (targetCurrency && refCurrency && targetCurrency.code !== refCurrency.code && currencyCode !== 'VES') {
+            const targetRate = Number(targetCurrency.exchangeRate || 1);
+            if (targetRate > 0) {
+                crossRateFactor = currentRefRate / targetRate;
+            }
+        }
 
         // Sales for the selected range
         const salesInRange = await this.prisma.sale.findMany({
@@ -294,12 +306,10 @@ export class StatsService {
             if (currencyCode !== 'VES') {
                 const rate = (Number(sale.exchangeRate) && Number(sale.exchangeRate) !== 1)
                     ? Number(sale.exchangeRate)
-                    : Number(targetCurrency?.exchangeRate || 1);
+                    : currentRefRate;
 
-                // If rate is 0 or 1 and we are not in VES, it's risky.
-                // Assuming rate is VES/USD.
                 if (rate > 0) {
-                    saleTotal = saleTotal / rate;
+                    saleTotal = (saleTotal / rate) * crossRateFactor;
                 }
             }
 
@@ -321,10 +331,10 @@ export class StatsService {
                 if (currencyCode !== 'VES') {
                     const rate = (Number(sale.exchangeRate) && Number(sale.exchangeRate) !== 1)
                         ? Number(sale.exchangeRate)
-                        : Number(targetCurrency?.exchangeRate || 1);
+                        : currentRefRate;
 
                     if (rate > 0) {
-                        itemCostTarget = itemCostTarget / rate;
+                        itemCostTarget = (itemCostTarget / rate) * crossRateFactor;
                     }
                 }
                 totalCostOfSales += itemCostTarget;
@@ -343,8 +353,8 @@ export class StatsService {
                 if (currencyCode !== 'VES') {
                     const rate = (Number(sale.exchangeRate) && Number(sale.exchangeRate) !== 1)
                         ? Number(sale.exchangeRate)
-                        : Number(targetCurrency?.exchangeRate || 1);
-                    if (rate > 0) amount = amount / rate;
+                        : currentRefRate;
+                    if (rate > 0) amount = (amount / rate) * crossRateFactor;
                 }
 
                 paymentBreakdown[method] = (paymentBreakdown[method] || 0) + amount;
@@ -383,7 +393,9 @@ export class StatsService {
                 totalPurchasesAmount += valInVES;
             } else {
                 const targetRate = Number(targetCurrency?.exchangeRate || 1);
-                totalPurchasesAmount += (valInVES / targetRate);
+                if (targetRate > 0) {
+                    totalPurchasesAmount += (valInVES / targetRate);
+                }
             }
         });
 
@@ -397,7 +409,9 @@ export class StatsService {
                 totalExpensesAmount += valInVES;
             } else {
                 const targetRate = Number(targetCurrency?.exchangeRate || 1);
-                totalExpensesAmount += (valInVES / targetRate);
+                if (targetRate > 0) {
+                    totalExpensesAmount += (valInVES / targetRate);
+                }
             }
         });
 
@@ -426,10 +440,11 @@ export class StatsService {
                 if (currencyCode !== 'VES') {
                     const targetRate = Number(targetCurrency?.exchangeRate || 1);
                     if (targetRate > 0) {
-                        itemCostInVES = itemCostInVES / targetRate;
+                        returnedCostOfSales += (itemCostInVES / targetRate);
                     }
+                } else {
+                    returnedCostOfSales += itemCostInVES;
                 }
-                returnedCostOfSales += itemCostInVES;
             });
         });
 
@@ -455,10 +470,11 @@ export class StatsService {
             if (currencyCode !== 'VES') {
                 const targetRate = Number(targetCurrency?.exchangeRate || 1);
                 if (targetRate > 0) {
-                    lossCostInVES = lossCostInVES / targetRate;
+                    inventoryLossCost += (lossCostInVES / targetRate);
                 }
+            } else {
+                inventoryLossCost += lossCostInVES;
             }
-            inventoryLossCost += lossCostInVES;
         });
 
         adjustedCostOfSales += inventoryLossCost;
@@ -497,6 +513,22 @@ export class StatsService {
         }
 
         const targetCurrency = await this.prisma.currency.findUnique({ where: { code: currencyCode } });
+
+        // 2. Get Reference Currency (The one stored in sale.exchangeRate, usually USD)
+        const companySettings = await this.prisma.companySettings.findFirst({
+            include: { preferredSecondaryCurrency: true }
+        });
+        const refCurrency = companySettings?.preferredSecondaryCurrency;
+        const currentRefRate = Number(refCurrency?.exchangeRate || 1);
+
+        // Calculate Cross-Rate Factor (Ref -> Target)
+        let crossRateFactor = 1;
+        if (targetCurrency && refCurrency && targetCurrency.code !== refCurrency.code && currencyCode !== 'VES') {
+            const targetRate = Number(targetCurrency.exchangeRate || 1);
+            if (targetRate > 0) {
+                crossRateFactor = currentRefRate / targetRate;
+            }
+        }
 
         // 1. Fetch Sales and their Items for COGS
         const sales = await this.prisma.sale.findMany({
@@ -544,9 +576,15 @@ export class StatsService {
                 let cost = itemCostInVES * Number(item.quantity);
                 let revenue = Number(item.total);
 
-                if (currencyCode !== 'VES' && saleRate > 0) {
-                    cost = cost / saleRate;
-                    revenue = revenue / saleRate;
+                if (currencyCode !== 'VES') {
+                    const rate = (Number(sale.exchangeRate) && Number(sale.exchangeRate) !== 1)
+                        ? Number(sale.exchangeRate)
+                        : currentRefRate;
+
+                    if (rate > 0) {
+                        cost = (cost / rate) * crossRateFactor;
+                        revenue = (revenue / rate) * crossRateFactor;
+                    }
                 }
 
                 totalSales += revenue;
@@ -586,7 +624,9 @@ export class StatsService {
                 totalPurchases += valInVES;
             } else {
                 const targetRate = Number(targetCurrency?.exchangeRate || 1);
-                totalPurchases += (valInVES / targetRate);
+                if (targetRate > 0) {
+                    totalPurchases += (valInVES / targetRate);
+                }
             }
         });
 
@@ -606,7 +646,9 @@ export class StatsService {
                 totalExpenses += valInVES;
             } else {
                 const targetRate = Number(targetCurrency?.exchangeRate || 1);
-                totalExpenses += (valInVES / targetRate);
+                if (targetRate > 0) {
+                    totalExpenses += (valInVES / targetRate);
+                }
             }
         });
 
@@ -637,10 +679,11 @@ export class StatsService {
                 if (currencyCode !== 'VES') {
                     const targetRate = Number(targetCurrency?.exchangeRate || 1);
                     if (targetRate > 0) {
-                        itemCostInVES = itemCostInVES / targetRate;
+                        returnedCOGS += (itemCostInVES / targetRate);
                     }
+                } else {
+                    returnedCOGS += itemCostInVES;
                 }
-                returnedCOGS += itemCostInVES;
             });
         });
 
@@ -669,10 +712,11 @@ export class StatsService {
             if (currencyCode !== 'VES') {
                 const targetRate = Number(targetCurrency?.exchangeRate || 1);
                 if (targetRate > 0) {
-                    lossCostInVES = lossCostInVES / targetRate;
+                    inventoryLossCOGS += (lossCostInVES / targetRate);
                 }
+            } else {
+                inventoryLossCOGS += lossCostInVES;
             }
-            inventoryLossCOGS += lossCostInVES;
         });
 
         // Final COGS = Sales COGS - Returns + Inventory Losses
