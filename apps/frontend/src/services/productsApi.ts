@@ -20,6 +20,8 @@ export interface Product {
         id: string;
         name: string;
         symbol: string;
+        isPrimary: boolean;
+        exchangeRate: number;
     };
     costPrice: number;
     salePrice: number;
@@ -46,13 +48,32 @@ export interface Product {
     secondaryWholesalePrice?: number;
     imageUrl?: string;
     active: boolean;
-    type: 'PRODUCT' | 'SERVICE';
+    type: 'PRODUCT' | 'SERVICE' | 'COMPOSED';
+    components?: Array<{
+        id: string;
+        componentProductId: string;
+        quantity: number;
+        componentProduct: {
+            id: string;
+            name: string;
+            sku: string;
+            costPrice: number;
+            stock: number;
+            currency: {
+                id: string;
+                name: string;
+                symbol: string;
+                isPrimary: boolean;
+                exchangeRate: number;
+            };
+        };
+    }>;
     createdAt: string;
     updatedAt: string;
 }
 
 export interface CreateProductDto {
-    type?: 'PRODUCT' | 'SERVICE';
+    type?: 'PRODUCT' | 'SERVICE' | 'COMPOSED';
     sku: string;
     name: string;
     description?: string;
@@ -73,10 +94,11 @@ export interface CreateProductDto {
     secondaryOfferPrice?: number;
     secondaryWholesalePrice?: number;
     imageUrl?: string;
+    components?: Array<{ componentProductId: string; quantity: number }>;
 }
 
 export interface UpdateProductDto {
-    type?: 'PRODUCT' | 'SERVICE';
+    type?: 'PRODUCT' | 'SERVICE' | 'COMPOSED';
     sku?: string;
     name?: string;
     description?: string;
@@ -97,10 +119,11 @@ export interface UpdateProductDto {
     secondaryOfferPrice?: number;
     secondaryWholesalePrice?: number;
     imageUrl?: string;
+    components?: Array<{ componentProductId: string; quantity: number }>;
 }
 
 export const productsApi = {
-    getAll: async (filters: { active?: boolean; search?: string; categoryId?: string; subcategoryId?: string; type?: 'PRODUCT' | 'SERVICE'; limit?: number; offset?: number } = {}): Promise<Product[]> => {
+    getAll: async (filters: { active?: boolean; search?: string; categoryId?: string; subcategoryId?: string; type?: 'PRODUCT' | 'SERVICE' | 'COMPOSED'; limit?: number; offset?: number } = {}): Promise<Product[]> => {
         const { active, search, categoryId, subcategoryId, type, limit, offset } = filters;
         const params = new URLSearchParams();
         if (active !== undefined) params.append('active', String(active));

@@ -340,29 +340,42 @@ export class StatsService {
                 totalCostOfSales += itemCostTarget;
             });
 
-            const paymentStr = sale.paymentMethod || 'CASH';
             const paymentMethods = paymentStr.split(', ');
 
             paymentMethods.forEach((payment) => {
                 const parts = payment.trim().split(':');
                 const method = parts[0].trim().toUpperCase();
 
-                let amount = parts.length > 1 ? parseFloat(parts[1]) : Number(sale.total);
+                // Formato: METHOD:AMOUNT:RATE
+                const rawAmount = parts.length > 1 ? parseFloat(parts[1]) : Number(sale.total);
+                const paymentSpecificRate = parts.length > 2 ? parseFloat(parts[2]) : null;
 
-                // Convert using same sale rate logic
-                if (currencyCode !== 'VES') {
-                    const rate = (Number(sale.exchangeRate) && Number(sale.exchangeRate) !== 1)
-                        ? Number(sale.exchangeRate)
-                        : currentRefRate;
-                    if (rate > 0) amount = (amount / rate) * crossRateFactor;
+                // 1. Convert to VES (Base)
+                let amountInVES = rawAmount;
+                const isForeignMethod = method.includes('_') || method === 'ZELLE';
+
+                if (isForeignMethod) {
+                    // Use embedded rate, or sale rate, or current ref rate
+                    const effectiveRate = paymentSpecificRate ||
+                        (Number(sale.exchangeRate) > 1 ? Number(sale.exchangeRate) : currentRefRate);
+                    amountInVES = rawAmount * effectiveRate;
                 }
 
-                paymentBreakdown[method] = (paymentBreakdown[method] || 0) + amount;
+                // 2. Convert from VES to Target Currency
+                let amountInTarget = amountInVES;
+                if (currencyCode !== 'VES') {
+                    const targetRate = Number(targetCurrency?.exchangeRate || 1);
+                    if (targetRate > 0) {
+                        amountInTarget = amountInVES / targetRate;
+                    }
+                }
+
+                paymentBreakdown[method] = (paymentBreakdown[method] || 0) + amountInTarget;
 
                 // Currency Type Categorization
-                const isDivisa = method.startsWith('CURRENCY_') || method === 'ZELLE';
+                const isDivisa = method.startsWith('CURRENCY_') || method === 'ZELLE' || method.includes('_UDT');
                 const type = isDivisa ? 'FOREIGN' : 'LOCAL';
-                currencyTypeBreakdown[type] += amount;
+                currencyTypeBreakdown[type] += amountInTarget;
             });
         });
 

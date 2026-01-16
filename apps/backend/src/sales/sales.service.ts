@@ -25,7 +25,12 @@ export class SalesService {
         for (const item of items) {
             const product = await this.prisma.product.findUnique({
                 where: { id: item.productId },
-                include: { currency: true }
+                include: {
+                    currency: true,
+                    components: {
+                        include: { componentProduct: true }
+                    }
+                }
             });
 
             if (!product) {
@@ -33,7 +38,18 @@ export class SalesService {
             }
 
             // Validar stock (si aplica)
-            if (product.type !== 'SERVICE' && Number(product.stock) > 0 && Number(product.stock) < item.quantity) {
+            if (product.type === 'COMPOSED') {
+                // Validación para productos compuestos: check stock of all components
+                for (const component of product.components) {
+                    const requiredQuantity = Number(component.quantity) * Number(item.quantity);
+                    if (Number(component.componentProduct.stock) < requiredQuantity) {
+                        throw new BadRequestException(
+                            `Stock insuficiente para componente ${component.componentProduct.name}. ` +
+                            `Requerido: ${requiredQuantity}, Disponible: ${component.componentProduct.stock}`
+                        );
+                    }
+                }
+            } else if (product.type !== 'SERVICE' && Number(product.stock) > 0 && Number(product.stock) < Number(item.quantity)) {
                 throw new BadRequestException(`Stock insuficiente para ${product.name}. Disponible: ${product.stock}`);
             }
 
@@ -71,25 +87,38 @@ export class SalesService {
                 include: {
                     items: {
                         include: {
-                            product: true,
+                            product: {
+                                include: {
+                                    components: true
+                                }
+                            },
                         },
                     },
                     client: true,
                 },
             });
 
-            // Actualizar stock de productos solo si tienen stock controlado (stock > 0)
-            for (const item of items) {
-                const product = await prisma.product.findUnique({
-                    where: { id: item.productId },
-                });
-
-                if (product && product.type !== 'SERVICE' && Number(product.stock) > 0) {
+            // Actualizar stock de productos
+            for (const item of newSale.items) {
+                if (item.product.type === 'COMPOSED') {
+                    // Si es compuesto, descontar componentes
+                    for (const component of item.product.components) {
+                        const quantityToDecrement = Number(component.quantity) * Number(item.quantity);
+                        await prisma.product.update({
+                            where: { id: component.componentProductId },
+                            data: {
+                                stock: {
+                                    decrement: quantityToDecrement,
+                                },
+                            },
+                        });
+                    }
+                } else if (item.product.type !== 'SERVICE' && Number(item.product.stock) > 0) {
                     await prisma.product.update({
                         where: { id: item.productId },
                         data: {
                             stock: {
-                                decrement: item.quantity,
+                                decrement: Number(item.quantity),
                             },
                         },
                     });
@@ -112,7 +141,7 @@ export class SalesService {
         // Detectar si hay crédito en el método de pago y crear factura automáticamente
         if (this.hasCredit(saleData.paymentMethod)) {
             try {
-                const creditInfo = this.extractCreditInfo(saleData.paymentMethod, Number(sale.total));
+                const creditInfo = this.extractCreditInfo(saleData.paymentMethod, Number(sale.total), Number(sale.exchangeRate));
 
                 // Si es un crédito en divisa (ej: USD), el monto de la factura debe ser en esa divisa
                 // para protegerse de la inflación, tal como pidió el usuario.
@@ -363,12 +392,27 @@ export class SalesService {
         return await this.prisma.$transaction(async (prisma) => {
             // 1. Restaurar stock
             for (const item of sale.items) {
-                const product = await prisma.product.findUnique({ where: { id: item.productId } });
-                if (product && product.type !== 'SERVICE') {
-                    await prisma.product.update({
-                        where: { id: item.productId },
-                        data: { stock: { increment: Number(item.quantity) } }
-                    });
+                const product = await prisma.product.findUnique({
+                    where: { id: item.productId },
+                    include: { components: true }
+                });
+
+                if (product) {
+                    if (product.type === 'COMPOSED') {
+                        // Restaurar componentes
+                        for (const component of product.components) {
+                            const quantityToRestore = Number(component.quantity) * Number(item.quantity);
+                            await prisma.product.update({
+                                where: { id: component.componentProductId },
+                                data: { stock: { increment: quantityToRestore } }
+                            });
+                        }
+                    } else if (product.type !== 'SERVICE') {
+                        await prisma.product.update({
+                            where: { id: item.productId },
+                            data: { stock: { increment: Number(item.quantity) } }
+                        });
+                    }
                 }
             }
 
@@ -410,7 +454,7 @@ export class SalesService {
     /**
      * Helper: Extraer información detallada del crédito (monto, moneda, tasa)
      */
-    private extractCreditInfo(paymentMethod: string, totalAmount: number): {
+    private extractCreditInfo(paymentMethod: string, totalAmount: number, saleRate: number = 1): {
         amount: number, // en Bs
         currencyCode: string,
         exchangeRate: number,
@@ -424,10 +468,14 @@ export class SalesService {
                 // O simple: ACCOUNT_CREDIT:500 (Metodo:MONTO_BS)
                 const mainParts = methodPart.split(':');
                 const methodKey = mainParts[0]; // ACCOUNT_CREDIT o ACCOUNT_CREDIT_USD
+                const isForeign = methodKey.includes('_');
                 const amount = mainParts[1] ? parseFloat(mainParts[1]) : totalAmount;
-                const rate = mainParts[2] ? parseFloat(mainParts[2]) : 1;
 
-                const currencyCode = methodKey.includes('_') ? methodKey.split('_')[2] : 'VES';
+                // Si es moneda extranjera y no viene tasa, usar la tasa de la venta
+                const defaultRate = isForeign ? (saleRate > 1 ? saleRate : 1) : 1;
+                const rate = mainParts[2] ? parseFloat(mainParts[2]) : defaultRate;
+
+                const currencyCode = isForeign ? methodKey.split('_')[2] : 'VES';
 
                 return {
                     amount: currencyCode === 'VES' ? amount : amount * rate,

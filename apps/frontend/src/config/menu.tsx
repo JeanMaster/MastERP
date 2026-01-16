@@ -41,6 +41,10 @@ export const menuItems: AppMenuItem[] = [
                 label: 'Productos Terminados',
             },
             {
+                key: '/inventory/composites',
+                label: 'Productos Compuestos',
+            },
+            {
                 key: '/inventory/currencies',
                 label: 'Monedas',
             },
