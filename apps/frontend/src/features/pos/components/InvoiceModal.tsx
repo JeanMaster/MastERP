@@ -2,6 +2,7 @@ import { Modal, Card, Row, Col, Typography, Button, Space, Divider, Tag, Descrip
 import { WhatsAppOutlined, MailOutlined, PrinterOutlined, CloseOutlined } from '@ant-design/icons';
 import type { Sale } from '../../../services/salesApi';
 import { formatVenezuelanPrice } from '../../../utils/formatters';
+import { usePOSStore } from '../../../store/posStore';
 
 const { Title, Text } = Typography;
 
@@ -30,6 +31,7 @@ export const InvoiceModal = ({ open, sale, onClose }: InvoiceModalProps) => {
 
     const clientName = sale.client?.name || 'CONTADO';
     const clientPhone = (sale.client as any)?.phone || null;
+    const { companyInfo } = usePOSStore();
     const clientEmail = (sale.client as any)?.email || null;
     const hasWhatsapp = (sale.client as any)?.hasWhatsapp || false;
 
@@ -47,8 +49,8 @@ export const InvoiceModal = ({ open, sale, onClose }: InvoiceModalProps) => {
         ).join('\n') || '';
 
         const invoiceMessage = encodeURIComponent(
-            `🏢 *ZENITH*\n` +
-            `RIF: J-00000000-0\n` +
+            `🏢 *${companyInfo?.name || 'ZENITH'}*\n` +
+            `RIF: ${companyInfo?.rif || 'J-00000000-0'}\n` +
             `━━━━━━━━━━━━━━━━\n\n` +
             `🧾 *FACTURA ${sale.invoiceNumber}*\n\n` +
             `Hola ${clientName}, aquí está el detalle de tu compra:\n\n` +
@@ -61,7 +63,7 @@ export const InvoiceModal = ({ open, sale, onClose }: InvoiceModalProps) => {
             `💰 *TOTAL: ${formatVenezuelanPrice(sale.total)}*\n\n` +
             `💳 Método de pago: ${sale.paymentMethod}\n\n` +
             `¡Gracias por tu compra! 🙏\n` +
-            `_Zenith ERP_`
+            `_${companyInfo?.name || 'Zenith ERP'}_`
         );
         return `https://wa.me/${cleanPhone}?text=${invoiceMessage}`;
     };
@@ -78,14 +80,14 @@ export const InvoiceModal = ({ open, sale, onClose }: InvoiceModalProps) => {
 
     const handleEmail = () => {
         if (clientEmail) {
-            const subject = encodeURIComponent(`Factura ${sale.invoiceNumber} - Zenith`);
+            const subject = encodeURIComponent(`Factura ${sale.invoiceNumber} - ${companyInfo?.name || 'Zenith'}`);
             const body = encodeURIComponent(
                 `Estimado/a ${clientName},\n\n` +
                 `Adjunto encontrará los detalles de su factura:\n\n` +
                 `Número de Factura: ${sale.invoiceNumber}\n` +
                 `Fecha: ${new Date(sale.date).toLocaleDateString('es-VE')}\n` +
                 `Total: ${formatVenezuelanPrice(sale.total)}\n\n` +
-                `¡Gracias por su preferencia!\n\nZenith ERP`
+                `¡Gracias por su preferencia!\n\n${companyInfo?.name || 'Zenith ERP'}`
             );
             window.open(`mailto:${clientEmail}?subject=${subject}&body=${body}`, '_blank');
             message.success('Abriendo cliente de correo...');
@@ -122,8 +124,8 @@ export const InvoiceModal = ({ open, sale, onClose }: InvoiceModalProps) => {
             </head>
             <body>
                 <div class="header">
-                    <div class="company-name">ZENITH</div>
-                    <div class="fiscal-info">RIF: J-00000000-0</div>
+                    <div class="company-name">${companyInfo?.name || 'ZENITH'}</div>
+                    <div class="fiscal-info">RIF: ${companyInfo?.rif || 'J-00000000-0'}</div>
                     <div class="fiscal-info">Dirección Fiscal: Venezuela</div>
                     <div class="invoice-title">FACTURA</div>
                     <div style="font-size: 14px; margin-top: 5px;">${sale.invoiceNumber}</div>
@@ -180,7 +182,7 @@ export const InvoiceModal = ({ open, sale, onClose }: InvoiceModalProps) => {
                 
                 <div class="footer">
                     ¡Gracias por su compra!<br>
-                    Generado por Zenith ERP
+                    Generado por ${companyInfo?.name || 'Zenith ERP'}
                 </div>
             </body>
             </html>

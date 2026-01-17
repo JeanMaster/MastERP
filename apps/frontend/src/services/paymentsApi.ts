@@ -31,4 +31,8 @@ export const paymentsApi = {
         const response = await apiClient.get('/payments');
         return response.data;
     },
+
+    delete: async (id: string): Promise<void> => {
+        await apiClient.delete(`/payments/${id}`);
+    },
 };

@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Delete } from '@nestjs/common';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { PaymentsService } from './payments.service';
 import { CreatePaymentDto } from './dto/create-payment.dto';
@@ -24,5 +24,11 @@ export class PaymentsController {
     @ApiOperation({ summary: 'Obtener todos los pagos' })
     getAll() {
         return this.paymentsService.getAllPayments();
+    }
+
+    @Delete(':id')
+    @ApiOperation({ summary: 'Eliminar un pago y revertir balance' })
+    remove(@Param('id') id: string) {
+        return this.paymentsService.removePayment(id);
     }
 }

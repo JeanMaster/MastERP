@@ -272,21 +272,28 @@ export class ReturnsService {
             throw new BadRequestException('Solo se pueden procesar devoluciones aprobadas');
         }
 
+        // Razones donde el producto vuelve al stock (producto en buen estado)
+        const restorableReasons = ['ERROR', 'UNSATISFIED', 'OTHER'];
+        const shouldRestoreStock = restorableReasons.includes(returnRecord.reason);
+
         await this.prisma.$transaction(async (prisma) => {
-            // Restore stock for each item returned
+            // Restore stock for each item returned ONLY if product is sellable
             for (const item of returnRecord.items) {
                 if (item.product.type !== 'SERVICE') {
-                    // Increment stock for returned item
-                    await prisma.product.update({
-                        where: { id: item.productId },
-                        data: {
-                            stock: {
-                                increment: Number(item.quantity),
+                    // Only increment stock if the product is not defective/expired
+                    if (shouldRestoreStock) {
+                        await prisma.product.update({
+                            where: { id: item.productId },
+                            data: {
+                                stock: {
+                                    increment: Number(item.quantity),
+                                },
                             },
-                        },
-                    });
+                        });
+                    }
 
                     // If it's a SAME item exchange, decrement stock for the replacement
+                    // (always decrement because we're giving a new product)
                     if (returnRecord.returnType === 'EXCHANGE_SAME') {
                         await prisma.product.update({
                             where: { id: item.productId },

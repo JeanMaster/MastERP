@@ -4,7 +4,8 @@ import { Type } from 'class-transformer';
 
 export enum ProductType {
     PRODUCT = 'PRODUCT',
-    SERVICE = 'SERVICE'
+    SERVICE = 'SERVICE',
+    COMPOSED = 'COMPOSED'
 }
 
 export class CreateProductDto {
@@ -135,8 +136,17 @@ export class CreateProductDto {
     @Min(0)
     secondaryWholesalePrice?: number;
 
-    @ApiProperty({ example: 'https://example.com/image.jpg', required: false, description: 'URL o base64 de la imagen del producto' })
     @IsOptional()
     @IsString()
     imageUrl?: string;
+
+    @ApiProperty({
+        example: [{ componentProductId: 'uuid', quantity: 2 }],
+        required: false,
+        description: 'Componentes del producto (solo para tipo COMPOSED)'
+    })
+    @IsOptional()
+    @ValidateIf(o => o.type === ProductType.COMPOSED)
+    @Type(() => Object)
+    components?: Array<{ componentProductId: string; quantity: number }>;
 }

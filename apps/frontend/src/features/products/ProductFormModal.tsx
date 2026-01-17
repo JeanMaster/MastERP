@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Modal, Form, Input, InputNumber, Select, message, Row, Col, Divider, Card, Alert, Upload } from 'antd';
-import { PlusOutlined } from '@ant-design/icons';
+import { Modal, Form, Input, InputNumber, Select, message, Row, Col, Divider, Card, Alert, Upload, Button } from 'antd';
+import { PlusOutlined, NodeIndexOutlined, DeleteOutlined } from '@ant-design/icons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { productsApi } from '../../services/productsApi';
 import type { Product, CreateProductDto, UpdateProductDto } from '../../services/productsApi';
@@ -13,9 +13,10 @@ interface ProductFormModalProps {
     open: boolean;
     product: Product | null;
     onClose: () => void;
+    defaultType?: 'PRODUCT' | 'SERVICE' | 'COMPOSED';
 }
 
-export const ProductFormModal = ({ open, product, onClose }: ProductFormModalProps) => {
+export const ProductFormModal = ({ open, product, onClose, defaultType }: ProductFormModalProps) => {
     const [form] = Form.useForm();
     const queryClient = useQueryClient();
     const [selectedCategory, setSelectedCategory] = useState<string | undefined>(undefined);
@@ -29,6 +30,10 @@ export const ProductFormModal = ({ open, product, onClose }: ProductFormModalPro
     const [similarProductSearch, setSimilarProductSearch] = useState<string>('');
     const [similarProducts, setSimilarProducts] = useState<Product[]>([]);
     const [isSearchingSimilar, setIsSearchingSimilar] = useState(false);
+    const [productType, setProductType] = useState<'PRODUCT' | 'SERVICE' | 'COMPOSED' | undefined>(undefined);
+    const [, setIngredientSearch] = useState<string>('');
+    const [availableIngredients, setAvailableIngredients] = useState<Product[]>([]);
+    const [, setIsSearchingIngredients] = useState(false);
 
     // Fetch departments
     const { data: departments = [] } = useQuery({
@@ -137,7 +142,7 @@ export const ProductFormModal = ({ open, product, onClose }: ProductFormModalPro
                 offerPrice: product.offerPrice,
                 offerProfitPercent: Number(offerProfitPercent.toFixed(2)),
                 wholesalePrice: product.wholesalePrice,
-                wholesaleProfitPercent: Number(wholesaleProfitPercent.toFixed(2)),
+                wholesaleWholesaleProfitPercent: Number(wholesaleProfitPercent.toFixed(2)),
                 secondaryCostPrice: product.secondaryCostPrice,
                 secondarySalePrice: product.secondarySalePrice,
                 secondarySaleProfitPercent: Number(secondarySaleProfitPercent.toFixed(2)),
@@ -146,20 +151,38 @@ export const ProductFormModal = ({ open, product, onClose }: ProductFormModalPro
                 secondaryWholesalePrice: product.secondaryWholesalePrice,
                 secondaryWholesaleProfitPercent: Number(secondaryWholesaleProfitPercent.toFixed(2)),
                 imageUrl: product.imageUrl,
+                type: product.type || 'PRODUCT',
+                components: product.components?.map(c => ({
+                    componentProductId: c.componentProductId,
+                    quantity: c.quantity,
+                    cost: c.componentProduct.costPrice,
+                    stock: c.componentProduct.stock,
+                    rate: c.componentProduct.currency?.isPrimary ? 1 : Number(c.componentProduct.currency?.exchangeRate || 1)
+                })) || []
             });
+
+            setProductType(product.type || 'PRODUCT');
 
             if (product.currency) {
                 setSelectedCurrency(product.currency);
             }
+
+            // Pre-populate available ingredients to show labels instead of UUIDs
+            if (product.type === 'COMPOSED' && product.components) {
+                setAvailableIngredients(product.components.map(c => c.componentProduct) as any);
+            }
         } else {
             form.resetFields();
+            const type = defaultType || 'PRODUCT';
+            form.setFieldValue('type', type);
+            setProductType(type);
             setSelectedCategory(undefined);
             setHasSecondaryUnit(false);
             setConversionDirection('primary_to_secondary');
             setImageUrl(undefined);
             setSelectedCurrency(null);
         }
-    }, [product, form, open]);
+    }, [product, form, open, defaultType]);
 
     // Keyboard Shortcuts
     useEffect(() => {
@@ -201,6 +224,11 @@ export const ProductFormModal = ({ open, product, onClose }: ProductFormModalPro
                 secondaryOfferPrice: values.secondaryOfferPrice,
                 secondaryWholesalePrice: values.secondaryWholesalePrice,
                 imageUrl: imageUrl,
+                type: values.type,
+                components: values.type === 'COMPOSED' ? values.components?.map((c: any) => ({
+                    componentProductId: c.componentProductId,
+                    quantity: c.quantity
+                })) : undefined
             };
 
             if (product) {
@@ -512,6 +540,51 @@ export const ProductFormModal = ({ open, product, onClose }: ProductFormModalPro
         }
     };
 
+    const handleIngredientSearch = (value: string) => {
+        setIngredientSearch(value);
+        if (value.length > 1) {
+            setIsSearchingIngredients(true);
+            productsApi.getAll({ search: value, limit: 10, type: 'PRODUCT' }).then(data => {
+                setAvailableIngredients(data);
+                setIsSearchingIngredients(false);
+            }).catch(() => {
+                setIsSearchingIngredients(false);
+            });
+        }
+    };
+
+    const updateComposedFields = () => {
+        const components = form.getFieldValue('components') || [];
+        let totalCostInBase = 0;
+        const availabilities: number[] = [];
+
+        components.forEach((c: any) => {
+            if (c.cost !== undefined) {
+                const rate = c.rate || 1;
+                totalCostInBase += (Number(c.cost) * rate) * (c.quantity || 0);
+            }
+            if (c.stock !== undefined && (c.quantity > 0)) {
+                availabilities.push(Math.floor(Number(c.stock) / Number(c.quantity)));
+            }
+        });
+
+        const targetCurrencyId = form.getFieldValue('currencyId');
+        const targetCurrency = currencies.find(curr => curr.id === targetCurrencyId);
+        const targetRate = targetCurrency?.isPrimary ? 1 : Number(targetCurrency?.exchangeRate || 1);
+
+        form.setFieldValue('costPrice', Number((totalCostInBase / targetRate).toFixed(2)));
+
+        if (availabilities.length > 0) {
+            const calculatedStock = Math.min(...availabilities);
+            form.setFieldValue('stock', calculatedStock);
+        } else if (components.length > 0) {
+            form.setFieldValue('stock', 0);
+        }
+
+        // Trigger margins update
+        handleSalePriceChange(form.getFieldValue('salePrice'));
+    };
+
     return (
         <>
             <Modal
@@ -535,6 +608,26 @@ export const ProductFormModal = ({ open, product, onClose }: ProductFormModalPro
                         }
                     }}
                 >
+                    {/* Tipo de Producto */}
+                    <Row gutter={16}>
+                        <Col span={24}>
+                            <Form.Item
+                                label="Tipo de Producto"
+                                name="type"
+                                rules={[{ required: true }]}
+                            >
+                                <Select
+                                    onChange={(val) => setProductType(val)}
+                                    options={[
+                                        { value: 'PRODUCT', label: 'Producto Terminado' },
+                                        { value: 'SERVICE', label: 'Servicio' },
+                                        { value: 'COMPOSED', label: 'Producto Compuesto (Receta)' },
+                                    ]}
+                                />
+                            </Form.Item>
+                        </Col>
+                    </Row>
+
                     {/* Información básica */}
                     <Row gutter={16}>
                         <Col span={12}>
@@ -688,6 +781,93 @@ export const ProductFormModal = ({ open, product, onClose }: ProductFormModalPro
                         </Col>
                     </Row>
 
+                    {/* Sección de Receta para Productos Compuestos */}
+                    {productType === 'COMPOSED' && (
+                        <Card
+                            title={<span style={{ color: '#722ed1' }}><NodeIndexOutlined /> Receta de Producto Compuesto</span>}
+                            size="small"
+                            style={{ marginBottom: 24, borderColor: '#d3adf7', background: '#f9f0ff' }}
+                        >
+                            <Alert
+                                message="El costo y stock se calcularán automáticamente según los items agregados."
+                                type="info"
+                                showIcon
+                                style={{ marginBottom: 16 }}
+                            />
+
+                            <Form.List name="components">
+                                {(fields, { add, remove }) => (
+                                    <>
+                                        {fields.map(({ key, name, ...restField }) => (
+                                            <Row gutter={8} key={key} align="middle" style={{ marginBottom: 8 }}>
+                                                <Col span={14}>
+                                                    <Form.Item
+                                                        {...restField}
+                                                        name={[name, 'componentProductId']}
+                                                        rules={[{ required: true, message: 'Requerido' }]}
+                                                        style={{ marginBottom: 0 }}
+                                                    >
+                                                        <Select
+                                                            showSearch
+                                                            placeholder="Buscar item..."
+                                                            onSearch={handleIngredientSearch}
+                                                            filterOption={false}
+                                                            onSelect={(val, _option: any) => {
+                                                                const component = availableIngredients.find(p => p.id === val);
+                                                                if (component) {
+                                                                    const currentComps = form.getFieldValue('components');
+                                                                    currentComps[name].cost = component.costPrice;
+                                                                    currentComps[name].stock = component.stock;
+                                                                    currentComps[name].rate = component.currency?.isPrimary ? 1 : Number(component.currency?.exchangeRate || 1);
+                                                                    form.setFieldValue('components', currentComps);
+                                                                    updateComposedFields();
+                                                                }
+                                                            }}
+                                                            options={availableIngredients.map(p => ({
+                                                                value: p.id,
+                                                                label: `${p.sku} - ${p.name} (Stock: ${p.stock})`,
+                                                            }))}
+                                                        />
+                                                    </Form.Item>
+                                                </Col>
+                                                <Col span={6}>
+                                                    <Form.Item
+                                                        {...restField}
+                                                        name={[name, 'quantity']}
+                                                        rules={[{ required: true, message: 'Cant' }]}
+                                                        style={{ marginBottom: 0 }}
+                                                    >
+                                                        <InputNumber
+                                                            placeholder="Cant"
+                                                            style={{ width: '100%' }}
+                                                            min={0.001}
+                                                            onChange={updateComposedFields}
+                                                        />
+                                                    </Form.Item>
+                                                </Col>
+                                                <Col span={4}>
+                                                    <Button type="text" danger icon={<DeleteOutlined />} onClick={() => {
+                                                        remove(name);
+                                                        updateComposedFields();
+                                                    }} />
+                                                </Col>
+                                            </Row>
+                                        ))}
+                                        <Button
+                                            type="dashed"
+                                            onClick={() => add()}
+                                            block
+                                            icon={<PlusOutlined />}
+                                            style={{ marginTop: 8 }}
+                                        >
+                                            Agregar item
+                                        </Button>
+                                    </>
+                                )}
+                            </Form.List>
+                        </Card>
+                    )}
+
                     <Divider orientation={"left" as any} style={{ margin: '12px 0' }}>
                         <span style={{ fontSize: '14px', color: '#666' }}>Precios e Inventario</span>
                     </Divider>
@@ -749,23 +929,25 @@ export const ProductFormModal = ({ open, product, onClose }: ProductFormModalPro
                                 ]}
                             >
                                 <InputNumber
-                                    placeholder="0.00"
+                                    placeholder={productType === 'COMPOSED' ? "Auto-calculado" : "0.00"}
                                     style={{ width: '100%' }}
                                     precision={2}
                                     min={0}
+                                    disabled={productType === 'COMPOSED'}
                                 />
                             </Form.Item>
 
                             <Form.Item
-                                label="Stock Inicial"
+                                label={productType === 'COMPOSED' ? "Disponibilidad (Auto)" : "Stock Inicial"}
                                 name="stock"
                                 rules={[{ type: 'number', min: 0, message: 'Debe ser mayor o igual a 0' }]}
                             >
                                 <InputNumber
-                                    placeholder="0.000"
+                                    placeholder={productType === 'COMPOSED' ? "Auto-calculado" : "0.000"}
                                     style={{ width: '100%' }}
                                     precision={3}
                                     min={0}
+                                    disabled={productType === 'COMPOSED'}
                                 />
                             </Form.Item>
 
@@ -1166,13 +1348,14 @@ export const ProductFormModal = ({ open, product, onClose }: ProductFormModalPro
                 </Form>
             </Modal>
 
+
             <PriceUpdateConfirmModal
                 visible={priceUpdateModalVisible}
+                loading={priceUpdateLoading}
                 products={costChangeInfo ? [costChangeInfo] : []}
                 currencySymbol={selectedCurrency?.symbol || product?.currency?.symbol || '$'}
                 onConfirm={handlePriceUpdateConfirm}
                 onCancel={handlePriceUpdateCancel}
-                loading={priceUpdateLoading}
             />
         </>
     );

@@ -26,6 +26,29 @@ export class ProductsService {
         // Validar que los precios de venta sean >= precio de costo
         this.validatePrices(createProductDto);
 
+        // Cost calculation for composed products
+        if (createProductDto.type === 'COMPOSED' && createProductDto.components) {
+            let totalCostInBase = 0;
+            for (const component of createProductDto.components) {
+                const product = await this.prisma.product.findUnique({
+                    where: { id: component.componentProductId },
+                    include: { currency: true }
+                });
+                if (product) {
+                    const rate = product.currency?.isPrimary ? 1 : Number(product.currency?.exchangeRate || 1);
+                    const costInBase = Number(product.costPrice || 0) * rate;
+                    totalCostInBase += costInBase * Number(component.quantity);
+                }
+            }
+
+            // Get target currency rate
+            const targetCurrency = await this.prisma.currency.findUnique({
+                where: { id: createProductDto.currencyId }
+            });
+            const targetRate = targetCurrency?.isPrimary ? 1 : Number(targetCurrency?.exchangeRate || 1);
+            createProductDto.costPrice = totalCostInBase / targetRate;
+        }
+
         try {
             return await this.prisma.product.create({
                 data: {
@@ -41,6 +64,14 @@ export class ProductsService {
                     wholesalePrice: createProductDto.wholesalePrice
                         ? new Decimal(createProductDto.wholesalePrice)
                         : null,
+                    components: createProductDto.type === 'COMPOSED' && createProductDto.components
+                        ? {
+                            create: createProductDto.components.map(c => ({
+                                componentProductId: c.componentProductId,
+                                quantity: new Decimal(c.quantity)
+                            }))
+                        }
+                        : undefined
                 },
                 include: {
                     category: { select: { id: true, name: true } },
@@ -48,6 +79,13 @@ export class ProductsService {
                     currency: { select: { id: true, name: true, symbol: true } },
                     unit: { select: { id: true, name: true, abbreviation: true } },
                     secondaryUnit: { select: { id: true, name: true, abbreviation: true } },
+                    components: {
+                        include: {
+                            componentProduct: {
+                                select: { id: true, name: true, sku: true, costPrice: true }
+                            }
+                        }
+                    }
                 },
             });
         } catch (error) {
@@ -90,6 +128,13 @@ export class ProductsService {
                 currency: { select: { id: true, name: true, symbol: true } },
                 unit: { select: { id: true, name: true, abbreviation: true } },
                 secondaryUnit: { select: { id: true, name: true, abbreviation: true } },
+                components: {
+                    include: {
+                        componentProduct: {
+                            include: { currency: true }
+                        }
+                    }
+                }
             },
             orderBy: { name: 'asc' },
         });
@@ -105,6 +150,13 @@ export class ProductsService {
                 subcategory: { select: { id: true, name: true } },
                 currency: { select: { id: true, name: true, symbol: true } },
                 unit: { select: { id: true, name: true, abbreviation: true } },
+                components: {
+                    include: {
+                        componentProduct: {
+                            include: { currency: true }
+                        }
+                    }
+                }
             },
         });
 
@@ -176,7 +228,48 @@ export class ProductsService {
             }
         }
 
+        // Cost calculation for composed products
+        if (updateProductDto.type === 'COMPOSED' && updateProductDto.components) {
+            let totalCostInBase = 0;
+            for (const component of updateProductDto.components) {
+                const product = await this.prisma.product.findUnique({
+                    where: { id: component.componentProductId },
+                    include: { currency: true }
+                });
+                if (product) {
+                    const rate = product.currency?.isPrimary ? 1 : Number(product.currency?.exchangeRate || 1);
+                    const costInBase = Number(product.costPrice || 0) * rate;
+                    totalCostInBase += costInBase * Number(component.quantity);
+                }
+            }
+
+            // Get target currency rate
+            const targetCurrencyId = updateProductDto.currencyId || existingProduct.currencyId;
+            const targetCurrency = await this.prisma.currency.findUnique({
+                where: { id: targetCurrencyId }
+            });
+            const targetRate = targetCurrency?.isPrimary ? 1 : Number(targetCurrency?.exchangeRate || 1);
+            updateProductDto.costPrice = totalCostInBase / targetRate;
+        }
+
         try {
+            // Update components if it's composed and components provided
+            if (updateProductDto.type === 'COMPOSED' && updateProductDto.components) {
+                // Delete existing components first (simple sync)
+                await this.prisma.productComponent.deleteMany({
+                    where: { compositeProductId: id }
+                });
+
+                // Prepare the create data
+                const componentsData = updateProductDto.components.map(c => ({
+                    componentProductId: c.componentProductId,
+                    quantity: new Decimal(c.quantity)
+                }));
+
+                // Re-add them (we'll do this in the update transaction if possible, 
+                // but deleteMany followed by nested create in update is sometimes cleaner)
+            }
+
             const updatedProduct = await this.prisma.product.update({
                 where: { id },
                 data: {
@@ -193,12 +286,28 @@ export class ProductsService {
                     wholesalePrice: updateProductDto.wholesalePrice
                         ? new Decimal(updateProductDto.wholesalePrice)
                         : undefined,
+                    components: updateProductDto.type === 'COMPOSED' && updateProductDto.components
+                        ? {
+                            deleteMany: {},
+                            create: updateProductDto.components.map(c => ({
+                                componentProductId: c.componentProductId,
+                                quantity: new Decimal(c.quantity)
+                            }))
+                        }
+                        : undefined
                 },
                 include: {
                     category: { select: { id: true, name: true } },
                     subcategory: { select: { id: true, name: true } },
                     currency: { select: { id: true, name: true, symbol: true } },
                     unit: { select: { id: true, name: true, abbreviation: true } },
+                    components: {
+                        include: {
+                            componentProduct: {
+                                select: { id: true, name: true, sku: true, costPrice: true }
+                            }
+                        }
+                    }
                 },
             });
 

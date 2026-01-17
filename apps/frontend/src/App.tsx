@@ -8,6 +8,7 @@ import { SalesHistoryPage } from './features/sales/SalesHistoryPage';
 import { PurchasesPage } from './features/purchases/PurchasesPage';
 import { SuppliersPage } from './features/purchases/SuppliersPage';
 import { ProductsPage } from './features/products/ProductsPage';
+import { CompositeProductsPage } from './features/products/CompositeProductsPage';
 import { ServicesPage } from './features/products/ServicesPage';
 import { CompanySettingsPage } from './features/company-settings/CompanySettingsPage';
 import { GeneralOptionsPage } from './features/company-settings/GeneralOptionsPage';
@@ -63,6 +64,7 @@ function App() {
 
           <Route path="clients" element={<ClientsPage />} />
           <Route path="inventory/products" element={<ProductsPage />} />
+          <Route path="inventory/composites" element={<CompositeProductsPage />} />
           <Route path="inventory/adjustments" element={<InventoryAdjustmentsPage />} />
           <Route path="inventory/departments" element={<DepartmentsPage />} />
           <Route path="inventory/units" element={<UnitsPage />} />

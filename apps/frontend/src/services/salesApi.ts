@@ -121,4 +121,8 @@ export const salesApi = {
     remove: async (id: string): Promise<void> => {
         await api.delete(`/sales/${id}`);
     },
+
+    markAsUncollectible: async (id: string): Promise<void> => {
+        await api.delete(`/sales/${id}/uncollectible`);
+    },
 };

@@ -37,6 +37,7 @@ interface POSState {
     preferredSecondaryCurrency: Currency | null;
     currencies: Currency[]; // All available currencies
     primaryCurrency: Currency | null;
+    companyInfo: { name: string; rif: string } | null;
     searchTerm: string;
     searchResults: Product[];
 
@@ -90,6 +91,7 @@ export const usePOSStore = create<POSState>()(
             preferredSecondaryCurrency: null,
             currencies: [],
             primaryCurrency: null,
+            companyInfo: null,
             searchTerm: '',
             searchResults: [],
             setSearchTerm: (term) => set({ searchTerm: term }),
@@ -441,7 +443,8 @@ export const usePOSStore = create<POSState>()(
                         currencies: allCurrencies,
                         primaryCurrency: primary,
                         preferredSecondaryCurrency: secondaryDetails,
-                        exchangeRate: secondaryRate
+                        exchangeRate: secondaryRate,
+                        companyInfo: { name: settings.name, rif: settings.rif }
                     });
 
                     // Fetch next invoice number from sales data
