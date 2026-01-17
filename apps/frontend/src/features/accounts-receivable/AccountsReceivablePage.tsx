@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
 import { Card, Tabs, Table, Button, Tag, App, Space, Statistic, Row, Col } from 'antd';
-import { FileTextOutlined, ClockCircleOutlined, ReloadOutlined } from '@ant-design/icons';
+import { FileTextOutlined, ClockCircleOutlined, ReloadOutlined, DeleteOutlined, CloseCircleOutlined } from '@ant-design/icons';
 import { invoicesApi, type Invoice } from '../../services/invoicesApi';
 import { paymentsApi } from '../../services/paymentsApi';
+import { salesApi } from '../../services/salesApi';
 import { currenciesApi } from '../../services/currenciesApi';
+
 import { RegisterPaymentModal } from './components/RegisterPaymentModal';
 import { ClientStatementModal } from './components/ClientStatementModal';
 import { formatVenezuelanNumber } from '../../utils/formatters';
@@ -11,7 +13,7 @@ import dayjs from 'dayjs';
 import { useQuery } from '@tanstack/react-query';
 
 export const AccountsReceivablePage = () => {
-    const { message } = App.useApp();
+    const { message, modal } = App.useApp();
     const [activeTab, setActiveTab] = useState('pending');
     const [pendingInvoices, setPendingInvoices] = useState<Invoice[]>([]);
     const [allPayments, setAllPayments] = useState<any[]>([]);
@@ -81,6 +83,53 @@ export const AccountsReceivablePage = () => {
         } catch (error: any) {
             message.error('Error al cargar estado de cuenta');
         }
+    };
+    const handleDeletePayment = (paymentId: string) => {
+        modal.confirm({
+            title: '¿Estás seguro de que deseas eliminar este pago?',
+            content: 'Esta acción revertirá el balance de la factura y no se puede deshacer.',
+            okText: 'Sí, eliminar',
+            okType: 'danger',
+            cancelText: 'Cancelar',
+            onOk: async () => {
+                try {
+                    await paymentsApi.delete(paymentId);
+                    message.success('Pago eliminado y balance revertido');
+                    fetchPendingInvoices();
+                    fetchAllPayments();
+                } catch (error: any) {
+                    message.error('Error al eliminar el pago');
+                }
+            },
+        });
+    };
+
+    const handleMarkUncollectible = (invoice: Invoice) => {
+        if (!invoice.saleId) return;
+
+        modal.confirm({
+            title: '¿Declarar IMPAGO / Deuda Incobrable?',
+            content: (
+                <div>
+                    <p>Esta acción eliminará la venta y la deuda asociada.</p>
+                    <p style={{ color: 'red', fontWeight: 'bold' }}>⚠️ EL STOCK NO SE RESTAURARÁ</p>
+                    <p>Úselo solo si el cliente se llevó la mercancía y no pagará (Pérdida/Robo).</p>
+                </div>
+            ),
+            okText: 'Declarar Impago',
+            okType: 'danger',
+            cancelText: 'Cancelar',
+            onOk: async () => {
+                try {
+                    await salesApi.markAsUncollectible(invoice.saleId!);
+                    message.success('Deuda declarada incobrable y eliminada');
+                    fetchPendingInvoices();
+                    fetchAllPayments();
+                } catch (error: any) {
+                    message.error('Error al procesar impago');
+                }
+            },
+        });
     };
 
     // Calculate totals - Always convert to VES
@@ -184,6 +233,7 @@ export const AccountsReceivablePage = () => {
                         type="primary"
                         size="small"
                         onClick={() => handleRegisterPayment(record)}
+                        disabled={record.status === 'PAID'}
                     >
                         Registrar Pago
                     </Button>
@@ -193,6 +243,17 @@ export const AccountsReceivablePage = () => {
                     >
                         Estado de Cuenta
                     </Button>
+                    {record.saleId && (
+                        <Button
+                            danger
+                            size="small"
+                            icon={<CloseCircleOutlined />}
+                            title="Declarar Impago (Pérdida)"
+                            onClick={() => handleMarkUncollectible(record)}
+                        >
+                            Impago
+                        </Button>
+                    )}
                 </Space>
             ),
         },
@@ -232,6 +293,19 @@ export const AccountsReceivablePage = () => {
             dataIndex: 'reference',
             key: 'reference',
             render: (ref: string) => ref || '-',
+        },
+        {
+            title: 'Acciones',
+            key: 'actions',
+            align: 'center' as const,
+            render: (_: any, record: any) => (
+                <Button
+                    type="text"
+                    danger
+                    icon={<DeleteOutlined />}
+                    onClick={() => handleDeletePayment(record.id)}
+                />
+            ),
         },
     ];
 

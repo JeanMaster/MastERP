@@ -86,10 +86,17 @@ export class SalesController {
     }
 
     @Delete(':id')
-    @ApiOperation({ summary: 'Eliminar/Anular una venta' })
+    @ApiOperation({ summary: 'Eliminar una venta (y restaurar stock)' })
     @ApiResponse({ status: 200, description: 'Venta eliminada' })
     remove(@Param('id') id: string) {
         return this.salesService.remove(id);
+    }
+
+    @Delete(':id/uncollectible')
+    @ApiOperation({ summary: 'Declarar IMPAGO (Eliminar venta SIN restaurar stock)' })
+    @ApiResponse({ status: 200, description: 'Venta declarada incobrable y eliminada sin stock' })
+    markAsUncollectible(@Param('id') id: string) {
+        return this.salesService.markAsUncollectible(id);
     }
 
     @Get(':id')

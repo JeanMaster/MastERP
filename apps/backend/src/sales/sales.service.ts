@@ -437,6 +437,50 @@ export class SalesService {
                 }
             }
 
+            await prisma.saleItem.deleteMany({ where: { saleId: id } });
+            return prisma.sale.delete({ where: { id } });
+        });
+    }
+
+    /**
+     * Declarar IMPAGO (Pérdida/Robo): Elimina la venta y la deuda, pero NO restaura el stock.
+     * Se usa cuando el cliente se llevó la mercancía pero nunca pagó y se declara incobrable.
+     */
+    async markAsUncollectible(id: string) {
+        const sale = await this.prisma.sale.findUnique({
+            where: { id },
+            include: { items: true }
+        });
+
+        if (!sale) {
+            throw new BadRequestException(`Venta con ID ${id} no encontrada`);
+        }
+
+        return await this.prisma.$transaction(async (prisma) => {
+            // 1. SKIP RESTOCKING (This is the key difference)
+            // We assume the items are lost/stolen/consumed.
+
+            // 2. Eliminar movimientos de caja asociados
+            await prisma.cashMovement.deleteMany({ where: { saleId: id } });
+
+            // 3. Eliminar factura a crédito si existe
+            await prisma.invoice.deleteMany({ where: { saleId: id } });
+
+            // 4. Verificar si es la última factura para retroceder el contador (esto se mantiene igual)
+            const latestSale = await prisma.sale.findFirst({
+                orderBy: { createdAt: 'desc' }
+            });
+
+            if (latestSale && latestSale.id === id) {
+                const counter = await prisma.invoiceCounter.findFirst();
+                if (counter && counter.currentNumber > 1) {
+                    await prisma.invoiceCounter.update({
+                        where: { id: counter.id },
+                        data: { currentNumber: { decrement: 1 } }
+                    });
+                }
+            }
+
             // 5. Eliminar items y venta
             await prisma.saleItem.deleteMany({ where: { saleId: id } });
             return prisma.sale.delete({ where: { id } });

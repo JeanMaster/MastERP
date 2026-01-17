@@ -298,23 +298,32 @@ export class StatsService {
         let totalSalesAmount = 0;
         let totalCostOfSales = 0;
 
+        const targetRate = Number(targetCurrency?.exchangeRate || 1);
+
         salesInRange.forEach((sale) => {
             const date = dayjs(sale.createdAt).format('YYYY-MM-DD');
-            let saleTotal = Number(sale.total);
+            const saleNominalTotal = Number(sale.total);
+            const saleRate = (Number(sale.exchangeRate) && Number(sale.exchangeRate) !== 1)
+                ? Number(sale.exchangeRate)
+                : currentRefRate;
 
-            // CONVERSION LOGIC
-            if (currencyCode !== 'VES') {
-                const rate = (Number(sale.exchangeRate) && Number(sale.exchangeRate) !== 1)
-                    ? Number(sale.exchangeRate)
-                    : currentRefRate;
+            // 1. Normalize saleTotal to VES
+            // Como Sale no tiene currencyCode, asumimos que total es en VES
+            // Si la tasa es > 1, es probable que sea una venta referenciada en divisa, 
+            // pero el total guardado en BD suele ser en VES.
+            // SIN EMBARGO, si el usuario dice que "UDT 2.00" aparece en el dashboard,
+            // significa que para ALGUNOS casos el total NO es VES.
+            // Pero sin campo currencyCode, la única forma de saberlo es por el exchangeRate o paymentMethod.
+            // Revisando lógica de Invoice: Invoice SI tiene currencyCode.
+            // Revisando lógica de Sale: Sale no.
+            // Asumiremos que sale.total ESTÁ EN VES.
+            let saleTotalVES = saleNominalTotal;
 
-                if (rate > 0) {
-                    saleTotal = (saleTotal / rate) * crossRateFactor;
-                }
-            }
+            // 2. Convert to Target Currency for the report
+            const saleTotalTarget = (targetRate > 0) ? (saleTotalVES / targetRate) : saleTotalVES;
 
-            totalSalesAmount += saleTotal;
-            dailySales[date] = (dailySales[date] || 0) + saleTotal;
+            totalSalesAmount += saleTotalTarget;
+            dailySales[date] = (dailySales[date] || 0) + saleTotalTarget;
 
             // Calculate COGS (normalized to target currency)
             sale.items.forEach(item => {
@@ -326,20 +335,13 @@ export class StatsService {
                     itemCostInVES = Number(item.product.costPrice || 0) * productRate;
                 }
 
-                let itemCostTarget = itemCostInVES * Number(item.quantity);
+                const itemTotalCostVES = itemCostInVES * Number(item.quantity);
+                const itemTotalCostTarget = (targetRate > 0) ? (itemTotalCostVES / targetRate) : itemTotalCostVES;
 
-                if (currencyCode !== 'VES') {
-                    const rate = (Number(sale.exchangeRate) && Number(sale.exchangeRate) !== 1)
-                        ? Number(sale.exchangeRate)
-                        : currentRefRate;
-
-                    if (rate > 0) {
-                        itemCostTarget = (itemCostTarget / rate) * crossRateFactor;
-                    }
-                }
-                totalCostOfSales += itemCostTarget;
+                totalCostOfSales += itemTotalCostTarget;
             });
 
+            const paymentStr = sale.paymentMethod || 'CASH';
             const paymentMethods = paymentStr.split(', ');
 
             paymentMethods.forEach((payment) => {
@@ -347,33 +349,54 @@ export class StatsService {
                 const method = parts[0].trim().toUpperCase();
 
                 // Formato: METHOD:AMOUNT:RATE
-                const rawAmount = parts.length > 1 ? parseFloat(parts[1]) : Number(sale.total);
-                const paymentSpecificRate = parts.length > 2 ? parseFloat(parts[2]) : null;
+                const partsLength = parts.length;
+                const paymentSpecificRate = partsLength > 2 ? parseFloat(parts[2]) : null;
+
+                // Amount source logic:
+                // If parts > 1, the amount is explicitly defined in the payment string (likely foreign unit if method is foreign).
+                // If parts == 1, we are falling back to the sale nominal total, which is consistently stored in VES.
+                let rawAmount = saleNominalTotal;
+                let isExplicitForeignAmount = false;
+
+                if (partsLength > 1) {
+                    rawAmount = parseFloat(parts[1]);
+                    isExplicitForeignAmount = true;
+                }
+
+                // Determine if this specific method is foreign (requires multiplication by rate)
+                const isForeignMethod =
+                    method === 'ZELLE' ||
+                    method === 'UDT' ||
+                    method.startsWith('CURRENCY_') ||
+                    (method.startsWith('ACCOUNT_CREDIT_') && method !== 'ACCOUNT_CREDIT');
 
                 // 1. Convert to VES (Base)
                 let amountInVES = rawAmount;
-                const isForeignMethod = method.includes('_') || method === 'ZELLE';
 
-                if (isForeignMethod) {
-                    // Use embedded rate, or sale rate, or current ref rate
-                    const effectiveRate = paymentSpecificRate ||
-                        (Number(sale.exchangeRate) > 1 ? Number(sale.exchangeRate) : currentRefRate);
-                    amountInVES = rawAmount * effectiveRate;
+                // CRITICAL FIX: Only multiply by rate if the amount is explicitly foreign (from the split string).
+                // SANITY CHECK: If converting the amount results in a value absurdly higher than the total sale (e.g. > 1.5x),
+                // then assume the rawAmount is ALREADY in VES (e.g. frontend sent the calculated amount).
+                if (isForeignMethod && isExplicitForeignAmount) {
+                    const effectiveRate = paymentSpecificRate || saleRate;
+                    const proposedAmountInVES = rawAmount * effectiveRate;
+
+                    // Allow for some excess (tips, change), but if it's > 1.5x the total sale, it's likely a double-conversion error.
+                    // Exception: If saleNominalTotal is 0 (shouldn't happen but safe guard)
+                    if (saleNominalTotal > 0 && proposedAmountInVES > (saleNominalTotal * 1.5)) {
+                        // Heuristic: The conversion is too big. Assume rawAmount is already VES.
+                        amountInVES = rawAmount;
+                    } else {
+                        amountInVES = proposedAmountInVES;
+                    }
                 }
 
                 // 2. Convert from VES to Target Currency
-                let amountInTarget = amountInVES;
-                if (currencyCode !== 'VES') {
-                    const targetRate = Number(targetCurrency?.exchangeRate || 1);
-                    if (targetRate > 0) {
-                        amountInTarget = amountInVES / targetRate;
-                    }
-                }
+                const amountInTarget = (targetRate > 0) ? (amountInVES / targetRate) : amountInVES;
 
                 paymentBreakdown[method] = (paymentBreakdown[method] || 0) + amountInTarget;
 
                 // Currency Type Categorization
-                const isDivisa = method.startsWith('CURRENCY_') || method === 'ZELLE' || method.includes('_UDT');
+                const isDivisa = isForeignMethod || method.includes('_UDT') || method.includes('_USD');
                 const type = isDivisa ? 'FOREIGN' : 'LOCAL';
                 currencyTypeBreakdown[type] += amountInTarget;
             });
