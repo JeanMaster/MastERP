@@ -18,25 +18,43 @@ export class StatsService {
         const lastMonthStart = dayjs().subtract(1, 'month').startOf('month').toDate();
         const lastMonthEnd = dayjs().subtract(1, 'month').endOf('month').toDate();
 
-        // Today's sales
+        // Today's sales (Net)
         const todaySales = await this.prisma.sale.aggregate({
             where: { createdAt: { gte: today }, active: true },
             _sum: { total: true },
         });
 
-        // This month's sales
+        const todayReturns = await this.prisma.return.aggregate({
+            where: { createdAt: { gte: today }, status: 'COMPLETED' },
+            _sum: { refundAmount: true },
+        });
+
+        // This month's sales (Net)
         const thisMonthSales = await this.prisma.sale.aggregate({
             where: { createdAt: { gte: monthStart }, active: true },
             _sum: { total: true },
         });
 
-        // Last month's sales
+        const thisMonthReturns = await this.prisma.return.aggregate({
+            where: { createdAt: { gte: monthStart }, status: 'COMPLETED' },
+            _sum: { refundAmount: true },
+        });
+
+        // Last month's sales (Net)
         const lastMonthSales = await this.prisma.sale.aggregate({
             where: {
                 createdAt: { gte: lastMonthStart, lte: lastMonthEnd },
                 active: true
             },
             _sum: { total: true },
+        });
+
+        const lastMonthReturns = await this.prisma.return.aggregate({
+            where: {
+                createdAt: { gte: lastMonthStart, lte: lastMonthEnd },
+                status: 'COMPLETED'
+            },
+            _sum: { refundAmount: true },
         });
 
         // Top 5 selling products
@@ -90,9 +108,17 @@ export class StatsService {
                     _sum: { total: true },
                 });
 
+                const dayReturns = await this.prisma.return.aggregate({
+                    where: {
+                        createdAt: { gte: date, lte: nextDate },
+                        status: 'COMPLETED'
+                    },
+                    _sum: { refundAmount: true }
+                });
+
                 salesTrend.push({
                     date: dayjs(date).format('DD/MM'),
-                    sales: Number(daySales._sum.total || 0),
+                    sales: Number(daySales._sum.total || 0) - Number(dayReturns._sum.refundAmount || 0),
                 });
             }
         } else if (range === '1year') {
@@ -108,9 +134,17 @@ export class StatsService {
                     _sum: { total: true },
                 });
 
+                const monthReturns = await this.prisma.return.aggregate({
+                    where: {
+                        createdAt: { gte: date, lte: nextDate },
+                        status: 'COMPLETED'
+                    },
+                    _sum: { refundAmount: true }
+                });
+
                 salesTrend.push({
                     date: dayjs(date).format('MMM YY'),
-                    sales: Number(monthSales._sum.total || 0),
+                    sales: Number(monthSales._sum.total || 0) - Number(monthReturns._sum.refundAmount || 0),
                 });
             }
         } else if (range === 'all') {
@@ -136,9 +170,17 @@ export class StatsService {
                     _sum: { total: true },
                 });
 
+                const monthReturns = await this.prisma.return.aggregate({
+                    where: {
+                        createdAt: { gte: start, lte: end },
+                        status: 'COMPLETED'
+                    },
+                    _sum: { refundAmount: true }
+                });
+
                 salesTrend.push({
                     date: current.format('MMM YY'),
-                    sales: Number(monthSales._sum.total || 0),
+                    sales: Number(monthSales._sum.total || 0) - Number(monthReturns._sum.refundAmount || 0),
                 });
 
                 current = current.add(1, 'month');
@@ -146,9 +188,9 @@ export class StatsService {
         }
 
         return {
-            todaySales: Number(todaySales._sum.total || 0),
-            thisMonthSales: Number(thisMonthSales._sum.total || 0),
-            lastMonthSales: Number(lastMonthSales._sum.total || 0),
+            todaySales: Number(todaySales._sum.total || 0) - Number(todayReturns._sum.refundAmount || 0),
+            thisMonthSales: Number(thisMonthSales._sum.total || 0) - Number(thisMonthReturns._sum.refundAmount || 0),
+            lastMonthSales: Number(lastMonthSales._sum.total || 0) - Number(lastMonthReturns._sum.refundAmount || 0),
             topProducts: topProductsData,
             criticalStock,
             totalProducts,
