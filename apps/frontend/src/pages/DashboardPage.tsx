@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Card, Row, Col, Statistic, Button, Table, Spin, Empty, Segmented } from 'antd';
+import { Card, Row, Col, Statistic, Button, Table, Spin, Empty, Segmented, FloatButton } from 'antd';
 import {
     ShoppingCartOutlined,
     ShopOutlined,
@@ -9,6 +9,7 @@ import {
     PlusOutlined,
     FileTextOutlined,
     WarningOutlined,
+    RobotOutlined,
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
@@ -18,6 +19,7 @@ import { Select } from 'antd';
 import { currenciesApi, type Currency } from '../services/currenciesApi';
 import { companySettingsApi } from '../services/companySettingsApi';
 import { useAuth } from '../features/auth/AuthProvider';
+import { AIAssistantModal } from '../components/AIAssistantModal';
 
 export const DashboardPage = () => {
     const navigate = useNavigate();
@@ -33,6 +35,7 @@ export const DashboardPage = () => {
     const [stats, setStats] = useState<DashboardStats | null>(null);
     const [loading, setLoading] = useState(true);
     const [range, setRange] = useState('7days');
+    const [aiModalVisible, setAiModalVisible] = useState(false);
 
     // Currency State
     const [currencies, setCurrencies] = useState<Currency[]>([]);
@@ -332,6 +335,21 @@ export const DashboardPage = () => {
                     </Col>
                 </Row>
             </Card>
+
+            {/* AI Assistant FloatButton */}
+            <FloatButton
+                icon={<RobotOutlined />}
+                type="primary"
+                style={{ right: 24, bottom: 24 }}
+                tooltip="Asesor Financiero IA"
+                onClick={() => setAiModalVisible(true)}
+            />
+
+            {/* AI Assistant Modal */}
+            <AIAssistantModal
+                visible={aiModalVisible}
+                onClose={() => setAiModalVisible(false)}
+            />
         </div>
     );
 };
