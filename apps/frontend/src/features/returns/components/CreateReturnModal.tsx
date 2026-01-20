@@ -165,13 +165,20 @@ export const CreateReturnModal = ({ open, onCancel, onSuccess }: CreateReturnMod
             return;
         }
 
+        let unitPrice = Number(product.salePrice);
+
+        // Auto-convert if product is in foreign currency
+        if (product.currency && !product.currency.isPrimary && product.currency.exchangeRate) {
+            unitPrice = unitPrice * Number(product.currency.exchangeRate);
+        }
+
         const newItem: SelectedItem = {
             productId: product.id,
             productName: product.name,
             productSku: product.sku,
             quantity: 1,
-            unitPrice: Number(product.salePrice),
-            total: Number(product.salePrice)
+            unitPrice: unitPrice,
+            total: unitPrice
         };
         setReplacementItems([...replacementItems, newItem]);
         setReplacementSearch('');
@@ -182,6 +189,14 @@ export const CreateReturnModal = ({ open, onCancel, onSuccess }: CreateReturnMod
         setReplacementItems(replacementItems.map(item =>
             item.productId === productId
                 ? { ...item, quantity, total: quantity * item.unitPrice }
+                : item
+        ));
+    };
+
+    const updateReplacementPrice = (productId: string, price: number) => {
+        setReplacementItems(replacementItems.map(item =>
+            item.productId === productId
+                ? { ...item, unitPrice: price, total: item.quantity * price }
                 : item
         ));
     };
@@ -471,7 +486,22 @@ export const CreateReturnModal = ({ open, onCancel, onSuccess }: CreateReturnMod
                                 size="small"
                                 columns={[
                                     { title: 'Producto', key: 'product', render: (_, r) => <div><strong>{r.productName}</strong><br /><small>{r.productSku}</small></div> },
-                                    { title: 'Precio', key: 'price', render: (_, r) => formatVenezuelanPrice(r.unitPrice) },
+                                    {
+                                        title: 'Precio',
+                                        key: 'price',
+                                        width: 140,
+                                        render: (_, r) => (
+                                            <InputNumber
+                                                value={r.unitPrice}
+                                                onChange={(val) => updateReplacementPrice(r.productId, Number(val) || 0)}
+                                                formatter={value => `Bs. ${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, '.')}
+                                                parser={value => Number(value!.replace(/Bs\.\s?|(\.*)/g, '').replace(',', '.'))}
+                                                step={0.01}
+                                                size="small"
+                                                style={{ width: '100%' }}
+                                            />
+                                        )
+                                    },
                                     {
                                         title: 'Cant.',
                                         key: 'qty',

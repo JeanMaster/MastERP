@@ -45,9 +45,15 @@ export const FinancialReports = () => {
             if (dateFilter === 'day') {
                 startDate = dayjs().format('YYYY-MM-DD');
                 endDate = dayjs().format('YYYY-MM-DD');
+            } else if (dateFilter === 'yesterday') {
+                startDate = dayjs().subtract(1, 'day').format('YYYY-MM-DD');
+                endDate = dayjs().subtract(1, 'day').format('YYYY-MM-DD');
             } else if (dateFilter === 'month') {
                 startDate = dayjs().startOf('month').format('YYYY-MM-DD');
                 endDate = dayjs().endOf('month').format('YYYY-MM-DD');
+            } else if (dateFilter === 'lastMonth') {
+                startDate = dayjs().subtract(1, 'month').startOf('month').format('YYYY-MM-DD');
+                endDate = dayjs().subtract(1, 'month').endOf('month').format('YYYY-MM-DD');
             }
             // 'all' leaves dates as undefined, backend handles it as everything or we could set a very early date
             // However, my backend logic defaults to current month if undefined. 
@@ -143,7 +149,9 @@ export const FinancialReports = () => {
                             buttonStyle="solid"
                         >
                             <Radio.Button value="day">Hoy</Radio.Button>
+                            <Radio.Button value="yesterday">Ayer</Radio.Button>
                             <Radio.Button value="month">Este Mes</Radio.Button>
+                            <Radio.Button value="lastMonth">Mes Anterior</Radio.Button>
                             <Radio.Button value="all">Todo</Radio.Button>
                         </Radio.Group>
                     </Col>
@@ -249,7 +257,12 @@ export const FinancialReports = () => {
             {/* Charts */}
             <Row gutter={16} style={{ marginBottom: 16 }}>
                 <Col xs={24} lg={14}>
-                    <Card title={`Tendencia de Ventas (${dateFilter === 'day' ? 'Hoy' : dateFilter === 'month' ? 'Mes' : 'Todo'})`}>
+                    <Card title={`Tendencia de Ventas (${dateFilter === 'day' ? 'Hoy' :
+                            dateFilter === 'yesterday' ? 'Ayer' :
+                                dateFilter === 'month' ? 'Este Mes' :
+                                    dateFilter === 'lastMonth' ? 'Mes Anterior' :
+                                        'Todo'
+                        })`}>
                         <ResponsiveContainer width="100%" height={300}>
                             <BarChart data={report.dailySalesData}>
                                 <CartesianGrid strokeDasharray="3 3" />

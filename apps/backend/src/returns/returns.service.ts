@@ -337,6 +337,42 @@ export class ReturnsService {
                     status: ReturnStatus.COMPLETED
                 }
             });
+
+            // HANDLE EXCHANGE DIFFERENCE PAYMENT
+            // If it's an exchange different, calculate the difference and register a cash movement if needed
+            if (returnRecord.returnType === 'EXCHANGE_DIFFERENT') {
+                const returnVal = returnRecord.items.reduce((sum, i) => sum + Number(i.total), 0);
+
+                // Fetch replacement items again to be sure (already fetched in findUnique above but let's be safe)
+                const returnWithRepl = await prisma.return.findUnique({
+                    where: { id },
+                    include: { replacementItems: true }
+                });
+
+                const replacementVal = returnWithRepl?.replacementItems?.reduce((sum, i) => sum + Number(i.total), 0) || 0;
+                const difference = replacementVal - returnVal;
+
+                // If difference > 0, customer PAYS. Register as income.
+                if (difference > 0) {
+                    // Find active cash session
+                    const activeSession = await prisma.cashSession.findFirst({
+                        where: { status: 'OPEN' }
+                    });
+
+                    if (activeSession) {
+                        await prisma.cashMovement.create({
+                            data: {
+                                sessionId: activeSession.id,
+                                type: 'SALE', // Treat as a sale (income)
+                                amount: difference,
+                                currencyCode: 'VES', // Assuming VES for now as standard
+                                description: `Diferencia por Cambio ${returnRecord.creditNoteNumber}`,
+                                performedBy: 'Sistema' // Or user ID if available in context
+                            }
+                        });
+                    }
+                }
+            }
         });
 
         return this.findOne(id);
@@ -381,7 +417,12 @@ export class ReturnsService {
                         client: true
                     }
                 },
-                newSale: true
+                newSale: true,
+                replacementItems: {
+                    include: {
+                        product: true
+                    }
+                }
             },
             orderBy: { createdAt: 'desc' }
         });
@@ -409,7 +450,12 @@ export class ReturnsService {
                         }
                     }
                 },
-                newSale: true
+                newSale: true,
+                replacementItems: {
+                    include: {
+                        product: true
+                    }
+                }
             }
         });
 

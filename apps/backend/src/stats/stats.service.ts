@@ -56,6 +56,24 @@ export class StatsService {
             },
             _sum: { refundAmount: true },
         });
+        // Calculate replacement items total (Add back to sales)
+        const todayReplacements = await this.prisma.return.findMany({
+            where: { createdAt: { gte: today }, status: 'COMPLETED', returnType: 'EXCHANGE_DIFFERENT' },
+            include: { replacementItems: true }
+        });
+        const todayReplacementTotal = todayReplacements.reduce((sum, r) => sum + r.replacementItems.reduce((s, i) => s + Number(i.total), 0), 0);
+
+        const thisMonthReplacements = await this.prisma.return.findMany({
+            where: { createdAt: { gte: monthStart }, status: 'COMPLETED', returnType: 'EXCHANGE_DIFFERENT' },
+            include: { replacementItems: true }
+        });
+        const thisMonthReplacementTotal = thisMonthReplacements.reduce((sum, r) => sum + r.replacementItems.reduce((s, i) => s + Number(i.total), 0), 0);
+
+        const lastMonthReplacements = await this.prisma.return.findMany({
+            where: { createdAt: { gte: lastMonthStart, lte: lastMonthEnd }, status: 'COMPLETED', returnType: 'EXCHANGE_DIFFERENT' },
+            include: { replacementItems: true }
+        });
+        const lastMonthReplacementTotal = lastMonthReplacements.reduce((sum, r) => sum + r.replacementItems.reduce((s, i) => s + Number(i.total), 0), 0);
 
         // Top 5 selling products
         const topProducts = await this.prisma.saleItem.groupBy({
@@ -116,9 +134,15 @@ export class StatsService {
                     _sum: { refundAmount: true }
                 });
 
+                const dayReplacements = await this.prisma.return.findMany({
+                    where: { createdAt: { gte: date, lte: nextDate }, status: 'COMPLETED', returnType: 'EXCHANGE_DIFFERENT' },
+                    include: { replacementItems: true }
+                });
+                const dayReplacementTotal = dayReplacements.reduce((sum, r) => sum + r.replacementItems.reduce((s, i) => s + Number(i.total), 0), 0);
+
                 salesTrend.push({
                     date: dayjs(date).format('DD/MM'),
-                    sales: Number(daySales._sum.total || 0) - Number(dayReturns._sum.refundAmount || 0),
+                    sales: (Number(daySales._sum.total || 0) - Number(dayReturns._sum.refundAmount || 0)) + dayReplacementTotal,
                 });
             }
         } else if (range === '1year') {
@@ -188,9 +212,9 @@ export class StatsService {
         }
 
         return {
-            todaySales: Number(todaySales._sum.total || 0) - Number(todayReturns._sum.refundAmount || 0),
-            thisMonthSales: Number(thisMonthSales._sum.total || 0) - Number(thisMonthReturns._sum.refundAmount || 0),
-            lastMonthSales: Number(lastMonthSales._sum.total || 0) - Number(lastMonthReturns._sum.refundAmount || 0),
+            todaySales: (Number(todaySales._sum.total || 0) - Number(todayReturns._sum.refundAmount || 0)) + todayReplacementTotal,
+            thisMonthSales: (Number(thisMonthSales._sum.total || 0) - Number(thisMonthReturns._sum.refundAmount || 0)) + thisMonthReplacementTotal,
+            lastMonthSales: (Number(lastMonthSales._sum.total || 0) - Number(lastMonthReturns._sum.refundAmount || 0)) + lastMonthReplacementTotal,
             topProducts: topProductsData,
             criticalStock,
             totalProducts,
@@ -443,6 +467,55 @@ export class StatsService {
                 currencyTypeBreakdown[type] += amountInTarget;
             });
         });
+
+        // 3. Subtract Returns (Notes of Credit) from Revenue
+        const returnsInRange = await this.prisma.return.findMany({
+            where: {
+                status: 'COMPLETED',
+                createdAt: dateFilter
+            },
+            select: {
+                refundAmount: true,
+                createdAt: true
+            }
+        });
+
+        let totalReturnsAmount = 0;
+        returnsInRange.forEach(ret => {
+            const refundVES = Number(ret.refundAmount || 0);
+            const refundTarget = (targetRate > 0) ? (refundVES / targetRate) : refundVES;
+            totalReturnsAmount += refundTarget;
+
+            const date = dayjs(ret.createdAt).format('YYYY-MM-DD');
+            if (dailySales[date]) {
+                dailySales[date] -= refundTarget;
+            }
+        });
+
+        // Calculate replacement items total (Add back to sales for exchanges)
+        const replacementsInRange = await this.prisma.return.findMany({
+            where: {
+                createdAt: dateFilter,
+                status: 'COMPLETED',
+                returnType: 'EXCHANGE_DIFFERENT'
+            },
+            include: { replacementItems: true }
+        });
+
+        let totalReplacementAmount = 0;
+        replacementsInRange.forEach(ret => {
+            const replacementTotalVES = ret.replacementItems.reduce((sum, item) => sum + Number(item.total), 0);
+            const replacementTotalTarget = (targetRate > 0) ? (replacementTotalVES / targetRate) : replacementTotalVES;
+            totalReplacementAmount += replacementTotalTarget;
+
+            const date = dayjs(ret.createdAt).format('YYYY-MM-DD');
+            if (dailySales[date]) {
+                dailySales[date] += replacementTotalTarget;
+            }
+        });
+
+        // Net Sales (subtract returns, add back replacements)
+        totalSalesAmount = totalSalesAmount - totalReturnsAmount + totalReplacementAmount;
 
         // Purchases for the selected range
         const purchasesInRangeList = await this.prisma.purchase.findMany({
@@ -749,7 +822,20 @@ export class StatsService {
         });
 
         let returnedCOGS = 0;
+        let totalRefunds = 0;
+
         completedReturns.forEach(ret => {
+            // Deduct from Revenue
+            const refundVES = Number(ret.refundAmount || 0);
+            if (currencyCode !== 'VES') {
+                const targetRate = Number(targetCurrency?.exchangeRate || 1);
+                if (targetRate > 0) {
+                    totalRefunds += (refundVES / targetRate);
+                }
+            } else {
+                totalRefunds += refundVES;
+            }
+
             ret.items.forEach(item => {
                 const productRate = item.product.currency?.isPrimary ? 1 : Number(item.product.currency?.exchangeRate || 1);
                 let itemCostInVES = Number(item.product.costPrice || 0) * productRate * Number(item.quantity);
@@ -764,6 +850,33 @@ export class StatsService {
                 }
             });
         });
+
+        // Calculate replacement items total (Add back to sales for exchanges)
+        const replacementsInRange = await this.prisma.return.findMany({
+            where: {
+                createdAt: dateFilter,
+                status: 'COMPLETED',
+                returnType: 'EXCHANGE_DIFFERENT'
+            },
+            include: { replacementItems: true }
+        });
+
+        let totalReplacementAmount = 0;
+        replacementsInRange.forEach(ret => {
+            const replacementTotalVES = ret.replacementItems.reduce((sum, item) => sum + Number(item.total), 0);
+
+            if (currencyCode !== 'VES') {
+                const targetRate = Number(targetCurrency?.exchangeRate || 1);
+                if (targetRate > 0) {
+                    totalReplacementAmount += (replacementTotalVES / targetRate);
+                }
+            } else {
+                totalReplacementAmount += replacementTotalVES;
+            }
+        });
+
+        // Net Sales (subtract refunds, add back replacements)
+        totalSales = totalSales - totalRefunds + totalReplacementAmount;
 
         // Adjusted COGS = Sales COGS - Returned COGS
         let adjustedCOGS = totalCOGS - returnedCOGS;
@@ -983,7 +1096,22 @@ export class StatsService {
             });
 
             let monthlyReturnedCOGS = 0;
+            let monthlyRefoundedAmount = 0;
+
             monthlyReturns.forEach(ret => {
+                // Calculate Refund Amount to subtract from Income
+                const refundAmount = Number(ret.refundAmount || 0);
+                if (refundAmount > 0) {
+                    if (currencyCode !== 'VES') {
+                        // Normalize to Ref Currency (which is what monthlyIncome uses here)
+                        // refundAmount (VES) / currentRefRate = refundAmount (Ref)
+                        // Then * crossRateFactor to get Target
+                        monthlyRefoundedAmount += (refundAmount / currentRefRate) * crossRateFactor;
+                    } else {
+                        monthlyRefoundedAmount += refundAmount;
+                    }
+                }
+
                 ret.items.forEach(item => {
                     const productRate = item.product.currency?.isPrimary ? 1 : Number(item.product.currency?.exchangeRate || 1);
                     let itemCostInVES = Number(item.product.costPrice || 0) * productRate * Number(item.quantity);
@@ -995,6 +1123,30 @@ export class StatsService {
                     }
                 });
             });
+
+            // Calculate replacement items total (Add back to income for exchanges)
+            const monthlyReplacements = await this.prisma.return.findMany({
+                where: {
+                    createdAt: { gte: start, lte: end },
+                    status: 'COMPLETED',
+                    returnType: 'EXCHANGE_DIFFERENT'
+                },
+                include: { replacementItems: true }
+            });
+
+            let monthlyReplacementAmount = 0;
+            monthlyReplacements.forEach(ret => {
+                const replacementTotalVES = ret.replacementItems.reduce((sum, item) => sum + Number(item.total), 0);
+
+                if (currencyCode !== 'VES') {
+                    monthlyReplacementAmount += (replacementTotalVES / currentRefRate) * crossRateFactor;
+                } else {
+                    monthlyReplacementAmount += replacementTotalVES;
+                }
+            });
+
+            // Deduct refunds from Income, add back replacements
+            monthlyIncome = monthlyIncome - monthlyRefoundedAmount + monthlyReplacementAmount;
 
             // Adjusted COGS = COGS - Returns
             let adjustedMonthlyCOGS = monthlyCOGS - monthlyReturnedCOGS;

@@ -125,7 +125,7 @@ export class ProductsService {
             include: {
                 category: { select: { id: true, name: true } },
                 subcategory: { select: { id: true, name: true } },
-                currency: { select: { id: true, name: true, symbol: true } },
+                currency: { select: { id: true, name: true, symbol: true, exchangeRate: true, isPrimary: true } },
                 unit: { select: { id: true, name: true, abbreviation: true } },
                 secondaryUnit: { select: { id: true, name: true, abbreviation: true } },
                 components: {
@@ -148,7 +148,7 @@ export class ProductsService {
             include: {
                 category: { select: { id: true, name: true } },
                 subcategory: { select: { id: true, name: true } },
-                currency: { select: { id: true, name: true, symbol: true } },
+                currency: { select: { id: true, name: true, symbol: true, exchangeRate: true, isPrimary: true } },
                 unit: { select: { id: true, name: true, abbreviation: true } },
                 components: {
                     include: {

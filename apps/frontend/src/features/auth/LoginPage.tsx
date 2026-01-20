@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { Form, Input, Button, Card, Typography, Alert } from 'antd';
-import { UserOutlined, LockOutlined } from '@ant-design/icons';
+import { Form, Input, Button, Card, Typography, Alert, Divider } from 'antd';
+import { UserOutlined, LockOutlined, BarcodeOutlined } from '@ant-design/icons';
 import { useAuth } from './AuthProvider';
 import axios from 'axios';
 import { BASE_URL } from '../../services/apiConfig';
@@ -88,7 +88,20 @@ export const LoginPage = () => {
                         </Button>
                     </Form.Item>
                 </Form>
+
+                <Divider>O</Divider>
+
+                <Button
+                    type="default"
+                    block
+                    size="large"
+                    icon={<BarcodeOutlined />}
+                    onClick={() => window.location.href = '/visor'}
+                    style={{ borderColor: '#1890ff', color: '#1890ff' }}
+                >
+                    Abrir Visor de Precios
+                </Button>
             </Card>
-        </div>
+        </div >
     );
 };
