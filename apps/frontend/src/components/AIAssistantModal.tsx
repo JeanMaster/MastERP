@@ -26,9 +26,11 @@ export const AIAssistantModal: React.FC<AIAssistantModalProps> = ({ visible, onC
         try {
             const data = await aiApi.getDailyInsights(forceRefresh);
             setInsights(data);
-        } catch (error) {
+        } catch (error: any) {
             console.error('Error fetching insights:', error);
-            message.error('Error al cargar recomendaciones. Verifica que el backend esté configurado correctamente.');
+            const errorMsg = error.response?.data?.message || error.message || 'Error al cargar recomendaciones. Verifica tu conexión.';
+            message.error(errorMsg);
+            throw error; // Rethrow so the caller (handleRefresh) knows it failed
         } finally {
             setLoadingInsights(false);
         }

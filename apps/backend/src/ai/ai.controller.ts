@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Query, HttpException, HttpStatus } from '@nestjs/common';
+import { Controller, Get, Post, Body, Query, HttpException, HttpStatus, Logger } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiQuery, ApiBody } from '@nestjs/swagger';
 import { AIService } from './ai.service';
 import type { AIChatRequest } from './interfaces/ai.interfaces';
@@ -6,12 +6,14 @@ import type { AIChatRequest } from './interfaces/ai.interfaces';
 @ApiTags('ai')
 @Controller('ai')
 export class AIController {
+    private readonly logger = new Logger(AIController.name);
     constructor(private readonly aiService: AIService) { }
 
     @Get('daily-insights')
     @ApiOperation({ summary: 'Get AI-generated daily business insights and recommendations' })
     @ApiQuery({ name: 'refresh', required: false, type: Boolean, description: 'Force refresh cached insights' })
     async getDailyInsights(@Query('refresh') refresh?: string) {
+        this.logger.log(`GET /api/ai/daily-insights?refresh=${refresh}`);
         try {
             const forceRefresh = refresh === 'true';
             return await this.aiService.getDailyInsights(forceRefresh);

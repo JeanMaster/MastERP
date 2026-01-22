@@ -386,7 +386,14 @@ export class StatsService {
             let saleTotalVES = saleNominalTotal;
 
             // 2. Convert to Target Currency for the report
-            const saleTotalTarget = (targetRate > 0) ? (saleTotalVES / targetRate) : saleTotalVES;
+            // Use historical rate for conversion to Ref (USD), then to Target
+            const historicalRate = (Number(sale.exchangeRate) && Number(sale.exchangeRate) !== 1)
+                ? Number(sale.exchangeRate)
+                : currentRefRate;
+
+            const saleTotalTarget = (currencyCode === 'VES')
+                ? saleTotalVES
+                : (saleTotalVES / currentRefRate) * crossRateFactor;
 
             totalSalesAmount += saleTotalTarget;
             dailySales[date] = (dailySales[date] || 0) + saleTotalTarget;
@@ -402,7 +409,9 @@ export class StatsService {
                 }
 
                 const itemTotalCostVES = itemCostInVES * Number(item.quantity);
-                const itemTotalCostTarget = (targetRate > 0) ? (itemTotalCostVES / targetRate) : itemTotalCostVES;
+                const itemTotalCostTarget = (currencyCode === 'VES')
+                    ? itemTotalCostVES
+                    : (itemTotalCostVES / currentRefRate) * crossRateFactor;
 
                 totalCostOfSales += itemTotalCostTarget;
             });
@@ -456,8 +465,11 @@ export class StatsService {
                     }
                 }
 
-                // 2. Convert from VES to Target Currency
-                const amountInTarget = (targetRate > 0) ? (amountInVES / targetRate) : amountInVES;
+                // 2. Convert from VES to Target Currency using historical rate
+                const targetRateForPayment = (paymentSpecificRate || saleRate);
+                const amountInTarget = (currencyCode === 'VES')
+                    ? amountInVES
+                    : (amountInVES / currentRefRate) * crossRateFactor;
 
                 paymentBreakdown[method] = (paymentBreakdown[method] || 0) + amountInTarget;
 
@@ -483,7 +495,13 @@ export class StatsService {
         let totalReturnsAmount = 0;
         returnsInRange.forEach(ret => {
             const refundVES = Number(ret.refundAmount || 0);
-            const refundTarget = (targetRate > 0) ? (refundVES / targetRate) : refundVES;
+            // Returns often don't have historical rate attached directly in the model, 
+            // but we can use currentRefRate as fallback or try to relate to sale.
+            // For now, consistent with getBalanceReport, we use currentRefRate for returns
+            // unless we want to fetch the original sale rate (more complex).
+            const refundTarget = (currencyCode === 'VES')
+                ? refundVES
+                : (refundVES / currentRefRate) * crossRateFactor;
             totalReturnsAmount += refundTarget;
 
             const date = dayjs(ret.createdAt).format('YYYY-MM-DD');
@@ -505,7 +523,9 @@ export class StatsService {
         let totalReplacementAmount = 0;
         replacementsInRange.forEach(ret => {
             const replacementTotalVES = ret.replacementItems.reduce((sum, item) => sum + Number(item.total), 0);
-            const replacementTotalTarget = (targetRate > 0) ? (replacementTotalVES / targetRate) : replacementTotalVES;
+            const replacementTotalTarget = (currencyCode === 'VES')
+                ? replacementTotalVES
+                : (replacementTotalVES / currentRefRate) * crossRateFactor;
             totalReplacementAmount += replacementTotalTarget;
 
             const date = dayjs(ret.createdAt).format('YYYY-MM-DD');
@@ -543,10 +563,7 @@ export class StatsService {
             if (currencyCode === 'VES') {
                 totalPurchasesAmount += valInVES;
             } else {
-                const targetRate = Number(targetCurrency?.exchangeRate || 1);
-                if (targetRate > 0) {
-                    totalPurchasesAmount += (valInVES / targetRate);
-                }
+                totalPurchasesAmount += (valInVES / currentRefRate) * crossRateFactor;
             }
         });
 
@@ -559,10 +576,7 @@ export class StatsService {
             if (currencyCode === 'VES') {
                 totalExpensesAmount += valInVES;
             } else {
-                const targetRate = Number(targetCurrency?.exchangeRate || 1);
-                if (targetRate > 0) {
-                    totalExpensesAmount += (valInVES / targetRate);
-                }
+                totalExpensesAmount += (valInVES / currentRefRate) * crossRateFactor;
             }
         });
 
@@ -589,10 +603,7 @@ export class StatsService {
                 let itemCostInVES = Number(item.product.costPrice || 0) * productRate * Number(item.quantity);
 
                 if (currencyCode !== 'VES') {
-                    const targetRate = Number(targetCurrency?.exchangeRate || 1);
-                    if (targetRate > 0) {
-                        returnedCostOfSales += (itemCostInVES / targetRate);
-                    }
+                    returnedCostOfSales += (itemCostInVES / currentRefRate) * crossRateFactor;
                 } else {
                     returnedCostOfSales += itemCostInVES;
                 }
@@ -619,10 +630,7 @@ export class StatsService {
             let lossCostInVES = Number(adj.product.costPrice || 0) * productRate * Number(adj.quantity);
 
             if (currencyCode !== 'VES') {
-                const targetRate = Number(targetCurrency?.exchangeRate || 1);
-                if (targetRate > 0) {
-                    inventoryLossCost += (lossCostInVES / targetRate);
-                }
+                inventoryLossCost += (lossCostInVES / currentRefRate) * crossRateFactor;
             } else {
                 inventoryLossCost += lossCostInVES;
             }
@@ -711,9 +719,9 @@ export class StatsService {
         let totalCOGS = 0;
 
         sales.forEach(sale => {
-            const saleRate = (Number(sale.exchangeRate) && Number(sale.exchangeRate) !== 1)
+            const historicalRate = (Number(sale.exchangeRate) && Number(sale.exchangeRate) !== 1)
                 ? Number(sale.exchangeRate)
-                : Number(targetCurrency?.exchangeRate || 1);
+                : currentRefRate;
 
             sale.items.forEach(item => {
                 let itemCostInVES = Number(item.cost || 0);
@@ -728,14 +736,8 @@ export class StatsService {
                 let revenue = Number(item.total);
 
                 if (currencyCode !== 'VES') {
-                    const rate = (Number(sale.exchangeRate) && Number(sale.exchangeRate) !== 1)
-                        ? Number(sale.exchangeRate)
-                        : currentRefRate;
-
-                    if (rate > 0) {
-                        cost = (cost / rate) * crossRateFactor;
-                        revenue = (revenue / rate) * crossRateFactor;
-                    }
+                    cost = (cost / currentRefRate) * crossRateFactor;
+                    revenue = (revenue / currentRefRate) * crossRateFactor;
                 }
 
                 totalSales += revenue;
@@ -774,10 +776,7 @@ export class StatsService {
             if (currencyCode === 'VES') {
                 totalPurchases += valInVES;
             } else {
-                const targetRate = Number(targetCurrency?.exchangeRate || 1);
-                if (targetRate > 0) {
-                    totalPurchases += (valInVES / targetRate);
-                }
+                totalPurchases += (valInVES / currentRefRate) * crossRateFactor;
             }
         });
 
@@ -796,10 +795,7 @@ export class StatsService {
             if (currencyCode === 'VES') {
                 totalExpenses += valInVES;
             } else {
-                const targetRate = Number(targetCurrency?.exchangeRate || 1);
-                if (targetRate > 0) {
-                    totalExpenses += (valInVES / targetRate);
-                }
+                totalExpenses += (valInVES / currentRefRate) * crossRateFactor;
             }
         });
 
@@ -828,10 +824,7 @@ export class StatsService {
             // Deduct from Revenue
             const refundVES = Number(ret.refundAmount || 0);
             if (currencyCode !== 'VES') {
-                const targetRate = Number(targetCurrency?.exchangeRate || 1);
-                if (targetRate > 0) {
-                    totalRefunds += (refundVES / targetRate);
-                }
+                totalRefunds += (refundVES / currentRefRate) * crossRateFactor;
             } else {
                 totalRefunds += refundVES;
             }
@@ -841,10 +834,7 @@ export class StatsService {
                 let itemCostInVES = Number(item.product.costPrice || 0) * productRate * Number(item.quantity);
 
                 if (currencyCode !== 'VES') {
-                    const targetRate = Number(targetCurrency?.exchangeRate || 1);
-                    if (targetRate > 0) {
-                        returnedCOGS += (itemCostInVES / targetRate);
-                    }
+                    returnedCOGS += (itemCostInVES / currentRefRate) * crossRateFactor;
                 } else {
                     returnedCOGS += itemCostInVES;
                 }
@@ -866,10 +856,7 @@ export class StatsService {
             const replacementTotalVES = ret.replacementItems.reduce((sum, item) => sum + Number(item.total), 0);
 
             if (currencyCode !== 'VES') {
-                const targetRate = Number(targetCurrency?.exchangeRate || 1);
-                if (targetRate > 0) {
-                    totalReplacementAmount += (replacementTotalVES / targetRate);
-                }
+                totalReplacementAmount += (replacementTotalVES / currentRefRate) * crossRateFactor;
             } else {
                 totalReplacementAmount += replacementTotalVES;
             }
@@ -901,10 +888,7 @@ export class StatsService {
             let lossCostInVES = Number(adj.product.costPrice || 0) * productRate * Number(adj.quantity);
 
             if (currencyCode !== 'VES') {
-                const targetRate = Number(targetCurrency?.exchangeRate || 1);
-                if (targetRate > 0) {
-                    inventoryLossCOGS += (lossCostInVES / targetRate);
-                }
+                inventoryLossCOGS += (lossCostInVES / currentRefRate) * crossRateFactor;
             } else {
                 inventoryLossCOGS += lossCostInVES;
             }
@@ -1074,7 +1058,8 @@ export class StatsService {
                 if (currencyCode === 'VES') {
                     monthlyOperationalExpenses += amountInVES;
                 } else {
-                    let amountInRef = amountInVES / rate;
+                    const historicalRate = (rate !== 1) ? rate : currentRefRate;
+                    let amountInRef = amountInVES / historicalRate;
                     monthlyOperationalExpenses += (amountInRef * crossRateFactor);
                 }
             });

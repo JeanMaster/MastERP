@@ -1,6 +1,8 @@
 export interface BusinessContext {
     timestamp: string;
     period: 'today' | 'week' | 'month';
+    currency?: string;
+    exchangeRateUsed?: number;
     sales: {
         today: number;
         yesterday: number;
@@ -28,6 +30,8 @@ export interface BusinessContext {
         cashBalance: number;
         accountsReceivable: number;
         accountsPayable: number;
+        totalExpenses: number;
+        totalPurchases: number;
         profit: number;
         profitMargin: number;
     };

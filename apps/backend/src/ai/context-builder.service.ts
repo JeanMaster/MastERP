@@ -1,13 +1,16 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { BusinessContext } from './interfaces/ai.interfaces';
+import { Decimal } from '@prisma/client/runtime/library';
 import dayjs from 'dayjs';
 
 @Injectable()
 export class ContextBuilderService {
+    private readonly logger = new Logger(ContextBuilderService.name);
     constructor(private prisma: PrismaService) { }
 
     async buildContext(period: 'today' | 'week' | 'month' = 'today'): Promise<BusinessContext> {
+        this.logger.log(`Building normalized business context (USD) for period: ${period}`);
         const now = dayjs();
         const today = now.startOf('day').toDate();
         const yesterday = now.subtract(1, 'day').startOf('day').toDate();
@@ -16,30 +19,50 @@ export class ContextBuilderService {
         const lastMonthStart = now.subtract(1, 'month').startOf('month').toDate();
         const lastMonthEnd = now.subtract(1, 'month').endOf('month').toDate();
 
-        // Sales Data
-        const [todaySales, yesterdaySales, thisMonthSales, lastMonthSales] = await Promise.all([
-            this.prisma.sale.aggregate({
-                where: { createdAt: { gte: today }, active: true },
-                _sum: { total: true },
-            }),
-            this.prisma.sale.aggregate({
-                where: { createdAt: { gte: yesterday, lte: yesterdayEnd }, active: true },
-                _sum: { total: true },
-            }),
-            this.prisma.sale.aggregate({
-                where: { createdAt: { gte: monthStart }, active: true },
-                _sum: { total: true },
-            }),
-            this.prisma.sale.aggregate({
-                where: { createdAt: { gte: lastMonthStart, lte: lastMonthEnd }, active: true },
-                _sum: { total: true },
-            }),
-        ]);
+        // 0. Fetch Currencies for Normalization
+        const currencies = await this.prisma.currency.findMany({
+            where: { active: true },
+            select: { code: true, exchangeRate: true, isPrimary: true }
+        });
 
-        const todayTotal = Number(todaySales._sum.total || 0);
-        const yesterdayTotal = Number(yesterdaySales._sum.total || 0);
-        const thisMonthTotal = Number(thisMonthSales._sum.total || 0);
-        const lastMonthTotal = Number(lastMonthSales._sum.total || 0);
+        const primaryCurrency = currencies.find(c => c.isPrimary);
+        const usdCurrency = currencies.find(c => c.code === 'USD');
+        const usdRate = usdCurrency ? Number(usdCurrency.exchangeRate) : 1;
+
+        // Helper to convert any amount with its exchangeRate to USD
+        const toUSD = (amount: number | Decimal, rateRelToPrimary: number | Decimal, currencyCode?: string) => {
+            if (usdRate <= 0) return Number(amount); // Safety fallback
+
+            // 1. If it's already USD, return it as is
+            if (currencyCode === 'USD') return Number(amount);
+
+            // 2. If it's VES, convert to USD using CURRENT rate to preserve proportions
+            if (currencyCode === 'VES' || Number(rateRelToPrimary) === 1) {
+                return Number(amount) / usdRate;
+            }
+
+            // 3. For other currencies (COP, EUR), convert to Primary (VES) then to USD (Current)
+            const valInPrimary = Number(amount) * Number(rateRelToPrimary || 1);
+            return valInPrimary / usdRate;
+        };
+
+        // 1. Sales Data (Normalizing each range to USD)
+        // IMPORTANT: Sales in this system are recorded in VES (Primary Currency)
+        const fetchSalesTotalUSD = async (where: any) => {
+            const sales = await this.prisma.sale.findMany({
+                where,
+                select: { total: true }
+            });
+            // Use current usdRate to preserve proportions relative to VES profit
+            return sales.reduce((acc, sale) => acc + (Number(sale.total) / usdRate), 0);
+        };
+
+        const [todayTotal, yesterdayTotal, thisMonthTotal, lastMonthTotal] = await Promise.all([
+            fetchSalesTotalUSD({ createdAt: { gte: today }, active: true }),
+            fetchSalesTotalUSD({ createdAt: { gte: yesterday, lte: yesterdayEnd }, active: true }),
+            fetchSalesTotalUSD({ createdAt: { gte: monthStart }, active: true }),
+            fetchSalesTotalUSD({ createdAt: { gte: lastMonthStart, lte: lastMonthEnd }, active: true }),
+        ]);
 
         const percentChange = yesterdayTotal > 0
             ? ((todayTotal - yesterdayTotal) / yesterdayTotal) * 100
@@ -48,81 +71,97 @@ export class ContextBuilderService {
         const trend: 'up' | 'down' | 'stable' =
             percentChange > 5 ? 'up' : percentChange < -5 ? 'down' : 'stable';
 
-        // Inventory Data
-        const [products, criticalStockProducts, topProducts] = await Promise.all([
+        // 2. Inventory Data
+        const [productsCount, criticalStockProducts] = await Promise.all([
             this.prisma.product.count({ where: { active: true } }),
             this.prisma.product.findMany({
-                where: {
-                    active: true,
-                    stock: { lt: 10 }, // Stock below 10
-                },
+                where: { active: true, stock: { lt: 10 } },
                 select: { name: true, sku: true, stock: true },
                 take: 10,
             }),
-            this.prisma.saleItem.groupBy({
-                by: ['productId'],
-                _sum: { total: true, quantity: true },
-                where: { sale: { createdAt: { gte: monthStart }, active: true } },
-                orderBy: { _sum: { total: 'desc' } },
-                take: 5,
-            }),
         ]);
 
-        const topProductsData = await Promise.all(
-            topProducts.map(async (item) => {
-                const product = await this.prisma.product.findUnique({
-                    where: { id: item.productId },
-                    select: { name: true },
-                });
-                return {
-                    name: product?.name || 'Unknown',
-                    revenue: Number(item._sum.total || 0),
-                    units: Number(item._sum.quantity || 0),
-                };
-            })
-        );
-
-        // Calculate total inventory value
-        const allProducts = await this.prisma.product.findMany({
-            where: { active: true },
-            select: { stock: true, costPrice: true, currency: true },
+        const topProductsItems = await this.prisma.saleItem.findMany({
+            where: { sale: { createdAt: { gte: monthStart }, active: true } },
+            include: {
+                sale: { select: { exchangeRate: true } },
+                product: { select: { name: true } }
+            }
         });
 
-        const totalInventoryValue = allProducts.reduce((sum, p) => {
-            const rate = p.currency?.isPrimary ? 1 : Number(p.currency?.exchangeRate || 1);
-            return sum + (Number(p.stock) * Number(p.costPrice) * rate);
-        }, 0);
+        const productsMap: Record<string, { name: string, totalUSD: number, units: number }> = {};
+        topProductsItems.forEach(item => {
+            const pid = item.productId;
+            if (!productsMap[pid]) {
+                productsMap[pid] = { name: item.product?.name || 'Unknown', totalUSD: 0, units: 0 };
+            }
 
-        // Financial Data
-        const [cashSession, accountsReceivable, accountsPayable, expenses] = await Promise.all([
+            const rate = (Number(item.sale.exchangeRate) && Number(item.sale.exchangeRate) !== 1)
+                ? Number(item.sale.exchangeRate)
+                : usdRate;
+
+            productsMap[pid].totalUSD += Number(item.total) / rate;
+            productsMap[pid].units += Number(item.quantity);
+        });
+
+        const topProductsData = Object.values(productsMap)
+            .sort((a, b) => b.totalUSD - a.totalUSD)
+            .slice(0, 5)
+            .map(p => ({
+                name: p.name,
+                revenue: Math.round(p.totalUSD),
+                units: Math.round(p.units)
+            }));
+
+        // Calculate total inventory value in USD
+        const allProducts = await this.prisma.product.findMany({
+            where: { active: true },
+            select: { stock: true, costPrice: true, currency: { select: { exchangeRate: true, isPrimary: true } } },
+        });
+
+        let totalInventoryValueUSD = 0;
+        for (const p of allProducts) {
+            const rate = p.currency?.isPrimary ? 1 : Number(p.currency?.exchangeRate || 1);
+            totalInventoryValueUSD += toUSD(Number(p.stock) * Number(p.costPrice || 0), rate);
+        }
+
+        // 3. Financial Data (Accounts Receivable/Payable and Expenses)
+        const [cashSession, invoices, unpaidPurchases, monthlyPurchases, expenses] = await Promise.all([
             this.prisma.cashSession.findFirst({
                 where: { status: 'OPEN' },
                 select: { actualBalance: true, openingBalance: true },
             }),
-            this.prisma.sale.aggregate({
-                where: { paymentStatus: { in: ['PENDING', 'PARTIAL'] }, active: true },
-                _sum: { total: true },
+            this.prisma.invoice.findMany({
+                where: { status: { in: ['PENDING', 'PARTIAL', 'OVERDUE'] }, active: true },
+                select: { balance: true, exchangeRate: true, currencyCode: true }
             }),
-            this.prisma.purchase.aggregate({
-                where: { paymentStatus: { in: ['PENDING', 'PARTIAL'] } },
-                _sum: { total: true },
+            this.prisma.purchase.findMany({
+                where: { paymentStatus: { in: ['UNPAID', 'PARTIAL'] } },
+                select: { balance: true, exchangeRate: true, currencyCode: true }
             }),
-            this.prisma.expense.aggregate({
+            this.prisma.purchase.findMany({
+                where: { createdAt: { gte: monthStart }, status: 'COMPLETED' },
+                select: { total: true, exchangeRate: true, currencyCode: true }
+            }),
+            this.prisma.expense.findMany({
                 where: { date: { gte: monthStart } },
-                _sum: { amount: true },
+                select: { amount: true, exchangeRate: true, currencyCode: true }
             }),
         ]);
 
-        const cashBalance = Number(cashSession?.actualBalance || cashSession?.openingBalance || 0);
-        const receivable = Number(accountsReceivable._sum?.total || 0);
-        const payable = Number(accountsPayable._sum?.total || 0);
-        const monthlyExpenses = Number(expenses._sum?.amount || 0);
+        // Cash balance is in VES (Primary)
+        const cashBalancePrimary = Number(cashSession?.actualBalance || cashSession?.openingBalance || 0);
+        const cashBalanceUSD = cashBalancePrimary / usdRate;
 
-        // Calculate profit (simplified)
-        const profit = thisMonthTotal - monthlyExpenses;
-        const profitMargin = thisMonthTotal > 0 ? (profit / thisMonthTotal) * 100 : 0;
+        const receivableUSD = invoices.reduce((acc, inv) => acc + toUSD(inv.balance, inv.exchangeRate, inv.currencyCode), 0);
+        const payableUSD = unpaidPurchases.reduce((acc, pur) => acc + toUSD(pur.balance, pur.exchangeRate, pur.currencyCode), 0);
+        const totalPurchasesUSD = monthlyPurchases.reduce((acc, pur) => acc + toUSD(pur.total, pur.exchangeRate, pur.currencyCode), 0);
+        const monthlyExpensesUSD = expenses.reduce((acc, exp) => acc + toUSD(exp.amount, exp.exchangeRate, exp.currencyCode), 0);
 
-        // Generate Alerts
+        const profitUSD = thisMonthTotal - monthlyExpensesUSD;
+        const profitMargin = thisMonthTotal > 0 ? Math.round((profitUSD / thisMonthTotal) * 100) : 0;
+
+        // 4. Generate Alerts
         const alerts: BusinessContext['alerts'] = [];
 
         if (criticalStockProducts.length > 0) {
@@ -133,10 +172,10 @@ export class ContextBuilderService {
             });
         }
 
-        if (payable > cashBalance + receivable) {
+        if (payableUSD > cashBalanceUSD + receivableUSD) {
             alerts.push({
                 type: 'payment',
-                message: 'Cuentas por pagar exceden liquidez disponible',
+                message: 'Cuentas por pagar exceden liquidez disponible (USD)',
                 severity: 'high',
             });
         }
@@ -152,30 +191,34 @@ export class ContextBuilderService {
         return {
             timestamp: now.toISOString(),
             period,
+            currency: 'USD',
+            exchangeRateUsed: usdRate,
             sales: {
-                today: todayTotal,
-                yesterday: yesterdayTotal,
-                thisMonth: thisMonthTotal,
-                lastMonth: lastMonthTotal,
+                today: Math.round(todayTotal),
+                yesterday: Math.round(yesterdayTotal),
+                thisMonth: Math.round(thisMonthTotal),
+                lastMonth: Math.round(lastMonthTotal),
                 trend,
-                percentChange,
+                percentChange: Math.round(percentChange),
             },
             inventory: {
-                totalValue: totalInventoryValue,
-                totalProducts: products,
+                totalValue: Math.round(totalInventoryValueUSD),
+                totalProducts: productsCount,
                 criticalStock: criticalStockProducts.map(p => ({
                     name: p.name,
                     sku: p.sku,
                     stock: Number(p.stock),
-                    minStock: 10, // Simplified
+                    minStock: 10,
                 })),
                 topProducts: topProductsData,
             },
             finances: {
-                cashBalance,
-                accountsReceivable: receivable,
-                accountsPayable: payable,
-                profit,
+                cashBalance: Math.round(cashBalanceUSD),
+                accountsReceivable: Math.round(receivableUSD),
+                accountsPayable: Math.round(payableUSD),
+                totalExpenses: Math.round(monthlyExpensesUSD),
+                totalPurchases: Math.round(totalPurchasesUSD),
+                profit: Math.round(profitUSD),
                 profitMargin,
             },
             alerts,

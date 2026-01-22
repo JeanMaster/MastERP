@@ -1,5 +1,4 @@
-import axios from 'axios';
-import { BASE_URL as API_URL } from './apiConfig';
+import { api } from './apiConfig';
 
 export interface AIRecommendation {
     priority: 'high' | 'medium' | 'low';
@@ -32,19 +31,19 @@ export interface AIChatResponse {
 
 export const aiApi = {
     getDailyInsights: async (forceRefresh = false): Promise<AIInsightsResponse> => {
-        const { data } = await axios.get(`${API_URL}/ai/daily-insights`, {
+        const { data } = await api.get(`/ai/daily-insights`, {
             params: { refresh: forceRefresh }
         });
         return data;
     },
 
     sendChatMessage: async (request: AIChatRequest): Promise<AIChatResponse> => {
-        const { data } = await axios.post(`${API_URL}/ai/chat`, request);
+        const { data } = await api.post(`/ai/chat`, request);
         return data;
     },
 
     refreshInsights: async (): Promise<AIInsightsResponse> => {
-        const { data } = await axios.post(`${API_URL}/ai/refresh-insights`);
+        const { data } = await api.post(`/ai/refresh-insights`);
         return data;
     },
 };
