@@ -74,6 +74,7 @@ export class ProductsController {
         salePriceMargin: number;
         offerPriceMargin?: number;
         wholesalePriceMargin?: number;
+        currencyId?: string;
     }>) {
         return this.productsService.batchUpdatePrices(updates);
     }

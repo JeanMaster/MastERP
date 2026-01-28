@@ -36,9 +36,10 @@ export class ContextBuilderService {
             // 1. If it's already USD, return it as is
             if (currencyCode === 'USD') return Number(amount);
 
-            // 2. If it's VES, convert to USD using CURRENT rate to preserve proportions
+            // 2. If it's VES, convert to USD using historical rate (if available) or current rate
             if (currencyCode === 'VES' || Number(rateRelToPrimary) === 1) {
-                return Number(amount) / usdRate;
+                const historicalRate = (Number(rateRelToPrimary) > 1) ? Number(rateRelToPrimary) : usdRate;
+                return Number(amount) / historicalRate;
             }
 
             // 3. For other currencies (COP, EUR), convert to Primary (VES) then to USD (Current)
@@ -51,10 +52,15 @@ export class ContextBuilderService {
         const fetchSalesTotalUSD = async (where: any) => {
             const sales = await this.prisma.sale.findMany({
                 where,
-                select: { total: true }
+                select: { total: true, exchangeRate: true }
             });
-            // Use current usdRate to preserve proportions relative to VES profit
-            return sales.reduce((acc, sale) => acc + (Number(sale.total) / usdRate), 0);
+            // Convert each sale using its historical rate (or fallback to current usdRate if 1.0)
+            return sales.reduce((acc, sale) => {
+                const rate = (Number(sale.exchangeRate) && Number(sale.exchangeRate) !== 1)
+                    ? Number(sale.exchangeRate)
+                    : usdRate;
+                return acc + (Number(sale.total) / rate);
+            }, 0);
         };
 
         const [todayTotal, yesterdayTotal, thisMonthTotal, lastMonthTotal] = await Promise.all([

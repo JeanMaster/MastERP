@@ -398,6 +398,7 @@ export class ProductsService {
         salePriceMargin: number;
         offerPriceMargin?: number;
         wholesalePriceMargin?: number;
+        currencyId?: string;
     }>) {
         const results: Array<{
             success: boolean;
@@ -407,7 +408,7 @@ export class ProductsService {
         }> = [];
 
         for (const update of updates) {
-            const { productId, newCostPrice, salePriceMargin, offerPriceMargin, wholesalePriceMargin } = update;
+            const { productId, newCostPrice, salePriceMargin, offerPriceMargin, wholesalePriceMargin, currencyId } = update;
 
             // Calculate new prices based on margins
             const newSalePrice = newCostPrice * (1 + salePriceMargin / 100);
@@ -426,6 +427,7 @@ export class ProductsService {
                         salePrice: new Decimal(newSalePrice),
                         offerPrice: newOfferPrice ? new Decimal(newOfferPrice) : null,
                         wholesalePrice: newWholesalePrice ? new Decimal(newWholesalePrice) : null,
+                        currencyId: currencyId || undefined,
                     },
                     select: {
                         id: true,

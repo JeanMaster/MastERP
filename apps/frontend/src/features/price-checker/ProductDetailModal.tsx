@@ -17,19 +17,16 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({ visible,
 
     // Price Logic (Duplicated from Page for simplicity, updated to handle offer)
     const getDualPrices = () => {
-        // Determine base display price (Offer takes precedence for large display)
-        const basePrice = product.offerPrice && product.offerPrice > 0 ? product.offerPrice : product.salePrice;
-
         const primarySymbol = 'Bs';
         const secondarySymbol = companySettings?.preferredSecondaryCurrency?.symbol || '$';
-        const secondaryRate = companySettings?.preferredSecondaryCurrency?.exchangeRate || 0;
+        const secondaryRate = Number(companySettings?.preferredSecondaryCurrency?.exchangeRate) || 0;
 
-        let priceInPrimary = basePrice;
+        let priceInPrimary = product.salePrice;
 
-        // Convert to Primary if stored in foreign
+        // Convert to Primary if stored in foreign (e.g. USDT -> Bs)
         if (product.currency && !product.currency.isPrimary) {
-            const prodRate = product.currency.exchangeRate || 1;
-            priceInPrimary = basePrice * prodRate;
+            const prodRate = Number(product.currency.exchangeRate) || 1;
+            priceInPrimary = product.salePrice * prodRate;
         }
 
         // Apply POS Rounding Logic: Ceil to nearest 10
@@ -44,13 +41,11 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({ visible,
             primary: priceInPrimary,
             primarySymbol,
             secondary: priceInSecondary,
-            secondarySymbol,
-            isOffer: product.offerPrice && product.offerPrice > 0,
-            originalPrice: product.salePrice
+            secondarySymbol
         };
     };
 
-    const { primary, primarySymbol, secondary, secondarySymbol, isOffer, originalPrice } = getDualPrices();
+    const { primary, primarySymbol, secondary, secondarySymbol } = getDualPrices();
 
     return (
         <Modal
@@ -83,7 +78,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({ visible,
                     <Divider />
 
                     <div style={{ marginBottom: 24, textAlign: 'center', background: '#f6ffed', padding: '20px', borderRadius: '12px', border: '1px solid #b7eb8f' }}>
-                        <Text style={{ fontSize: '18px', display: 'block', color: '#52c41a', marginBottom: 4 }}>Precio de Venta</Text>
+                        <Text style={{ fontSize: '18px', display: 'block', color: '#52c41a', marginBottom: 4 }}>Precio</Text>
 
                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
                             {/* Primary Price */}
@@ -91,21 +86,12 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({ visible,
                                 {formatVenezuelanPrice(primary, primarySymbol)}
                             </Title>
 
-                            {/* Secondary Price */}
                             {secondary > 0 && (
-                                <Text style={{ fontSize: '28px', color: '#1890ff', fontWeight: 'bold' }}>
-                                    {secondarySymbol} {secondary.toFixed(2)}
+                                <Text style={{ fontSize: '22px', color: '#8c8c8c', marginTop: 4, fontWeight: 500 }}>
+                                    Equivalente: {secondarySymbol} {secondary.toFixed(2)}
                                 </Text>
                             )}
                         </div>
-
-                        {isOffer && (
-                            <div style={{ marginTop: 8 }}>
-                                <Text delete type="secondary" style={{ fontSize: '16px' }}>
-                                    Antes: {formatVenezuelanPrice(originalPrice, product.currency?.symbol)} (Ref)
-                                </Text>
-                            </div>
-                        )}
                     </div>
 
                     <Descriptions column={1} size="middle" bordered>
