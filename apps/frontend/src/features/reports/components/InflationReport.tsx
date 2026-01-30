@@ -1,10 +1,8 @@
 import React, { useState } from 'react';
-import { Card, Row, Col, Statistic, Table, Radio, Space, Typography, Tag, Tooltip } from 'antd';
+import { Card, Row, Col, Statistic, Table, Radio, Space, Typography, Tag } from 'antd';
 import {
     FallOutlined,
-    InfoCircleOutlined,
-    HistoryOutlined,
-    DollarOutlined
+    InfoCircleOutlined
 } from '@ant-design/icons';
 import { useQuery } from '@tanstack/react-query';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as ChartTooltip, ResponsiveContainer, Legend } from 'recharts';

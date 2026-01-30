@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { Card, Row, Col, Radio, Space, Typography, Tooltip, Empty, Badge } from 'antd';
 import {
-    InfoCircleOutlined
 } from '@ant-design/icons';
 import { useQuery } from '@tanstack/react-query';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as ChartTooltip, ResponsiveContainer } from 'recharts';

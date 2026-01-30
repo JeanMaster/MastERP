@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Card, Row, Col, Statistic, Radio, Space, Typography, Tag, Tooltip, Empty } from 'antd';
+import { Card, Row, Col, Radio, Space, Typography, Tag, Tooltip, Empty } from 'antd';
 import {
     CalendarOutlined,
     RiseOutlined,
@@ -168,7 +168,7 @@ const WeeklyPerformanceReport: React.FC = () => {
                     <Card title="Resumen de Operación" bordered={false} style={{ height: '100%' }}>
                         <Space direction="vertical" size={24} style={{ width: '100%' }}>
                             <div>
-                                <Text type="secondary" size="small">Día más movido</Text>
+                                <Text type="secondary">Día más movido</Text>
                                 <div style={{ display: 'flex', alignItems: 'center', marginTop: 8 }}>
                                     <CalendarOutlined style={{ fontSize: 24, marginRight: 12, color: '#1890ff' }} />
                                     <div>
@@ -181,7 +181,7 @@ const WeeklyPerformanceReport: React.FC = () => {
                             </div>
 
                             <div>
-                                <Text type="secondary" size="small">Día con menos ventas</Text>
+                                <Text type="secondary">Día con menos ventas</Text>
                                 <div style={{ display: 'flex', alignItems: 'center', marginTop: 8 }}>
                                     <CalendarOutlined style={{ fontSize: 24, marginRight: 12, color: '#ff4d4f' }} />
                                     <div>
