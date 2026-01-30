@@ -1,6 +1,4 @@
-
-import axios from 'axios';
-import { BASE_URL as API_URL } from './apiConfig';
+import { api } from './apiConfig';
 
 export interface NetworkInfo {
     localIp: string;
@@ -10,7 +8,7 @@ export interface NetworkInfo {
 
 export const systemApi = {
     getNetworkInfo: async (): Promise<NetworkInfo> => {
-        const { data } = await axios.get(`${API_URL}/system/network`);
+        const { data } = await api.get('/system/network');
         return data;
     }
 };

@@ -1,10 +1,12 @@
-import { Controller, Get, Post, Body, Query, HttpException, HttpStatus, Logger } from '@nestjs/common';
+import { Controller, Get, Post, Body, Query, HttpException, HttpStatus, Logger, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiQuery, ApiBody } from '@nestjs/swagger';
 import { AIService } from './ai.service';
 import type { AIChatRequest } from './interfaces/ai.interfaces';
+import { AuthGuard } from '@nestjs/passport';
 
 @ApiTags('ai')
 @Controller('ai')
+@UseGuards(AuthGuard('jwt'))
 export class AIController {
     private readonly logger = new Logger(AIController.name);
     constructor(private readonly aiService: AIService) { }

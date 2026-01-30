@@ -14,6 +14,7 @@ export interface DashboardStats {
 export interface InventoryReport {
     stockByDepartment: { department: string; units: number; value: number }[];
     lowStockProducts: { name: string; stock: number; category: { name: string } }[];
+    depletionForecast: { name: string; stock: number; category: string; dailySalesVelocity: number; daysRemaining: number }[];
     totalInventoryValue: number;
 }
 
@@ -22,6 +23,8 @@ export interface FinanceReport {
     monthlyPurchasesTotal: number;
     totalCostOfSales: number;
     totalExpenses: number;
+    totalMonetaryRefunds: number;
+    totalExchangeValue: number;
     paymentMethodsBreakdown: { method: string; amount: number }[];
     currencyTypeBreakdown: { LOCAL: number; FOREIGN: number };
     dailySalesData: { date: string; amount: number }[];
@@ -60,7 +63,47 @@ export interface COGSReport {
         quantity: number;
         totalCost: number;
         totalRevenue: number;
+        inflationLoss: number;
     }[];
+    totalInflationLoss: number;
+}
+
+export interface InflationReport {
+    summary: {
+        totalNominalVES: number;
+        totalRevaluedVES: number;
+        totalLossVES: number;
+        lossPercentage: number;
+    };
+    methodBreakdown: {
+        method: string;
+        nominal: number;
+        revalued: number;
+        loss: number;
+    }[];
+    dailyData: {
+        date: string;
+        nominal: number;
+        revalued: number;
+        loss: number;
+    }[];
+    monthlyHistory: {
+        month: string;
+        revaluedSales: number;
+        revaluedCOGS: number;
+        revaluedExpenses: number;
+        operatingProfit: number;
+        inflationLoss: number;
+        realProfit: number;
+    }[];
+}
+
+export interface WeeklyPerformance {
+    day: string;
+    total: number;
+    count: number;
+    status: 'HIGH' | 'AVERAGE' | 'LOW';
+    percentage: number;
 }
 
 export const statsApi = {
@@ -107,4 +150,33 @@ export const statsApi = {
         });
         return response.data;
     },
+
+    getInflationReport: async (startDate?: string, endDate?: string): Promise<InflationReport> => {
+        const response = await api.get('/stats/inflation', {
+            params: { startDate, endDate }
+        });
+        return response.data;
+    },
+
+    getWeeklyPerformance: async (currency: string, startDate?: string, endDate?: string): Promise<WeeklyPerformance[]> => {
+        const response = await api.get('/stats/weekly-performance', {
+            params: { currency, startDate, endDate }
+        });
+        return response.data;
+    },
+
+    getMonthlyDailyPerformance: async (currency: string, startDate?: string, endDate?: string): Promise<MonthlyDailyPerformance[]> => {
+        const response = await api.get('/stats/monthly-daily-performance', {
+            params: { currency, startDate, endDate }
+        });
+        return response.data;
+    },
 };
+
+export interface MonthlyDailyPerformance {
+    day: number;
+    total: number;
+    count: number;
+    status: 'HIGH' | 'AVERAGE' | 'LOW';
+    percentage: number;
+}

@@ -1,10 +1,12 @@
-import { Controller, Get, Post, Body, Param, Query } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Query, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { InventoryAdjustmentsService } from './inventory-adjustments.service';
 import { CreateAdjustmentDto } from './dto/create-adjustment.dto';
+import { AuthGuard } from '@nestjs/passport';
 
 @ApiTags('inventory-adjustments')
 @Controller('inventory-adjustments')
+@UseGuards(AuthGuard('jwt'))
 export class InventoryAdjustmentsController {
     constructor(private readonly inventoryAdjustmentsService: InventoryAdjustmentsService) { }
 

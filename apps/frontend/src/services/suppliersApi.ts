@@ -1,6 +1,4 @@
-import axios from 'axios';
-
-import { BASE_URL as API_URL } from './apiConfig';
+import { api } from './apiConfig';
 
 export interface Supplier {
     id: string;
@@ -33,31 +31,30 @@ export interface UpdateSupplierDto extends Partial<CreateSupplierDto> { }
 
 export const suppliersApi = {
     getAll: async (search?: string, active: boolean = true): Promise<Supplier[]> => {
-        const params = new URLSearchParams();
-        if (search) params.append('search', search);
-        params.append('active', String(active));
+        const params: any = { active: String(active) };
+        if (search) params.search = search;
 
-        const response = await axios.get(`${API_URL}/suppliers`, { params });
+        const response = await api.get('/suppliers', { params });
         return response.data;
     },
 
     getById: async (id: string): Promise<Supplier> => {
-        const response = await axios.get(`${API_URL}/suppliers/${id}`);
+        const response = await api.get(`/suppliers/${id}`);
         return response.data;
     },
 
     create: async (data: CreateSupplierDto): Promise<Supplier> => {
-        const response = await axios.post(`${API_URL}/suppliers`, data);
+        const response = await api.post('/suppliers', data);
         return response.data;
     },
 
     update: async (id: string, data: UpdateSupplierDto): Promise<Supplier> => {
-        const response = await axios.patch(`${API_URL}/suppliers/${id}`, data);
+        const response = await api.patch(`/suppliers/${id}`, data);
         return response.data;
     },
 
     remove: async (id: string): Promise<Supplier> => {
-        const response = await axios.delete(`${API_URL}/suppliers/${id}`);
+        const response = await api.delete(`/suppliers/${id}`);
         return response.data;
     },
 };

@@ -1,11 +1,13 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { UnitsService } from './units.service';
 import { CreateUnitDto } from './dto/create-unit.dto';
 import { UpdateUnitDto } from './dto/update-unit.dto';
+import { AuthGuard } from '@nestjs/passport';
 
 @ApiTags('units')
 @Controller('units')
+@UseGuards(AuthGuard('jwt'))
 export class UnitsController {
     constructor(private readonly unitsService: UnitsService) { }
 

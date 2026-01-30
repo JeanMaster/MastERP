@@ -1,11 +1,13 @@
-import { Controller, Get, Post, Body, Patch, Param, Query } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Query, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { ReturnsService } from './returns.service';
 import { CreateReturnDto } from './dto/create-return.dto';
 import { UpdateReturnDto } from './dto/update-return.dto';
+import { AuthGuard } from '@nestjs/passport';
 
 @ApiTags('returns')
 @Controller('returns')
+@UseGuards(AuthGuard('jwt'))
 export class ReturnsController {
     constructor(private readonly returnsService: ReturnsService) { }
 

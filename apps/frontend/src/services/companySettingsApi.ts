@@ -1,6 +1,4 @@
-import axios from 'axios';
-
-import { BASE_URL as API_URL } from './apiConfig';
+import { api } from './apiConfig';
 
 export interface CompanySettings {
     id: string;
@@ -21,12 +19,12 @@ export interface UpdateCompanySettingsDto {
 
 export const companySettingsApi = {
     getSettings: async (): Promise<CompanySettings> => {
-        const { data } = await axios.get(`${API_URL}/company-settings`);
+        const { data } = await api.get('/company-settings');
         return data;
     },
 
     updateSettings: async (dto: UpdateCompanySettingsDto): Promise<CompanySettings> => {
-        const { data } = await axios.put(`${API_URL}/company-settings`, dto);
+        const { data } = await api.put('/company-settings', dto);
         return data;
     },
 };

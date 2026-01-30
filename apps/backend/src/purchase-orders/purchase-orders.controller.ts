@@ -1,10 +1,12 @@
-import { Controller, Get, Post, Body, Param, Patch, Delete } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Patch, Delete, UseGuards } from '@nestjs/common';
 import { PurchaseOrdersService } from './purchase-orders.service';
 import { CreatePurchaseOrderDto } from './dto/create-purchase-order.dto';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
+import { AuthGuard } from '@nestjs/passport';
 
 @ApiTags('Purchase Orders')
 @Controller('purchase-orders')
+@UseGuards(AuthGuard('jwt'))
 export class PurchaseOrdersController {
     constructor(private readonly purchaseOrdersService: PurchaseOrdersService) { }
 

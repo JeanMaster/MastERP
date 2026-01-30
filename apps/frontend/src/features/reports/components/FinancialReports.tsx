@@ -168,9 +168,9 @@ export const FinancialReports = () => {
                 </Row>
             </div>
 
-            {/* Summary Cards */}
-            <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
-                <Col xs={24} sm={12} lg={4}>
+            {/* Summary Row 1 */}
+            <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
+                <Col xs={24} sm={12} lg={6}>
                     <Card>
                         <Statistic
                             title="Ingresos (Ventas)"
@@ -183,7 +183,7 @@ export const FinancialReports = () => {
                         />
                     </Card>
                 </Col>
-                <Col xs={24} sm={12} lg={4}>
+                <Col xs={24} sm={12} lg={6}>
                     <Card>
                         <Statistic
                             title="Costo Productos"
@@ -196,7 +196,7 @@ export const FinancialReports = () => {
                         />
                     </Card>
                 </Col>
-                <Col xs={24} sm={12} lg={4}>
+                <Col xs={24} sm={12} lg={6}>
                     <Card>
                         <Statistic
                             title="Gastos Operativos"
@@ -209,7 +209,7 @@ export const FinancialReports = () => {
                         />
                     </Card>
                 </Col>
-                <Col xs={24} sm={12} lg={4}>
+                <Col xs={24} sm={12} lg={6}>
                     <Card>
                         <Statistic
                             title="Utilidad Real"
@@ -225,7 +225,43 @@ export const FinancialReports = () => {
                         </div>
                     </Card>
                 </Col>
-                <Col xs={24} sm={12} lg={4}>
+            </Row>
+
+            {/* Summary Row 2 */}
+            <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
+                <Col xs={24} sm={12} lg={6}>
+                    <Card>
+                        <Statistic
+                            title="Devoluciones (Dinero)"
+                            value={report.totalMonetaryRefunds}
+                            precision={2}
+                            prefix={currencySymbol}
+                            valueStyle={{ color: '#ff4d4f' }}
+                            styles={{ content: { color: '#ff4d4f' } }}
+                            suffix={<CreditCardOutlined />}
+                        />
+                        <div style={{ marginTop: 8, fontSize: 10, color: '#666' }}>
+                            Dinero entregado al cliente
+                        </div>
+                    </Card>
+                </Col>
+                <Col xs={24} sm={12} lg={6}>
+                    <Card>
+                        <Statistic
+                            title="Cambios (Producto)"
+                            value={report.totalExchangeValue}
+                            precision={2}
+                            prefix={currencySymbol}
+                            valueStyle={{ color: '#faad14' }}
+                            styles={{ content: { color: '#faad14' } }}
+                            suffix={<ShoppingOutlined />}
+                        />
+                        <div style={{ marginTop: 8, fontSize: 10, color: '#666' }}>
+                            Valor de mercancía devuelta
+                        </div>
+                    </Card>
+                </Col>
+                <Col xs={24} sm={12} lg={6}>
                     <Card>
                         <Statistic
                             title="Inversión Stock"
@@ -241,7 +277,7 @@ export const FinancialReports = () => {
                         </div>
                     </Card>
                 </Col>
-                <Col xs={24} sm={12} lg={4}>
+                <Col xs={24} sm={12} lg={6}>
                     <Card>
                         <Statistic
                             title="Métodos Pago"
@@ -258,10 +294,10 @@ export const FinancialReports = () => {
             <Row gutter={16} style={{ marginBottom: 16 }}>
                 <Col xs={24} lg={14}>
                     <Card title={`Tendencia de Ventas (${dateFilter === 'day' ? 'Hoy' :
-                            dateFilter === 'yesterday' ? 'Ayer' :
-                                dateFilter === 'month' ? 'Este Mes' :
-                                    dateFilter === 'lastMonth' ? 'Mes Anterior' :
-                                        'Todo'
+                        dateFilter === 'yesterday' ? 'Ayer' :
+                            dateFilter === 'month' ? 'Este Mes' :
+                                dateFilter === 'lastMonth' ? 'Mes Anterior' :
+                                    'Todo'
                         })`}>
                         <ResponsiveContainer width="100%" height={300}>
                             <BarChart data={report.dailySalesData}>

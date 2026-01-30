@@ -1,6 +1,4 @@
-import axios from 'axios';
-
-import { BASE_URL as API_URL } from './apiConfig';
+import { api } from './apiConfig';
 
 export interface Department {
     id: string;
@@ -31,31 +29,31 @@ export interface UpdateDepartmentDto {
 
 export const departmentsApi = {
     getAll: async (): Promise<Department[]> => {
-        const { data } = await axios.get(`${API_URL}/departments`);
+        const { data } = await api.get('/departments');
         return data;
     },
 
     getTree: async (): Promise<Department[]> => {
-        const { data } = await axios.get(`${API_URL}/departments/tree`);
+        const { data } = await api.get('/departments/tree');
         return data;
     },
 
     getOne: async (id: string): Promise<Department> => {
-        const { data } = await axios.get(`${API_URL}/departments/${id}`);
+        const { data } = await api.get(`/departments/${id}`);
         return data;
     },
 
     create: async (dto: CreateDepartmentDto): Promise<Department> => {
-        const { data } = await axios.post(`${API_URL}/departments`, dto);
+        const { data } = await api.post('/departments', dto);
         return data;
     },
 
     update: async (id: string, dto: UpdateDepartmentDto): Promise<Department> => {
-        const { data } = await axios.patch(`${API_URL}/departments/${id}`, dto);
+        const { data } = await api.patch(`/departments/${id}`, dto);
         return data;
     },
 
     delete: async (id: string): Promise<void> => {
-        await axios.delete(`${API_URL}/departments/${id}`);
+        await api.delete(`/departments/${id}`);
     },
 };

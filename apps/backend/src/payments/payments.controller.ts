@@ -1,10 +1,12 @@
-import { Controller, Get, Post, Body, Param, Delete } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Delete, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { PaymentsService } from './payments.service';
 import { CreatePaymentDto } from './dto/create-payment.dto';
+import { AuthGuard } from '@nestjs/passport';
 
 @ApiTags('payments')
 @Controller('payments')
+@UseGuards(AuthGuard('jwt'))
 export class PaymentsController {
     constructor(private readonly paymentsService: PaymentsService) { }
 

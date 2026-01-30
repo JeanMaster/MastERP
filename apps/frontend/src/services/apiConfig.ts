@@ -41,13 +41,19 @@ api.interceptors.response.use(
     (response) => response,
     (error) => {
         if (error.response && error.response.status === 401) {
-            // Token expired or invalid
+            console.warn('Session expired or unauthorized (401). Redirecting to login...');
+
+            // Clear sensitive data
             localStorage.removeItem('token');
             localStorage.removeItem('user');
 
-            // Redirect to login (only if not already there)
-            if (!window.location.pathname.includes('/login')) {
-                window.location.href = '/login';
+            // Prevent redirect loops and redirect only if not already on login/auth pages
+            const path = window.location.pathname;
+            if (!path.includes('/login') && !path.includes('/register') && path !== '/') {
+                // Short timeout to allow any pending UI updates to settle
+                setTimeout(() => {
+                    window.location.href = '/login?expired=true';
+                }, 100);
             }
         }
         return Promise.reject(error);

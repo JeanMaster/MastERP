@@ -70,7 +70,11 @@ export const formatVenezuelanNumber = (value: number | null | undefined, decimal
     // Usar coma para decimales
     const decimalPart = parts[1];
 
-    return `${integerPart},${decimalPart}`;
+    if (decimalPart) {
+        return `${integerPart},${decimalPart}`;
+    }
+
+    return integerPart;
 };
 
 /**

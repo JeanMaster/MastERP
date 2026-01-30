@@ -45,6 +45,7 @@ export const SalesReports = () => {
     const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
     const [isEditPaymentModalOpen, setIsEditPaymentModalOpen] = useState(false);
     const [newPaymentMethod, setNewPaymentMethod] = useState<string>('');
+    const [pageSize, setPageSize] = useState<number>(10);
     const queryClient = useQueryClient();
 
     const updatePaymentSchema = useMutation({
@@ -92,11 +93,14 @@ export const SalesReports = () => {
     };
 
     // Fetch sales data with filters
-    const { data: sales = [], isLoading, refetch } = useQuery({
+    const { data, isLoading, refetch } = useQuery({
         queryKey: ['sales-reports', filters],
         queryFn: () => salesApi.getWithFilters(filters),
         enabled: true
     });
+
+    const sales = data?.sales || [];
+    const summary = data?.summary || { totalVentas: 0, ingresoBruto: 0, descuentos: 0, ticketPromedio: 0 };
 
     // Fetch reference data for filters
     const { data: products = [] } = useQuery({
@@ -109,11 +113,11 @@ export const SalesReports = () => {
         queryFn: () => clientsApi.getAll(),
     });
 
-    // Calculate summary statistics
-    const totalSales = sales.length;
-    const totalRevenue = sales.reduce((sum, sale) => sum + Number(sale.total || 0), 0);
-    const totalDiscount = sales.reduce((sum, sale) => sum + Number(sale.discount || 0), 0);
-    const averageTicket = totalSales > 0 ? totalRevenue / totalSales : 0;
+    // Use backend summary statistics
+    const totalSales = summary.totalVentas;
+    const totalRevenue = summary.ingresoBruto;
+    const totalDiscount = summary.descuentos;
+    const averageTicket = summary.ticketPromedio;
 
     // Handle filter changes
     const handleDateRangeChange = (dates: any) => {
@@ -203,16 +207,16 @@ export const SalesReports = () => {
         },
         {
             title: 'Total',
-            dataIndex: 'total',
+            dataIndex: 'revaluedTotal',
             key: 'total',
             width: 120,
             align: 'right' as const,
-            render: (value: number | null | undefined) => (
+            render: (value: number | null | undefined, record: Sale) => (
                 <Text strong style={{ color: '#1890ff', fontSize: '14px' }}>
-                    {formatVenezuelanPrice(value || 0)}
+                    {formatVenezuelanPrice(value ?? record.total ?? 0)}
                 </Text>
             ),
-            sorter: (a: Sale, b: Sale) => (a.total || 0) - (b.total || 0)
+            sorter: (a: Sale, b: Sale) => (a.revaluedTotal || a.total || 0) - (b.revaluedTotal || b.total || 0)
         },
         {
             title: 'Acciones',
@@ -419,7 +423,10 @@ export const SalesReports = () => {
                     rowKey="id"
                     loading={isLoading}
                     pagination={{
-                        pageSize: 10,
+                        pageSize,
+                        showSizeChanger: true,
+                        onShowSizeChange: (_, size) => setPageSize(size),
+                        pageSizeOptions: ['10', '20', '50', '100'],
                         size: isMobile ? 'small' : 'default',
                         responsive: true
                     }}

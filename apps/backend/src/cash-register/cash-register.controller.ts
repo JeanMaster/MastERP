@@ -1,12 +1,14 @@
-import { Controller, Get, Post, Body, Param, Query, Patch } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Query, Patch, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { CashRegisterService } from './cash-register.service';
 import { OpenSessionDto } from './dto/open-session.dto';
 import { CloseSessionDto } from './dto/close-session.dto';
 import { CreateMovementDto } from './dto/create-movement.dto';
+import { AuthGuard } from '@nestjs/passport';
 
 @ApiTags('cash-register')
 @Controller('cash-register')
+@UseGuards(AuthGuard('jwt'))
 export class CashRegisterController {
     constructor(private readonly cashRegisterService: CashRegisterService) { }
 

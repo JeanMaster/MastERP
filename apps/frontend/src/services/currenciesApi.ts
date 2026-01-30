@@ -1,6 +1,4 @@
-import axios from 'axios';
-
-import { BASE_URL as API_URL } from './apiConfig';
+import { api } from './apiConfig';
 
 export interface Currency {
     id: string;
@@ -38,26 +36,26 @@ export interface UpdateCurrencyDto {
 
 export const currenciesApi = {
     getAll: async (): Promise<Currency[]> => {
-        const { data } = await axios.get(`${API_URL}/currencies`);
+        const { data } = await api.get('/currencies');
         return data;
     },
 
     getOne: async (id: string): Promise<Currency> => {
-        const { data } = await axios.get(`${API_URL}/currencies/${id}`);
+        const { data } = await api.get(`/currencies/${id}`);
         return data;
     },
 
     create: async (dto: CreateCurrencyDto): Promise<Currency> => {
-        const { data } = await axios.post(`${API_URL}/currencies`, dto);
+        const { data } = await api.post('/currencies', dto);
         return data;
     },
 
     update: async (id: string, dto: UpdateCurrencyDto): Promise<Currency> => {
-        const { data } = await axios.patch(`${API_URL}/currencies/${id}`, dto);
+        const { data } = await api.patch(`/currencies/${id}`, dto);
         return data;
     },
 
     delete: async (id: string): Promise<void> => {
-        await axios.delete(`${API_URL}/currencies/${id}`);
+        await api.delete(`/currencies/${id}`);
     },
 };

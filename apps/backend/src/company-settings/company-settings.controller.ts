@@ -1,10 +1,12 @@
-import { Controller, Get, Put, Body } from '@nestjs/common';
+import { Controller, Get, Put, Body, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { CompanySettingsService } from './company-settings.service';
 import { UpdateCompanySettingsDto } from './dto/update-company-settings.dto';
+import { AuthGuard } from '@nestjs/passport';
 
 @ApiTags('company-settings')
 @Controller('company-settings')
+@UseGuards(AuthGuard('jwt'))
 export class CompanySettingsController {
     constructor(private readonly companySettingsService: CompanySettingsService) { }
 

@@ -1,7 +1,4 @@
-import axios from 'axios';
-import { BASE_URL } from '../../../services/apiConfig';
-
-const API_URL = BASE_URL;
+import { api } from '../../../services/apiConfig';
 
 export interface Employee {
     id: string;
@@ -25,26 +22,26 @@ export interface Employee {
 
 export const employeesApi = {
     findAll: async (): Promise<Employee[]> => {
-        const response = await axios.get(`${API_URL}/hr/employees`);
+        const response = await api.get('/hr/employees');
         return response.data;
     },
 
     findOne: async (id: string): Promise<Employee> => {
-        const response = await axios.get(`${API_URL}/hr/employees/${id}`);
+        const response = await api.get(`/hr/employees/${id}`);
         return response.data;
     },
 
     create: async (data: Partial<Employee>): Promise<Employee> => {
-        const response = await axios.post(`${API_URL}/hr/employees`, data);
+        const response = await api.post('/hr/employees', data);
         return response.data;
     },
 
     update: async (id: string, data: Partial<Employee>): Promise<Employee> => {
-        const response = await axios.patch(`${API_URL}/hr/employees/${id}`, data);
+        const response = await api.patch(`/hr/employees/${id}`, data);
         return response.data;
     },
 
     remove: async (id: string): Promise<void> => {
-        await axios.delete(`${API_URL}/hr/employees/${id}`);
+        await api.delete(`/hr/employees/${id}`);
     }
 };

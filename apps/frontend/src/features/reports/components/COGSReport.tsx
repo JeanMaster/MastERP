@@ -14,6 +14,7 @@ const { Title, Text } = Typography;
 const COGSReport: React.FC = () => {
     const [dateFilter, setDateFilter] = useState<'day' | 'month' | 'all'>('month');
     const [selectedCurrency, setSelectedCurrency] = useState<string>('VES');
+    const [pageSize, setPageSize] = useState<number>(10);
     const { currencies } = usePOSStore();
 
     const getDates = () => {
@@ -45,7 +46,7 @@ const COGSReport: React.FC = () => {
     const currencySymbol = currencies.find((c: any) => c.code === selectedCurrency)?.symbol || selectedCurrency;
 
     // MATH LOGIC
-    const utilityOperativa = report.totalSales - report.totalCOGS - report.totalExpenses;
+    const utilityOperativa = report.totalSales - report.totalCOGS - report.totalExpenses - report.totalInflationLoss;
     const restockNeed = Math.max(0, report.totalCOGS - report.totalPurchases);
     const estimatedCashFlow = report.totalSales - report.totalPurchases - report.totalExpenses;
 
@@ -56,33 +57,83 @@ const COGSReport: React.FC = () => {
 
     const columns = [
         { title: 'Producto', dataIndex: 'name', key: 'name' },
-        { title: 'Cód/SKU', dataIndex: 'sku', key: 'sku', render: (sku: string) => sku || '-' },
-        { title: 'Cant.', dataIndex: 'quantity', key: 'quantity', render: (q: number) => q.toLocaleString() },
+        { title: 'SKU', dataIndex: 'sku', key: 'sku', render: (sku: string) => sku || '-' },
+        {
+            title: 'Cant.',
+            dataIndex: 'quantity',
+            key: 'quantity',
+            render: (q: number) => q.toLocaleString(),
+            sorter: (a: any, b: any) => (Number(a.quantity) || 0) - (Number(b.quantity) || 0)
+        },
         {
             title: 'Costo Total',
             dataIndex: 'totalCost',
             key: 'totalCost',
-            render: (val: number) => `${currencySymbol} ${val.toLocaleString(undefined, { minimumFractionDigits: 2 })}`
+            render: (val: number) => `${currencySymbol} ${val.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+            sorter: (a: any, b: any) => (Number(a.totalCost) || 0) - (Number(b.totalCost) || 0)
         },
         {
-            title: 'Ventas Totales',
+            title: 'Venta Total',
             dataIndex: 'totalRevenue',
             key: 'totalRevenue',
-            render: (val: number) => `${currencySymbol} ${val.toLocaleString(undefined, { minimumFractionDigits: 2 })}`
+            render: (val: number) => `${currencySymbol} ${val.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+            sorter: (a: any, b: any) => (Number(a.totalRevenue) || 0) - (Number(b.totalRevenue) || 0)
         },
         {
-            title: 'Margen Bruto',
-            key: 'margin',
+            title: 'Pérdida Inflación',
+            dataIndex: 'inflationLoss',
+            key: 'inflationLoss',
+            render: (val: number) => (
+                <Text type="danger">
+                    -{currencySymbol} {val.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </Text>
+            ),
+            sorter: (a: any, b: any) => (Number(a.inflationLoss) || 0) - (Number(b.inflationLoss) || 0)
+        },
+        {
+            title: 'Margen Real',
+            key: 'realMargin',
             render: (_: any, record: any) => {
-                const margin = record.totalRevenue - record.totalCost;
-                const pct = record.totalRevenue > 0 ? (margin / record.totalRevenue) * 100 : 0;
+                const realProfit = record.totalRevenue - record.totalCost - record.inflationLoss;
+                const pct = record.totalRevenue > 0 ? (realProfit / record.totalRevenue) * 100 : 0;
+
                 return (
-                    <Space>
-                        <Text style={{ color: margin >= 0 ? '#52c41a' : '#ff4d4f' }}>
-                            {currencySymbol} {margin.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                    <Space direction="vertical" size={0}>
+                        <Text strong style={{ color: realProfit >= 0 ? '#52c41a' : '#cf1322' }}>
+                            {currencySymbol} {realProfit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </Text>
-                        <Tag color={pct > 20 ? 'green' : 'orange'}>{pct.toFixed(1)}%</Tag>
+                        <Tag color={pct >= 15 ? 'green' : pct >= 10 ? 'orange' : 'red'}>
+                            {pct.toFixed(1)}% Real
+                        </Tag>
                     </Space>
+                );
+            },
+            sorter: (a: any, b: any) => {
+                const profitA = a.totalRevenue - a.totalCost - a.inflationLoss;
+                const profitB = b.totalRevenue - b.totalCost - b.inflationLoss;
+                return profitA - profitB;
+            }
+        },
+        {
+            title: 'Ajuste Sugerido',
+            key: 'suggestedAdjustment',
+            render: (_: any, record: any) => {
+                const inflImpactPct = record.totalRevenue > 0 ? (record.inflationLoss / record.totalRevenue) : 0;
+                const nominalMarginPct = record.totalRevenue > 0 ? (record.totalRevenue - record.totalCost) / record.totalRevenue : 0;
+                const realMarginPct = nominalMarginPct - inflImpactPct;
+
+                // Target real margin: 15%
+                const targetRealMargin = 0.15;
+                if (realMarginPct >= targetRealMargin) return <Tag color="blue">OK</Tag>;
+
+                // Suggested Increase %: (Target - CurrentReal) / (1 - Target - Impact)
+                // Using a simpler heuristic for the UI:
+                const neededIncrease = Math.max(0, (targetRealMargin - realMarginPct) * 100);
+
+                return (
+                    <Tooltip title={`Para alcanzar 15% de margen real, considera subir el precio un ${neededIncrease.toFixed(1)}% aproximadamente.`}>
+                        <Tag color="volcano" icon={<RiseOutlined />}>+{neededIncrease.toFixed(1)}%</Tag>
+                    </Tooltip>
                 );
             }
         },
@@ -165,17 +216,34 @@ const COGSReport: React.FC = () => {
                         <Text type="secondary" style={{ fontSize: 11 }}>Costo Ventas - Inversión ({getPercentage(restockNeed)})</Text>
                     </Card>
                 </Col>
-                <Col xs={24} sm={12} lg={8}>
+                <Col xs={24} sm={12} lg={4}>
+                    <Card bordered={false} style={{ background: '#fff1f0', border: '1px solid #ffa39e' }}>
+                        <Statistic
+                            title="Desgaste Inflacionario"
+                            value={report.totalInflationLoss}
+                            precision={2}
+                            prefix={currencySymbol}
+                            valueStyle={{ color: '#cf1322' }}
+                            suffix={
+                                <Tooltip title="Impacto de la devaluación sobre tus ventas en Bolívares. El porcentaje aquí se calcula sobre el TOTAL de ventas (Divisas + BS), mientras que en el reporte especializado se calcula solo sobre lo recibido en BS.">
+                                    <InfoCircleOutlined />
+                                </Tooltip>
+                            }
+                        />
+                        <Text type="secondary" style={{ fontSize: 11 }}>Pérdida por ventas en Bs. ({getPercentage(report.totalInflationLoss)})</Text>
+                    </Card>
+                </Col>
+                <Col xs={24} sm={12} lg={4}>
                     <Card bordered={false} style={{ background: '#f6ffed', border: '1px solid #b7eb8f' }}>
                         <Statistic
-                            title="GANANCIA NETA REAL"
+                            title="UTILIDAD REAL"
                             value={utilityOperativa}
                             precision={2}
                             prefix={currencySymbol}
                             valueStyle={{ color: '#52c41a', fontWeight: 'bold' }}
-                            suffix={<Tooltip title="Ventas - Costo lo vendido - Gastos operativos"><RiseOutlined /></Tooltip>}
+                            suffix={<Tooltip title="Ventas - Costos - Gastos - Devaluación"><RiseOutlined /></Tooltip>}
                         />
-                        <Text type="secondary" style={{ fontSize: 11, fontWeight: 'bold' }}>Rendimiento Real (Margen Neto: {getPercentage(utilityOperativa)})</Text>
+                        <Text type="secondary" style={{ fontSize: 11, fontWeight: 'bold' }}>Rendimiento Neto: {getPercentage(utilityOperativa)}</Text>
                     </Card>
                 </Col>
             </Row>
@@ -185,7 +253,12 @@ const COGSReport: React.FC = () => {
                     dataSource={report.products}
                     columns={columns}
                     rowKey="sku"
-                    pagination={{ pageSize: 10 }}
+                    pagination={{
+                        pageSize,
+                        showSizeChanger: true,
+                        onShowSizeChange: (_, size) => setPageSize(size),
+                        pageSizeOptions: ['10', '20', '50', '100']
+                    }}
                 />
             </Card>
         </div>

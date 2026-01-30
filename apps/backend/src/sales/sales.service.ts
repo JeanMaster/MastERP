@@ -4,13 +4,15 @@ import { CreateSaleDto } from './dto/create-sale.dto';
 import { InvoiceService } from '../invoice/invoice.service';
 import { CashRegisterService } from '../cash-register/cash-register.service';
 import { MovementType } from '../cash-register/dto/create-movement.dto';
+import { StatsService } from '../stats/stats.service';
 
 @Injectable()
 export class SalesService {
     constructor(
         private prisma: PrismaService,
         private invoiceService: InvoiceService,
-        private cashRegisterService: CashRegisterService
+        private cashRegisterService: CashRegisterService,
+        private statsService: StatsService,
     ) { }
 
     /**
@@ -296,7 +298,7 @@ export class SalesService {
             };
         }
 
-        return this.prisma.sale.findMany({
+        const sales = await this.prisma.sale.findMany({
             where,
             include: {
                 items: {
@@ -305,9 +307,62 @@ export class SalesService {
                     },
                 },
                 client: true,
+                returns: {
+                    where: { status: 'COMPLETED' },
+                    include: { items: true, replacementItems: true }
+                }
             },
             orderBy: { createdAt: 'desc' },
         });
+
+        // Calculate revalued totals and summary
+        const { factor: crossRateFactor, currentRefRate } = await this.statsService.getCrossRateFactor('VES');
+
+        let totalRevenueTarget = 0;
+        let totalDiscountTarget = 0;
+
+        const processedSales = sales.map(sale => {
+            const historicalRate = (Number(sale.exchangeRate) && Number(sale.exchangeRate) !== 1)
+                ? Number(sale.exchangeRate)
+                : currentRefRate;
+
+            // 1. Revalued Gross Sale
+            const saleGrossTarget = (Number(sale.total) / historicalRate) * crossRateFactor;
+
+            // 2. Adjustments for returns/exchanges
+            let adjustmentsTarget = 0;
+            sale.returns.forEach(ret => {
+                const returnedValueVES = ret.items.reduce((sum, item) => sum + Number(item.total), 0);
+                adjustmentsTarget -= (returnedValueVES / historicalRate) * crossRateFactor;
+
+                if (ret.returnType.startsWith('EXCHANGE')) {
+                    const replacementValueVES = ret.replacementItems.reduce((sum, item) => sum + Number(item.total), 0);
+                    adjustmentsTarget += (replacementValueVES / currentRefRate) * crossRateFactor;
+                }
+            });
+
+            const saleNetTarget = saleGrossTarget + adjustmentsTarget;
+            const saleDiscountTarget = (Number(sale.discount) / historicalRate) * crossRateFactor;
+
+            totalRevenueTarget += saleNetTarget;
+            totalDiscountTarget += saleDiscountTarget;
+
+            return {
+                ...sale,
+                netTotal: saleNetTarget,
+                revaluedTotal: saleNetTarget // Alias for frontend compatibility if needed
+            };
+        });
+
+        return {
+            sales: processedSales,
+            summary: {
+                totalVentas: processedSales.length,
+                ingresoBruto: totalRevenueTarget,
+                descuentos: totalDiscountTarget,
+                ticketPromedio: processedSales.length > 0 ? totalRevenueTarget / processedSales.length : 0
+            }
+        };
     }
 
     /**

@@ -34,6 +34,8 @@ export interface Sale {
     active: boolean;
     createdAt: string;
     updatedAt: string;
+    revaluedTotal?: number;
+    netTotal?: number;
 }
 
 export interface CreateSaleDto {
@@ -66,13 +68,27 @@ export interface SalesFilters {
     invoiceNumber?: string;
 }
 
+export interface SalesResponse {
+    sales: Sale[];
+    summary: {
+        totalVentas: number;
+        ingresoBruto: number;
+        descuentos: number;
+        ticketPromedio: number;
+    };
+}
+
 export const salesApi = {
     getAll: async (): Promise<Sale[]> => {
         const { data } = await api.get(`/sales`);
-        return data;
+        // Handle both new format { sales: [], summary: {} } and old format []
+        if (data && typeof data === 'object' && Array.isArray(data.sales)) {
+            return data.sales;
+        }
+        return Array.isArray(data) ? data : [];
     },
 
-    getWithFilters: async (filters: SalesFilters): Promise<Sale[]> => {
+    getWithFilters: async (filters: SalesFilters): Promise<SalesResponse> => {
         const params = new URLSearchParams();
 
         if (filters.startDate) params.append('startDate', filters.startDate);

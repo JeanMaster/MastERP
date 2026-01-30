@@ -11,6 +11,7 @@ export const InventoryReports = () => {
     const [loading, setLoading] = useState(true);
     const { primaryCurrency, currencies } = usePOSStore();
     const [selectedCurrency, setSelectedCurrency] = useState<string>('VES');
+    const [pageSize, setPageSize] = useState<number>(10);
 
     const currentCurrencyObj = currencies.find(c => c.code === selectedCurrency);
     const currencySymbol = currentCurrencyObj?.symbol || 'Bs';
@@ -61,13 +62,40 @@ export const InventoryReports = () => {
             dataIndex: 'units',
             key: 'units',
             align: 'right' as const,
+            sorter: (a: any, b: any) => a.units - b.units,
         },
         {
             title: 'Valor Total',
             dataIndex: 'value',
             key: 'value',
             align: 'right' as const,
+            sorter: (a: any, b: any) => a.value - b.value,
             render: (value: number) => `${currencySymbol} ${formatVenezuelanPriceOnly(value)}`,
+        },
+    ];
+
+    const depletionColumns = [
+        { title: 'Producto', dataIndex: 'name', key: 'name' },
+        { title: 'Categoría', dataIndex: 'category', key: 'category' },
+        { title: 'Stock', dataIndex: 'stock', key: 'stock', align: 'right' as const },
+        {
+            title: 'Venta Diaria (Prom. 30d)',
+            dataIndex: 'dailySalesVelocity',
+            key: 'velocity',
+            align: 'right' as const,
+            render: (v: number) => v.toFixed(2)
+        },
+        {
+            title: 'Días Restantes',
+            dataIndex: 'daysRemaining',
+            key: 'daysRemaining',
+            align: 'right' as const,
+            sorter: (a: any, b: any) => a.daysRemaining - b.daysRemaining,
+            render: (d: number) => (
+                <span style={{ color: d <= 7 ? '#ff4d4f' : d <= 14 ? '#faad14' : '#52c41a', fontWeight: 'bold' }}>
+                    {d} días
+                </span>
+            )
         },
     ];
 
@@ -87,6 +115,7 @@ export const InventoryReports = () => {
             dataIndex: 'stock',
             key: 'stock',
             align: 'right' as const,
+            sorter: (a: any, b: any) => a.stock - b.stock,
             render: (stock: number) => (
                 <span style={{ color: stock === 0 ? '#ff4d4f' : '#faad14' }}>
                     {stock}
@@ -99,7 +128,7 @@ export const InventoryReports = () => {
         <div>
             {/* Summary Cards */}
             <Row gutter={16} style={{ marginBottom: 24 }}>
-                <Col xs={24} sm={12} lg={8}>
+                <Col xs={24} sm={12} lg={6}>
                     <Card>
                         <Tooltip
                             title={
@@ -140,18 +169,64 @@ export const InventoryReports = () => {
                         />
                     </Card>
                 </Col>
-                <Col xs={24} sm={12} lg={8}>
+                <Col xs={24} sm={12} lg={6}>
                     <Card>
                         <Statistic
-                            title="Productos con Stock Bajo"
+                            title="Departamentos"
+                            value={report.stockByDepartment.length}
+                            valueStyle={{ color: '#52c41a' }}
+                            styles={{ content: { color: '#52c41a' } }}
+                            suffix={<ShopOutlined />}
+                        />
+                    </Card>
+                </Col>
+                <Col xs={24} sm={12} lg={6}>
+                    <Card>
+                        <Statistic
+                            title="Stock Bajo (Crítico)"
                             value={report.lowStockProducts.length}
                             valueStyle={{ color: '#faad14' }}
                             styles={{ content: { color: '#faad14' } }}
                             suffix={<WarningOutlined />}
                         />
+                        <div style={{ marginTop: 8, fontSize: 10, color: '#666' }}>
+                            Unidades {'<'} 10
+                        </div>
+                    </Card>
+                </Col>
+                <Col xs={24} sm={12} lg={6}>
+                    <Card>
+                        <Statistic
+                            title="Próximos a Agotarse"
+                            value={report.depletionForecast.length}
+                            valueStyle={{ color: '#ff4d4f' }}
+                            styles={{ content: { color: '#ff4d4f' } }}
+                            suffix={<WarningOutlined />}
+                        />
+                        <div style={{ marginTop: 8, fontSize: 10, color: '#666' }}>
+                            Se agotan en ≤ 20 días
+                        </div>
                     </Card>
                 </Col>
             </Row>
+
+            {/* Depletion Forecast */}
+            <Card
+                title="Pronóstico de Agotamiento (Basado en Ventas)"
+                style={{ marginBottom: 16 }}
+                extra={<span style={{ fontSize: 12, color: '#666' }}>Productos que se agotarán pronto según ritmo de venta real</span>}
+            >
+                <Table
+                    dataSource={report.depletionForecast}
+                    columns={depletionColumns}
+                    rowKey="name"
+                    pagination={{
+                        pageSize: 10,
+                        showSizeChanger: true,
+                        pageSizeOptions: ['10', '20', '50']
+                    }}
+                />
+            </Card>
 
             {/* Stock by Department */}
             <Card title="Stock por Departamento" style={{ marginBottom: 16 }}>
@@ -169,7 +244,12 @@ export const InventoryReports = () => {
                     dataSource={report.lowStockProducts}
                     columns={lowStockColumns}
                     rowKey="name"
-                    pagination={{ pageSize: 10 }}
+                    pagination={{
+                        pageSize,
+                        showSizeChanger: true,
+                        onShowSizeChange: (_, size) => setPageSize(size),
+                        pageSizeOptions: ['10', '20', '50', '100']
+                    }}
                 />
             </Card>
         </div>
