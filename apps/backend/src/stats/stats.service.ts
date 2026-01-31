@@ -488,23 +488,33 @@ export class StatsService {
             });
         });
 
-        // 3. Process Returns with refined exchange logic
+        // 3. Process Returns (Unified logic for Revenue and COGS)
         const returnsInRange = await this.prisma.return.findMany({
             where: {
                 status: 'COMPLETED',
                 createdAt: dateFilter
             },
             include: {
-                items: true,
-                replacementItems: true,
+                items: {
+                    include: {
+                        product: { include: { currency: true } }
+                    }
+                },
+                replacementItems: {
+                    include: {
+                        product: { include: { currency: true } }
+                    }
+                },
                 originalSale: { select: { exchangeRate: true } }
             }
         });
 
-        let totalReturnsValue = 0; // Value of items returned to stock
-        let totalReplacementValue = 0; // Value of items taken out in exchanges
+        let totalReturnsValue = 0; // Value of items returned to stock (Revenue part)
+        let totalReplacementValue = 0; // Value of items taken out (Revenue part)
         let totalMonetaryRefunds = 0;
         let totalExchangeValue = 0;
+        let returnedCostOfSales = 0;
+        let replacementCostOfSales = 0;
 
         returnsInRange.forEach(ret => {
             const returnedItemsValueVES = ret.items.reduce((sum, item) => sum + Number(item.total), 0);
@@ -539,11 +549,10 @@ export class StatsService {
                 const replacementsTarget = (replacementsVES / currentRefRate) * crossRateFactor;
                 totalReplacementValue += replacementsTarget;
 
-                // If even in exchange there was a partial refund (difference)
                 if (ret.refundAmount && Number(ret.refundAmount) > 0) {
                     const refundValueTarget = (Number(ret.refundAmount) / historicalRate) * crossRateFactor;
                     totalMonetaryRefunds += refundValueTarget;
-                    // ... (update payment breakdown if needed, but usually partial refund in exchange stays as credit/cash)
+
                     if (ret.refundMethod && ret.refundMethod !== 'CREDIT_NOTE') {
                         const method = ret.refundMethod.toUpperCase();
                         paymentBreakdown[method] = (paymentBreakdown[method] || 0) - refundValueTarget;
@@ -551,6 +560,7 @@ export class StatsService {
                 }
             }
 
+            // Adjust Daily Trend
             const date = dayjs(ret.createdAt).format('YYYY-MM-DD');
             const adjReturnTarget = (returnedItemsValueVES / historicalRate) * crossRateFactor;
             const adjReplTarget = (ret.returnType.startsWith('EXCHANGE'))
@@ -558,6 +568,26 @@ export class StatsService {
                 : 0;
 
             dailySales[date] = (dailySales[date] || 0) - adjReturnTarget + adjReplTarget;
+
+            // COGS Adjustment: Subtract returned sellable products
+            if (this.SELLABLE_RETURN_REASONS.includes(ret.reason)) {
+                ret.items.forEach(item => {
+                    const productRate = item.product.currency?.isPrimary ? 1 : Number(item.product.currency?.exchangeRate || 1);
+                    const itemCostInVES = Number(item.product.costPrice || 0) * productRate * Number(item.quantity);
+                    // Use historicalRate for the return to match the original sale cost
+                    returnedCostOfSales += (itemCostInVES / historicalRate) * crossRateFactor;
+                });
+            }
+
+            // COGS Adjustment: Add replacement items cost
+            if (ret.returnType.startsWith('EXCHANGE')) {
+                ret.replacementItems.forEach(item => {
+                    const productRate = item.product.currency?.isPrimary ? 1 : Number(item.product.currency?.exchangeRate || 1);
+                    const itemCostInVES = Number(item.product.costPrice || 0) * productRate * Number(item.quantity);
+                    // Use currentRefRate for the new item leaving stock
+                    replacementCostOfSales += (itemCostInVES / currentRefRate) * crossRateFactor;
+                });
+            }
         });
 
         // Final Net Sales calculation
@@ -601,37 +631,7 @@ export class StatsService {
             totalExpensesAmount += (valInVES / historicalRate) * crossRateFactor;
         });
 
-        // Subtract returned sellable products from totalCostOfSales
-        const completedReturns = await this.prisma.return.findMany({
-            where: {
-                status: 'COMPLETED',
-                createdAt: dateFilter,
-                reason: { in: this.SELLABLE_RETURN_REASONS }
-            },
-            include: {
-                items: {
-                    include: {
-                        product: { include: { currency: true } }
-                    }
-                }
-            }
-        });
-
-        let returnedCostOfSales = 0;
-        completedReturns.forEach(ret => {
-            ret.items.forEach(item => {
-                const productRate = item.product.currency?.isPrimary ? 1 : Number(item.product.currency?.exchangeRate || 1);
-                let itemCostInVES = Number(item.product.costPrice || 0) * productRate * Number(item.quantity);
-
-                if (currencyCode !== 'VES') {
-                    returnedCostOfSales += (itemCostInVES / currentRefRate) * crossRateFactor;
-                } else {
-                    returnedCostOfSales += itemCostInVES;
-                }
-            });
-        });
-
-        let adjustedCostOfSales = totalCostOfSales - returnedCostOfSales;
+        let adjustedCostOfSales = totalCostOfSales - returnedCostOfSales + replacementCostOfSales;
 
         // Add inventory losses (DAMAGE, LOSS) to cost of sales
         const inventoryLosses = await this.prisma.inventoryAdjustment.findMany({
@@ -660,25 +660,29 @@ export class StatsService {
         adjustedCostOfSales += inventoryLossCost;
 
         return {
-            monthlySalesTotal: totalSalesAmount,
-            monthlyPurchasesTotal: totalPurchasesAmount,
-            totalCostOfSales: adjustedCostOfSales,
-            returnedCostOfSales,
-            inventoryLossCost,
-            totalExpenses: totalExpensesAmount,
-            totalMonetaryRefunds,
-            totalExchangeValue,
+            monthlySalesTotal: Number(totalSalesAmount.toFixed(2)),
+            monthlyPurchasesTotal: Number(totalPurchasesAmount.toFixed(2)),
+            totalCostOfSales: Number(adjustedCostOfSales.toFixed(2)),
+            returnedCostOfSales: Number(returnedCostOfSales.toFixed(2)),
+            replacementCostOfSales: Number(replacementCostOfSales.toFixed(2)),
+            inventoryLossCost: Number(inventoryLossCost.toFixed(2)),
+            totalExpenses: Number(totalExpensesAmount.toFixed(2)),
+            totalMonetaryRefunds: Number(totalMonetaryRefunds.toFixed(2)),
+            totalExchangeValue: Number(totalExchangeValue.toFixed(2)),
             paymentMethodsBreakdown: Object.entries(paymentBreakdown).map(
                 ([method, amount]) => ({
                     method,
-                    amount,
+                    amount: Number(amount.toFixed(2)),
                 }),
             ),
-            currencyTypeBreakdown,
+            currencyTypeBreakdown: {
+                LOCAL: Number(currencyTypeBreakdown.LOCAL.toFixed(2)),
+                FOREIGN: Number(currencyTypeBreakdown.FOREIGN.toFixed(2)),
+            },
             dailySalesData: Object.entries(dailySales).map(
                 ([date, amount]) => ({
                     date: dayjs(date).format('DD/MM'),
-                    amount,
+                    amount: Number(amount.toFixed(2)),
                 }),
             ),
         };
@@ -872,12 +876,19 @@ export class StatsService {
                         }
                     }
                 },
-                replacementItems: true,
+                replacementItems: {
+                    include: {
+                        product: {
+                            include: { currency: true }
+                        }
+                    }
+                },
                 originalSale: { select: { exchangeRate: true } }
             }
         });
 
         let returnedCOGS = 0;
+        let replacementCOGS = 0;
         let totalReturnsValue = 0;
         let totalReplacementValue = 0;
 
@@ -905,6 +916,13 @@ export class StatsService {
             if (ret.returnType.startsWith('EXCHANGE')) {
                 const replacementsVES = ret.replacementItems.reduce((sum, item) => sum + Number(item.total), 0);
                 totalReplacementValue += (replacementsVES / currentRefRate) * crossRateFactor;
+
+                // Add replacement cost to COGS
+                ret.replacementItems.forEach(item => {
+                    const productRate = item.product.currency?.isPrimary ? 1 : Number(item.product.currency?.exchangeRate || 1);
+                    const itemCostInVES = Number(item.product.costPrice || 0) * productRate * Number(item.quantity);
+                    replacementCOGS += (itemCostInVES / currentRefRate) * crossRateFactor;
+                });
             }
 
             // ADJUST INFLATION LOSS FOR RETURNS/REFUNDS (Subtract loss from BS refunds)
@@ -933,12 +951,6 @@ export class StatsService {
             }
         });
 
-        // Net Sales calculation consistent with Finance Report
-        totalSales = totalSales - totalReturnsValue + totalReplacementValue;
-
-        // Adjusted COGS = Sales COGS - Returned COGS
-        let adjustedCOGS = totalCOGS - returnedCOGS;
-
         // Add inventory losses (DAMAGE, LOSS) to COGS
         const inventoryLosses = await this.prisma.inventoryAdjustment.findMany({
             where: {
@@ -961,18 +973,29 @@ export class StatsService {
             inventoryLossCOGS += (lossCostInVES / currentRefRate) * crossRateFactor;
         });
 
-        // Final COGS = Sales COGS - Returns + Inventory Losses
-        adjustedCOGS += inventoryLossCOGS;
+        // Net Sales calculation consistent with Finance Report
+        totalSales = totalSales - totalReturnsValue + totalReplacementValue;
+
+        // Final COGS = Sales COGS - Returns + Replacements + Inventory Losses
+        let adjustedCOGS = totalCOGS - returnedCOGS + replacementCOGS + inventoryLossCOGS;
 
         return {
-            totalSales,
-            totalCOGS: adjustedCOGS,
-            totalInflationLoss,
-            returnedCOGS,
-            inventoryLossCOGS,
-            totalPurchases,
-            totalExpenses,
-            products: Object.values(productBreakdown).sort((a, b) => b.totalCost - a.totalCost)
+            totalSales: Number(totalSales.toFixed(2)),
+            totalCOGS: Number(adjustedCOGS.toFixed(2)),
+            totalInflationLoss: Number(totalInflationLoss.toFixed(2)),
+            returnedCOGS: Number(returnedCOGS.toFixed(2)),
+            replacementCOGS: Number(replacementCOGS.toFixed(2)),
+            inventoryLossCOGS: Number(inventoryLossCOGS.toFixed(2)),
+            totalPurchases: Number(totalPurchases.toFixed(2)),
+            totalExpenses: Number(totalExpenses.toFixed(2)),
+            products: Object.values(productBreakdown)
+                .map(p => ({
+                    ...p,
+                    totalCost: Number(p.totalCost.toFixed(2)),
+                    totalRevenue: Number(p.totalRevenue.toFixed(2)),
+                    inflationLoss: Number(p.inflationLoss.toFixed(2)),
+                }))
+                .sort((a, b) => b.totalCost - a.totalCost)
         };
     }
 
@@ -1124,7 +1147,13 @@ export class StatsService {
                             }
                         }
                     },
-                    replacementItems: true,
+                    replacementItems: {
+                        include: {
+                            product: {
+                                include: { currency: true }
+                            }
+                        }
+                    },
                     originalSale: { select: { exchangeRate: true } }
                 }
             });
@@ -1132,6 +1161,7 @@ export class StatsService {
             let monthlyReturnsValue = 0;
             let monthlyReplacementValue = 0;
             let monthlyReturnedCOGS = 0;
+            let monthlyReplacementCOGS = 0;
 
             returnsInRange.forEach(ret => {
                 // REVALUE RETURN: Use historical rate
@@ -1155,14 +1185,21 @@ export class StatsService {
                 if (ret.returnType.startsWith('EXCHANGE')) {
                     const replacementsVES = ret.replacementItems.reduce((sum, item) => sum + Number(item.total), 0);
                     monthlyReplacementValue += (replacementsVES / currentRefRate) * crossRateFactor;
+
+                    // Add replacement cost to COGS
+                    ret.replacementItems.forEach(item => {
+                        const productRate = item.product.currency?.isPrimary ? 1 : Number(item.product.currency?.exchangeRate || 1);
+                        const itemCostInVES = Number(item.product.costPrice || 0) * productRate * Number(item.quantity);
+                        monthlyReplacementCOGS += (itemCostInVES / currentRefRate) * crossRateFactor;
+                    });
                 }
             });
 
             // Final Net Income compatible with Finance Report and Dashboard
             monthlyIncome = monthlyIncome - monthlyReturnsValue + monthlyReplacementValue;
 
-            // Adjusted COGS = COGS - Returns
-            let adjustedMonthlyCOGS = monthlyCOGS - monthlyReturnedCOGS;
+            // Adjusted COGS = COGS - Returns + Replacements
+            let adjustedMonthlyCOGS = monthlyCOGS - monthlyReturnedCOGS + monthlyReplacementCOGS;
 
             // Add inventory losses (DAMAGE, LOSS) to COGS
             const monthlyInventoryLosses = await this.prisma.inventoryAdjustment.findMany({
