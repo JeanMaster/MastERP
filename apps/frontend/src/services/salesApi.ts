@@ -73,6 +73,7 @@ export interface SalesResponse {
     summary: {
         totalVentas: number;
         ingresoBruto: number;
+        ingresoNominal: number;
         descuentos: number;
         ticketPromedio: number;
     };

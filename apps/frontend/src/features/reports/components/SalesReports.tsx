@@ -11,7 +11,8 @@ import {
     Statistic,
     Space,
     Typography,
-    Grid
+    Grid,
+    Alert
 } from 'antd';
 import {
     ReloadOutlined,
@@ -155,7 +156,7 @@ export const SalesReports = () => {
             title: 'Factura',
             dataIndex: 'invoiceNumber',
             key: 'invoiceNumber',
-            width: 100,
+            width: 110,
             fixed: 'left' as const,
             render: (invoiceNumber: string, record: Sale) => (
                 <Button
@@ -175,7 +176,7 @@ export const SalesReports = () => {
             title: 'Fecha',
             dataIndex: 'date',
             key: 'date',
-            width: 140,
+            width: 150,
             render: (date: string) => dayjs(date).format('DD/MM/YYYY HH:mm'),
             sorter: (a: Sale, b: Sale) => dayjs(a.date).unix() - dayjs(b.date).unix()
         },
@@ -183,13 +184,13 @@ export const SalesReports = () => {
             title: 'Cliente',
             dataIndex: 'client',
             key: 'client',
-            width: 150,
+            width: 160,
             render: (client: any) => client?.name || 'Cliente General'
         },
         {
             title: 'Productos',
             key: 'products',
-            width: 250,
+            width: 300,
             render: (_: any, record: Sale) => (
                 <div style={{ maxWidth: '100%' }}>
                     {record.items.slice(0, 3).map(item => (
@@ -206,10 +207,23 @@ export const SalesReports = () => {
             )
         },
         {
-            title: 'Total',
+            title: 'Monto Pagado (Bs)',
+            dataIndex: 'total',
+            key: 'nominalTotal',
+            width: 150,
+            align: 'right' as const,
+            render: (value: number) => (
+                <Text style={{ fontSize: '14px', color: '#595959' }}>
+                    {formatVenezuelanPrice(value)}
+                </Text>
+            ),
+            sorter: (a: Sale, b: Sale) => (a.total || 0) - (b.total || 0)
+        },
+        {
+            title: 'Total (Ajustado)',
             dataIndex: 'revaluedTotal',
             key: 'total',
-            width: 120,
+            width: 160,
             align: 'right' as const,
             render: (value: number | null | undefined, record: Sale) => (
                 <Text strong style={{ color: '#1890ff', fontSize: '14px' }}>
@@ -221,7 +235,7 @@ export const SalesReports = () => {
         {
             title: 'Acciones',
             key: 'actions',
-            width: 100,
+            width: 120,
             align: 'center' as const,
             fixed: isMobile ? false : ('right' as const),
             render: (_: any, record: Sale) => (
@@ -295,31 +309,44 @@ export const SalesReports = () => {
 
             {/* Summary Statistics */}
             <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
-                <Col xs={12} lg={6}>
+                <Col xs={12} lg={4}>
                     <Card size="small">
                         <Statistic
                             title="Total Ventas"
                             value={totalSales}
                             prefix={<ShoppingOutlined />}
-                            valueStyle={{ color: '#1890ff', fontSize: isMobile ? 18 : 24 }}
-                            styles={{ content: { color: '#1890ff', fontSize: isMobile ? 18 : 24 } }}
+                            valueStyle={{ color: '#1890ff', fontSize: isMobile ? 18 : 22 }}
+                            styles={{ content: { color: '#1890ff', fontSize: isMobile ? 18 : 22 } }}
                         />
                     </Card>
                 </Col>
-                <Col xs={12} lg={6}>
+                <Col xs={12} lg={5}>
                     <Card size="small">
                         <Statistic
-                            title="Ingreso Bruto"
+                            title="Ingreso Bruto (Ajustado)"
                             value={totalRevenue}
                             precision={2}
                             prefix={<DollarOutlined />}
                             formatter={(value) => formatVenezuelanPrice(Number(value))}
-                            valueStyle={{ color: '#52c41a', fontSize: isMobile ? 18 : 24 }}
-                            styles={{ content: { color: '#52c41a', fontSize: isMobile ? 18 : 24 } }}
+                            valueStyle={{ color: '#52c41a', fontSize: isMobile ? 18 : 22 }}
+                            styles={{ content: { color: '#52c41a', fontSize: isMobile ? 18 : 22 } }}
                         />
                     </Card>
                 </Col>
-                <Col xs={12} lg={6}>
+                <Col xs={12} lg={5}>
+                    <Card size="small" style={{ border: '1px solid #d9d9d9' }}>
+                        <Statistic
+                            title="Ingreso Real (Nominal)"
+                            value={summary.ingresoNominal || 0}
+                            precision={2}
+                            prefix={<ShoppingOutlined style={{ opacity: 0.7 }} />}
+                            formatter={(value) => formatVenezuelanPrice(Number(value))}
+                            valueStyle={{ color: '#595959', fontSize: isMobile ? 18 : 22 }}
+                            styles={{ content: { color: '#595959', fontSize: isMobile ? 18 : 22 } }}
+                        />
+                    </Card>
+                </Col>
+                <Col xs={12} lg={5}>
                     <Card size="small">
                         <Statistic
                             title="Descuentos"
@@ -327,12 +354,12 @@ export const SalesReports = () => {
                             precision={2}
                             prefix={<DollarOutlined />}
                             formatter={(value) => formatVenezuelanPrice(Number(value))}
-                            valueStyle={{ color: '#ff4d4f', fontSize: isMobile ? 18 : 24 }}
-                            styles={{ content: { color: '#ff4d4f', fontSize: isMobile ? 18 : 24 } }}
+                            valueStyle={{ color: '#ff4d4f', fontSize: isMobile ? 18 : 22 }}
+                            styles={{ content: { color: '#ff4d4f', fontSize: isMobile ? 18 : 22 } }}
                         />
                     </Card>
                 </Col>
-                <Col xs={12} lg={6}>
+                <Col xs={12} lg={5}>
                     <Card size="small">
                         <Statistic
                             title="Ticket Promedio"
@@ -340,12 +367,27 @@ export const SalesReports = () => {
                             precision={2}
                             prefix={<DollarOutlined />}
                             formatter={(value) => formatVenezuelanPrice(Number(value))}
-                            valueStyle={{ color: '#722ed1', fontSize: isMobile ? 18 : 24 }}
-                            styles={{ content: { color: '#722ed1', fontSize: isMobile ? 18 : 24 } }}
+                            valueStyle={{ color: '#722ed1', fontSize: isMobile ? 18 : 22 }}
+                            styles={{ content: { color: '#722ed1', fontSize: isMobile ? 18 : 22 } }}
                         />
                     </Card>
                 </Col>
             </Row>
+
+            {!isMobile && (
+                <Alert
+                    message="Guía de Devoluciones y Ajuste por Inflación"
+                    description={
+                        <Space direction="vertical" size={2}>
+                            <Text>• El <Text strong>Ingreso Real (Nominal)</Text> es la suma de los montos exactos cobrados el día de la venta. <Text strong style={{ color: '#cf1322' }}>Use el dato de 'Monto Pagado' en la tabla para devoluciones.</Text></Text>
+                            <Text>• El <Text strong>Ingreso Bruto (Ajustado)</Text> revaloriza las ventas a la tasa de hoy para comparar peras con peras frente a la inflación.</Text>
+                        </Space>
+                    }
+                    type="info"
+                    showIcon
+                    style={{ marginBottom: 16 }}
+                />
+            )}
 
             <Card title="Filtros" style={{ marginBottom: 16 }} size={isMobile ? 'small' : 'default'}>
                 <Row gutter={[16, 16]}>
@@ -430,7 +472,7 @@ export const SalesReports = () => {
                         size: isMobile ? 'small' : 'default',
                         responsive: true
                     }}
-                    scroll={{ x: 800 }}
+                    scroll={{ x: 1200 }}
                     size={isMobile ? 'small' : 'middle'}
                 />
             </Card>

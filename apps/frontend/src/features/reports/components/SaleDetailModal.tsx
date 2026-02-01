@@ -84,9 +84,15 @@ export const SaleDetailModal = ({ open, sale, onCancel }: SaleDetailModalProps) 
                         {sale.discount > 0 ? `-${formatVenezuelanPrice(sale.discount)}` : '-'}
                     </Text>
                 </Descriptions.Item>
-                <Descriptions.Item label="Total">
-                    <Title level={4} style={{ margin: 0 }}>
-                        {formatVenezuelanPrice(sale.total)}
+                <Descriptions.Item label="Tasa Histórica">
+                    <Text type="secondary">{Number(sale.exchangeRate || 1).toFixed(2)} Bs/$</Text>
+                </Descriptions.Item>
+                <Descriptions.Item label="Monto Pagado (Nominal)">
+                    <Text strong>{formatVenezuelanPrice(sale.total)}</Text>
+                </Descriptions.Item>
+                <Descriptions.Item label="Total Ajustado (Inflación)" span={2}>
+                    <Title level={4} style={{ margin: 0, color: '#1890ff' }}>
+                        {formatVenezuelanPrice(sale.revaluedTotal ?? sale.total)}
                     </Title>
                 </Descriptions.Item>
                 <Descriptions.Item label="Items">

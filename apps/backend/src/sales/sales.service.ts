@@ -319,6 +319,7 @@ export class SalesService {
         const { factor: crossRateFactor, currentRefRate } = await this.statsService.getCrossRateFactor('VES');
 
         let totalRevenueTarget = 0;
+        let totalRevenueNominal = 0;
         let totalDiscountTarget = 0;
 
         const processedSales = sales.map(sale => {
@@ -329,22 +330,31 @@ export class SalesService {
             // 1. Revalued Gross Sale
             const saleGrossTarget = (Number(sale.total) / historicalRate) * crossRateFactor;
 
+            // 1.1 Nominal Gross Sale (Raw amount paid)
+            const saleGrossNominal = Number(sale.total);
+
             // 2. Adjustments for returns/exchanges
             let adjustmentsTarget = 0;
+            let adjustmentsNominal = 0;
+
             sale.returns.forEach(ret => {
                 const returnedValueVES = ret.items.reduce((sum, item) => sum + Number(item.total), 0);
                 adjustmentsTarget -= (returnedValueVES / historicalRate) * crossRateFactor;
+                adjustmentsNominal -= returnedValueVES;
 
                 if (ret.returnType.startsWith('EXCHANGE')) {
                     const replacementValueVES = ret.replacementItems.reduce((sum, item) => sum + Number(item.total), 0);
                     adjustmentsTarget += (replacementValueVES / currentRefRate) * crossRateFactor;
+                    adjustmentsNominal += replacementValueVES;
                 }
             });
 
             const saleNetTarget = saleGrossTarget + adjustmentsTarget;
+            const saleNetNominal = saleGrossNominal + adjustmentsNominal;
             const saleDiscountTarget = (Number(sale.discount) / historicalRate) * crossRateFactor;
 
             totalRevenueTarget += saleNetTarget;
+            totalRevenueNominal += saleNetNominal;
             totalDiscountTarget += saleDiscountTarget;
 
             return {
@@ -359,6 +369,7 @@ export class SalesService {
             summary: {
                 totalVentas: processedSales.length,
                 ingresoBruto: totalRevenueTarget,
+                ingresoNominal: totalRevenueNominal,
                 descuentos: totalDiscountTarget,
                 ticketPromedio: processedSales.length > 0 ? totalRevenueTarget / processedSales.length : 0
             }

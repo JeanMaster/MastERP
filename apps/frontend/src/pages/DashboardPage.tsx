@@ -193,68 +193,79 @@ export const DashboardPage = () => {
 
             {/* KPI Cards */}
             <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
-                <Col xs={24} sm={12} lg={6}>
-                    <Card>
+                <Col xs={24} sm={12} lg={4}>
+                    <Card size="small">
                         <Statistic
                             title="Ventas Hoy"
                             value={getConvertedAmount(stats.todaySales)}
                             precision={2}
                             prefix={currentSymbol}
-                            valueStyle={{ color: '#3f8600' }}
-                            styles={{ content: { color: '#3f8600' } }}
+                            valueStyle={{ color: '#3f8600', fontSize: '20px' }}
+                            styles={{ content: { color: '#3f8600', fontSize: '20px' } }}
                             suffix={<ShoppingCartOutlined />}
                         />
                     </Card>
                 </Col>
-                <Col xs={24} sm={12} lg={6}>
-                    <Card>
+                <Col xs={24} sm={12} lg={5}>
+                    <Card size="small">
                         <Statistic
-                            title="Ventas Este Mes"
+                            title="Ventas Mes (Ajustado)"
                             value={getConvertedAmount(stats.thisMonthSales)}
                             precision={2}
                             prefix={currentSymbol}
-                            valueStyle={{ color: '#1890ff' }}
-                            styles={{ content: { color: '#1890ff' } }}
+                            valueStyle={{ color: '#1890ff', fontSize: '20px' }}
+                            styles={{ content: { color: '#1890ff', fontSize: '20px' } }}
                             suffix={
                                 monthChange >= 0 ? (
-                                    <ArrowUpOutlined style={{ color: '#3f8600' }} />
+                                    <ArrowUpOutlined style={{ color: '#3f8600', fontSize: '14px' }} />
                                 ) : (
-                                    <ArrowDownOutlined style={{ color: '#cf1322' }} />
+                                    <ArrowDownOutlined style={{ color: '#cf1322', fontSize: '14px' }} />
                                 )
                             }
                         />
-                        <div style={{ marginTop: 8, fontSize: 12, color: '#666' }}>
-                            {monthChange >= 0 ? '+' : ''}
-                            {monthChangePercent}% vs mes anterior
+                        <div style={{ marginTop: 4, fontSize: 11, color: '#666' }}>
+                            {monthChange >= 0 ? '+' : ''}{monthChangePercent}% vs mes ant.
                         </div>
                     </Card>
                 </Col>
-                <Col xs={24} sm={12} lg={6}>
-                    <Card>
+                <Col xs={24} sm={12} lg={5}>
+                    <Card size="small" style={{ border: '1px solid #d9d9d9' }}>
+                        <Statistic
+                            title="Ventas Mes (Nominal)"
+                            value={getConvertedAmount(stats.thisMonthSalesNominal)}
+                            precision={2}
+                            prefix={currentSymbol}
+                            valueStyle={{ color: '#595959', fontSize: '20px' }}
+                            styles={{ content: { color: '#595959', fontSize: '20px' } }}
+                        />
+                        <div style={{ marginTop: 4, fontSize: 11, color: '#666' }}>
+                            Monto exacto cobrado
+                        </div>
+                    </Card>
+                </Col>
+                <Col xs={24} sm={12} lg={5}>
+                    <Card size="small">
                         <Statistic
                             title="Balance de Caja"
                             value={getConvertedAmount(stats.cashBalance)}
                             precision={2}
                             prefix={currentSymbol}
-                            valueStyle={{ color: '#722ed1' }}
-                            styles={{ content: { color: '#722ed1' } }}
+                            valueStyle={{ color: '#722ed1', fontSize: '20px' }}
+                            styles={{ content: { color: '#722ed1', fontSize: '20px' } }}
                             suffix={<BankOutlined />}
                         />
                     </Card>
                 </Col>
-                <Col xs={24} sm={12} lg={6}>
-                    <Card style={{ borderColor: stats.criticalStock > 0 ? '#faad14' : undefined }}>
+                <Col xs={24} sm={12} lg={5}>
+                    <Card size="small" style={{ borderColor: stats.criticalStock > 0 ? '#faad14' : undefined }}>
                         <Statistic
                             title="Stock Crítico"
                             value={stats.criticalStock}
                             suffix={`/ ${stats.totalProducts}`}
-                            valueStyle={{ color: stats.criticalStock > 0 ? '#faad14' : '#52c41a' }}
-                            styles={{ content: { color: stats.criticalStock > 0 ? '#faad14' : '#52c41a' } }}
+                            valueStyle={{ color: stats.criticalStock > 0 ? '#faad14' : '#52c41a', fontSize: '20px' }}
+                            styles={{ content: { color: stats.criticalStock > 0 ? '#faad14' : '#52c41a', fontSize: '20px' } }}
                             prefix={stats.criticalStock > 0 ? <WarningOutlined /> : <ShopOutlined />}
                         />
-                        <div style={{ marginTop: 8, fontSize: 12, color: '#666' }}>
-                            Productos totales
-                        </div>
                     </Card>
                 </Col>
             </Row>

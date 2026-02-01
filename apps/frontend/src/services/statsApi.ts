@@ -3,6 +3,7 @@ import { api } from './apiConfig';
 export interface DashboardStats {
     todaySales: number;
     thisMonthSales: number;
+    thisMonthSalesNominal: number;
     lastMonthSales: number;
     topProducts: { name: string; quantity: number }[];
     criticalStock: number;
@@ -20,6 +21,7 @@ export interface InventoryReport {
 
 export interface FinanceReport {
     monthlySalesTotal: number;
+    monthlySalesNominal: number;
     monthlyPurchasesTotal: number;
     totalCostOfSales: number;
     totalExpenses: number;
@@ -33,6 +35,7 @@ export interface FinanceReport {
 export interface BalanceEntry {
     month: string;
     income: number;
+    incomeNominal: number;
     expenses: number;
     purchases: number;
     total: number;
@@ -53,6 +56,7 @@ export interface TopProduct {
 
 export interface COGSReport {
     totalSales: number;
+    totalSalesNominal: number;
     totalCOGS: number;
     totalPurchases: number;
     totalExpenses: number;
