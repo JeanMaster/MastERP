@@ -357,10 +357,14 @@ export class SalesService {
             totalRevenueNominal += saleNetNominal;
             totalDiscountTarget += saleDiscountTarget;
 
+            // Apply POS rounding: round up to nearest 10 (same as POS)
+            const roundToNearest10 = (price: number) => Math.ceil(price / 10) * 10;
+            const roundedNetTarget = roundToNearest10(saleNetTarget);
+
             return {
                 ...sale,
-                netTotal: saleNetTarget,
-                revaluedTotal: saleNetTarget // Alias for frontend compatibility if needed
+                netTotal: roundedNetTarget,
+                revaluedTotal: roundedNetTarget // Alias for frontend compatibility if needed
             };
         });
 

@@ -10,6 +10,7 @@ import {
     FileTextOutlined,
     WarningOutlined,
     RobotOutlined,
+    RollbackOutlined,
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
@@ -257,6 +258,22 @@ export const DashboardPage = () => {
                     </Card>
                 </Col>
                 <Col xs={24} sm={12} lg={5}>
+                    <Card size="small" style={{ borderColor: '#ff4d4f99' }}>
+                        <Statistic
+                            title="Devoluciones/Cambios"
+                            value={getConvertedAmount(stats.monthReturns?.netImpact || 0)}
+                            precision={2}
+                            prefix={currentSymbol}
+                            valueStyle={{ color: '#ff4d4f', fontSize: '20px' }}
+                            styles={{ content: { color: '#ff4d4f', fontSize: '20px' } }}
+                            suffix={<RollbackOutlined />}
+                        />
+                        <div style={{ marginTop: 4, fontSize: 11, color: '#666' }}>
+                            Reembolsos: {formatVenezuelanPrice(getConvertedAmount(stats.monthReturns?.totalRefundsPaid || 0), currentSymbol)}
+                        </div>
+                    </Card>
+                </Col>
+                <Col xs={24} sm={12} lg={4}>
                     <Card size="small" style={{ borderColor: stats.criticalStock > 0 ? '#faad14' : undefined }}>
                         <Statistic
                             title="Stock Crítico"

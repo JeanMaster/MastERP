@@ -101,7 +101,7 @@ export const SalesReports = () => {
     });
 
     const sales = data?.sales || [];
-    const summary = data?.summary || { totalVentas: 0, ingresoBruto: 0, descuentos: 0, ticketPromedio: 0 };
+    const summary = data?.summary || { totalVentas: 0, ingresoBruto: 0, ingresoNominal: 0, descuentos: 0, ticketPromedio: 0 };
 
     // Fetch reference data for filters
     const { data: products = [] } = useQuery({
@@ -156,7 +156,7 @@ export const SalesReports = () => {
             title: 'Factura',
             dataIndex: 'invoiceNumber',
             key: 'invoiceNumber',
-            width: 110,
+            width: 100,
             fixed: 'left' as const,
             render: (invoiceNumber: string, record: Sale) => (
                 <Button
@@ -176,7 +176,7 @@ export const SalesReports = () => {
             title: 'Fecha',
             dataIndex: 'date',
             key: 'date',
-            width: 150,
+            width: 140,
             render: (date: string) => dayjs(date).format('DD/MM/YYYY HH:mm'),
             sorter: (a: Sale, b: Sale) => dayjs(a.date).unix() - dayjs(b.date).unix()
         },
@@ -184,13 +184,13 @@ export const SalesReports = () => {
             title: 'Cliente',
             dataIndex: 'client',
             key: 'client',
-            width: 160,
+            width: 140,
             render: (client: any) => client?.name || 'Cliente General'
         },
         {
             title: 'Productos',
             key: 'products',
-            width: 300,
+            // No fixed width - let it flex
             render: (_: any, record: Sale) => (
                 <div style={{ maxWidth: '100%' }}>
                     {record.items.slice(0, 3).map(item => (
@@ -207,10 +207,10 @@ export const SalesReports = () => {
             )
         },
         {
-            title: 'Monto Pagado (Bs)',
+            title: 'Monto Pagado',
             dataIndex: 'total',
             key: 'nominalTotal',
-            width: 150,
+            width: 120,
             align: 'right' as const,
             render: (value: number) => (
                 <Text style={{ fontSize: '14px', color: '#595959' }}>
@@ -220,10 +220,10 @@ export const SalesReports = () => {
             sorter: (a: Sale, b: Sale) => (a.total || 0) - (b.total || 0)
         },
         {
-            title: 'Total (Ajustado)',
+            title: 'Total (Ajust.)',
             dataIndex: 'revaluedTotal',
             key: 'total',
-            width: 160,
+            width: 120,
             align: 'right' as const,
             render: (value: number | null | undefined, record: Sale) => (
                 <Text strong style={{ color: '#1890ff', fontSize: '14px' }}>
@@ -472,7 +472,7 @@ export const SalesReports = () => {
                         size: isMobile ? 'small' : 'default',
                         responsive: true
                     }}
-                    scroll={{ x: 1200 }}
+                    scroll={{ x: 900 }}
                     size={isMobile ? 'small' : 'middle'}
                 />
             </Card>

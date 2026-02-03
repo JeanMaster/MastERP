@@ -10,6 +10,13 @@ export interface DashboardStats {
     totalProducts: number;
     cashBalance: number;
     salesTrend: { date: string; sales: number }[];
+    monthReturns: {
+        totalReturnsValue: number;
+        totalExchangeValue: number;
+        totalRefundsPaid: number;
+        netReplacementValue: number;
+        netImpact: number;
+    };
 }
 
 export interface InventoryReport {
@@ -175,7 +182,28 @@ export const statsApi = {
         });
         return response.data;
     },
+
+    getExpensesReport: async (currency: string, startDate?: string, endDate?: string): Promise<ExpenseReport> => {
+        const response = await api.get('/stats/expenses', {
+            params: { currency, startDate, endDate }
+        });
+        return response.data;
+    },
 };
+
+export interface ExpenseReport {
+    totalSales: number;
+    totalExpenses: number;
+    expensesByCategory: {
+        category: string;
+        amount: number;
+        percentageOfSales: number;
+    }[];
+    dailyExpenses: {
+        date: string;
+        amount: number;
+    }[];
+}
 
 export interface MonthlyDailyPerformance {
     day: number;

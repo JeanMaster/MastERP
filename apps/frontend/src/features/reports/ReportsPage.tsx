@@ -8,6 +8,7 @@ import COGSReport from './components/COGSReport';
 import InflationReport from './components/InflationReport';
 import WeeklyPerformanceReport from './components/WeeklyPerformanceReport';
 import MonthlyDailyPerformanceReport from './components/MonthlyDailyPerformanceReport';
+import { ExpenseReports } from './components/ExpenseReports';
 
 export const ReportsPage = () => {
     const [activeTab, setActiveTab] = useState('inventory');
@@ -22,6 +23,11 @@ export const ReportsPage = () => {
             key: 'financial',
             label: 'Financiero',
             children: <FinancialReports />
+        },
+        {
+            key: 'expenses',
+            label: 'Gastos',
+            children: <ExpenseReports />
         },
         {
             key: 'balance',

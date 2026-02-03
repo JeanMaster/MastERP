@@ -52,8 +52,6 @@ export class StatsService {
             grossSalesTarget += (Number(sale.total) / historicalRate) * crossRateFactor;
         });
 
-        if (nominal) return grossSalesNominal; // Shortcut for the dashboard simpler parts if needed
-
         // 2. Get Returns Adjustments (Exchanges and Refunds)
         const returns = await this.prisma.return.findMany({
             where: { status: 'COMPLETED', createdAt: dateFilter },
@@ -181,6 +179,47 @@ export class StatsService {
             }
         }
 
+        // Calculate Returns/Refunds for current month
+        const monthReturns = await this.prisma.return.findMany({
+            where: {
+                status: 'COMPLETED',
+                createdAt: { gte: monthStart }
+            },
+            select: {
+                returnType: true,
+                refundAmount: true,
+                items: {
+                    select: { total: true }
+                },
+                replacementItems: {
+                    select: { total: true }
+                }
+            }
+        });
+
+        let totalReturnsValue = 0;
+        let totalExchangeValue = 0;
+        let totalRefundsPaid = 0;
+        let netReplacementValue = 0;
+
+        monthReturns.forEach(ret => {
+            const returnValue = ret.items.reduce((sum, i) => sum + Number(i.total || 0), 0);
+
+            // NOMINAL MODEL: Use exact values without revaluation
+            if (ret.returnType.startsWith('REFUND')) {
+                totalReturnsValue += returnValue;
+                if (ret.refundAmount) totalRefundsPaid += Number(ret.refundAmount);
+            } else if (ret.returnType.startsWith('EXCHANGE')) {
+                totalExchangeValue += returnValue;
+                const replacementValue = ret.replacementItems.reduce((sum, i) => sum + Number(i.total || 0), 0);
+                netReplacementValue += replacementValue;
+                // For exchanges, also add any additional refund paid
+                if (ret.refundAmount && Number(ret.refundAmount) > 0) {
+                    totalRefundsPaid += Number(ret.refundAmount);
+                }
+            }
+        });
+
         return {
             todaySales,
             thisMonthSales,
@@ -191,6 +230,13 @@ export class StatsService {
             totalProducts,
             cashBalance: activeSession ? Number(activeSession.openingBalance) : 0,
             salesTrend,
+            monthReturns: {
+                totalReturnsValue,
+                totalExchangeValue,
+                totalRefundsPaid,
+                netReplacementValue,
+                netImpact: totalReturnsValue + totalExchangeValue - netReplacementValue
+            }
         };
     }
 
@@ -390,35 +436,27 @@ export class StatsService {
         let totalCostOfSales = 0;
 
         const targetRate = Number(targetCurrency?.exchangeRate || 1);
+        const conversionRate = (currencyCode === 'VES') ? 1 : targetRate;
 
         salesInRange.forEach((sale) => {
             const date = dayjs(sale.createdAt).format('YYYY-MM-DD');
             const saleNominalTotal = Number(sale.total || 0);
             totalSalesNominal += saleNominalTotal;
 
-            const saleRate = (Number(sale.exchangeRate) && Number(sale.exchangeRate) !== 1)
-                ? Number(sale.exchangeRate)
-                : currentRefRate;
-
-            // 1. Normalize saleTotal to VES
-            // Como Sale no tiene currencyCode, asumimos que total es en VES
-            // Si la tasa es > 1, es probable que sea una venta referenciada en divisa, 
-            // pero el total guardado en BD suele ser en VES.
-            // SIN EMBARGO, si el usuario dice que "UDT 2.00" aparece en el dashboard,
-            // significa que para ALGUNOS casos el total NO es VES.
-            // Pero sin campo currencyCode, la única forma de saberlo es por el exchangeRate o paymentMethod.
-            // Revisando lógica de Invoice: Invoice SI tiene currencyCode.
-            // Revisando lógica de Sale: Sale no.
-            // Asumiremos que sale.total ESTÁ EN VES.
+            // NOMINAL MODEL: sale.total is always stored in VES
+            // For VES reports: use value as-is (no revaluation)
+            // For foreign currency reports: convert using CURRENT rate
             let saleTotalVES = saleNominalTotal;
+            let saleTotalTarget;
 
-            // 2. Convert to Target Currency for the report
-            // Use historical rate for conversion to Ref (USD), then to Target
-            const historicalRate = (Number(sale.exchangeRate) && Number(sale.exchangeRate) !== 1)
-                ? Number(sale.exchangeRate)
-                : currentRefRate;
-
-            const saleTotalTarget = (saleTotalVES / historicalRate) * crossRateFactor;
+            if (currencyCode === 'VES') {
+                // VES report: use nominal value (no conversion)
+                saleTotalTarget = saleTotalVES;
+            } else {
+                // Foreign currency report: convert at current rate (VES -> Target)
+                // We divide by the direct VES->Target rate
+                saleTotalTarget = saleTotalVES / conversionRate;
+            }
 
             totalSalesAmount += saleTotalTarget;
             dailySales[date] = (dailySales[date] || 0) + saleTotalTarget;
@@ -434,7 +472,10 @@ export class StatsService {
                 }
 
                 const itemTotalCostVES = itemCostInVES * Number(item.quantity);
-                const itemTotalCostTarget = (itemTotalCostVES / historicalRate) * crossRateFactor;
+                // NOMINAL MODEL: COGS stays at nominal value for VES, converts at current rate for foreign
+                const itemTotalCostTarget = currencyCode === 'VES'
+                    ? itemTotalCostVES
+                    : itemTotalCostVES / conversionRate;
 
                 totalCostOfSales += itemTotalCostTarget;
             });
@@ -468,29 +509,26 @@ export class StatsService {
                     method.startsWith('CURRENCY_') ||
                     (method.startsWith('ACCOUNT_CREDIT_') && method !== 'ACCOUNT_CREDIT');
 
-                // 1. Convert to VES (Base)
+                // NOMINAL MODEL: Use payment amount as-is for VES, convert at current rate for foreign
                 let amountInVES = rawAmount;
 
-                // CRITICAL FIX: Only multiply by rate if the amount is explicitly foreign (from the split string).
-                // SANITY CHECK: If converting the amount results in a value absurdly higher than the total sale (e.g. > 1.5x),
-                // then assume the rawAmount is ALREADY in VES (e.g. frontend sent the calculated amount).
+                // If this is a foreign method with explicit amount, it might be in foreign currency
                 if (isForeignMethod && isExplicitForeignAmount) {
-                    const effectiveRate = paymentSpecificRate || saleRate;
+                    const effectiveRate = paymentSpecificRate || currentRefRate;
                     const proposedAmountInVES = rawAmount * effectiveRate;
 
-                    // Allow for some excess (tips, change), but if it's > 1.5x the total sale, it's likely a double-conversion error.
-                    // Exception: If saleNominalTotal is 0 (shouldn't happen but safe guard)
+                    // Sanity check: if proposed amount is way larger than total, assume it's already in VES
                     if (saleNominalTotal > 0 && proposedAmountInVES > (saleNominalTotal * 1.5)) {
-                        // Heuristic: The conversion is too big. Assume rawAmount is already VES.
-                        amountInVES = rawAmount;
+                        amountInVES = rawAmount; // Already in VES
                     } else {
                         amountInVES = proposedAmountInVES;
                     }
                 }
 
-                // 2. Convert from VES to Target Currency using historical rate
-                const targetRateForPayment = (paymentSpecificRate || saleRate);
-                const amountInTarget = (amountInVES / targetRateForPayment) * crossRateFactor;
+                // Convert to target currency for display
+                const amountInTarget = currencyCode === 'VES'
+                    ? amountInVES
+                    : amountInVES / crossRateFactor;
 
                 paymentBreakdown[method] = (paymentBreakdown[method] || 0) + amountInTarget;
 
@@ -535,17 +573,18 @@ export class StatsService {
             const returnedItemsValueVES = ret.items.reduce((sum, item) => sum + Number(item.total || 0), 0);
             totalReturnsValueNominal += returnedItemsValueVES;
 
-            // REVALUE RETURN: Use historical rate of original sale
-            const historicalRate = (Number(ret.originalSale?.exchangeRate) && Number(ret.originalSale?.exchangeRate) !== 1)
-                ? Number(ret.originalSale?.exchangeRate)
-                : currentRefRate;
-
-            const returnedValueTarget = (returnedItemsValueVES / historicalRate) * crossRateFactor;
+            // NOMINAL MODEL: Returns stay at nominal value
+            const returnedValueTarget = currencyCode === 'VES'
+                ? returnedItemsValueVES
+                : returnedItemsValueVES / conversionRate;
             totalReturnsValue += returnedValueTarget;
 
             if (ret.returnType === 'REFUND') {
                 if (ret.refundAmount && Number(ret.refundAmount) > 0) {
-                    const refundValueTarget = (Number(ret.refundAmount) / historicalRate) * crossRateFactor;
+                    // NOMINAL MODEL: Refund stays at nominal value
+                    const refundValueTarget = currencyCode === 'VES'
+                        ? Number(ret.refundAmount)
+                        : Number(ret.refundAmount) / conversionRate;
                     totalMonetaryRefunds += refundValueTarget;
 
                     if (ret.refundMethod && ret.refundMethod !== 'CREDIT_NOTE') {
@@ -560,14 +599,18 @@ export class StatsService {
             } else {
                 totalExchangeValue += returnedValueTarget;
 
-                // REVALUE REPLACEMENT: Use current rate (new inventory)
+                // NOMINAL MODEL: Use current rate for replacements
                 const replacementsVES = ret.replacementItems.reduce((sum, item) => sum + Number(item.total || 0), 0);
                 totalReplacementValueNominal += replacementsVES;
-                const replacementsTarget = (replacementsVES / currentRefRate) * crossRateFactor;
+                const replacementsTarget = currencyCode === 'VES'
+                    ? replacementsVES
+                    : replacementsVES / conversionRate;
                 totalReplacementValue += replacementsTarget;
 
                 if (ret.refundAmount && Number(ret.refundAmount) > 0) {
-                    const refundValueTarget = (Number(ret.refundAmount) / historicalRate) * crossRateFactor;
+                    const refundValueTarget = currencyCode === 'VES'
+                        ? Number(ret.refundAmount)
+                        : Number(ret.refundAmount) / conversionRate;
                     totalMonetaryRefunds += refundValueTarget;
 
                     if (ret.refundMethod && ret.refundMethod !== 'CREDIT_NOTE') {
@@ -577,34 +620,32 @@ export class StatsService {
                 }
             }
 
-            // Adjust Daily Trend
+            // Adjust Daily Trend - NOMINAL MODEL
             const date = dayjs(ret.createdAt).format('YYYY-MM-DD');
-            const adjReturnTarget = (returnedItemsValueVES / historicalRate) * crossRateFactor;
+            const adjReturnTarget = currencyCode === 'VES' ? returnedItemsValueVES : returnedItemsValueVES / conversionRate;
             const adjReplTarget = (ret.returnType.startsWith('EXCHANGE'))
-                ? (Number(ret.replacementItems.reduce((sum, item) => sum + Number(item.total), 0)) / currentRefRate) * crossRateFactor
+                ? (currencyCode === 'VES'
+                    ? Number(ret.replacementItems.reduce((sum, item) => sum + Number(item.total), 0))
+                    : Number(ret.replacementItems.reduce((sum, item) => sum + Number(item.total), 0)) / conversionRate)
                 : 0;
 
             dailySales[date] = (dailySales[date] || 0) - adjReturnTarget + adjReplTarget;
 
-            // COGS Adjustment: Subtract returned sellable products
+            // COGS Adjustment: Subtract returned sellable products - NOMINAL MODEL
             if (this.SELLABLE_RETURN_REASONS.includes(ret.reason)) {
                 ret.items.forEach(item => {
                     const productRate = item.product.currency?.isPrimary ? 1 : Number(item.product.currency?.exchangeRate || 1);
                     const itemCostInVES = Number(item.product.costPrice || 0) * productRate * Number(item.quantity);
-                    // Use historicalRate for the return to match the original sale cost
-                    returnedCostOfSales += (itemCostInVES / historicalRate) * crossRateFactor;
+                    returnedCostOfSales += currencyCode === 'VES' ? itemCostInVES : itemCostInVES / conversionRate;
                 });
             }
 
-            // COGS Adjustment: Add replacement items cost
+            // COGS Adjustment: Add replacement items cost - NOMINAL MODEL
             if (ret.returnType.startsWith('EXCHANGE')) {
-                const replacementVES = ret.replacementItems.reduce((sum, item) => sum + Number(item.total), 0);
-                // replacementValueNominal += replacementVES; // This line was already present in the original code, but commented out in the diff. Keeping it here for consistency with the diff's intent.
                 ret.replacementItems.forEach(item => {
                     const productRate = item.product.currency?.isPrimary ? 1 : Number(item.product.currency?.exchangeRate || 1);
                     const itemCostInVES = Number(item.product.costPrice || 0) * productRate * Number(item.quantity);
-                    // Use currentRefRate for the new item leaving stock
-                    replacementCostOfSales += (itemCostInVES / currentRefRate) * crossRateFactor;
+                    replacementCostOfSales += currencyCode === 'VES' ? itemCostInVES : itemCostInVES / conversionRate;
                 });
             }
         });
@@ -757,6 +798,9 @@ export class StatsService {
             }
         });
 
+        const targetRate = Number(targetCurrency?.exchangeRate || 1);
+        const conversionRate = (currencyCode === 'VES') ? 1 : targetRate;
+
         const productBreakdown: Record<string, {
             name: string;
             sku: string | null;
@@ -810,6 +854,12 @@ export class StatsService {
             const saleNominalTotalValue = Number(sale.total || 0);
             totalSalesNominal += saleNominalTotalValue;
 
+            // USE SALE HEADER for Main Total (Consistency with Finance/Balance)
+            const saleTargetValue = currencyCode === 'VES'
+                ? saleNominalTotalValue
+                : saleNominalTotalValue / conversionRate;
+            totalSales += saleTargetValue;
+
             sale.items.forEach(item => {
                 let itemCostInVES = Number(item.cost || 0);
 
@@ -821,15 +871,19 @@ export class StatsService {
                 let cost = itemCostInVES * Number(item.quantity);
                 let revenue = Number(item.total);
 
-                // Revalue to target currency
-                cost = (cost / historicalRate) * crossRateFactor;
-                revenue = (revenue / historicalRate) * crossRateFactor;
+                // NOMINAL MODEL: Use nominal values for VES, convert at current rate for foreign
+                if (currencyCode === 'VES') {
+                    // Keep values as-is
+                } else {
+                    cost = cost / conversionRate;
+                    revenue = revenue / conversionRate;
+                }
 
                 // Portion of inflation loss for this item
                 // FIXED: Use currentRefRate in denominator to avoid double-revaluation
                 const itemInflationLoss = (Number(item.total || 0) / (saleNominalTotalValue || 1)) * (saleInflationLossVES / currentRefRate) * crossRateFactor;
 
-                totalSales += revenue;
+                // totalSales += revenue; // Removed: We use Sale Header for consistency now.
                 totalCOGS += cost;
                 // Accumulation already happened above at sale level to capture gaps (shipping/discounts)
 
@@ -918,13 +972,12 @@ export class StatsService {
         let replacementValueNominal = 0;
 
         completedReturns.forEach(ret => {
-            // REVALUE RETURN: Use historical rate
-            const historicalRate = (Number(ret.originalSale?.exchangeRate) && Number(ret.originalSale?.exchangeRate) !== 1)
-                ? Number(ret.originalSale?.exchangeRate)
-                : currentRefRate;
+            // REVALUE RETURN: Use nominal value converted at current rate (Standardized)
+            // const historicalRate = ... (Unused now for consistency with Finance Report)
 
             const returnedValueVES = ret.items.reduce((sum, item) => sum + Number(item.total || 0), 0);
-            totalReturnsValue += (returnedValueVES / historicalRate) * crossRateFactor;
+            const returnedValueTarget = currencyCode === 'VES' ? returnedValueVES : returnedValueVES / conversionRate;
+            totalReturnsValue += returnedValueTarget;
             returnedValueNominal += returnedValueVES;
 
             // Only subtract from COGS if products are sellable again (use historical cost or current?)
@@ -934,21 +987,22 @@ export class StatsService {
                     const productRate = item.product.currency?.isPrimary ? 1 : Number(item.product.currency?.exchangeRate || 1);
                     const itemCostInVES = Number(item.product.costPrice || 0) * productRate * Number(item.quantity);
                     // Use historical rate for consistency with how they were added to COGS
-                    returnedCOGS += (itemCostInVES / historicalRate) * crossRateFactor;
+                    returnedCOGS += currencyCode === 'VES' ? itemCostInVES : itemCostInVES / conversionRate;
                 });
             }
 
             // REVALUE REPLACEMENT: Use current rate
             if (ret.returnType.startsWith('EXCHANGE')) {
                 const replacementsVES = ret.replacementItems.reduce((sum, item) => sum + Number(item.total || 0), 0);
-                totalReplacementValue += (replacementsVES / currentRefRate) * crossRateFactor;
+                const replacementsTarget = currencyCode === 'VES' ? replacementsVES : replacementsVES / conversionRate;
+                totalReplacementValue += replacementsTarget;
                 replacementValueNominal += replacementsVES;
 
                 // Add replacement cost to COGS
                 ret.replacementItems.forEach(item => {
                     const productRate = item.product.currency?.isPrimary ? 1 : Number(item.product.currency?.exchangeRate || 1);
                     const itemCostInVES = Number(item.product.costPrice || 0) * productRate * Number(item.quantity);
-                    replacementCOGS += (itemCostInVES / currentRefRate) * crossRateFactor;
+                    replacementCOGS += currencyCode === 'VES' ? itemCostInVES : itemCostInVES / conversionRate;
                 });
             }
 
@@ -961,7 +1015,20 @@ export class StatsService {
 
             if (isBSRefund && ret.refundAmount && Number(ret.refundAmount) > 0) {
                 const nominalVES = Number(ret.refundAmount);
+
+                // If displaying in VES, there is no "inflation loss" relevant to this specific calc (or it's 0)
+                // But logic originally calculated loss vs USD ref. 
+                // We'll keep inflation logic separate as it's specifically about VES value erosion against the Ref Currency.
+                // However, for consistency with 'conversionRate' usage:
+
+                const historicalRate = (Number(ret.originalSale?.exchangeRate) && Number(ret.originalSale?.exchangeRate) !== 1)
+                    ? Number(ret.originalSale?.exchangeRate)
+                    : currentRefRate;
+
                 const revaluedVES = (nominalVES / historicalRate) * currentRefRate;
+                // Inflation loss is always relative to Reference Currency (Base logic), so we keep crossRateFactor here
+                // UNLESS we want to project that loss to the target currency. 
+                // Let's use (loss / currentRefRate) * crossRateFactor as originally intended for Inflation Metric.
                 const refundLoss = ((revaluedVES - nominalVES) / currentRefRate) * crossRateFactor;
 
                 totalInflationLoss -= refundLoss;
@@ -1001,8 +1068,10 @@ export class StatsService {
             const productRate = adj.product.currency?.isPrimary ? 1 : Number(adj.product.currency?.exchangeRate || 1);
             let lossCostInVES = Number(adj.product.costPrice || 0) * productRate * Number(adj.quantity);
 
-            inventoryLossCOGS += (lossCostInVES / currentRefRate) * crossRateFactor;
+            inventoryLossCOGS += currencyCode === 'VES' ? lossCostInVES : lossCostInVES / conversionRate;
         });
+
+
 
         // Final COGS = Sales COGS - Returns + Replacements + Inventory Losses
         let adjustedCOGS = totalCOGS - returnedCOGS + replacementCOGS + inventoryLossCOGS;
@@ -1070,6 +1139,9 @@ export class StatsService {
             }
         }
 
+        const targetRate = Number(targetCurrency?.exchangeRate || 1);
+        const conversionRate = (currencyCode === 'VES') ? 1 : targetRate;
+
         for (let i = 11; i >= 0; i--) {
             const currentMonth = now.subtract(i, 'month');
             const start = currentMonth.startOf('month').toDate();
@@ -1136,14 +1208,16 @@ export class StatsService {
                     totalCostVES += (itemCostInVES * Number(item.quantity));
                 });
 
-                const historicalRate = (Number(sale.exchangeRate) && Number(sale.exchangeRate) !== 1)
-                    ? Number(sale.exchangeRate)
-                    : currentRefRate;
-
+                // NOMINAL MODEL: Use sale.total as-is for VES, convert at current rate for foreign
                 const currentSaleTotal = Number(sale.total || 0);
-                monthlyIncome += (currentSaleTotal / historicalRate) * crossRateFactor;
-                monthlyIncomeNominal += currentSaleTotal; // Added
-                monthlyCOGS += (totalCostVES / historicalRate) * crossRateFactor;
+                if (currencyCode === 'VES') {
+                    monthlyIncome += currentSaleTotal;
+                    monthlyCOGS += totalCostVES;
+                } else {
+                    monthlyIncome += currentSaleTotal / conversionRate;
+                    monthlyCOGS += totalCostVES / conversionRate;
+                }
+                monthlyIncomeNominal += currentSaleTotal;
             });
 
             // Calculate Expenses (Purchases + Expenses)
@@ -1202,13 +1276,12 @@ export class StatsService {
             let monthlyReplacementCOGS = 0;
 
             returnsInRange.forEach(ret => {
-                // REVALUE RETURN: Use historical rate
-                const historicalRate = (Number(ret.originalSale?.exchangeRate) && Number(ret.originalSale?.exchangeRate) !== 1)
-                    ? Number(ret.originalSale?.exchangeRate)
-                    : currentRefRate;
+                // REVALUE RETURN: Use nominal value converted at current rate (Standardized)
+                // const historicalRate = ... (Unused now for consistency with Finance Report)
 
                 const returnedValueVES = ret.items.reduce((sum, item) => sum + Number(item.total || 0), 0);
-                monthlyReturnsValue += (returnedValueVES / historicalRate) * crossRateFactor;
+                const returnedValueTarget = currencyCode === 'VES' ? returnedValueVES : returnedValueVES / conversionRate;
+                monthlyReturnsValue += returnedValueTarget;
                 monthlyIncomeNominal -= returnedValueVES; // Added
 
                 // Sync COGS adjustment
@@ -1216,21 +1289,22 @@ export class StatsService {
                     ret.items.forEach(item => {
                         const productRate = item.product.currency?.isPrimary ? 1 : Number(item.product.currency?.exchangeRate || 1);
                         const itemCostInVES = Number(item.product.costPrice || 0) * productRate * Number(item.quantity);
-                        monthlyReturnedCOGS += (itemCostInVES / historicalRate) * crossRateFactor;
+                        monthlyReturnedCOGS += currencyCode === 'VES' ? itemCostInVES : itemCostInVES / conversionRate;
                     });
                 }
 
                 // REVALUE REPLACEMENT: Use current rate
                 if (ret.returnType.startsWith('EXCHANGE')) {
                     const replacementsVES = ret.replacementItems.reduce((sum, item) => sum + Number(item.total || 0), 0);
-                    monthlyReplacementValue += (replacementsVES / currentRefRate) * crossRateFactor;
+                    const replacementsTarget = currencyCode === 'VES' ? replacementsVES : replacementsVES / conversionRate;
+                    monthlyReplacementValue += replacementsTarget;
                     monthlyIncomeNominal += replacementsVES; // Added
 
                     // Add replacement cost to COGS
                     ret.replacementItems.forEach(item => {
                         const productRate = item.product.currency?.isPrimary ? 1 : Number(item.product.currency?.exchangeRate || 1);
                         const itemCostInVES = Number(item.product.costPrice || 0) * productRate * Number(item.quantity);
-                        monthlyReplacementCOGS += (itemCostInVES / currentRefRate) * crossRateFactor;
+                        monthlyReplacementCOGS += currencyCode === 'VES' ? itemCostInVES : itemCostInVES / conversionRate;
                     });
                 }
             });
@@ -1258,7 +1332,7 @@ export class StatsService {
                 const productRate = adj.product.currency?.isPrimary ? 1 : Number(adj.product.currency?.exchangeRate || 1);
                 let lossCostInVES = Number(adj.product.costPrice || 0) * productRate * Number(adj.quantity);
 
-                monthlyInventoryLossCOGS += (lossCostInVES / currentRefRate) * crossRateFactor;
+                monthlyInventoryLossCOGS += currencyCode === 'VES' ? lossCostInVES : lossCostInVES / conversionRate;
             });
 
             adjustedMonthlyCOGS += monthlyInventoryLossCOGS;
@@ -1694,5 +1768,122 @@ export class StatsService {
                 percentage: totalSalesSum > 0 ? (d.total / totalSalesSum) * 100 : 0
             };
         });
+    }
+    async getExpenseStats(currencyCode: string = 'VES', startDate?: string, endDate?: string) {
+        const dateFilter: any = {};
+
+        if (startDate || endDate) {
+            if (startDate) dateFilter.gte = dayjs(startDate).startOf('day').toDate();
+            if (endDate) dateFilter.lte = dayjs(endDate).endOf('day').toDate();
+        } else {
+            // Default to current month
+            dateFilter.gte = dayjs().startOf('month').toDate();
+        }
+
+        const targetCurrency = await this.prisma.currency.findUnique({ where: { code: currencyCode } });
+        const targetRate = Number(targetCurrency?.exchangeRate || 1);
+        const conversionRate = (currencyCode === 'VES') ? 1 : targetRate;
+
+        // 1. Get Reference Currency Info for Cross-Rate logic (if needed for old expenses)
+        const companySettings = await this.prisma.companySettings.findFirst({
+            include: { preferredSecondaryCurrency: true }
+        });
+        const refCurrency = companySettings?.preferredSecondaryCurrency;
+        const currentRefRate = Number(refCurrency?.exchangeRate || 1);
+
+        let crossRateFactor = 1;
+        if (currencyCode === 'VES') {
+            crossRateFactor = currentRefRate;
+        } else if (targetCurrency && refCurrency && targetCurrency.code !== refCurrency.code) {
+            const tr = Number(targetCurrency.exchangeRate || 1);
+            if (tr > 0) crossRateFactor = currentRefRate / tr;
+        }
+
+        // 2. Fetch Expenses
+        const expenses = await this.prisma.expense.findMany({
+            where: { date: dateFilter },
+            select: {
+                amount: true,
+                exchangeRate: true,
+                currencyCode: true,
+                category: true,
+                date: true,
+                description: true
+            }
+        });
+
+        const expensesByCategory: Record<string, number> = {};
+        const dailyExpenses: Record<string, number> = {};
+        let totalExpenses = 0;
+
+        expenses.forEach(e => {
+            const val = Number(e.amount);
+            const eRate = Number(e.exchangeRate) || 1;
+            const valInVES = e.currencyCode === 'VES' ? val : val * eRate;
+
+            // Use historical rate usually for Expenses in other reports, but let's stick to consistent revaluation
+            // Actually, in Finance Report, expenses are revalued using historical rate * crossRateFactor.
+            const historicalRate = (eRate !== 1) ? eRate : currentRefRate;
+
+            // Wait, to be consistent with "Real Utility" calculation in Finance Report:
+            // monthlyOperationalExpenses += (amountInVES / historicalRate) * crossRateFactor;
+
+            const expenseValueTarget = (valInVES / historicalRate) * crossRateFactor;
+
+            totalExpenses += expenseValueTarget;
+
+            // Group by Category
+            expensesByCategory[e.category] = (expensesByCategory[e.category] || 0) + expenseValueTarget;
+
+            // Group by Date
+            const dateStr = dayjs(e.date).format('YYYY-MM-DD');
+            dailyExpenses[dateStr] = (dailyExpenses[dateStr] || 0) + expenseValueTarget;
+        });
+
+        // 3. Fetch Total Sales for Comparison (Consistency with Finance Report)
+
+        // A. Sales
+        const sales = await this.prisma.sale.findMany({
+            where: { active: true, createdAt: dateFilter },
+            select: { total: true }
+        });
+        let totalSales = 0;
+        sales.forEach(sale => {
+            const nominal = Number(sale.total);
+            // Standardize using conversionRate (Same as other reports)
+            totalSales += (currencyCode === 'VES' ? nominal : nominal / conversionRate);
+        });
+
+        // B. Returns & Replacements
+        const returns = await this.prisma.return.findMany({
+            where: { status: 'COMPLETED', createdAt: dateFilter },
+            include: { items: true, replacementItems: true }
+        });
+
+        returns.forEach(ret => {
+            const retValVES = ret.items.reduce((s, i) => s + Number(i.total), 0);
+            const retTarget = currencyCode === 'VES' ? retValVES : retValVES / conversionRate;
+            totalSales -= retTarget;
+
+            if (ret.returnType.startsWith('EXCHANGE')) {
+                const repValVES = ret.replacementItems.reduce((s, i) => s + Number(i.total), 0);
+                const repTarget = currencyCode === 'VES' ? repValVES : repValVES / conversionRate;
+                totalSales += repTarget;
+            }
+        });
+
+        return {
+            totalSales: Number(totalSales.toFixed(2)),
+            totalExpenses: Number(totalExpenses.toFixed(2)),
+            expensesByCategory: Object.entries(expensesByCategory).map(([category, amount]) => ({
+                category,
+                amount: Number(amount.toFixed(2)),
+                percentageOfSales: totalSales > 0 ? Number(((amount / totalSales) * 100).toFixed(2)) : 0
+            })).sort((a, b) => b.amount - a.amount),
+            dailyExpenses: Object.entries(dailyExpenses).map(([date, amount]) => ({
+                date: dayjs(date).format('DD/MM'),
+                amount: Number(amount.toFixed(2))
+            }))
+        };
     }
 }

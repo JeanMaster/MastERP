@@ -172,6 +172,9 @@ export const CreateReturnModal = ({ open, onCancel, onSuccess }: CreateReturnMod
             unitPrice = unitPrice * Number(product.currency.exchangeRate);
         }
 
+        // Apply POS rounding
+        unitPrice = Math.ceil(unitPrice / 10) * 10;
+
         const newItem: SelectedItem = {
             productId: product.id,
             productName: product.name,
@@ -194,9 +197,11 @@ export const CreateReturnModal = ({ open, onCancel, onSuccess }: CreateReturnMod
     };
 
     const updateReplacementPrice = (productId: string, price: number) => {
+        const roundedPrice = Math.ceil(price / 10) * 10;
+
         setReplacementItems(replacementItems.map(item =>
             item.productId === productId
-                ? { ...item, unitPrice: price, total: item.quantity * price }
+                ? { ...item, unitPrice: roundedPrice, total: item.quantity * roundedPrice }
                 : item
         ));
     };
@@ -471,7 +476,7 @@ export const CreateReturnModal = ({ open, onCancel, onSuccess }: CreateReturnMod
                     >
                         {replacementSearchResults.map(product => (
                             <Select.Option key={product.id} value={product.id}>
-                                {product.name} ({product.sku}) - {formatVenezuelanPrice(Number(product.salePrice))}
+                                {product.name} ({product.sku})
                             </Select.Option>
                         ))}
                     </Select>
