@@ -1,8 +1,9 @@
-import { Controller, Get, Post, Body, Param, Query, Patch, Delete } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Query, Patch, Delete, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { SalesService } from './sales.service';
 import { InvoiceService } from '../invoice/invoice.service';
 import { CreateSaleDto } from './dto/create-sale.dto';
+import { AuthGuard } from '@nestjs/passport';
 
 export interface SalesFilters {
     startDate?: string;
@@ -17,6 +18,7 @@ export interface SalesFilters {
 
 @ApiTags('sales')
 @Controller('sales')
+@UseGuards(AuthGuard('jwt'))
 export class SalesController {
     constructor(
         private readonly salesService: SalesService,

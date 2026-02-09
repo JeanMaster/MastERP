@@ -5,6 +5,10 @@ import { FinancialReports } from './components/FinancialReports';
 import { BalanceReports } from './components/BalanceReports';
 import { TopProductsReport } from './components/TopProductsReport';
 import COGSReport from './components/COGSReport';
+import InflationReport from './components/InflationReport';
+import WeeklyPerformanceReport from './components/WeeklyPerformanceReport';
+import MonthlyDailyPerformanceReport from './components/MonthlyDailyPerformanceReport';
+import { ExpenseReports } from './components/ExpenseReports';
 
 export const ReportsPage = () => {
     const [activeTab, setActiveTab] = useState('inventory');
@@ -21,6 +25,11 @@ export const ReportsPage = () => {
             children: <FinancialReports />
         },
         {
+            key: 'expenses',
+            label: 'Gastos',
+            children: <ExpenseReports />
+        },
+        {
             key: 'balance',
             label: 'Balance General',
             children: <BalanceReports />
@@ -34,6 +43,21 @@ export const ReportsPage = () => {
             key: 'cogs',
             label: 'Reposición (COGS)',
             children: <COGSReport />
+        },
+        {
+            key: 'inflation',
+            label: 'Impacto Inflacionario',
+            children: <InflationReport />
+        },
+        {
+            key: 'weekly-performance',
+            label: 'Rendimiento Semanal',
+            children: <WeeklyPerformanceReport />
+        },
+        {
+            key: 'monthly-daily',
+            label: 'Mapa de Ventas (Mensual)',
+            children: <MonthlyDailyPerformanceReport />
         }
     ];
 
@@ -47,7 +71,26 @@ export const ReportsPage = () => {
                 onChange={setActiveTab}
                 items={tabItems}
                 size="large"
+                // CUSTOM STYLE TO ALLOW WRAPPING INTO TWO LINES
+                tabBarStyle={{ marginBottom: 0 }}
+                onTabClick={() => { }}
+                // This will force the tabs to wrap if there isn't enough space
+                // by disabling the "nowrap" flex behavior on the container
+                className="reports-tabs"
             />
+            <style>{`
+                .reports-tabs .ant-tabs-nav-wrap {
+                    white-space: normal !important;
+                    flex-wrap: wrap !important;
+                }
+                .reports-tabs .ant-tabs-nav-list {
+                    flex-wrap: wrap !important;
+                    width: 100%;
+                }
+                .reports-tabs .ant-tabs-tab {
+                    margin-bottom: 8px !important;
+                }
+            `}</style>
         </Card>
     );
 };

@@ -1,11 +1,13 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { CurrenciesService } from './currencies.service';
 import { CreateCurrencyDto } from './dto/create-currency.dto';
 import { UpdateCurrencyDto } from './dto/update-currency.dto';
+import { AuthGuard } from '@nestjs/passport';
 
 @ApiTags('currencies')
 @Controller('currencies')
+@UseGuards(AuthGuard('jwt'))
 export class CurrenciesController {
     constructor(private readonly currenciesService: CurrenciesService) { }
 

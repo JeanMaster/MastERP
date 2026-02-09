@@ -1,8 +1,5 @@
-import axios from 'axios';
-import { BASE_URL } from '../../../services/apiConfig';
+import { api } from '../../../services/apiConfig';
 import type { Employee } from './employeesApi';
-
-const API_URL = BASE_URL;
 
 export interface PayrollPeriod {
     id: string;
@@ -34,22 +31,22 @@ export interface PayrollPaymentItem {
 
 export const payrollApi = {
     findAllPeriods: async (): Promise<PayrollPeriod[]> => {
-        const response = await axios.get(`${API_URL}/hr/payroll/period`);
+        const response = await api.get('/hr/payroll/period');
         return response.data;
     },
 
     findOnePeriod: async (id: string): Promise<PayrollPeriod> => {
-        const response = await axios.get(`${API_URL}/hr/payroll/period/${id}`);
+        const response = await api.get(`/hr/payroll/period/${id}`);
         return response.data;
     },
 
     createPeriod: async (data: Partial<PayrollPeriod>): Promise<PayrollPeriod> => {
-        const response = await axios.post(`${API_URL}/hr/payroll/period`, data);
+        const response = await api.post('/hr/payroll/period', data);
         return response.data;
     },
 
     generate: async (data: { payrollPeriodId: string, employeeIds?: string[], frequency?: string }): Promise<any> => {
-        const response = await axios.post(`${API_URL}/hr/payroll/generate`, data);
+        const response = await api.post('/hr/payroll/generate', data);
         return response.data;
     }
 };

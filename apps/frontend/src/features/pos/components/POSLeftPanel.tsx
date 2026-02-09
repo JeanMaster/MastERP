@@ -85,10 +85,19 @@ export const POSLeftPanel = () => {
             const addedNormalizedQuantity = getNormalizedQuantity(1, product, false);
 
             if (product.type !== 'SERVICE' && (currentNormalizedQuantity + addedNormalizedQuantity) > product.stock) {
+                // Fallback: Try adding secondary unit if available
+                if (product.secondaryUnitId) {
+                    const addedSecondaryNormalizedQuantity = getNormalizedQuantity(1, product, true);
+                    if ((currentNormalizedQuantity + addedSecondaryNormalizedQuantity) <= product.stock) {
+                        addItem(product, true);
+                        return;
+                    }
+                }
+
                 Modal.warning({
                     title: 'Stock insuficiente',
                     icon: <WarningOutlined style={{ color: '#faad14' }} />,
-                    content: `Ya tienes el equivalente a ${currentNormalizedQuantity.toFixed(3)} uds en el carrito. Stock disponible: ${product.stock}`,
+                    content: `Incapaz de añadir 1 unidad completa. Ya tienes el equivalente a ${currentNormalizedQuantity.toFixed(3)} uds en el carrito. Stock disponible: ${product.stock}`,
                 });
                 return;
             }

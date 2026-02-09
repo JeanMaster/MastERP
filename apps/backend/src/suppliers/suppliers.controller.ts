@@ -1,11 +1,13 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, Query } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, Query, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiQuery, ApiResponse } from '@nestjs/swagger';
 import { SuppliersService } from './suppliers.service';
 import { CreateSupplierDto } from './dto/create-supplier.dto';
 import { UpdateSupplierDto } from './dto/update-supplier.dto';
+import { AuthGuard } from '@nestjs/passport';
 
 @ApiTags('suppliers')
 @Controller('suppliers')
+@UseGuards(AuthGuard('jwt'))
 export class SuppliersController {
     constructor(private readonly suppliersService: SuppliersService) { }
 

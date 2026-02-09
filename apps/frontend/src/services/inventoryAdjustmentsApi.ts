@@ -1,6 +1,4 @@
-import axios from 'axios';
-
-import { BASE_URL as API_URL } from './apiConfig';
+import { api } from './apiConfig';
 
 export interface InventoryAdjustment {
     id: string;
@@ -32,7 +30,7 @@ export interface CreateAdjustmentDto {
 
 export const inventoryAdjustmentsApi = {
     create: async (dto: CreateAdjustmentDto): Promise<InventoryAdjustment> => {
-        const { data } = await axios.post(`${API_URL}/inventory-adjustments`, dto);
+        const { data } = await api.post('/inventory-adjustments', dto);
         return data;
     },
 
@@ -43,24 +41,17 @@ export const inventoryAdjustmentsApi = {
         startDate?: string;
         endDate?: string;
     }): Promise<InventoryAdjustment[]> => {
-        const params = new URLSearchParams();
-        if (filters?.productId) params.append('productId', filters.productId);
-        if (filters?.type) params.append('type', filters.type);
-        if (filters?.reason) params.append('reason', filters.reason);
-        if (filters?.startDate) params.append('startDate', filters.startDate);
-        if (filters?.endDate) params.append('endDate', filters.endDate);
-
-        const { data } = await axios.get(`${API_URL}/inventory-adjustments?${params.toString()}`);
+        const { data } = await api.get('/inventory-adjustments', { params: filters });
         return data;
     },
 
     findOne: async (id: string): Promise<InventoryAdjustment> => {
-        const { data } = await axios.get(`${API_URL}/inventory-adjustments/${id}`);
+        const { data } = await api.get(`/inventory-adjustments/${id}`);
         return data;
     },
 
     findByProduct: async (productId: string): Promise<InventoryAdjustment[]> => {
-        const { data } = await axios.get(`${API_URL}/inventory-adjustments/product/${productId}`);
+        const { data } = await api.get(`/inventory-adjustments/product/${productId}`);
         return data;
     }
 };

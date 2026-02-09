@@ -165,13 +165,23 @@ export const CreateReturnModal = ({ open, onCancel, onSuccess }: CreateReturnMod
             return;
         }
 
+        let unitPrice = Number(product.salePrice);
+
+        // Auto-convert if product is in foreign currency
+        if (product.currency && !product.currency.isPrimary && product.currency.exchangeRate) {
+            unitPrice = unitPrice * Number(product.currency.exchangeRate);
+        }
+
+        // Apply POS rounding
+        unitPrice = Math.ceil(unitPrice / 10) * 10;
+
         const newItem: SelectedItem = {
             productId: product.id,
             productName: product.name,
             productSku: product.sku,
             quantity: 1,
-            unitPrice: Number(product.salePrice),
-            total: Number(product.salePrice)
+            unitPrice: unitPrice,
+            total: unitPrice
         };
         setReplacementItems([...replacementItems, newItem]);
         setReplacementSearch('');
@@ -182,6 +192,16 @@ export const CreateReturnModal = ({ open, onCancel, onSuccess }: CreateReturnMod
         setReplacementItems(replacementItems.map(item =>
             item.productId === productId
                 ? { ...item, quantity, total: quantity * item.unitPrice }
+                : item
+        ));
+    };
+
+    const updateReplacementPrice = (productId: string, price: number) => {
+        const roundedPrice = Math.ceil(price / 10) * 10;
+
+        setReplacementItems(replacementItems.map(item =>
+            item.productId === productId
+                ? { ...item, unitPrice: roundedPrice, total: item.quantity * roundedPrice }
                 : item
         ));
     };
@@ -456,7 +476,7 @@ export const CreateReturnModal = ({ open, onCancel, onSuccess }: CreateReturnMod
                     >
                         {replacementSearchResults.map(product => (
                             <Select.Option key={product.id} value={product.id}>
-                                {product.name} ({product.sku}) - {formatVenezuelanPrice(Number(product.salePrice))}
+                                {product.name} ({product.sku})
                             </Select.Option>
                         ))}
                     </Select>
@@ -471,7 +491,22 @@ export const CreateReturnModal = ({ open, onCancel, onSuccess }: CreateReturnMod
                                 size="small"
                                 columns={[
                                     { title: 'Producto', key: 'product', render: (_, r) => <div><strong>{r.productName}</strong><br /><small>{r.productSku}</small></div> },
-                                    { title: 'Precio', key: 'price', render: (_, r) => formatVenezuelanPrice(r.unitPrice) },
+                                    {
+                                        title: 'Precio',
+                                        key: 'price',
+                                        width: 140,
+                                        render: (_, r) => (
+                                            <InputNumber
+                                                value={r.unitPrice}
+                                                onChange={(val) => updateReplacementPrice(r.productId, Number(val) || 0)}
+                                                formatter={value => `Bs. ${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, '.')}
+                                                parser={value => Number(value!.replace(/Bs\.\s?|(\.*)/g, '').replace(',', '.'))}
+                                                step={0.01}
+                                                size="small"
+                                                style={{ width: '100%' }}
+                                            />
+                                        )
+                                    },
                                     {
                                         title: 'Cant.',
                                         key: 'qty',

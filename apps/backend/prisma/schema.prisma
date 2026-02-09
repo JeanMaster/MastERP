@@ -639,6 +639,7 @@ model CashSession {
   
   // Movements during session
   movements         CashMovement[]
+  bankMovements     BankMovement[]
   sales             Sale[]
   
   active            Boolean        @default(true)
@@ -821,7 +822,7 @@ model BankAccount {
   id              String   @id @default(uuid())
   bankName        String
   accountNumber   String
-  accountType     String   // CHECKING, SAVINGS
+  accountType     String   @default("CHECKING") // CHECKING, SAVINGS, CASH_VAULT, MOBILE_PAYMENT
   
   holderName      String
   holderId        String
@@ -833,8 +834,35 @@ model BankAccount {
   
   active          Boolean  @default(true)
   
+  movements       BankMovement[]
+  
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
   
   @@map("bank_accounts")
 }
+
+model BankMovement {
+  id              String       @id @default(uuid())
+  bankAccountId   String
+  bankAccount     BankAccount  @relation(fields: [bankAccountId], references: [id], onDelete: Cascade)
+  
+  type            String       // "IN", "OUT"
+  amount          Decimal      @db.Decimal(12, 2)
+  
+  category        String       // "SALE_TRANSFER", "EXPENSE", "INJECTION", "ADJUSTMENT", "TRANSFER"
+  description     String
+  reference       String?
+  
+  date            DateTime     @default(now())
+  
+  // Opcional: Relación con sesión de caja si viene de un traslado
+  cashSessionId   String?
+  cashSession     CashSession? @relation(fields: [cashSessionId], references: [id])
+  
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  
+  @@map("bank_movements")
+}
+

@@ -65,6 +65,45 @@ export class BanksService {
         });
     }
 
+    async addMovement(dto: any) {
+        const { bankAccountId, type, amount, category, description, reference, cashSessionId } = dto;
+
+        return this.prisma.$transaction(async (tx) => {
+            // 1. Create the movement
+            const movement = await tx.bankMovement.create({
+                data: {
+                    bankAccountId,
+                    type,
+                    amount,
+                    category,
+                    description,
+                    reference,
+                    cashSessionId,
+                },
+            });
+
+            // 2. Update the account balance
+            const adjustment = type === 'IN' ? Number(amount) : -Number(amount);
+
+            await tx.bankAccount.update({
+                where: { id: bankAccountId },
+                data: {
+                    balance: { increment: adjustment }
+                }
+            });
+
+            return movement;
+        });
+    }
+
+    async getHistory(bankAccountId: string, limit: number = 50) {
+        return this.prisma.bankMovement.findMany({
+            where: { bankAccountId },
+            orderBy: { createdAt: 'desc' },
+            take: limit,
+        });
+    }
+
     async remove(id: string) {
         await this.findOne(id);
 

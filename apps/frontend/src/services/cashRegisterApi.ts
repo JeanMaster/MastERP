@@ -1,6 +1,4 @@
-import axios from 'axios';
-
-import { BASE_URL as API_URL } from './apiConfig';
+import { api } from './apiConfig';
 
 export interface CashRegister {
     id: string;
@@ -66,44 +64,50 @@ export interface CreateMovementDto {
 
 export const cashRegisterApi = {
     getMainRegister: async (): Promise<CashRegister> => {
-        const { data } = await axios.get(`${API_URL}/cash-register/registers/main`);
+        const { data } = await api.get('/cash-register/registers/main');
         return data;
     },
 
     openSession: async (dto: OpenSessionDto): Promise<CashSession> => {
-        const { data } = await axios.post(`${API_URL}/cash-register/sessions/open`, dto);
+        const { data } = await api.post('/cash-register/sessions/open', dto);
         return data;
     },
 
     closeSession: async (sessionId: string, dto: CloseSessionDto): Promise<CashSession> => {
-        const { data } = await axios.post(`${API_URL}/cash-register/sessions/${sessionId}/close`, dto);
+        const { data } = await api.post(`/cash-register/sessions/${sessionId}/close`, dto);
         return data;
     },
 
     getActiveSession: async (registerId?: string): Promise<CashSession | null> => {
-        const params = registerId ? `?registerId=${registerId}` : '';
-        const { data } = await axios.get(`${API_URL}/cash-register/sessions/active${params}`);
+        const params: any = {};
+        if (registerId) params.registerId = registerId;
+        const { data } = await api.get('/cash-register/sessions/active', { params });
         return data;
     },
 
     getSession: async (id: string): Promise<CashSession> => {
-        const { data } = await axios.get(`${API_URL}/cash-register/sessions/${id}`);
+        const { data } = await api.get(`/cash-register/sessions/${id}`);
         return data;
     },
 
     listSessions: async (filters?: any): Promise<CashSession[]> => {
-        const params = new URLSearchParams();
-        if (filters?.registerId) params.append('registerId', filters.registerId);
-        if (filters?.status) params.append('status', filters.status);
-        if (filters?.startDate) params.append('startDate', filters.startDate);
-        if (filters?.endDate) params.append('endDate', filters.endDate);
+        const params: any = {};
+        if (filters?.registerId) params.registerId = filters.registerId;
+        if (filters?.status) params.status = filters.status;
+        if (filters?.startDate) params.startDate = filters.startDate;
+        if (filters?.endDate) params.endDate = filters.endDate;
 
-        const { data } = await axios.get(`${API_URL}/cash-register/sessions?${params.toString()}`);
+        const { data } = await api.get('/cash-register/sessions', { params });
         return data;
     },
 
     createMovement: async (dto: CreateMovementDto): Promise<CashMovement> => {
-        const { data } = await axios.post(`${API_URL}/cash-register/movements`, dto);
+        const { data } = await api.post('/cash-register/movements', dto);
+        return data;
+    },
+
+    transferToTreasury: async (sessionId: string, dto: { bankAccountId: string, amount: number, description: string, performedBy?: string }): Promise<any> => {
+        const { data } = await api.post(`/cash-register/sessions/${sessionId}/transfer-to-treasury`, dto);
         return data;
     }
 };

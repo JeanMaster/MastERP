@@ -1,9 +1,11 @@
-import { Controller, Get, Query } from '@nestjs/common';
+import { Controller, Get, Query, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiQuery } from '@nestjs/swagger';
 import { StatsService } from './stats.service';
+import { AuthGuard } from '@nestjs/passport';
 
 @ApiTags('stats')
 @Controller('stats')
+@UseGuards(AuthGuard('jwt'))
 export class StatsController {
     constructor(private readonly statsService: StatsService) { }
 
@@ -71,5 +73,54 @@ export class StatsController {
         @Query('endDate') endDate?: string
     ) {
         return this.statsService.getCOGSReport(currency, startDate, endDate);
+    }
+
+    @Get('inflation')
+    @ApiOperation({ summary: 'Get inflation loss report (nominal vs revalued delta)' })
+    @ApiQuery({ name: 'startDate', required: false })
+    @ApiQuery({ name: 'endDate', required: false })
+    getInflationReport(
+        @Query('startDate') startDate?: string,
+        @Query('endDate') endDate?: string
+    ) {
+        return this.statsService.getInflationReport(startDate, endDate);
+    }
+
+    @Get('weekly-performance')
+    @ApiOperation({ summary: 'Get sales performance by day of the week' })
+    @ApiQuery({ name: 'currency', required: false })
+    @ApiQuery({ name: 'startDate', required: false })
+    @ApiQuery({ name: 'endDate', required: false })
+    getWeeklyPerformance(
+        @Query('currency') currency: string = 'VES',
+        @Query('startDate') startDate?: string,
+        @Query('endDate') endDate?: string
+    ) {
+        return this.statsService.getWeeklyPerformance(currency, startDate, endDate);
+    }
+
+    @Get('monthly-daily-performance')
+    @ApiOperation({ summary: 'Get sales performance by day of the month (1-31)' })
+    @ApiQuery({ name: 'currency', required: false })
+    @ApiQuery({ name: 'startDate', required: false })
+    @ApiQuery({ name: 'endDate', required: false })
+    getMonthlyDailyPerformance(
+        @Query('currency') currency: string = 'VES',
+        @Query('startDate') startDate?: string,
+        @Query('endDate') endDate?: string
+    ) {
+        return this.statsService.getMonthlyDailyPerformance(currency, startDate, endDate);
+    }
+    @Get('expenses')
+    @ApiOperation({ summary: 'Get expenses report broken down by category' })
+    @ApiQuery({ name: 'currency', required: false })
+    @ApiQuery({ name: 'startDate', required: false })
+    @ApiQuery({ name: 'endDate', required: false })
+    getExpensesReport(
+        @Query('currency') currency: string = 'VES',
+        @Query('startDate') startDate?: string,
+        @Query('endDate') endDate?: string
+    ) {
+        return this.statsService.getExpenseStats(currency, startDate, endDate);
     }
 }

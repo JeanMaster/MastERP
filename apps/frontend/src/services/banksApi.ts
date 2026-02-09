@@ -1,7 +1,4 @@
-
-import axios from 'axios';
-
-import { BASE_URL as API_URL } from './apiConfig';
+import { api } from './apiConfig';
 
 export interface BankAccount {
     id: string;
@@ -38,35 +35,69 @@ export interface UpdateBankAccountDto {
     accountNumber?: string;
     accountType?: string;
     holderName?: string;
-    holderId?: string;
-    currencyId?: string;
-    active?: boolean;
+    active: boolean;
+    createdAt: string;
+    updatedAt: string;
+}
+
+export interface BankMovement {
+    id: string;
+    bankAccountId: string;
+    type: 'IN' | 'OUT';
+    amount: number;
+    category: string;
+    description: string;
+    reference?: string;
+    cashSessionId?: string;
+    createdAt: string;
+}
+
+export interface CreateBankMovementDto {
+    bankAccountId: string;
+    type: 'IN' | 'OUT';
+    amount: number;
+    category: string;
+    description: string;
+    reference?: string;
+    cashSessionId?: string;
 }
 
 export const banksApi = {
     getAll: async (search?: string): Promise<BankAccount[]> => {
-        const params = new URLSearchParams();
-        if (search) params.append('search', search);
-        const { data } = await axios.get(`${API_URL}/banks`, { params });
+        const params: any = {};
+        if (search) params.search = search;
+        const { data } = await api.get('/banks', { params });
         return data;
     },
 
     getOne: async (id: string): Promise<BankAccount> => {
-        const { data } = await axios.get(`${API_URL}/banks/${id}`);
+        const { data } = await api.get(`/banks/${id}`);
+        return data;
+    },
+
+    getHistory: async (id: string, limit?: number): Promise<BankMovement[]> => {
+        const params: any = {};
+        if (limit) params.limit = limit;
+        const { data } = await api.get(`/banks/${id}/history`, { params });
+        return data;
+    },
+
+    addMovement: async (dto: CreateBankMovementDto): Promise<BankMovement> => {
+        const { data } = await api.post('/banks/movements', dto);
         return data;
     },
 
     create: async (dto: CreateBankAccountDto): Promise<BankAccount> => {
-        const { data } = await axios.post(`${API_URL}/banks`, dto);
+        const { data } = await api.post('/banks', dto);
         return data;
     },
 
     update: async (id: string, dto: UpdateBankAccountDto): Promise<BankAccount> => {
-        const { data } = await axios.patch(`${API_URL}/banks/${id}`, dto);
+        const { data } = await api.patch(`/banks/${id}`, dto);
         return data;
     },
 
     delete: async (id: string): Promise<void> => {
-        await axios.delete(`${API_URL}/banks/${id}`);
+        await api.delete(`/banks/${id}`);
     },
 };

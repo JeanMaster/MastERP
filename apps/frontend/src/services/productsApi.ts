@@ -163,6 +163,7 @@ export const productsApi = {
         salePriceMargin: number;
         offerPriceMargin?: number;
         wholesalePriceMargin?: number;
+        currencyId?: string;
     }>) => {
         const { data } = await api.post(`/products/batch-update-prices`, updates);
         return data;

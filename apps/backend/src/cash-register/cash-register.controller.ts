@@ -1,12 +1,14 @@
-import { Controller, Get, Post, Body, Param, Query, Patch } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Query, Patch, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { CashRegisterService } from './cash-register.service';
 import { OpenSessionDto } from './dto/open-session.dto';
 import { CloseSessionDto } from './dto/close-session.dto';
 import { CreateMovementDto } from './dto/create-movement.dto';
+import { AuthGuard } from '@nestjs/passport';
 
 @ApiTags('cash-register')
 @Controller('cash-register')
+@UseGuards(AuthGuard('jwt'))
 export class CashRegisterController {
     constructor(private readonly cashRegisterService: CashRegisterService) { }
 
@@ -69,5 +71,20 @@ export class CashRegisterController {
     @ApiResponse({ status: 400, description: 'Sesión cerrada o no encontrada' })
     createMovement(@Body() createMovementDto: CreateMovementDto) {
         return this.cashRegisterService.createMovement(createMovementDto);
+    }
+
+    @Post('sessions/:id/transfer-to-treasury')
+    @ApiOperation({ summary: 'Trasladar fondos de Caja a Tesorería (Banco/Bóveda)' })
+    transferToTreasury(
+        @Param('id') id: string,
+        @Body() dto: any
+    ) {
+        return this.cashRegisterService.transferToTreasury(
+            id,
+            dto.bankAccountId,
+            dto.amount,
+            dto.description,
+            dto.performedBy || 'Sistema'
+        );
     }
 }

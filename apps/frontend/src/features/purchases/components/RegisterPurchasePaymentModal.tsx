@@ -17,7 +17,6 @@ export const RegisterPurchasePaymentModal = ({ open, purchase, onClose }: Regist
     const [form] = Form.useForm();
     const queryClient = useQueryClient();
     const [paymentCurrency, setPaymentCurrency] = useState<string>('');
-    const [exchangeRate, setExchangeRate] = useState<number>(0);
     const [equivalentAmount, setEquivalentAmount] = useState<number>(0);
 
     const { data: currencies = [] } = useQuery({
@@ -40,39 +39,62 @@ export const RegisterPurchasePaymentModal = ({ open, purchase, onClose }: Regist
         if (!purchase || !paymentCurrency) return;
 
         if (paymentCurrency === purchase.currencyCode) {
-            setExchangeRate(1);
             return;
         }
 
         // Find relevant rates
-        // Assumption 1: purchase.exchangeRate is the rate of the invoice at created time? Or current? 
-        // We generally want CURRENT market rate for payment.
-
-        // Let's rely on the `currencies` list which has current rates.
         const targetCurrency = currencies.find(c => c.code === paymentCurrency);
         const invoiceCurrencyObj = currencies.find(c => c.code === purchase.currencyCode);
 
         // Case A: Paying in VES for a USD invoice
         if (paymentCurrency === 'VES' && purchase.currencyCode === 'USD') {
-            // Rate should be the VES rate (e.g. 50 VES/USD)
+            // Use the VES rate (e.g., 50 VES/USD)
             const vesRate = targetCurrency?.exchangeRate || 0;
-            setExchangeRate(vesRate);
+            form.setFieldsValue({ exchangeRate: vesRate });
         }
-        // Case B: Paying in USD for a VES invoice (unusual but possible)
+        // Case B: Paying in USD for a VES invoice
         else if (paymentCurrency === 'USD' && purchase.currencyCode === 'VES') {
             // We need USD/VES rate. If VES rate is 50, USD/VES is 1/50 = 0.02
+            // However, usually users think in terms of "Rate = 50", so we might want to ask for the VES rate and invert it internally?
+            // To keep it standard: Input should be "How many InvoiceUnit per PaymentUnit?" 
+            // OR "How many PaymentUnit per InvoiceUnit?".
+            // The field says: `Tasa de Cambio (${paymentCurrency}/${purchase.currencyCode})`
+            // If Payment=USD, Invoice=VES. Tasa = USD/VES? No, usually VES/USD.
+            // Let's stick to the convention: Rate is always expressed as "How many Quote per Base".
+            // But here we are simple. 
+            // Let's set the Rate to be: "Value of 1 PaymentUnit in terms of InvoiceUnit" *OR* vice versa?
+
+            // Re-reading previous logic:
+            // "Invoice USD. Paying VES. Rate = 50. Paid 500 VES. Equivalent = 500 / 50 = 10 USD."
+            // Here Rate = VES/USD (Price of 1 USD in VES).
+
+            // New Case: Invoice VES. Paying USD. 
+            // If I pay 10 USD. Rate is 50 VES/USD.
+            // Equivalent = 10 * 50 = 500 VES.
+
+            // So in both cases, the "Rate" the user usually has in mind is the "VES/USD" rate (e.g. 50) 
+            // but apply math differently?
+
+            // However, standard `exchangeRate` field usually implies a multiplier to convert Payment -> Invoice?
+            // No, in the previous code:
+            // if (purchase?.currencyCode === 'USD' && paymentCurrency === 'VES') { final = amount / rate; }
+            // if (purchase?.currencyCode === 'VES' && paymentCurrency === 'USD') { final = amount * rate; }
+
+            // This implies `rate` is ALWAYS "VES per USD" (or the dominant pair rate).
+
             const vesRate = invoiceCurrencyObj?.exchangeRate || 1;
-            setExchangeRate(1 / vesRate);
+            // If Invoice is VES, it's the primary/base or has rate? 
+            // Actually usually USD is base in this system? 
+            // Let's assume `currencies` has the rate relative to USD?
+            // If USD is base (rate 1), and VES is quote (rate 50).
+
+            form.setFieldsValue({ exchangeRate: vesRate });
         }
-        // Case C: Other combinations (e.g. EUR to USD) - For now keep simple
         else {
-            // Fallback: If both have rates relative to base (USD), calculate cross rate
-            // For now, if we can't determine, set to 1 or 0 to force user input
-            // Ideally we just default to invoice currency rate if available
-            setExchangeRate(0);
+            form.setFieldsValue({ exchangeRate: 0 });
         }
 
-    }, [paymentCurrency, purchase, currencies]);
+    }, [paymentCurrency, purchase, currencies, form]);
 
 
     const registerPaymentMutation = useMutation({
@@ -88,41 +110,49 @@ export const RegisterPurchasePaymentModal = ({ open, purchase, onClose }: Regist
         },
     });
 
+    const calculateEquivalent = (payAmount: number, rate: number, payCurr: string, invCurr: string): number => {
+        if (payCurr === invCurr) return payAmount;
+        if (!rate) return 0;
+
+        // Logic based on the standard "VES Rate" (e.g. 50)
+        // If dealing with VES and USD:
+        if ((payCurr === 'VES' && invCurr === 'USD')) {
+            return payAmount / rate;
+        }
+        if ((payCurr === 'USD' && invCurr === 'VES')) {
+            return payAmount * rate;
+        }
+
+        // Fallback or other pairs?
+        return 0;
+    };
+
     const handleSubmit = async () => {
         try {
             const values = await form.validateFields();
 
-            // The amount we send to backend MUST be in the Purchase Currency
-            // If paying in same currency, it's values.paymentAmount
-            // If paying in different currency, we rely on our calculator logic
-            // BUT for validation and safety, let's recalculate or use `equivalentAmount` logic
+            // If paying in same currency, strict equality
+            let finalAmountInPurchaseCurrency = values.paymentAmount;
 
-            let finalAmountInPurchaseCurrency = 0;
+            if (paymentCurrency !== purchase?.currencyCode) {
+                finalAmountInPurchaseCurrency = calculateEquivalent(
+                    values.paymentAmount,
+                    values.exchangeRate,
+                    paymentCurrency,
+                    purchase?.currencyCode || ''
+                );
 
-            if (paymentCurrency === purchase?.currencyCode) {
-                finalAmountInPurchaseCurrency = values.paymentAmount;
-            } else {
-                // Calculator:
-                // If I pay X PaymentCurrency, how much is that in InvoiceCurrency?
-                // Example: Invoice USD. Paying VES. Rate = 50.
-                // Paid 500 VES. 
-                // Equivalent USD = 500 / 50 = 10 USD.
-
-                // Formula depends on direction.
-                if (purchase?.currencyCode === 'USD' && paymentCurrency === 'VES') {
-                    finalAmountInPurchaseCurrency = values.paymentAmount / values.exchangeRate;
-                } else if (purchase?.currencyCode === 'VES' && paymentCurrency === 'USD') {
-                    finalAmountInPurchaseCurrency = values.paymentAmount * values.exchangeRate; // Wait.
-                    // Invoice 500 VES. I pay 10 USD. Rate 50.
-                    // 10 * 50 = 500 VES. Correct.
-                } else {
-                    // For conversion safety fallback
-                    message.error('Conversión de moneda no soportada automáticamente. Verifique montos.');
+                if (finalAmountInPurchaseCurrency === 0) {
+                    message.error('Error calculando la conversión. Verifique la tasa.');
                     return;
                 }
             }
 
             if (purchase) {
+                // Determine the "Rate to store".
+                // We want to store the rate that was used. 
+                // Ideally we store "1 USD = X VES".
+
                 registerPaymentMutation.mutate({
                     purchaseId: purchase.id,
                     amount: finalAmountInPurchaseCurrency,
@@ -136,20 +166,15 @@ export const RegisterPurchasePaymentModal = ({ open, purchase, onClose }: Regist
         }
     };
 
-    // Calculate equivalent when input changes
-    const handleAmountChange = (val: number | null) => {
-        const amount = val || 0;
-        const rate = form.getFieldValue('exchangeRate') || 1;
+    // Triggered when Amount or Rate changes
+    const updateEquivalent = () => {
+        const amount = form.getFieldValue('paymentAmount') || 0;
+        const rate = form.getFieldValue('exchangeRate') || 0;
 
-        let equiv = 0;
-        if (paymentCurrency === purchase?.currencyCode) {
-            equiv = amount;
-        } else if (purchase?.currencyCode === 'USD' && paymentCurrency === 'VES') {
-            equiv = amount / rate;
-        } else if (purchase?.currencyCode === 'VES' && paymentCurrency === 'USD') {
-            equiv = amount * rate;
+        if (purchase) {
+            const equiv = calculateEquivalent(amount, rate, paymentCurrency, purchase.currencyCode);
+            setEquivalentAmount(equiv);
         }
-        setEquivalentAmount(equiv);
     };
 
     if (!purchase) return null;
@@ -185,22 +210,21 @@ export const RegisterPurchasePaymentModal = ({ open, purchase, onClose }: Regist
                         options={[
                             { value: 'USD', label: 'USD ($)' },
                             { value: 'VES', label: 'Bolívares (Bs.)' },
-                            // Add others if needed
                         ]}
                     />
                 </Form.Item>
 
                 {paymentCurrency !== purchase.currencyCode && (
                     <Form.Item
-                        label={`Tasa de Cambio (${paymentCurrency}/${purchase.currencyCode})`}
+                        label="Tasa de Cambio (Bs/USD)"
                         name="exchangeRate"
-                        initialValue={exchangeRate}
                         rules={[{ required: true, message: 'Requerido' }]}
+                        help="Ingrese la tasa de cambio actual (ej. 50.00)"
                     >
                         <InputNumber
                             style={{ width: '100%' }}
                             precision={4}
-                            onChange={() => handleAmountChange(form.getFieldValue('paymentAmount'))}
+                            onChange={updateEquivalent}
                         />
                     </Form.Item>
                 )}
@@ -217,13 +241,20 @@ export const RegisterPurchasePaymentModal = ({ open, purchase, onClose }: Regist
                         style={{ width: '100%' }}
                         precision={2}
                         prefix={paymentCurrency === 'USD' ? '$' : (paymentCurrency === 'VES' ? 'Bs' : '')}
-                        onChange={handleAmountChange}
+                        onChange={updateEquivalent}
                     />
                 </Form.Item>
 
                 {paymentCurrency !== purchase.currencyCode && (
                     <Alert
-                        message={`Equivalente a abonar: ${purchase.currencyCode === 'VES' ? 'Bs.' : '$'} ${formatVenezuelanNumber(equivalentAmount)}`}
+                        message={
+                            <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                <span>Equivalente en factura:</span>
+                                <span style={{ fontWeight: 'bold', fontSize: '16px' }}>
+                                    {purchase.currencyCode === 'VES' ? 'Bs.' : '$'} {formatVenezuelanNumber(equivalentAmount)}
+                                </span>
+                            </div>
+                        }
                         type="info"
                         showIcon
                         style={{ marginBottom: 16 }}

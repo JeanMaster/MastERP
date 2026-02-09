@@ -82,7 +82,7 @@ export class ProductsService {
                     components: {
                         include: {
                             componentProduct: {
-                                select: { id: true, name: true, sku: true, costPrice: true }
+                                select: { id: true, name: true, sku: true, costPrice: true, stock: true }
                             }
                         }
                     }
@@ -125,7 +125,7 @@ export class ProductsService {
             include: {
                 category: { select: { id: true, name: true } },
                 subcategory: { select: { id: true, name: true } },
-                currency: { select: { id: true, name: true, symbol: true } },
+                currency: { select: { id: true, name: true, symbol: true, exchangeRate: true, isPrimary: true } },
                 unit: { select: { id: true, name: true, abbreviation: true } },
                 secondaryUnit: { select: { id: true, name: true, abbreviation: true } },
                 components: {
@@ -148,7 +148,7 @@ export class ProductsService {
             include: {
                 category: { select: { id: true, name: true } },
                 subcategory: { select: { id: true, name: true } },
-                currency: { select: { id: true, name: true, symbol: true } },
+                currency: { select: { id: true, name: true, symbol: true, exchangeRate: true, isPrimary: true } },
                 unit: { select: { id: true, name: true, abbreviation: true } },
                 components: {
                     include: {
@@ -304,7 +304,7 @@ export class ProductsService {
                     components: {
                         include: {
                             componentProduct: {
-                                select: { id: true, name: true, sku: true, costPrice: true }
+                                select: { id: true, name: true, sku: true, costPrice: true, stock: true }
                             }
                         }
                     }
@@ -374,6 +374,37 @@ export class ProductsService {
 
     // Convertir Decimals a Numbers para JSON
     private convertDecimalsToNumber(product: any) {
+        let calculatedStock = product.stock !== undefined && product.stock !== null ? Number(product.stock) : 0;
+
+        // DYNAMIC STOCK FOR COMPOSED PRODUCTS
+        // If it's a composed product, calculate stock based on components
+        if (product.type === 'COMPOSED' && product.components && product.components.length > 0) {
+            // Check if we have stock information for components
+            const hasComponentStockInfo = product.components.every(c => c.componentProduct && c.componentProduct.stock !== undefined);
+
+            if (hasComponentStockInfo) {
+                let maxPossibleSets = Infinity;
+
+                for (const comp of product.components) {
+                    const compStock = Number(comp.componentProduct.stock || 0);
+                    const qtyNeeded = Number(comp.quantity || 0);
+
+                    if (qtyNeeded > 0) {
+                        const possible = Math.floor(compStock / qtyNeeded);
+                        if (possible < maxPossibleSets) {
+                            maxPossibleSets = possible;
+                        }
+                    }
+                }
+
+                if (maxPossibleSets !== Infinity) {
+                    calculatedStock = maxPossibleSets;
+                } else {
+                    calculatedStock = 0;
+                }
+            }
+        }
+
         return {
             ...product,
             costPrice: Number(product.costPrice),
@@ -384,7 +415,7 @@ export class ProductsService {
             secondarySalePrice: product.secondarySalePrice ? Number(product.secondarySalePrice) : null,
             secondaryOfferPrice: product.secondaryOfferPrice ? Number(product.secondaryOfferPrice) : null,
             secondaryWholesalePrice: product.secondaryWholesalePrice ? Number(product.secondaryWholesalePrice) : null,
-            stock: Number(product.stock),
+            stock: calculatedStock,
             unitsPerSecondaryUnit: product.unitsPerSecondaryUnit ? Number(product.unitsPerSecondaryUnit) : null,
         };
     }
@@ -398,6 +429,7 @@ export class ProductsService {
         salePriceMargin: number;
         offerPriceMargin?: number;
         wholesalePriceMargin?: number;
+        currencyId?: string;
     }>) {
         const results: Array<{
             success: boolean;
@@ -407,7 +439,7 @@ export class ProductsService {
         }> = [];
 
         for (const update of updates) {
-            const { productId, newCostPrice, salePriceMargin, offerPriceMargin, wholesalePriceMargin } = update;
+            const { productId, newCostPrice, salePriceMargin, offerPriceMargin, wholesalePriceMargin, currencyId } = update;
 
             // Calculate new prices based on margins
             const newSalePrice = newCostPrice * (1 + salePriceMargin / 100);
@@ -426,14 +458,20 @@ export class ProductsService {
                         salePrice: new Decimal(newSalePrice),
                         offerPrice: newOfferPrice ? new Decimal(newOfferPrice) : null,
                         wholesalePrice: newWholesalePrice ? new Decimal(newWholesalePrice) : null,
+                        currencyId: currencyId || undefined,
                     },
-                    select: {
-                        id: true,
-                        name: true,
-                        costPrice: true,
-                        salePrice: true,
-                        offerPrice: true,
-                        wholesalePrice: true,
+                    include: { // Changed from select to include to get full object for consistency
+                        category: { select: { id: true, name: true } },
+                        subcategory: { select: { id: true, name: true } },
+                        currency: { select: { id: true, name: true, symbol: true } },
+                        unit: { select: { id: true, name: true, abbreviation: true } },
+                        components: {
+                            include: {
+                                componentProduct: {
+                                    select: { id: true, name: true, sku: true, costPrice: true, stock: true }
+                                }
+                            }
+                        }
                     }
                 });
 

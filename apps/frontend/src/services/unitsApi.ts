@@ -1,6 +1,4 @@
-import axios from 'axios';
-
-import { BASE_URL as API_URL } from './apiConfig';
+import { api } from './apiConfig';
 
 export interface Unit {
     id: string;
@@ -23,26 +21,26 @@ export interface UpdateUnitDto {
 
 export const unitsApi = {
     getAll: async (): Promise<Unit[]> => {
-        const { data } = await axios.get(`${API_URL}/units`);
+        const { data } = await api.get('/units');
         return data;
     },
 
     getOne: async (id: string): Promise<Unit> => {
-        const { data } = await axios.get(`${API_URL}/units/${id}`);
+        const { data } = await api.get(`/units/${id}`);
         return data;
     },
 
     create: async (dto: CreateUnitDto): Promise<Unit> => {
-        const { data } = await axios.post(`${API_URL}/units`, dto);
+        const { data } = await api.post('/units', dto);
         return data;
     },
 
     update: async (id: string, dto: UpdateUnitDto): Promise<Unit> => {
-        const { data } = await axios.patch(`${API_URL}/units/${id}`, dto);
+        const { data } = await api.patch(`/units/${id}`, dto);
         return data;
     },
 
     delete: async (id: string): Promise<void> => {
-        await axios.delete(`${API_URL}/units/${id}`);
+        await api.delete(`/units/${id}`);
     },
 };

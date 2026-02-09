@@ -1,5 +1,4 @@
-import axios from 'axios';
-import { BASE_URL as API_URL } from './apiConfig';
+import { api } from './apiConfig';
 
 export interface Expense {
     id: string;
@@ -32,23 +31,21 @@ export interface UpdateExpenseDto extends Partial<CreateExpenseDto> { }
 
 export const expensesApi = {
     getAll: async (): Promise<Expense[]> => {
-        const response = await axios.get(`${API_URL}/expenses`);
-        // Convert string amounts to numbers if necessary (Prisma decimals come as strings frequently, but Nest Transform might handle it)
-        // For now trusting it comes as number or string we can parse
+        const response = await api.get('/expenses');
         return response.data;
     },
 
     create: async (data: CreateExpenseDto): Promise<Expense> => {
-        const response = await axios.post(`${API_URL}/expenses`, data);
+        const response = await api.post('/expenses', data);
         return response.data;
     },
 
     update: async (id: string, data: UpdateExpenseDto): Promise<Expense> => {
-        const response = await axios.patch(`${API_URL}/expenses/${id}`, data);
+        const response = await api.patch(`/expenses/${id}`, data);
         return response.data;
     },
 
     delete: async (id: string): Promise<void> => {
-        await axios.delete(`${API_URL}/expenses/${id}`);
+        await api.delete(`/expenses/${id}`);
     }
 };

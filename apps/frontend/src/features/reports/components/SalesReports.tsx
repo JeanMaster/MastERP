@@ -11,7 +11,8 @@ import {
     Statistic,
     Space,
     Typography,
-    Grid
+    Grid,
+    Alert
 } from 'antd';
 import {
     ReloadOutlined,
@@ -45,6 +46,7 @@ export const SalesReports = () => {
     const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
     const [isEditPaymentModalOpen, setIsEditPaymentModalOpen] = useState(false);
     const [newPaymentMethod, setNewPaymentMethod] = useState<string>('');
+    const [pageSize, setPageSize] = useState<number>(10);
     const queryClient = useQueryClient();
 
     const updatePaymentSchema = useMutation({
@@ -92,11 +94,14 @@ export const SalesReports = () => {
     };
 
     // Fetch sales data with filters
-    const { data: sales = [], isLoading, refetch } = useQuery({
+    const { data, isLoading, refetch } = useQuery({
         queryKey: ['sales-reports', filters],
         queryFn: () => salesApi.getWithFilters(filters),
         enabled: true
     });
+
+    const sales = data?.sales || [];
+    const summary = data?.summary || { totalVentas: 0, ingresoBruto: 0, ingresoNominal: 0, descuentos: 0, ticketPromedio: 0 };
 
     // Fetch reference data for filters
     const { data: products = [] } = useQuery({
@@ -109,11 +114,11 @@ export const SalesReports = () => {
         queryFn: () => clientsApi.getAll(),
     });
 
-    // Calculate summary statistics
-    const totalSales = sales.length;
-    const totalRevenue = sales.reduce((sum, sale) => sum + Number(sale.total || 0), 0);
-    const totalDiscount = sales.reduce((sum, sale) => sum + Number(sale.discount || 0), 0);
-    const averageTicket = totalSales > 0 ? totalRevenue / totalSales : 0;
+    // Use backend summary statistics
+    const totalSales = summary.totalVentas;
+    const totalRevenue = summary.ingresoBruto;
+    const totalDiscount = summary.descuentos;
+    const averageTicket = summary.ticketPromedio;
 
     // Handle filter changes
     const handleDateRangeChange = (dates: any) => {
@@ -179,13 +184,13 @@ export const SalesReports = () => {
             title: 'Cliente',
             dataIndex: 'client',
             key: 'client',
-            width: 150,
+            width: 140,
             render: (client: any) => client?.name || 'Cliente General'
         },
         {
             title: 'Productos',
             key: 'products',
-            width: 250,
+            // No fixed width - let it flex
             render: (_: any, record: Sale) => (
                 <div style={{ maxWidth: '100%' }}>
                     {record.items.slice(0, 3).map(item => (
@@ -202,22 +207,35 @@ export const SalesReports = () => {
             )
         },
         {
-            title: 'Total',
+            title: 'Monto Pagado',
             dataIndex: 'total',
-            key: 'total',
+            key: 'nominalTotal',
             width: 120,
             align: 'right' as const,
-            render: (value: number | null | undefined) => (
-                <Text strong style={{ color: '#1890ff', fontSize: '14px' }}>
-                    {formatVenezuelanPrice(value || 0)}
+            render: (value: number) => (
+                <Text style={{ fontSize: '14px', color: '#595959' }}>
+                    {formatVenezuelanPrice(value)}
                 </Text>
             ),
             sorter: (a: Sale, b: Sale) => (a.total || 0) - (b.total || 0)
         },
         {
+            title: 'Total (Ajust.)',
+            dataIndex: 'revaluedTotal',
+            key: 'total',
+            width: 120,
+            align: 'right' as const,
+            render: (value: number | null | undefined, record: Sale) => (
+                <Text strong style={{ color: '#1890ff', fontSize: '14px' }}>
+                    {formatVenezuelanPrice(value ?? record.total ?? 0)}
+                </Text>
+            ),
+            sorter: (a: Sale, b: Sale) => (a.revaluedTotal || a.total || 0) - (b.revaluedTotal || b.total || 0)
+        },
+        {
             title: 'Acciones',
             key: 'actions',
-            width: 100,
+            width: 120,
             align: 'center' as const,
             fixed: isMobile ? false : ('right' as const),
             render: (_: any, record: Sale) => (
@@ -291,31 +309,44 @@ export const SalesReports = () => {
 
             {/* Summary Statistics */}
             <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
-                <Col xs={12} lg={6}>
+                <Col xs={12} lg={4}>
                     <Card size="small">
                         <Statistic
                             title="Total Ventas"
                             value={totalSales}
                             prefix={<ShoppingOutlined />}
-                            valueStyle={{ color: '#1890ff', fontSize: isMobile ? 18 : 24 }}
-                            styles={{ content: { color: '#1890ff', fontSize: isMobile ? 18 : 24 } }}
+                            valueStyle={{ color: '#1890ff', fontSize: isMobile ? 18 : 22 }}
+                            styles={{ content: { color: '#1890ff', fontSize: isMobile ? 18 : 22 } }}
                         />
                     </Card>
                 </Col>
-                <Col xs={12} lg={6}>
+                <Col xs={12} lg={5}>
                     <Card size="small">
                         <Statistic
-                            title="Ingreso Bruto"
+                            title="Ingreso Bruto (Ajustado)"
                             value={totalRevenue}
                             precision={2}
                             prefix={<DollarOutlined />}
                             formatter={(value) => formatVenezuelanPrice(Number(value))}
-                            valueStyle={{ color: '#52c41a', fontSize: isMobile ? 18 : 24 }}
-                            styles={{ content: { color: '#52c41a', fontSize: isMobile ? 18 : 24 } }}
+                            valueStyle={{ color: '#52c41a', fontSize: isMobile ? 18 : 22 }}
+                            styles={{ content: { color: '#52c41a', fontSize: isMobile ? 18 : 22 } }}
                         />
                     </Card>
                 </Col>
-                <Col xs={12} lg={6}>
+                <Col xs={12} lg={5}>
+                    <Card size="small" style={{ border: '1px solid #d9d9d9' }}>
+                        <Statistic
+                            title="Ingreso Real (Nominal)"
+                            value={summary.ingresoNominal || 0}
+                            precision={2}
+                            prefix={<ShoppingOutlined style={{ opacity: 0.7 }} />}
+                            formatter={(value) => formatVenezuelanPrice(Number(value))}
+                            valueStyle={{ color: '#595959', fontSize: isMobile ? 18 : 22 }}
+                            styles={{ content: { color: '#595959', fontSize: isMobile ? 18 : 22 } }}
+                        />
+                    </Card>
+                </Col>
+                <Col xs={12} lg={5}>
                     <Card size="small">
                         <Statistic
                             title="Descuentos"
@@ -323,12 +354,12 @@ export const SalesReports = () => {
                             precision={2}
                             prefix={<DollarOutlined />}
                             formatter={(value) => formatVenezuelanPrice(Number(value))}
-                            valueStyle={{ color: '#ff4d4f', fontSize: isMobile ? 18 : 24 }}
-                            styles={{ content: { color: '#ff4d4f', fontSize: isMobile ? 18 : 24 } }}
+                            valueStyle={{ color: '#ff4d4f', fontSize: isMobile ? 18 : 22 }}
+                            styles={{ content: { color: '#ff4d4f', fontSize: isMobile ? 18 : 22 } }}
                         />
                     </Card>
                 </Col>
-                <Col xs={12} lg={6}>
+                <Col xs={12} lg={5}>
                     <Card size="small">
                         <Statistic
                             title="Ticket Promedio"
@@ -336,12 +367,27 @@ export const SalesReports = () => {
                             precision={2}
                             prefix={<DollarOutlined />}
                             formatter={(value) => formatVenezuelanPrice(Number(value))}
-                            valueStyle={{ color: '#722ed1', fontSize: isMobile ? 18 : 24 }}
-                            styles={{ content: { color: '#722ed1', fontSize: isMobile ? 18 : 24 } }}
+                            valueStyle={{ color: '#722ed1', fontSize: isMobile ? 18 : 22 }}
+                            styles={{ content: { color: '#722ed1', fontSize: isMobile ? 18 : 22 } }}
                         />
                     </Card>
                 </Col>
             </Row>
+
+            {!isMobile && (
+                <Alert
+                    message="Guía de Devoluciones y Ajuste por Inflación"
+                    description={
+                        <Space direction="vertical" size={2}>
+                            <Text>• El <Text strong>Ingreso Real (Nominal)</Text> es la suma de los montos exactos cobrados el día de la venta. <Text strong style={{ color: '#cf1322' }}>Use el dato de 'Monto Pagado' en la tabla para devoluciones.</Text></Text>
+                            <Text>• El <Text strong>Ingreso Bruto (Ajustado)</Text> revaloriza las ventas a la tasa de hoy para comparar peras con peras frente a la inflación.</Text>
+                        </Space>
+                    }
+                    type="info"
+                    showIcon
+                    style={{ marginBottom: 16 }}
+                />
+            )}
 
             <Card title="Filtros" style={{ marginBottom: 16 }} size={isMobile ? 'small' : 'default'}>
                 <Row gutter={[16, 16]}>
@@ -419,11 +465,14 @@ export const SalesReports = () => {
                     rowKey="id"
                     loading={isLoading}
                     pagination={{
-                        pageSize: 10,
+                        pageSize,
+                        showSizeChanger: true,
+                        onShowSizeChange: (_, size) => setPageSize(size),
+                        pageSizeOptions: ['10', '20', '50', '100'],
                         size: isMobile ? 'small' : 'default',
                         responsive: true
                     }}
-                    scroll={{ x: 800 }}
+                    scroll={{ x: 900 }}
                     size={isMobile ? 'small' : 'middle'}
                 />
             </Card>

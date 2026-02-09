@@ -1,9 +1,11 @@
-import { Controller, Get, Post, Body, Param } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { InvoiceService } from './invoice.service';
 import { CreateInvoiceDto } from './dto/create-invoice.dto';
+import { AuthGuard } from '@nestjs/passport';
 
 @Controller('invoice')
+@UseGuards(AuthGuard('jwt'))
 export class InvoiceController {
     constructor(private readonly invoiceService: InvoiceService) { }
 

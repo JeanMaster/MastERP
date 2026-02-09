@@ -18,13 +18,15 @@ import {
     ReloadOutlined,
     CheckCircleOutlined,
     CloseCircleOutlined,
-    ExclamationCircleOutlined
+    ExclamationCircleOutlined,
+    EyeOutlined
 } from '@ant-design/icons';
 import { useQuery } from '@tanstack/react-query';
 import { returnsApi, type Return, type ReturnFilters } from '../../services/returnsApi';
 import { formatVenezuelanPrice } from '../../utils/formatters';
 import dayjs from 'dayjs';
 import { CreateReturnModal } from './components/CreateReturnModal';
+import { ReturnDetailsModal } from './components/ReturnDetailsModal';
 
 const { RangePicker } = DatePicker;
 const { Title, Text } = Typography;
@@ -35,6 +37,13 @@ export const ReturnsPage = () => {
     const [filters, setFilters] = useState<ReturnFilters>({});
     const [dateRange, setDateRange] = useState<[dayjs.Dayjs, dayjs.Dayjs] | null>(null);
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+    const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
+    const [selectedReturn, setSelectedReturn] = useState<Return | null>(null);
+
+    const handleViewDetails = (record: Return) => {
+        setSelectedReturn(record);
+        setIsDetailsModalOpen(true);
+    };
 
     // Fetch returns data
     const { data: returns = [], isLoading, refetch } = useQuery({
@@ -191,6 +200,13 @@ export const ReturnsPage = () => {
             width: 180,
             render: (_: any, record: Return) => (
                 <Space size="small">
+                    <Button
+                        type="default"
+                        size="small"
+                        icon={<EyeOutlined />}
+                        onClick={() => handleViewDetails(record)}
+                        title="Ver detalle"
+                    />
                     {record.status === 'PENDING' && (
                         <>
                             <Button
@@ -314,6 +330,12 @@ export const ReturnsPage = () => {
                     setIsCreateModalOpen(false);
                     refetch();
                 }}
+            />
+
+            <ReturnDetailsModal
+                open={isDetailsModalOpen}
+                onClose={() => setIsDetailsModalOpen(false)}
+                record={selectedReturn}
             />
         </div>
     );

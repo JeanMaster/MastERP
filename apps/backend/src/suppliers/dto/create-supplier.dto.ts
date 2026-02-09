@@ -1,4 +1,4 @@
-import { IsString, IsEmail, IsOptional, IsNotEmpty, Length } from 'class-validator';
+import { IsString, IsEmail, IsOptional, IsNotEmpty, Length, IsBoolean } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class CreateSupplierDto {
@@ -42,4 +42,9 @@ export class CreateSupplierDto {
     @IsOptional()
     @IsString()
     category?: string;
+
+    @ApiProperty({ example: true, required: false, description: 'Estado del proveedor (activo/inactivo)' })
+    @IsOptional()
+    @IsBoolean({ message: 'El estado debe ser un valor booleano' })
+    active?: boolean;
 }

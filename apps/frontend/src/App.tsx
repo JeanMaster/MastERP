@@ -42,12 +42,14 @@ import {
 import { AuthProvider } from './features/auth/AuthProvider';
 import { LoginPage } from './features/auth/LoginPage';
 import { ProtectedRoute } from './features/auth/ProtectedRoute';
+import { PriceCheckerPage } from './features/price-checker/PriceCheckerPage';
 
 function App() {
   return (
     <AuthProvider>
       <Routes>
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/visor" element={<PriceCheckerPage />} />
 
         <Route path="/" element={
           <ProtectedRoute>

@@ -25,6 +25,16 @@ export class BanksController {
         return this.banksService.findOne(id);
     }
 
+    @Get(':id/history')
+    getHistory(@Param('id') id: string, @Query('limit') limit?: number) {
+        return this.banksService.getHistory(id, limit ? Number(limit) : 50);
+    }
+
+    @Post('movements')
+    addMovement(@Body() dto: any) {
+        return this.banksService.addMovement(dto);
+    }
+
     @Patch(':id')
     update(@Param('id') id: string, @Body() updateBankDto: UpdateBankAccountDto) {
         return this.banksService.update(id, updateBankDto);

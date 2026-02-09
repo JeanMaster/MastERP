@@ -71,7 +71,11 @@ export const SuppliersPage: React.FC = () => {
         if (!editingSupplier) return;
         setModalLoading(true);
         try {
-            await suppliersApi.update(editingSupplier.id, values);
+            // Remove internal fields that shouldn't be sent to the API (like id, createdAt, updatedAt)
+            // though they might not be in 'values', it's safer to destructure what we expect or exclude what we don't.
+            const { ...updateData } = values as any;
+
+            await suppliersApi.update(editingSupplier.id, updateData);
             message.success('Proveedor actualizado');
             setModalVisible(false);
             setEditingSupplier(null);

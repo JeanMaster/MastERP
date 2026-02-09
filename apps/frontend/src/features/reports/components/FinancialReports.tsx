@@ -45,9 +45,15 @@ export const FinancialReports = () => {
             if (dateFilter === 'day') {
                 startDate = dayjs().format('YYYY-MM-DD');
                 endDate = dayjs().format('YYYY-MM-DD');
+            } else if (dateFilter === 'yesterday') {
+                startDate = dayjs().subtract(1, 'day').format('YYYY-MM-DD');
+                endDate = dayjs().subtract(1, 'day').format('YYYY-MM-DD');
             } else if (dateFilter === 'month') {
                 startDate = dayjs().startOf('month').format('YYYY-MM-DD');
                 endDate = dayjs().endOf('month').format('YYYY-MM-DD');
+            } else if (dateFilter === 'lastMonth') {
+                startDate = dayjs().subtract(1, 'month').startOf('month').format('YYYY-MM-DD');
+                endDate = dayjs().subtract(1, 'month').endOf('month').format('YYYY-MM-DD');
             }
             // 'all' leaves dates as undefined, backend handles it as everything or we could set a very early date
             // However, my backend logic defaults to current month if undefined. 
@@ -143,7 +149,9 @@ export const FinancialReports = () => {
                             buttonStyle="solid"
                         >
                             <Radio.Button value="day">Hoy</Radio.Button>
+                            <Radio.Button value="yesterday">Ayer</Radio.Button>
                             <Radio.Button value="month">Este Mes</Radio.Button>
+                            <Radio.Button value="lastMonth">Mes Anterior</Radio.Button>
                             <Radio.Button value="all">Todo</Radio.Button>
                         </Radio.Group>
                     </Col>
@@ -160,9 +168,9 @@ export const FinancialReports = () => {
                 </Row>
             </div>
 
-            {/* Summary Cards */}
-            <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
-                <Col xs={24} sm={12} lg={4}>
+            {/* Summary Row 1 */}
+            <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
+                <Col xs={24} sm={12} lg={6}>
                     <Card>
                         <Statistic
                             title="Ingresos (Ventas)"
@@ -175,7 +183,7 @@ export const FinancialReports = () => {
                         />
                     </Card>
                 </Col>
-                <Col xs={24} sm={12} lg={4}>
+                <Col xs={24} sm={12} lg={6}>
                     <Card>
                         <Statistic
                             title="Costo Productos"
@@ -188,7 +196,7 @@ export const FinancialReports = () => {
                         />
                     </Card>
                 </Col>
-                <Col xs={24} sm={12} lg={4}>
+                <Col xs={24} sm={12} lg={6}>
                     <Card>
                         <Statistic
                             title="Gastos Operativos"
@@ -201,7 +209,7 @@ export const FinancialReports = () => {
                         />
                     </Card>
                 </Col>
-                <Col xs={24} sm={12} lg={4}>
+                <Col xs={24} sm={12} lg={6}>
                     <Card>
                         <Statistic
                             title="Utilidad Real"
@@ -217,7 +225,43 @@ export const FinancialReports = () => {
                         </div>
                     </Card>
                 </Col>
-                <Col xs={24} sm={12} lg={4}>
+            </Row>
+
+            {/* Summary Row 2 */}
+            <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
+                <Col xs={24} sm={12} lg={6}>
+                    <Card>
+                        <Statistic
+                            title="Devoluciones (Dinero)"
+                            value={report.totalMonetaryRefunds}
+                            precision={2}
+                            prefix={currencySymbol}
+                            valueStyle={{ color: '#ff4d4f' }}
+                            styles={{ content: { color: '#ff4d4f' } }}
+                            suffix={<CreditCardOutlined />}
+                        />
+                        <div style={{ marginTop: 8, fontSize: 10, color: '#666' }}>
+                            Dinero entregado al cliente
+                        </div>
+                    </Card>
+                </Col>
+                <Col xs={24} sm={12} lg={6}>
+                    <Card>
+                        <Statistic
+                            title="Cambios (Producto)"
+                            value={report.totalExchangeValue}
+                            precision={2}
+                            prefix={currencySymbol}
+                            valueStyle={{ color: '#faad14' }}
+                            styles={{ content: { color: '#faad14' } }}
+                            suffix={<ShoppingOutlined />}
+                        />
+                        <div style={{ marginTop: 8, fontSize: 10, color: '#666' }}>
+                            Valor de mercancía devuelta
+                        </div>
+                    </Card>
+                </Col>
+                <Col xs={24} sm={12} lg={6}>
                     <Card>
                         <Statistic
                             title="Inversión Stock"
@@ -233,7 +277,7 @@ export const FinancialReports = () => {
                         </div>
                     </Card>
                 </Col>
-                <Col xs={24} sm={12} lg={4}>
+                <Col xs={24} sm={12} lg={6}>
                     <Card>
                         <Statistic
                             title="Métodos Pago"
@@ -249,7 +293,12 @@ export const FinancialReports = () => {
             {/* Charts */}
             <Row gutter={16} style={{ marginBottom: 16 }}>
                 <Col xs={24} lg={14}>
-                    <Card title={`Tendencia de Ventas (${dateFilter === 'day' ? 'Hoy' : dateFilter === 'month' ? 'Mes' : 'Todo'})`}>
+                    <Card title={`Tendencia de Ventas (${dateFilter === 'day' ? 'Hoy' :
+                        dateFilter === 'yesterday' ? 'Ayer' :
+                            dateFilter === 'month' ? 'Este Mes' :
+                                dateFilter === 'lastMonth' ? 'Mes Anterior' :
+                                    'Todo'
+                        })`}>
                         <ResponsiveContainer width="100%" height={300}>
                             <BarChart data={report.dailySalesData}>
                                 <CartesianGrid strokeDasharray="3 3" />

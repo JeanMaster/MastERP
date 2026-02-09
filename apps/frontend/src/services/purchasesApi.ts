@@ -1,6 +1,4 @@
-import axios from 'axios';
-
-import { BASE_URL as API_URL } from './apiConfig';
+import { api } from './apiConfig';
 
 export interface PurchaseItem {
     id: string;
@@ -72,22 +70,22 @@ export interface CreatePurchasePaymentDto {
 
 export const purchasesApi = {
     getAll: async (): Promise<Purchase[]> => {
-        const response = await axios.get(`${API_URL}/purchases`);
+        const response = await api.get('/purchases');
         return response.data;
     },
 
     getById: async (id: string): Promise<Purchase> => {
-        const response = await axios.get(`${API_URL}/purchases/${id}`);
+        const response = await api.get(`/purchases/${id}`);
         return response.data;
     },
 
     create: async (data: CreatePurchaseDto): Promise<Purchase> => {
-        const response = await axios.post(`${API_URL}/purchases`, data);
+        const response = await api.post('/purchases', data);
         return response.data;
     },
 
     registerPayment: async (data: CreatePurchasePaymentDto): Promise<any> => {
-        const response = await axios.post(`${API_URL}/purchases/payments`, data);
+        const response = await api.post('/purchases/payments', data);
         return response.data;
     },
 };

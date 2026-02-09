@@ -1,11 +1,13 @@
-import { Controller, Post, Get, HttpCode, Res, UseInterceptors, UploadedFile, BadRequestException } from '@nestjs/common';
+import { Controller, Post, Get, HttpCode, Res, UseInterceptors, UploadedFile, BadRequestException, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { FileInterceptor } from '@nestjs/platform-express';
 import type { Response } from 'express';
 import { DevToolsService } from './dev-tools.service';
+import { AuthGuard } from '@nestjs/passport';
 
 @ApiTags('dev-tools')
 @Controller('dev-tools')
+@UseGuards(AuthGuard('jwt'))
 export class DevToolsController {
     constructor(private readonly devToolsService: DevToolsService) { }
 

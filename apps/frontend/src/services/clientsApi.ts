@@ -1,6 +1,4 @@
-import axios from 'axios';
-
-import { BASE_URL as API_URL } from './apiConfig';
+import { api } from './apiConfig';
 
 export interface Client {
     id: string; // "V-12345678"
@@ -33,29 +31,29 @@ export interface UpdateClientDto extends Partial<CreateClientDto> { }
 
 export const clientsApi = {
     getAll: async (search?: string): Promise<Client[]> => {
-        const params = new URLSearchParams();
-        if (search) params.append('search', search);
+        const params: any = {};
+        if (search) params.search = search;
 
-        const { data } = await axios.get(`${API_URL}/clients`, { params });
+        const { data } = await api.get('/clients', { params });
         return data;
     },
 
     getOne: async (id: string): Promise<Client> => {
-        const { data } = await axios.get(`${API_URL}/clients/${id}`);
+        const { data } = await api.get(`/clients/${id}`);
         return data;
     },
 
     create: async (dto: CreateClientDto): Promise<Client> => {
-        const { data } = await axios.post(`${API_URL}/clients`, dto);
+        const { data } = await api.post('/clients', dto);
         return data;
     },
 
     update: async (id: string, dto: UpdateClientDto): Promise<Client> => {
-        const { data } = await axios.patch(`${API_URL}/clients/${id}`, dto);
+        const { data } = await api.patch(`/clients/${id}`, dto);
         return data;
     },
 
     delete: async (id: string): Promise<void> => {
-        await axios.delete(`${API_URL}/clients/${id}`);
+        await api.delete(`/clients/${id}`);
     },
 };

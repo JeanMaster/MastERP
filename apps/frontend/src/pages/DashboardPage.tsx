@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Card, Row, Col, Statistic, Button, Table, Spin, Empty, Segmented } from 'antd';
+import { Card, Row, Col, Statistic, Button, Table, Spin, Empty, Segmented, FloatButton } from 'antd';
 import {
     ShoppingCartOutlined,
     ShopOutlined,
@@ -9,6 +9,8 @@ import {
     PlusOutlined,
     FileTextOutlined,
     WarningOutlined,
+    RobotOutlined,
+    RollbackOutlined,
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
@@ -18,6 +20,7 @@ import { Select } from 'antd';
 import { currenciesApi, type Currency } from '../services/currenciesApi';
 import { companySettingsApi } from '../services/companySettingsApi';
 import { useAuth } from '../features/auth/AuthProvider';
+import { AIAssistantModal } from '../components/AIAssistantModal';
 
 export const DashboardPage = () => {
     const navigate = useNavigate();
@@ -33,6 +36,7 @@ export const DashboardPage = () => {
     const [stats, setStats] = useState<DashboardStats | null>(null);
     const [loading, setLoading] = useState(true);
     const [range, setRange] = useState('7days');
+    const [aiModalVisible, setAiModalVisible] = useState(false);
 
     // Currency State
     const [currencies, setCurrencies] = useState<Currency[]>([]);
@@ -190,68 +194,95 @@ export const DashboardPage = () => {
 
             {/* KPI Cards */}
             <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
-                <Col xs={24} sm={12} lg={6}>
-                    <Card>
+                <Col xs={24} sm={12} lg={4}>
+                    <Card size="small">
                         <Statistic
                             title="Ventas Hoy"
                             value={getConvertedAmount(stats.todaySales)}
                             precision={2}
                             prefix={currentSymbol}
-                            valueStyle={{ color: '#3f8600' }}
-                            styles={{ content: { color: '#3f8600' } }}
+                            valueStyle={{ color: '#3f8600', fontSize: '20px' }}
+                            styles={{ content: { color: '#3f8600', fontSize: '20px' } }}
                             suffix={<ShoppingCartOutlined />}
                         />
                     </Card>
                 </Col>
-                <Col xs={24} sm={12} lg={6}>
-                    <Card>
+                <Col xs={24} sm={12} lg={5}>
+                    <Card size="small">
                         <Statistic
-                            title="Ventas Este Mes"
+                            title="Ventas Mes (Ajustado)"
                             value={getConvertedAmount(stats.thisMonthSales)}
                             precision={2}
                             prefix={currentSymbol}
-                            valueStyle={{ color: '#1890ff' }}
-                            styles={{ content: { color: '#1890ff' } }}
+                            valueStyle={{ color: '#1890ff', fontSize: '20px' }}
+                            styles={{ content: { color: '#1890ff', fontSize: '20px' } }}
                             suffix={
                                 monthChange >= 0 ? (
-                                    <ArrowUpOutlined style={{ color: '#3f8600' }} />
+                                    <ArrowUpOutlined style={{ color: '#3f8600', fontSize: '14px' }} />
                                 ) : (
-                                    <ArrowDownOutlined style={{ color: '#cf1322' }} />
+                                    <ArrowDownOutlined style={{ color: '#cf1322', fontSize: '14px' }} />
                                 )
                             }
                         />
-                        <div style={{ marginTop: 8, fontSize: 12, color: '#666' }}>
-                            {monthChange >= 0 ? '+' : ''}
-                            {monthChangePercent}% vs mes anterior
+                        <div style={{ marginTop: 4, fontSize: 11, color: '#666' }}>
+                            {monthChange >= 0 ? '+' : ''}{monthChangePercent}% vs mes ant.
                         </div>
                     </Card>
                 </Col>
-                <Col xs={24} sm={12} lg={6}>
-                    <Card>
+                <Col xs={24} sm={12} lg={5}>
+                    <Card size="small" style={{ border: '1px solid #d9d9d9' }}>
+                        <Statistic
+                            title="Ventas Mes (Nominal)"
+                            value={getConvertedAmount(stats.thisMonthSalesNominal)}
+                            precision={2}
+                            prefix={currentSymbol}
+                            valueStyle={{ color: '#595959', fontSize: '20px' }}
+                            styles={{ content: { color: '#595959', fontSize: '20px' } }}
+                        />
+                        <div style={{ marginTop: 4, fontSize: 11, color: '#666' }}>
+                            Monto exacto cobrado
+                        </div>
+                    </Card>
+                </Col>
+                <Col xs={24} sm={12} lg={5}>
+                    <Card size="small">
                         <Statistic
                             title="Balance de Caja"
                             value={getConvertedAmount(stats.cashBalance)}
                             precision={2}
                             prefix={currentSymbol}
-                            valueStyle={{ color: '#722ed1' }}
-                            styles={{ content: { color: '#722ed1' } }}
+                            valueStyle={{ color: '#722ed1', fontSize: '20px' }}
+                            styles={{ content: { color: '#722ed1', fontSize: '20px' } }}
                             suffix={<BankOutlined />}
                         />
                     </Card>
                 </Col>
-                <Col xs={24} sm={12} lg={6}>
-                    <Card style={{ borderColor: stats.criticalStock > 0 ? '#faad14' : undefined }}>
+                <Col xs={24} sm={12} lg={5}>
+                    <Card size="small" style={{ borderColor: '#ff4d4f99' }}>
+                        <Statistic
+                            title="Devoluciones/Cambios"
+                            value={getConvertedAmount(stats.monthReturns?.netImpact || 0)}
+                            precision={2}
+                            prefix={currentSymbol}
+                            valueStyle={{ color: '#ff4d4f', fontSize: '20px' }}
+                            styles={{ content: { color: '#ff4d4f', fontSize: '20px' } }}
+                            suffix={<RollbackOutlined />}
+                        />
+                        <div style={{ marginTop: 4, fontSize: 11, color: '#666' }}>
+                            Reembolsos: {formatVenezuelanPrice(getConvertedAmount(stats.monthReturns?.totalRefundsPaid || 0), currentSymbol)}
+                        </div>
+                    </Card>
+                </Col>
+                <Col xs={24} sm={12} lg={4}>
+                    <Card size="small" style={{ borderColor: stats.criticalStock > 0 ? '#faad14' : undefined }}>
                         <Statistic
                             title="Stock Crítico"
                             value={stats.criticalStock}
                             suffix={`/ ${stats.totalProducts}`}
-                            valueStyle={{ color: stats.criticalStock > 0 ? '#faad14' : '#52c41a' }}
-                            styles={{ content: { color: stats.criticalStock > 0 ? '#faad14' : '#52c41a' } }}
+                            valueStyle={{ color: stats.criticalStock > 0 ? '#faad14' : '#52c41a', fontSize: '20px' }}
+                            styles={{ content: { color: stats.criticalStock > 0 ? '#faad14' : '#52c41a', fontSize: '20px' } }}
                             prefix={stats.criticalStock > 0 ? <WarningOutlined /> : <ShopOutlined />}
                         />
-                        <div style={{ marginTop: 8, fontSize: 12, color: '#666' }}>
-                            Productos totales
-                        </div>
                     </Card>
                 </Col>
             </Row>
@@ -332,6 +363,21 @@ export const DashboardPage = () => {
                     </Col>
                 </Row>
             </Card>
+
+            {/* AI Assistant FloatButton */}
+            <FloatButton
+                icon={<RobotOutlined />}
+                type="primary"
+                style={{ right: 24, bottom: 24 }}
+                tooltip="Asesor Financiero IA"
+                onClick={() => setAiModalVisible(true)}
+            />
+
+            {/* AI Assistant Modal */}
+            <AIAssistantModal
+                visible={aiModalVisible}
+                onClose={() => setAiModalVisible(false)}
+            />
         </div>
     );
 };

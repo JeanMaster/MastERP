@@ -107,14 +107,16 @@ export const BankFormModal = ({ open, bankAccount, onClose }: BankFormModalProps
                     </Col>
                     <Col span={12}>
                         <Form.Item
-                            label="Tipo de Cuenta"
+                            label="Tipo de Recurso"
                             name="accountType"
                             rules={[{ required: true, message: 'Requerido' }]}
                         >
                             <Select
                                 options={[
-                                    { value: 'CHECKING', label: 'Corriente' },
-                                    { value: 'SAVINGS', label: 'Ahorro' },
+                                    { value: 'CHECKING', label: 'Cuenta Corriente' },
+                                    { value: 'SAVINGS', label: 'Cuenta de Ahorro' },
+                                    { value: 'CASH_VAULT', label: 'Bóveda / Efectivo (Bolso)' },
+                                    { value: 'MOBILE_PAYMENT', label: 'Pago Móvil / Wallet' },
                                 ]}
                             />
                         </Form.Item>

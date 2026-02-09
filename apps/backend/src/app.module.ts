@@ -28,6 +28,7 @@ import { AuthModule } from './auth/auth.module';
 import { HrModule } from './hr/hr.module';
 import { SystemModule } from './system/system.module';
 import { PurchaseOrdersModule } from './purchase-orders/purchase-orders.module';
+import { AIModule } from './ai/ai.module';
 
 @Module({
   imports: [
@@ -60,6 +61,7 @@ import { PurchaseOrdersModule } from './purchase-orders/purchase-orders.module';
     AuthModule,
     SystemModule,
     PurchaseOrdersModule,
+    AIModule,
   ],
   controllers: [AppController, DevToolsController],
   providers: [AppService, DevToolsService],

@@ -81,9 +81,18 @@ export const POSRightPanel = () => {
         const addedNormalizedQuantity = store.getNormalizedQuantity(1, product, false);
 
         if (product.type !== 'SERVICE' && (currentNormalizedQuantity + addedNormalizedQuantity) > Number(product.stock)) {
+            // Fallback: Try adding secondary unit if available
+            if (product.secondaryUnitId) {
+                const addedSecondaryNormalizedQuantity = store.getNormalizedQuantity(1, product, true);
+                if ((currentNormalizedQuantity + addedSecondaryNormalizedQuantity) <= Number(product.stock)) {
+                    addItem(product, true);
+                    return;
+                }
+            }
+
             Modal.warning({
                 title: 'Stock insuficiente',
-                content: `${product.name} no tiene stock suficiente. Disponible: ${product.stock}`,
+                content: `${product.name} no tiene stock suficiente para agregar una unidad completa. Disponible: ${product.stock}`,
             });
             return;
         }

@@ -165,6 +165,7 @@ export class PurchasesService {
                         suggestedSalePrice: newCost * (1 + salePriceMargin / 100),
                         suggestedOfferPrice: offerPriceMargin !== null ? newCost * (1 + offerPriceMargin / 100) : null,
                         suggestedWholesalePrice: wholesalePriceMargin !== null ? newCost * (1 + wholesalePriceMargin / 100) : null,
+                        currencyId: currency.id,
                     });
                 }
 
@@ -172,8 +173,8 @@ export class PurchasesService {
                     where: { id: item.productId },
                     data: {
                         stock: { increment: item.quantity },
-                        costPrice: item.cost, // Update to new cost in SELECTED currency
-                        currencyId: currency.id, // Update product currency to purchase currency
+                        // REMOVED: costPrice and currencyId update here. 
+                        // These will be updated only if the user confirms the price update suggested in the frontend.
                     },
                 });
             }

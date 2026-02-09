@@ -222,6 +222,7 @@ export const CreatePurchaseModal: React.FC<CreatePurchaseModalProps> = ({ visibl
                 salePriceMargin: p.salePriceMargin,
                 offerPriceMargin: p.offerPriceMargin,
                 wholesalePriceMargin: p.wholesalePriceMargin,
+                currencyId: p.currencyId,
             }));
 
             await productsApi.batchUpdatePrices(updates);
