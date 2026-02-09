@@ -265,4 +265,55 @@ export class CashRegisterService {
             orderBy: { openedAt: 'desc' }
         });
     }
+
+    /**
+     * Trasladar fondos de Caja a Tesorería
+     */
+    async transferToTreasury(sessionId: string, bankAccountId: string, amount: number, description: string, performedBy: string) {
+        return this.prisma.$transaction(async (tx) => {
+            // 1. Verificar sesión abierta
+            const session = await tx.cashSession.findUnique({
+                where: { id: sessionId }
+            });
+
+            if (!session || session.status === 'CLOSED') {
+                throw new BadRequestException('La sesión de caja debe estar abierta para realizar un traslado');
+            }
+
+            // 2. Crear movimiento de EGRESO en Caja (Restar de la gaveta)
+            // Según la lógica actual, DEPOSIT resta del balance de caja (significa "salida para depósito")
+            await tx.cashMovement.create({
+                data: {
+                    sessionId,
+                    type: MovementType.DEPOSIT,
+                    amount,
+                    currencyCode: 'VES', // O la moneda de la caja
+                    description: `Traslado a Tesorería: ${description}`,
+                    performedBy
+                }
+            });
+
+            // 3. Crear movimiento de INGRESO en Tesorería (Sumar al banco/bóveda)
+            const bankMovement = await tx.bankMovement.create({
+                data: {
+                    bankAccountId,
+                    type: 'IN',
+                    amount,
+                    category: 'SALE_TRANSFER',
+                    description: `Traslado desde Caja: ${description}`,
+                    cashSessionId: sessionId
+                }
+            });
+
+            // 4. Actualizar balance de la cuenta bancaria
+            await tx.bankAccount.update({
+                where: { id: bankAccountId },
+                data: {
+                    balance: { increment: Number(amount) }
+                }
+            });
+
+            return bankMovement;
+        });
+    }
 }

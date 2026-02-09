@@ -72,4 +72,19 @@ export class CashRegisterController {
     createMovement(@Body() createMovementDto: CreateMovementDto) {
         return this.cashRegisterService.createMovement(createMovementDto);
     }
+
+    @Post('sessions/:id/transfer-to-treasury')
+    @ApiOperation({ summary: 'Trasladar fondos de Caja a Tesorería (Banco/Bóveda)' })
+    transferToTreasury(
+        @Param('id') id: string,
+        @Body() dto: any
+    ) {
+        return this.cashRegisterService.transferToTreasury(
+            id,
+            dto.bankAccountId,
+            dto.amount,
+            dto.description,
+            dto.performedBy || 'Sistema'
+        );
+    }
 }

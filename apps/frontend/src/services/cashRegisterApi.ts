@@ -104,5 +104,10 @@ export const cashRegisterApi = {
     createMovement: async (dto: CreateMovementDto): Promise<CashMovement> => {
         const { data } = await api.post('/cash-register/movements', dto);
         return data;
+    },
+
+    transferToTreasury: async (sessionId: string, dto: { bankAccountId: string, amount: number, description: string, performedBy?: string }): Promise<any> => {
+        const { data } = await api.post(`/cash-register/sessions/${sessionId}/transfer-to-treasury`, dto);
+        return data;
     }
 };

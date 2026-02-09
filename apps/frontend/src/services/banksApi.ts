@@ -35,9 +35,31 @@ export interface UpdateBankAccountDto {
     accountNumber?: string;
     accountType?: string;
     holderName?: string;
-    holderId?: string;
-    currencyId?: string;
-    active?: boolean;
+    active: boolean;
+    createdAt: string;
+    updatedAt: string;
+}
+
+export interface BankMovement {
+    id: string;
+    bankAccountId: string;
+    type: 'IN' | 'OUT';
+    amount: number;
+    category: string;
+    description: string;
+    reference?: string;
+    cashSessionId?: string;
+    createdAt: string;
+}
+
+export interface CreateBankMovementDto {
+    bankAccountId: string;
+    type: 'IN' | 'OUT';
+    amount: number;
+    category: string;
+    description: string;
+    reference?: string;
+    cashSessionId?: string;
 }
 
 export const banksApi = {
@@ -50,6 +72,18 @@ export const banksApi = {
 
     getOne: async (id: string): Promise<BankAccount> => {
         const { data } = await api.get(`/banks/${id}`);
+        return data;
+    },
+
+    getHistory: async (id: string, limit?: number): Promise<BankMovement[]> => {
+        const params: any = {};
+        if (limit) params.limit = limit;
+        const { data } = await api.get(`/banks/${id}/history`, { params });
+        return data;
+    },
+
+    addMovement: async (dto: CreateBankMovementDto): Promise<BankMovement> => {
+        const { data } = await api.post('/banks/movements', dto);
         return data;
     },
 

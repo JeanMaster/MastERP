@@ -31,6 +31,7 @@ import dayjs from 'dayjs';
 import { OpenSessionModal } from './components/OpenSessionModal';
 import { CloseSessionModal } from './components/CloseSessionModal';
 import { AddMovementModal } from './components/AddMovementModal';
+import { TransferToTreasuryModal } from './components/TransferToTreasuryModal';
 
 const { Title, Text } = Typography;
 
@@ -38,7 +39,8 @@ export const CashRegisterPage = () => {
     const [registerId, setRegisterId] = useState<string>('');
     const [isOpenModalVisible, setIsOpenModalVisible] = useState(false);
     const [isCloseModalVisible, setIsCloseModalVisible] = useState(false);
-    const [isMovementModalVisible, setIsMovementModalVisible] = useState(false);
+    const [isAddMovementOpen, setIsAddMovementOpen] = useState(false);
+    const [isTransferToTreasuryOpen, setIsTransferToTreasuryOpen] = useState(false);
     const [activeTab, setActiveTab] = useState('current');
     const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
 
@@ -434,9 +436,17 @@ export const CashRegisterPage = () => {
                                         <Button
                                             type="primary"
                                             icon={<DollarOutlined />}
-                                            onClick={() => setIsMovementModalVisible(true)}
+                                            onClick={() => setIsAddMovementOpen(true)}
                                         >
                                             Registrar Movimiento
+                                        </Button>
+                                        <Button
+                                            type="primary"
+                                            icon={<BankOutlined />}
+                                            style={{ backgroundColor: '#722ed1', borderColor: '#722ed1' }}
+                                            onClick={() => setIsTransferToTreasuryOpen(true)}
+                                        >
+                                            Trasladar a Tesorería
                                         </Button>
                                         <Button
                                             icon={<ReloadOutlined />}
@@ -540,11 +550,20 @@ export const CashRegisterPage = () => {
             />
 
             <AddMovementModal
-                open={isMovementModalVisible}
+                open={isAddMovementOpen}
                 sessionId={activeSession.id}
-                onCancel={() => setIsMovementModalVisible(false)}
+                onCancel={() => setIsAddMovementOpen(false)}
                 onSuccess={() => {
-                    setIsMovementModalVisible(false);
+                    setIsAddMovementOpen(false);
+                    refetch();
+                }}
+            />
+
+            <TransferToTreasuryModal
+                open={isTransferToTreasuryOpen}
+                sessionId={activeSession.id}
+                onClose={() => {
+                    setIsTransferToTreasuryOpen(false);
                     refetch();
                 }}
             />
