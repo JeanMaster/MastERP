@@ -382,9 +382,71 @@ Se ha completado la **implementación del módulo de Recursos Humanos y Nómina*
 
 ---
 
+---
+
+**Fecha**: 2026-02-10
+**Para**: IA Desarrollador (Siguiente Sesión)
+**De**: IA Antigravity (Google Deepmind)
+**Asunto**: ACTUALIZACIÓN - Multi-Caja, Multi-moneda y Flujo Administrativo
+
+## 🚀 RESUMEN EJECUTIVO
+
+Se ha completado la **Fase de Robustez y Flexibilidad del POS**. El sistema ahora soporta operaciones multi-moneda precisas, permite a los administradores operar sin restricciones de sesión y ofrece un visor de precios público para clientes.
+
+### ✅ Logros de esta sesión:
+1.  **Soporte Multi-moneda (Fase 17)**: Los balances de caja ahora consideran la tasa de cambio histórica de cada movimiento. Liquidaciones a tesorería y arqueos son ahora 100% exactos en Bolívares.
+2.  **Bypass Administrativo (Fase 18)**: Los administradores ya no están bloqueados por sesiones cerradas. Pueden vender libremente y seleccionar cualquier caja manualmente.
+3.  **Sincronización de Sesiones**: Las ventas hechas por admins en cajas abiertas por otros usuarios se atribuyen automáticamente a la sesión correcta mediante `cashSessionId`.
+4.  **Visor de Precios Público (Fase 19)**: Acceso libre a `/visor` sin login. Endpoints de consulta en el backend ahora son públicos.
+
+---
+
+## 🛠️ CAMBIOS TÉCNICOS DETALLADOS
+
+### 1. Base de Datos & Backend
+- **Prisma**: Añadido campo `exchangeRate` (Decimal, precision 4) al modelo `CashMovement`.
+- **`CashRegisterService`**:
+  - `calculateExpectedBalance` ahora usa la tasa guardada en cada movimiento.
+  - `transferToTreasury` modificado para restar el monto equivalente en Bs según la tasa del movimiento.
+- **`SalesService`**: Acepta `cashSessionId` opcional en `CreateSaleDto` para forzar la atribución de venta a una caja específica.
+- **Controladores Públicos**: 
+  - `ProductsController`: `findAll` y `findOne` (públicos).
+  - `DepartmentsController`: `getTree` (público).
+  - `CompanySettingsController`: `getSettings` (público).
+
+### 2. Frontend (React)
+- **`apiConfig.ts`**: Interceptor de Axios actualizado para excluir la ruta `/visor` de la redirección automática al login ante errores 401.
+- **`POSPage.tsx`**: Lógica de bloqueo eliminada para `ADMIN`. Permite entrada sin sesión y selección manual de caja.
+- **`posStore.ts`**: `processSale` actualizado para enviar el `cashSessionId` actual al backend.
+
+---
+
+## 📋 PASOS PARA SINCRONIZAR
+
+Para que la IA tome estos cambios y el sistema funcione correctamente, se recomienda:
+
+1.  **Actualizar Cliente Prisma**: 
+    ```bash
+    cd apps/backend
+    npx prisma generate
+    ```
+2.  **Actualizar Base de Datos** (Si hay cambios pendientes de migración):
+    ```bash
+    npx prisma db push
+    ```
+3.  **Reconstruir Aplicaciones**:
+    ```bash
+    # En la raíz o carpetas respectivas
+    npm run build
+    ```
+4.  **Validación**:
+    - Entrar a `/visor` sin login y verificar carga de productos.
+    - Entrar como `admin` al POS con caja cerrada y verificar que permite totalizar venta.
+
+---
+
 ## ⚠️ ESTADO ACTUAL
-- **Funcionalidad**: 100% Operativa localmente (probada creación de empleado y generación de nómina).
-- **Pendientes**:
-  - Implementar deducciones variables (ISLR, SSO, etc.).
-  - Impresión de recibos en PDF (Botón existe pero no tiene lógica aún).
-  - Integración con módulo de Gastos/Contabilidad (Asientos automáticos).
+- **Compilación**: 100% Exitosa (Build verificado en backend y frontend).
+- **Pendientes**: 
+  - Mejorar la UI del panel de selección de caja para administradores (diseño actual funcional pero básico).
+  - Validar impresión de reportes de cierre con múltiples monedas.

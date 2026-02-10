@@ -49,9 +49,10 @@ const FunctionKey = ({
 interface POSFooterProps {
     onClientClick?: () => void;
     onCheckoutClick?: () => void;
+    onCajaClick?: () => void;
 }
 
-export const POSFooter = ({ onClientClick, onCheckoutClick }: POSFooterProps) => {
+export const POSFooter = ({ onClientClick, onCheckoutClick, onCajaClick }: POSFooterProps) => {
     const screens = Grid.useBreakpoint();
     const isMobile = !screens.lg;
 
@@ -75,7 +76,12 @@ export const POSFooter = ({ onClientClick, onCheckoutClick }: POSFooterProps) =>
                 />
                 {!isMobile && (
                     <>
-                        <FunctionKey fKey="F10" label="Caja" icon={<SaveOutlined />} />
+                        <FunctionKey
+                            fKey="F10"
+                            label="Caja"
+                            icon={<SaveOutlined />}
+                            onClick={onCajaClick}
+                        />
                         <FunctionKey fKey="F11" label="Cargar" icon={<ReloadOutlined />} />
                     </>
                 )}

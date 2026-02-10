@@ -1,6 +1,8 @@
-import { useState, useEffect } from 'react';
-import { Layout, message, Tabs, Grid } from 'antd';
-import { ShoppingCartOutlined, AppstoreOutlined } from '@ant-design/icons';
+
+import { useState, useEffect, useRef } from 'react';
+import { Layout, Typography, Spin, message, Alert, Tabs, Grid, Card, Space, Button, Empty } from 'antd';
+const { Text, Title } = Typography;
+import { ShoppingCartOutlined, AppstoreOutlined, ShopOutlined } from '@ant-design/icons';
 import { POSHeader } from './components/POSHeader';
 import { POSLeftPanel } from './components/POSLeftPanel';
 import { POSRightPanel } from './components/POSRightPanel';
@@ -9,7 +11,13 @@ import { CheckoutModal } from './components/CheckoutModal';
 import { ClientSelectionModal } from './components/ClientSelectionModal';
 import { InvoiceModal } from './components/InvoiceModal';
 import { usePOSStore } from '../../store/posStore';
+import { cashRegisterApi } from '../../services/cashRegisterApi';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../auth/AuthProvider';
 import type { Sale } from '../../services/salesApi';
+import { SessionSummaryModal } from './components/SessionSummaryModal';
+import { CashCountModal } from '../cash-register/components/CashCountModal';
 
 const { Content, Sider, Footer } = Layout;
 const { useBreakpoint } = Grid;
@@ -17,16 +25,120 @@ const { useBreakpoint } = Grid;
 export const POSPage = () => {
     const screens = useBreakpoint();
     const isMobile = !screens.lg;
+    const navigate = useNavigate();
+    const { user } = useAuth();
+    const [registerId, setRegisterId] = useState<string>(localStorage.getItem('pos_register_id') || '');
     const [activeTab, setActiveTab] = useState('catalog');
     const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
     const [isClientModalOpen, setIsClientModalOpen] = useState(false);
     const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
     const [completedSale, setCompletedSale] = useState<Sale | null>(null);
     const { processSale, setCustomer, refreshInvoiceNumber, initialize, resetPOS } = usePOSStore();
+    const queryClient = useQueryClient();
+
+    const [isSummaryOpen, setIsSummaryOpen] = useState(false);
+    const [isOpeningArqueoOpen, setIsOpeningArqueoOpen] = useState(false);
+    const [isClosingArqueoOpen, setIsClosingArqueoOpen] = useState(false);
+
+    // Fetch available registers
+    const { data: registers = [] } = useQuery({
+        queryKey: ['cashRegisters'],
+        queryFn: () => cashRegisterApi.listRegisters(),
+        enabled: user?.role === 'ADMIN' || !registerId
+    });
+
+    // Fetch active session based on selected register OR cashier detection
+    const { data: activeSession, isLoading: isSessionLoading, isFetching } = useQuery({
+        queryKey: ['activeSession', registerId, user?.username],
+        queryFn: () => {
+            // If user is a cashier, always prioritize finding THEIR active session
+            if (user?.role === 'CASHIER') {
+                return cashRegisterApi.getActiveSession(undefined, user.username);
+            }
+            // Admin or specific register selected manually:
+            return cashRegisterApi.getActiveSession(registerId);
+        },
+        enabled: !!registerId || user?.role === 'CASHIER'
+    });
+
+    const redirectedRef = useRef(false);
+
+    // Auto-sync registerId for cashiers based on server-side assignment
+    useEffect(() => {
+        if (user?.role === 'CASHIER' && !isSessionLoading && !isFetching) {
+            if (activeSession) {
+                // Force sync even if registerId was already set (e.g. from stale localStorage)
+                if (registerId !== activeSession.registerId) {
+                    setRegisterId(activeSession.registerId);
+                    localStorage.setItem('pos_register_id', activeSession.registerId);
+                }
+            } else {
+                // If no session from server, clear registerId to show "No box assigned"
+                if (registerId) {
+                    setRegisterId('');
+                    localStorage.removeItem('pos_register_id');
+                }
+            }
+        }
+    }, [activeSession, user, registerId, isSessionLoading, isFetching]);
+
+    // Bloquear si no hay sesión activa o no está verificada para el cajero (Opcional: solo advertir ahora)
+    useEffect(() => {
+        // Solo actuar si NO estamos cargando ni haciendo refetching de la sesión
+        if (!isSessionLoading && !isFetching && !redirectedRef.current) {
+            if (!activeSession) {
+                // Si ya intentamos detectar y no hay nada
+                if (user?.role === 'CASHIER') {
+                    message.error('NO TIENE UNA CAJA ASIGNADA. SOLICITE APERTURA AL ADMINISTRADOR.', 0);
+                } else {
+                    // Para ADMIN, solo es un aviso informativo
+                    message.info('Operando en modo Administrador (Sin sesión de caja activa).', 5);
+                }
+            } else {
+                // Si el usuario actual es el cajero asignado y no ha verificado
+                const isAssignedCashier = activeSession.cashierId === user?.username;
+                if (isAssignedCashier && !activeSession.verifiedAt) {
+                    message.warning(`Hola ${user?.name}, debe realizar el Arqueo de Apertura en Caja antes de procesar ventas.`, 10);
+                }
+            }
+        }
+    }, [activeSession, isSessionLoading, isFetching, navigate, user, registerId]);
+
+    const handleCajaClick = () => {
+        if (!activeSession) {
+            message.error('CAJA NO APERTURADA');
+            return;
+        }
+
+        if (!activeSession.verifiedAt && activeSession.cashierId === user?.username) {
+            // Caso: Aperturada pero no verificada por el cajero actual
+            setIsOpeningArqueoOpen(true);
+        } else {
+            // Caso: Verificada o abierta por otro (o simplemente queremos ver el resumen)
+            setIsSummaryOpen(true);
+        }
+    };
+
+    // Helper para calcular el saldo esperado dinámicamente
+    const calculateExpectedBalance = () => {
+        if (!activeSession) return 0;
+        let expected = Number(activeSession.openingBalance);
+
+        activeSession.movements?.forEach((m: any) => {
+            const amt = Number(m.amount);
+
+            if (m.type === 'SALE') {
+                expected += amt;
+            } else if (['EXPENSE', 'DEPOSIT', 'WITHDRAWAL'].includes(m.type)) {
+                expected -= amt;
+            }
+        });
+        return expected;
+    };
 
     const handleCheckoutProcess = async (paymentData: any) => {
         try {
-            const sale = await processSale(paymentData);
+            const sale = await processSale(paymentData, activeSession?.id);
             message.success(`Venta procesada exitosamente. Factura: ${sale.invoiceNumber}`);
             setIsCheckoutOpen(false);
             setCompletedSale(sale);
@@ -45,23 +157,118 @@ export const POSPage = () => {
         } else if (e.key === 'F9') {
             e.preventDefault();
             setIsCheckoutOpen(true);
+        } else if (e.key === 'F10') {
+            e.preventDefault();
+            handleCajaClick();
         } else if (e.key === 'Delete') {
             resetPOS();
         }
     };
 
     useEffect(() => {
+        if (activeSession?.status === 'AWAITING_CLOSE') {
+            setIsCheckoutOpen(false); // Close checkout if it was open
+        }
         initialize(); // Sincronizar tasas y datos iniciales al entrar al POS
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, []);
+    }, [activeSession?.status]);
+
+    const handleSelectRegister = (id: string) => {
+        setRegisterId(id);
+        localStorage.setItem('pos_register_id', id);
+    };
+
+    if (!registerId) {
+        // If it's a cashier and we are still loading or no session found, show loading/empty
+        if (user?.role === 'CASHIER') {
+            if (isSessionLoading) {
+                return (
+                    <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', background: '#f0f2f5' }}>
+                        <Spin size="large" />
+                        <Title level={3} style={{ marginTop: 20 }}>Buscando su Caja...</Title>
+                    </div>
+                );
+            }
+
+            return (
+                <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', background: '#f0f2f5', padding: 20 }}>
+                    <Card style={{ width: '100%', maxWidth: 500, textAlign: 'center' }}>
+                        <Empty
+                            description={
+                                <Title level={4}>No tiene una Caja asignada</Title>
+                            }
+                        >
+                            <Text type="secondary">Consulte con su administrador para que realice la apertura y asignación de su turno.</Text>
+                            <div style={{ marginTop: 24 }}>
+                                <Button type="primary" onClick={() => queryClient.invalidateQueries({ queryKey: ['activeSession'] })}>
+                                    Reintentar Conexión
+                                </Button>
+                            </div>
+                        </Empty>
+                    </Card>
+                </div>
+            );
+        }
+
+        return (
+            <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', background: '#f0f2f5', padding: 20 }}>
+                <Card title={<Title level={3} style={{ margin: 0 }}>📍 Seleccionar Caja para Operar</Title>} style={{ width: '100%', maxWidth: 500, textAlign: 'center' }}>
+                    <Space direction="vertical" style={{ width: '100%' }} size="large">
+                        <Text type="secondary">Elija la caja registradora en la que trabajará hoy.</Text>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                            {registers.map(r => (
+                                <Button
+                                    key={r.id}
+                                    size="large"
+                                    style={{ height: 100, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}
+                                    onClick={() => handleSelectRegister(r.id)}
+                                >
+                                    <ShopOutlined style={{ fontSize: 24, marginBottom: 8 }} />
+                                    {r.name}
+                                </Button>
+                            ))}
+                        </div>
+                    </Space>
+                </Card>
+            </div>
+        );
+    }
+
+    if (isSessionLoading) {
+        return (
+            <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', background: '#f0f2f5' }}>
+                <Spin size="large" />
+                <Title level={3} style={{ marginTop: 20 }}>Cargando POS...</Title>
+                <Button type="link" onClick={() => setRegisterId('')}>Cambiar Caja</Button>
+            </div>
+        );
+    }
 
     return (
         <Layout style={{ height: '100vh', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-            <POSHeader />
+            <POSHeader onCajaClick={handleCajaClick} />
+
+            {activeSession?.status === 'AWAITING_CLOSE' && (
+                <div style={{ padding: '0 20px', marginTop: 10 }}>
+                    <Alert
+                        message="CIERRE EN PROCESO"
+                        description="Ha solicitado el cierre de caja. Por favor, espere a que el administrador autorice su arqueo para poder salir o continuar."
+                        type="warning"
+                        showIcon
+                    />
+                </div>
+            )}
 
             {!isMobile ? (
-                <Layout style={{ flex: 1, overflow: 'hidden' }}>
+                <Layout
+                    style={{
+                        flex: 1,
+                        overflow: 'hidden',
+                        opacity: activeSession?.status === 'AWAITING_CLOSE' ? 0.5 : 1,
+                        pointerEvents: activeSession?.status === 'AWAITING_CLOSE' ? 'none' : 'auto'
+                    }}
+                >
                     <Sider
                         width="35%"
                         style={{
@@ -93,6 +300,7 @@ export const POSPage = () => {
                             <POSFooter
                                 onClientClick={() => setIsClientModalOpen(true)}
                                 onCheckoutClick={() => setIsCheckoutOpen(true)}
+                                onCajaClick={handleCajaClick}
                             />
                         </Footer>
                     </Layout>
@@ -140,6 +348,7 @@ export const POSPage = () => {
                         <POSFooter
                             onClientClick={() => setIsClientModalOpen(true)}
                             onCheckoutClick={() => setIsCheckoutOpen(true)}
+                            onCajaClick={handleCajaClick}
                         />
                     </Footer>
                 </Content>
@@ -167,6 +376,41 @@ export const POSPage = () => {
                     setIsInvoiceModalOpen(false);
                     setCompletedSale(null);
                 }}
+            />
+
+            <SessionSummaryModal
+                open={isSummaryOpen}
+                session={activeSession || null}
+                onCancel={() => setIsSummaryOpen(false)}
+                onStartClose={() => {
+                    setIsSummaryOpen(false);
+                    setIsClosingArqueoOpen(true);
+                }}
+            />
+
+            <CashCountModal
+                mode="OPENING"
+                open={isOpeningArqueoOpen}
+                sessionId={activeSession?.id || ''}
+                openingBalance={Number(activeSession?.openingBalance || 0)}
+                onSuccess={() => {
+                    setIsOpeningArqueoOpen(false);
+                    queryClient.invalidateQueries({ queryKey: ['activeSession'] });
+                }}
+                onCancel={() => setIsOpeningArqueoOpen(false)}
+            />
+
+            <CashCountModal
+                mode="CLOSING"
+                open={isClosingArqueoOpen}
+                sessionId={activeSession?.id || ''}
+                openingBalance={0}
+                expectedBalance={calculateExpectedBalance()}
+                onSuccess={() => {
+                    setIsClosingArqueoOpen(false);
+                    queryClient.invalidateQueries({ queryKey: ['activeSession'] });
+                }}
+                onCancel={() => setIsClosingArqueoOpen(false)}
             />
         </Layout>
     );

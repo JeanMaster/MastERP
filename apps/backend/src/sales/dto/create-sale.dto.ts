@@ -63,4 +63,8 @@ export class CreateSaleDto {
     @IsNumber({ maxDecimalPlaces: 4 })
     @IsOptional()
     exchangeRate?: number;
+
+    @IsString()
+    @IsOptional()
+    cashSessionId?: string;
 }

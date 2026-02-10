@@ -56,3 +56,4 @@ temp/
 *.tmp
 *.xlsx
 .zenith.pids
+start-local.sh

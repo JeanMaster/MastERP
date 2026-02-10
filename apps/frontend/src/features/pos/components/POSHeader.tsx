@@ -1,20 +1,29 @@
-import { Layout, Typography, Row, Col, Space, Popover, Grid, Button, Tooltip } from 'antd';
+import { Layout, Typography, Row, Col, Space, Popover, Grid, Button, Tooltip, Tag, Alert } from 'antd';
 import { useState, useEffect } from 'react';
 import { usePOSStore } from '../../../store/posStore';
-import { SyncOutlined, LogoutOutlined, FullscreenOutlined, FullscreenExitOutlined } from '@ant-design/icons';
+import { SyncOutlined, LogoutOutlined, FullscreenOutlined, FullscreenExitOutlined, ShopOutlined } from '@ant-design/icons';
+import { cashRegisterApi } from '../../../services/cashRegisterApi';
 import { formatVenezuelanPrice, formatVenezuelanPriceOnly } from '../../../utils/formatters';
 import { ClientPurchaseHistoryCompact } from '../../../components/ClientPurchaseHistory';
 import { useAuth } from '../../auth/AuthProvider';
 
+import { useQuery } from '@tanstack/react-query';
+
 const { Header } = Layout;
 const { Title, Text } = Typography;
 
-export const POSHeader = () => {
+export const POSHeader = ({ onCajaClick }: { onCajaClick?: () => void }) => {
     const screens = Grid.useBreakpoint();
     const isMobile = !screens.lg;
     const { user, logout } = useAuth();
     const { totals, activeCustomer, customerId, preferredSecondaryCurrency, currencies, primaryCurrency, nextInvoiceNumber, initialize } = usePOSStore();
     const [isRefreshing, setIsRefreshing] = useState(false);
+
+    // Fetch active session to check status
+    const { data: activeSession } = useQuery({
+        queryKey: ['activeSession'],
+        queryFn: () => cashRegisterApi.getActiveSession()
+    });
 
     const handleSync = async () => {
         setIsRefreshing(true);
@@ -93,6 +102,32 @@ export const POSHeader = () => {
                                 <Text type="secondary" style={{ fontSize: 10 }}>Factura</Text>
                                 <Text strong style={{ fontSize: 16, color: '#1890ff' }}>{nextInvoiceNumber}</Text>
                             </Space>
+                        )}
+
+                        {(!activeSession || (activeSession.cashierId === user?.username && !activeSession.verifiedAt)) && (
+                            <div style={{ marginLeft: isMobile ? 0 : 20, flex: 1 }}>
+                                <Alert
+                                    message={
+                                        !activeSession
+                                            ? (user?.role === 'ADMIN' ? "MODO ADMINISTRADOR" : "ADVERTENCIA: CAJA NO ABIERTA")
+                                            : "ARQUEO PENDIENTE"
+                                    }
+                                    description={
+                                        !activeSession
+                                            ? (user?.role === 'ADMIN' ? "Operando sin sesión de caja" : "SOLICITAR APERTURA")
+                                            : "Realice apertura"
+                                    }
+                                    type={user?.role === 'ADMIN' && !activeSession ? "info" : "warning"}
+                                    showIcon
+                                    banner
+                                    style={{
+                                        borderRadius: 8,
+                                        padding: '4px 12px',
+                                        fontSize: isMobile ? 10 : 12,
+                                        fontWeight: 'bold'
+                                    }}
+                                />
+                            </div>
                         )}
                     </Space>
                 </Col>
@@ -184,16 +219,33 @@ export const POSHeader = () => {
                         </Tooltip>
 
                         {user?.role === 'CASHIER' && (
-                            <Button
-                                danger
-                                type="primary"
-                                icon={<LogoutOutlined />}
-                                onClick={logout}
-                                size={isMobile ? "small" : "middle"}
-                                title="Cerrar Sesión"
-                            >
-                                {!isMobile && 'Salir'}
-                            </Button>
+                            <Space size="small">
+                                {activeSession?.status === 'OPEN' ? (
+                                    <Button
+                                        type="primary"
+                                        icon={<ShopOutlined />}
+                                        onClick={onCajaClick}
+                                        size={isMobile ? "small" : "middle"}
+                                        style={{ backgroundColor: '#722ed1', borderColor: '#722ed1' }}
+                                    >
+                                        {!isMobile && 'Caja'}
+                                    </Button>
+                                ) : (
+                                    <Tag color="warning" icon={<SyncOutlined spin />}>
+                                        Cierre Pendiente
+                                    </Tag>
+                                )}
+                                <Button
+                                    danger
+                                    type="primary"
+                                    icon={<LogoutOutlined />}
+                                    onClick={logout}
+                                    size={isMobile ? "small" : "middle"}
+                                    title="Cerrar Sesión"
+                                >
+                                    {!isMobile && 'Salir'}
+                                </Button>
+                            </Space>
                         )}
                     </div>
                 </Col>

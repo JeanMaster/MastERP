@@ -66,7 +66,16 @@ export class SalesService {
         }
 
         // Obtener sesión de caja activa (si existe)
-        const activeSession = await this.cashRegisterService.getActiveSession();
+        // Priorizar la sesión enviada por el frontend (especialmente para Admins en multi-caja)
+        let activeSession: any = null;
+        if (createSaleDto.cashSessionId) {
+            activeSession = await this.prisma.cashSession.findUnique({
+                where: { id: createSaleDto.cashSessionId }
+            });
+        } else {
+            // Fallback: buscar la primera sesión activa (comportamiento original)
+            activeSession = await this.cashRegisterService.getActiveSession();
+        }
 
         // Crear la venta con items en una transacción
         const sale = await this.prisma.$transaction(async (prisma) => {
@@ -200,6 +209,7 @@ export class SalesService {
                     type: MovementType.SALE,
                     amount: amount,
                     currencyCode: 'VES',
+                    exchangeRate: 1, // Bs siempre es 1
                     description: `Venta #${sale.invoiceNumber}`,
                     saleId: sale.id
                 });
@@ -213,6 +223,7 @@ export class SalesService {
                     type: MovementType.SALE,
                     amount: amount,
                     currencyCode: currencyCode,
+                    exchangeRate: Number(sale.exchangeRate), // Usar la tasa de la venta
                     description: `Venta #${sale.invoiceNumber} (${currencyCode})`,
                     saleId: sale.id
                 });

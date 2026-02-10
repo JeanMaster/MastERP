@@ -1,8 +1,10 @@
-import { Modal, Form, InputNumber, Input, message } from 'antd';
-import { useState } from 'react';
+import { Modal, Form, InputNumber, Input, Select, message } from 'antd';
+import { useState, useEffect } from 'react';
 import { cashRegisterApi, type OpenSessionDto } from '../../../services/cashRegisterApi';
+import { api } from '../../../services/apiConfig';
 
 const { TextArea } = Input;
+const { Option } = Select;
 
 interface OpenSessionModalProps {
     open: boolean;
@@ -14,6 +16,23 @@ interface OpenSessionModalProps {
 export const OpenSessionModal = ({ open, registerId, onCancel, onSuccess }: OpenSessionModalProps) => {
     const [form] = Form.useForm();
     const [loading, setLoading] = useState(false);
+    const [users, setUsers] = useState<any[]>([]);
+
+    useEffect(() => {
+        if (open) {
+            fetchUsers();
+        }
+    }, [open]);
+
+    const fetchUsers = async () => {
+        try {
+            const { data } = await api.get('/users');
+            setUsers(data);
+        } catch (error) {
+            console.error('Error fetching users:', error);
+            message.error('Error al cargar lista de usuarios');
+        }
+    };
 
     const handleSubmit = async () => {
         try {
@@ -23,7 +42,7 @@ export const OpenSessionModal = ({ open, registerId, onCancel, onSuccess }: Open
             const dto: OpenSessionDto = {
                 registerId,
                 openingBalance: values.openingBalance,
-                openedBy: values.openedBy || 'Usuario',
+                cashierId: values.cashierId,
                 openingNotes: values.notes
             };
 
@@ -79,12 +98,17 @@ export const OpenSessionModal = ({ open, registerId, onCancel, onSuccess }: Open
                 </Form.Item>
 
                 <Form.Item
-                    name="openedBy"
-                    label="Responsable"
-                    rules={[{ required: true, message: 'Ingresa el nombre del responsable' }]}
-                    initialValue="Usuario"
+                    name="cashierId"
+                    label="Cajero Asignado"
+                    rules={[{ required: true, message: 'Selecciona el cajero' }]}
                 >
-                    <Input placeholder="Nombre del cajero" />
+                    <Select placeholder="Seleccionar cajero">
+                        {users.map(user => (
+                            <Option key={user.id} value={user.username}>
+                                {user.name} ({user.username})
+                            </Option>
+                        ))}
+                    </Select>
                 </Form.Item>
 
                 <Form.Item

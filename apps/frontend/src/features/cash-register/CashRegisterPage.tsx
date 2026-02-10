@@ -12,30 +12,41 @@ import {
     Spin,
     Empty,
     Alert,
-    Tabs
+    Tabs,
+    message
 } from 'antd';
 import {
-    DollarOutlined,
-    ShoppingOutlined,
-    BankOutlined,
-    LogoutOutlined,
     PlusOutlined,
     ReloadOutlined,
     HistoryOutlined,
-    EyeOutlined
+    SettingOutlined,
+    CheckCircleOutlined,
+    DollarOutlined,
+    BankOutlined,
+    LogoutOutlined,
+    EyeOutlined,
+    ShopOutlined,
+    InboxOutlined
 } from '@ant-design/icons';
-import { useQuery } from '@tanstack/react-query';
-import { cashRegisterApi, type CashSession, type CashMovement } from '../../services/cashRegisterApi';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { cashRegisterApi, type CashSession, type CashMovement, type CashRegister } from '../../services/cashRegisterApi';
 import { formatVenezuelanPrice } from '../../utils/formatters';
 import dayjs from 'dayjs';
+import { useAuth } from '../auth/AuthProvider';
+import { useNavigate } from 'react-router-dom';
 import { OpenSessionModal } from './components/OpenSessionModal';
 import { CloseSessionModal } from './components/CloseSessionModal';
 import { AddMovementModal } from './components/AddMovementModal';
 import { TransferToTreasuryModal } from './components/TransferToTreasuryModal';
+import { CashCountModal } from './components/CashCountModal';
+import { RegistersManagement } from './RegistersManagement';
 
 const { Title, Text } = Typography;
 
 export const CashRegisterPage = () => {
+    const queryClient = useQueryClient();
+    const navigate = useNavigate();
+    const { user } = useAuth();
     const [registerId, setRegisterId] = useState<string>('');
     const [isOpenModalVisible, setIsOpenModalVisible] = useState(false);
     const [isCloseModalVisible, setIsCloseModalVisible] = useState(false);
@@ -44,18 +55,24 @@ export const CashRegisterPage = () => {
     const [activeTab, setActiveTab] = useState('current');
     const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
 
-    // Fetch register
-    const { data: register } = useQuery({
-        queryKey: ['cashRegister'],
+    // Fetch registers list for dashboard
+    const { data: registers = [], isLoading: isLoadingRegisters, refetch: refetchRegisters } = useQuery({
+        queryKey: ['cashRegistersDashboard'],
+        queryFn: () => cashRegisterApi.listRegisters()
+    });
+
+    // Fetch main register initially
+    const { data: mainRegister } = useQuery({
+        queryKey: ['cashRegisterMain'],
         queryFn: () => cashRegisterApi.getMainRegister()
     });
 
-    // Set register ID when loaded
+    // Set initial register ID for non-admin users only if not set
     useEffect(() => {
-        if (register) {
-            setRegisterId(register.id);
+        if (user?.role === 'CASHIER' && mainRegister && !registerId) {
+            setRegisterId(mainRegister.id);
         }
-    }, [register]);
+    }, [mainRegister, user]);
 
     // Fetch active session
     const { data: activeSession, isLoading, refetch } = useQuery({
@@ -68,9 +85,16 @@ export const CashRegisterPage = () => {
     // Fetch closed sessions
     const { data: closedSessions = [], refetch: refetchHistory } = useQuery({
         queryKey: ['closedSessions', registerId],
-        queryFn: () => cashRegisterApi.listSessions({ status: 'CLOSED' }),
+        queryFn: () => cashRegisterApi.listSessions({ status: 'CLOSED', registerId }),
         enabled: !!registerId
     });
+
+    // Redirect Cashiers to POS if session is already verified
+    useEffect(() => {
+        if (user?.role === 'CASHIER' && activeSession?.verifiedAt) {
+            navigate('/sales/pos', { replace: true });
+        }
+    }, [user, activeSession, navigate]);
 
     const calculateSummary = (session: CashSession) => {
         let sales = 0;
@@ -79,19 +103,19 @@ export const CashRegisterPage = () => {
         let withdrawals = 0;
 
         session.movements.forEach(movement => {
-            const amount = Number(movement.amount);
+            const amountInBs = Number(movement.amount) * Number(movement.exchangeRate || 1);
             switch (movement.type) {
                 case 'SALE':
-                    sales += amount;
+                    sales += amountInBs;
                     break;
                 case 'EXPENSE':
-                    expenses += amount;
+                    expenses += amountInBs;
                     break;
                 case 'DEPOSIT':
-                    deposits += amount;
+                    deposits += amountInBs;
                     break;
                 case 'WITHDRAWAL':
-                    withdrawals += amount;
+                    withdrawals += amountInBs;
                     break;
             }
         });
@@ -104,7 +128,7 @@ export const CashRegisterPage = () => {
     const getMovementIcon = (type: string) => {
         switch (type) {
             case 'SALE':
-                return <ShoppingOutlined style={{ color: '#52c41a' }} />;
+                return <ShopOutlined style={{ color: '#52c41a' }} />;
             case 'EXPENSE':
                 return <DollarOutlined style={{ color: '#ff4d4f' }} />;
             case 'DEPOSIT':
@@ -161,12 +185,28 @@ export const CashRegisterPage = () => {
             title: 'Monto',
             dataIndex: 'amount',
             key: 'amount',
-            width: 120,
+            width: 140,
             align: 'right' as const,
             render: (amount: number, record: CashMovement) => {
                 const isPositive = ['SALE', 'WITHDRAWAL', 'OPENING'].includes(record.type);
+                const color = isPositive ? '#52c41a' : '#ff4d4f';
+
+                if (record.currencyCode && record.currencyCode !== 'VES') {
+                    const amountInBs = amount * (record.exchangeRate || 1);
+                    return (
+                        <Space direction="vertical" align="end" size={0}>
+                            <Text strong style={{ color }}>
+                                {isPositive ? '+' : '-'}{formatVenezuelanPrice(amount, record.currencyCode === 'USD' ? '$' : record.currencyCode)}
+                            </Text>
+                            <Text type="secondary" style={{ fontSize: 11 }}>
+                                {isPositive ? '+' : '-'}{formatVenezuelanPrice(amountInBs)}
+                            </Text>
+                        </Space>
+                    );
+                }
+
                 return (
-                    <Text strong style={{ color: isPositive ? '#52c41a' : '#ff4d4f' }}>
+                    <Text strong style={{ color }}>
                         {isPositive ? '+' : '-'}{formatVenezuelanPrice(amount)}
                     </Text>
                 );
@@ -183,7 +223,7 @@ export const CashRegisterPage = () => {
                 <div>
                     <div><strong>{dayjs(record.openedAt).format('DD/MM/YYYY')}</strong></div>
                     <div style={{ fontSize: 11, color: '#888' }}>
-                        {dayjs(record.openedAt).format('HH:mm')} - {dayjs(record.closedAt).format('HH:mm')}
+                        {dayjs(record.openedAt).format('HH:mm')} - {record.closedAt ? dayjs(record.closedAt).format('HH:mm') : '-'}
                     </div>
                 </div>
             )
@@ -243,123 +283,399 @@ export const CashRegisterPage = () => {
         }
     ];
 
-    if (isLoading) {
+    const getStatusTag = (status: string) => {
+        switch (status) {
+            case 'OPEN':
+                return <Tag color="green" style={{ fontSize: 13, padding: '2px 8px' }}>● ABIERTA</Tag>;
+            case 'AWAITING_CLOSE':
+                return <Tag color="warning" style={{ fontSize: 13, padding: '2px 8px' }}>● SOLICITA CIERRE</Tag>;
+            case 'CLOSED':
+                return <Tag color="default" style={{ fontSize: 13, padding: '2px 8px' }}>● CERRADA</Tag>;
+            default:
+                return <Tag>{status}</Tag>;
+        }
+    };
+
+    const handleOpenRegister = (id: string) => {
+        setRegisterId(id);
+        setIsOpenModalVisible(true);
+    };
+
+    const handleSelectRegister = (id: string) => {
+        setRegisterId(id);
+        setActiveTab('current');
+    };
+
+    const handleApproveClose = async (sessionId: string) => {
+        try {
+            await cashRegisterApi.approveClose(sessionId, user?.username || 'Admin');
+            message.success('Cierre de caja autorizado correctamente');
+            refetch();
+            refetchHistory();
+            refetchRegisters();
+        } catch (error: any) {
+            message.error(error.message || 'Error al autorizar cierre');
+        }
+    };
+
+    const registerColumns = [
+        {
+            title: 'Nombre de la Caja',
+            dataIndex: 'name',
+            key: 'name',
+            render: (text: string, record: CashRegister) => (
+                <Space direction="vertical" size={0}>
+                    <Text strong>{text}</Text>
+                    <Text type="secondary" style={{ fontSize: 12 }}>{record.location}</Text>
+                </Space>
+            )
+        },
+        {
+            title: 'Estado',
+            key: 'status',
+            render: (_: any, record: CashRegister) => (
+                record.activeSession
+                    ? getStatusTag(record.activeSession.status)
+                    : <Tag color="default">● CERRADA</Tag>
+            )
+        },
+        {
+            title: 'Responsable',
+            key: 'manager',
+            render: (_: any, record: CashRegister) => (
+                record.activeSession?.cashierId || record.activeSession?.openedBy || '-'
+            )
+        },
+        {
+            title: 'Dinero en Gaveta',
+            key: 'balance',
+            align: 'right' as const,
+            render: (_: any, record: CashRegister) => (
+                record.activeSession
+                    ? <Text strong style={{ color: '#1890ff', fontSize: 16 }}>{formatVenezuelanPrice(record.activeSession.currentBalance)}</Text>
+                    : '-'
+            )
+        },
+        {
+            title: 'Acciones',
+            key: 'actions',
+            align: 'right' as const,
+            render: (_: any, record: CashRegister) => (
+                <Space>
+                    {!record.activeSession ? (
+                        <Button
+                            type="primary"
+                            icon={<PlusOutlined />}
+                            onClick={() => handleOpenRegister(record.id)}
+                        >
+                            Abrir
+                        </Button>
+                    ) : (
+                        <>
+                            <Button
+                                icon={<EyeOutlined />}
+                                onClick={() => handleSelectRegister(record.id)}
+                            >
+                                Ver Detalle
+                            </Button>
+                            <Button
+                                type="primary"
+                                icon={<BankOutlined />}
+                                style={{ backgroundColor: '#722ed1', borderColor: '#722ed1' }}
+                                onClick={() => {
+                                    setRegisterId(record.id);
+                                    setIsTransferToTreasuryOpen(true);
+                                }}
+                            >
+                                Tesorería
+                            </Button>
+                            <Button
+                                danger
+                                type="primary"
+                                icon={<LogoutOutlined />}
+                                onClick={() => {
+                                    setRegisterId(record.id);
+                                    setIsCloseModalVisible(true);
+                                }}
+                            >
+                                Cerrar
+                            </Button>
+                        </>
+                    )}
+                </Space>
+            )
+        }
+    ];
+
+    const renderCashCountTable = (counts: any[]) => {
+        if (!counts || counts.length === 0) return <Empty description="No se reportó desglose de efectivo" image={Empty.PRESENTED_IMAGE_SIMPLE} />;
+
+        const vesItems = counts.filter(c => c.currencyCode === 'VES');
+        const usdItems = counts.filter(c => c.currencyCode === 'USD');
+
+        const columns = [
+            { title: 'Denominación', dataIndex: 'value', key: 'value', render: (val: any, record: any) => `${Number(val).toFixed(2)} ${record.currencyCode}` },
+            { title: 'Cantidad', dataIndex: 'quantity', key: 'quantity', align: 'center' as const },
+            { title: 'Subtotal', dataIndex: 'total', key: 'total', align: 'right' as const, render: (val: any, record: any) => `${Number(val).toFixed(2)} ${record.currencyCode}` },
+        ];
+
         return (
-            <div style={{ padding: 24, textAlign: 'center' }}>
-                <Spin size="large" />
-            </div>
+            <Row gutter={24}>
+                <Col span={12}>
+                    <Title level={5}>VES (Bolívares)</Title>
+                    <Table
+                        dataSource={vesItems}
+                        columns={columns}
+                        rowKey="id"
+                        pagination={false}
+                        size="small"
+                        footer={() => (
+                            <div style={{ textAlign: 'right', fontWeight: 'bold' }}>
+                                Total VES: {vesItems.reduce((acc, curr) => acc + Number(curr.total), 0).toFixed(2)} Bs.
+                            </div>
+                        )}
+                    />
+                </Col>
+                <Col span={12}>
+                    <Title level={5}>USD (Dólares)</Title>
+                    <Table
+                        dataSource={usdItems}
+                        columns={columns}
+                        rowKey="id"
+                        pagination={false}
+                        size="small"
+                        footer={() => (
+                            <div style={{ textAlign: 'right', fontWeight: 'bold' }}>
+                                Total USD: {usdItems.reduce((acc, curr) => acc + Number(curr.total), 0).toFixed(2)} $
+                            </div>
+                        )}
+                    />
+                </Col>
+            </Row>
         );
-    }
+    };
 
-    if (!activeSession) {
-        return (
-            <div style={{ padding: 24 }}>
-                <Title level={2}>🏦 Caja</Title>
+    const renderCurrentTab = () => {
+        if (isLoadingRegisters || (registerId && isLoading)) return <div style={{ textAlign: 'center', padding: 50 }}><Spin size="large" /></div>;
 
-                <Tabs
-                    activeKey={activeTab}
-                    onChange={setActiveTab}
-                    items={[
-                        {
-                            key: 'current',
-                            label: 'Sesión Actual',
-                            children: (
-                                <Card>
-                                    <Empty
-                                        description="No hay sesión activa"
-                                        image={Empty.PRESENTED_IMAGE_SIMPLE}
+        // If a specific register is selected AND it has an active session, show detailed view
+        if (registerId && activeSession) {
+            const summary = calculateSummary(activeSession);
+            return (
+                <>
+                    <Button
+                        icon={<HistoryOutlined />}
+                        onClick={() => setRegisterId('')}
+                        style={{ marginBottom: 16 }}
+                    >
+                        Volver al Panel de Cajas
+                    </Button>
+
+                    {activeSession.status === 'AWAITING_CLOSE' ? (
+                        <Alert
+                            message={<Title level={4} style={{ margin: 0, color: '#856404' }}>📢 {activeSession.register.name.toUpperCase()} SOLICITA CIERRE</Title>}
+                            description={
+                                <Space direction="vertical" style={{ width: '100%' }}>
+                                    <Text>El cajero ha realizado el arqueo y solicita cerrar la sesión. Revise los montos antes de autorizar.</Text>
+                                    <div style={{ marginTop: 8 }}>
+                                        <Text strong>Contado por Cajero: {formatVenezuelanPrice(Number(activeSession.actualBalance))}</Text>
+                                        <br />
+                                        <Text type="secondary">Varianza reportada: {formatVenezuelanPrice(Number(activeSession.variance))}</Text>
+                                    </div>
+                                    <Button
+                                        type="primary"
+                                        icon={<CheckCircleOutlined />}
+                                        style={{ marginTop: 12, backgroundColor: '#52c41a', borderColor: '#52c41a' }}
+                                        onClick={() => handleApproveClose(activeSession.id)}
                                     >
-                                        <Button
-                                            type="primary"
-                                            size="large"
-                                            icon={<PlusOutlined />}
-                                            onClick={() => setIsOpenModalVisible(true)}
-                                        >
-                                            Abrir Caja
-                                        </Button>
-                                    </Empty>
-                                </Card>
-                            )
-                        },
-                        {
-                            key: 'history',
-                            label: (
-                                <span>
-                                    <HistoryOutlined /> Historial
-                                </span>
-                            ),
-                            children: (
-                                <Card>
-                                    <Table
-                                        dataSource={closedSessions}
-                                        columns={historyColumns}
-                                        rowKey="id"
-                                        expandable={{
-                                            expandedRowKeys,
-                                            onExpand: (expanded, record) => {
-                                                setExpandedRowKeys(expanded ? [record.id] : []);
-                                            },
-                                            expandedRowRender: (record: CashSession) => (
-                                                <div style={{ padding: '0 24px' }}>
-                                                    <Title level={5}>Movimientos</Title>
-                                                    <Table
-                                                        dataSource={record.movements}
-                                                        columns={movementsColumns}
-                                                        rowKey="id"
-                                                        pagination={false}
-                                                        size="small"
-                                                    />
-                                                </div>
-                                            ),
-                                            expandIcon: ({ expanded, onExpand, record }) => (
-                                                <Button
-                                                    type="text"
-                                                    size="small"
-                                                    icon={<EyeOutlined />}
-                                                    onClick={(e) => onExpand(record, e)}
-                                                >
-                                                    {expanded ? 'Ocultar' : 'Ver detalles'}
-                                                </Button>
-                                            )
-                                        }}
-                                        pagination={{
-                                            pageSize: 10,
-                                            showTotal: (total) => `Total: ${total} sesiones`
-                                        }}
-                                    />
-                                </Card>
-                            )
-                        }
-                    ]}
-                />
+                                        Autorizar Cierre de Caja
+                                    </Button>
+                                </Space>
+                            }
+                            type="warning"
+                            showIcon
+                            style={{ marginBottom: 16 }}
+                        />
+                    ) : (
+                        <Alert
+                            message={`Sesión iniciada: ${dayjs(activeSession.openedAt).format('DD/MM/YYYY HH:mm')}`}
+                            type="info"
+                            showIcon
+                            style={{ marginBottom: 16 }}
+                        />
+                    )}
 
-                <OpenSessionModal
-                    open={isOpenModalVisible}
-                    registerId={registerId}
-                    onCancel={() => setIsOpenModalVisible(false)}
-                    onSuccess={() => {
-                        setIsOpenModalVisible(false);
-                        refetch();
-                    }}
-                />
-            </div>
+                    {/* Summary Cards */}
+                    <Row gutter={16} style={{ marginBottom: 24 }}>
+                        <Col xs={24} sm={12} md={6}>
+                            <Card>
+                                <Statistic
+                                    title="Apertura"
+                                    value={Number(activeSession.openingBalance)}
+                                    precision={2}
+                                    prefix="Bs."
+                                    valueStyle={{ color: '#722ed1' }}
+                                />
+                            </Card>
+                        </Col>
+                        <Col xs={24} sm={12} md={6}>
+                            <Card>
+                                <Statistic
+                                    title="Ventas"
+                                    value={summary.sales}
+                                    precision={2}
+                                    prefix="Bs."
+                                    valueStyle={{ color: '#52c41a' }}
+                                />
+                            </Card>
+                        </Col>
+                        <Col xs={24} sm={12} md={6}>
+                            <Card>
+                                <Statistic
+                                    title="Gastos"
+                                    value={summary.expenses}
+                                    precision={2}
+                                    prefix="Bs."
+                                    valueStyle={{ color: '#ff4d4f' }}
+                                />
+                            </Card>
+                        </Col>
+                        <Col xs={24} sm={12} md={6}>
+                            <Card style={{ borderColor: '#1890ff', borderWidth: 2 }}>
+                                <Statistic
+                                    title="Balance Esperado"
+                                    value={summary.expected}
+                                    precision={2}
+                                    prefix="Bs."
+                                    valueStyle={{ color: '#1890ff', fontSize: 24 }}
+                                />
+                            </Card>
+                        </Col>
+                    </Row>
+
+                    {/* Actions */}
+                    <Card style={{ marginBottom: 16 }}>
+                        <Space wrap>
+                            <Button
+                                type="primary"
+                                icon={<DollarOutlined />}
+                                onClick={() => setIsAddMovementOpen(true)}
+                            >
+                                Registrar Movimiento
+                            </Button>
+                            <Button
+                                type="primary"
+                                icon={<BankOutlined />}
+                                style={{ backgroundColor: '#722ed1', borderColor: '#722ed1' }}
+                                onClick={() => setIsTransferToTreasuryOpen(true)}
+                            >
+                                Trasladar a Tesorería
+                            </Button>
+                            <Button
+                                icon={<ReloadOutlined />}
+                                onClick={() => refetch()}
+                            >
+                                Actualizar
+                            </Button>
+                            <Button
+                                danger
+                                type="primary"
+                                icon={<LogoutOutlined />}
+                                onClick={() => setIsCloseModalVisible(true)}
+                            >
+                                Cerrar Caja
+                            </Button>
+                        </Space>
+                    </Card>
+
+                    {/* Reported Cash Details */}
+                    {activeSession?.cashCounts && activeSession.cashCounts.length > 0 && (
+                        <Card title={<Space><InboxOutlined /> Arqueo de Efectivo Reportado por el Cajero</Space>} style={{ marginBottom: 24 }}>
+                            <Tabs
+                                type="card"
+                                items={[
+                                    {
+                                        key: 'closing',
+                                        label: 'Arqueo de Cierre',
+                                        children: renderCashCountTable(activeSession.cashCounts.filter(c => c.type === 'CLOSING'))
+                                    },
+                                    {
+                                        key: 'verification',
+                                        label: 'Arqueo de Apertura',
+                                        children: renderCashCountTable(activeSession.cashCounts.filter(c => c.type === 'VERIFICATION'))
+                                    }
+                                ].filter(item => {
+                                    const hasData = activeSession.cashCounts?.some(c => c.type === (item.key === 'closing' ? 'CLOSING' : 'VERIFICATION'));
+                                    return hasData;
+                                })}
+                            />
+                        </Card>
+                    )
+                    }
+
+                    {/* Movements Table */}
+                    <Card title="Movimientos del Día">
+                        <Table
+                            dataSource={activeSession.movements}
+                            columns={movementsColumns}
+                            rowKey="id"
+                            pagination={false}
+                            scroll={{ y: 400 }}
+                        />
+                    </Card>
+                </>
+            );
+        }
+
+        // Dashboard List (Always shown for Admin if no register is "selected" for detail)
+        if (user?.role === 'ADMIN') {
+            return (
+                <Card
+                    title={<Title level={4} style={{ margin: 0 }}>📊 Panel de Control de Cajas</Title>}
+                    extra={<Button icon={<ReloadOutlined />} onClick={() => refetchRegisters()} />}
+                >
+                    <Table
+                        dataSource={registers}
+                        columns={registerColumns}
+                        rowKey="id"
+                        pagination={false}
+                    />
+                </Card>
+            );
+        }
+
+        // For Cashiers or if no session
+        return (
+            <Card>
+                <Empty
+                    description="No hay sesión activa"
+                    image={Empty.PRESENTED_IMAGE_SIMPLE}
+                >
+                    <Button
+                        type="primary"
+                        size="large"
+                        icon={<PlusOutlined />}
+                        onClick={() => setIsOpenModalVisible(true)}
+                    >
+                        Abrir Caja
+                    </Button>
+                </Empty>
+            </Card>
         );
-    }
-
-    const summary = calculateSummary(activeSession);
+    };
 
     return (
         <div style={{ padding: 24 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-                <Title level={2}>🏦 {activeSession.register.name}</Title>
-                <Space>
-                    <Tag color="green" style={{ fontSize: 14, padding: '4px 12px' }}>
-                        ● ABIERTA
-                    </Tag>
-                    <Text type="secondary">
-                        Responsable: <strong>{activeSession.openedBy}</strong>
-                    </Text>
-                </Space>
+                <Title level={2}>🏦 Caja</Title>
+                {activeSession && (
+                    <Space>
+                        {getStatusTag(activeSession.status)}
+                        <Text type="secondary">
+                            {activeSession.register.name} | Abierta por: <strong>{activeSession.openedBy}</strong>
+                        </Text>
+                    </Space>
+                )}
             </div>
 
             <Tabs
@@ -368,131 +684,19 @@ export const CashRegisterPage = () => {
                 items={[
                     {
                         key: 'current',
-                        label: 'Sesión Actual',
-                        children: (
-                            <>
-                                <Alert
-                                    message={`Sesión iniciada: ${dayjs(activeSession.openedAt).format('DD/MM/YYYY HH:mm')}`}
-                                    type="info"
-                                    showIcon
-                                    style={{ marginBottom: 16 }}
-                                />
-
-                                {/* Summary Cards */}
-                                <Row gutter={16} style={{ marginBottom: 24 }}>
-                                    <Col xs={24} sm={12} md={6}>
-                                        <Card>
-                                            <Statistic
-                                                title="Apertura"
-                                                value={Number(activeSession.openingBalance)}
-                                                precision={2}
-                                                prefix="Bs."
-                                                valueStyle={{ color: '#722ed1' }}
-                                                styles={{ content: { color: '#722ed1' } }}
-                                            />
-                                        </Card>
-                                    </Col>
-                                    <Col xs={24} sm={12} md={6}>
-                                        <Card>
-                                            <Statistic
-                                                title="Ventas"
-                                                value={summary.sales}
-                                                precision={2}
-                                                prefix="Bs."
-                                                valueStyle={{ color: '#52c41a' }}
-                                                styles={{ content: { color: '#52c41a' } }}
-                                            />
-                                        </Card>
-                                    </Col>
-                                    <Col xs={24} sm={12} md={6}>
-                                        <Card>
-                                            <Statistic
-                                                title="Gastos"
-                                                value={summary.expenses}
-                                                precision={2}
-                                                prefix="Bs."
-                                                valueStyle={{ color: '#ff4d4f' }}
-                                                styles={{ content: { color: '#ff4d4f' } }}
-                                            />
-                                        </Card>
-                                    </Col>
-                                    <Col xs={24} sm={12} md={6}>
-                                        <Card style={{ borderColor: '#1890ff', borderWidth: 2 }}>
-                                            <Statistic
-                                                title="Balance Esperado"
-                                                value={summary.expected}
-                                                precision={2}
-                                                prefix="Bs."
-                                                valueStyle={{ color: '#1890ff', fontSize: 24 }}
-                                                styles={{ content: { color: '#1890ff', fontSize: 24 } }}
-                                            />
-                                        </Card>
-                                    </Col>
-                                </Row>
-
-                                {/* Actions */}
-                                <Card style={{ marginBottom: 16 }}>
-                                    <Space wrap>
-                                        <Button
-                                            type="primary"
-                                            icon={<DollarOutlined />}
-                                            onClick={() => setIsAddMovementOpen(true)}
-                                        >
-                                            Registrar Movimiento
-                                        </Button>
-                                        <Button
-                                            type="primary"
-                                            icon={<BankOutlined />}
-                                            style={{ backgroundColor: '#722ed1', borderColor: '#722ed1' }}
-                                            onClick={() => setIsTransferToTreasuryOpen(true)}
-                                        >
-                                            Trasladar a Tesorería
-                                        </Button>
-                                        <Button
-                                            icon={<ReloadOutlined />}
-                                            onClick={() => refetch()}
-                                        >
-                                            Actualizar
-                                        </Button>
-                                        <Button
-                                            danger
-                                            type="primary"
-                                            icon={<LogoutOutlined />}
-                                            onClick={() => setIsCloseModalVisible(true)}
-                                        >
-                                            Cerrar Caja
-                                        </Button>
-                                    </Space>
-                                </Card>
-
-                                {/* Movements Table */}
-                                <Card title="Movimientos del Día">
-                                    <Table
-                                        dataSource={activeSession.movements}
-                                        columns={movementsColumns}
-                                        rowKey="id"
-                                        pagination={false}
-                                        scroll={{ y: 400 }}
-                                    />
-                                </Card>
-                            </>
-                        )
+                        label: 'Panel de Control',
+                        children: renderCurrentTab()
                     },
                     {
                         key: 'history',
                         label: (
                             <span>
-                                <HistoryOutlined /> Historial
+                                <HistoryOutlined /> Historial Global
                             </span>
                         ),
                         children: (
                             <Card
-                                extra={
-                                    <Button
-                                        icon={<ReloadOutlined />}
-                                        onClick={() => refetchHistory()}
-                                    />
-                                }
+                                extra={<Button icon={<ReloadOutlined />} onClick={() => refetchHistory()} />}
                             >
                                 <Table
                                     dataSource={closedSessions}
@@ -505,7 +709,7 @@ export const CashRegisterPage = () => {
                                         },
                                         expandedRowRender: (record: CashSession) => (
                                             <div style={{ padding: '0 24px' }}>
-                                                <Title level={5}>Movimientos de la Sesión</Title>
+                                                <Title level={5}>Caja: {record.register.name} - Movimientos</Title>
                                                 <Table
                                                     dataSource={record.movements}
                                                     columns={movementsColumns}
@@ -513,6 +717,13 @@ export const CashRegisterPage = () => {
                                                     pagination={false}
                                                     size="small"
                                                 />
+
+                                                {record.cashCounts && record.cashCounts.length > 0 && (
+                                                    <div style={{ marginTop: 24 }}>
+                                                        <Title level={5}>Arqueo de Efectivo Reportado</Title>
+                                                        {renderCashCountTable(record.cashCounts.filter(c => c.type === 'CLOSING'))}
+                                                    </div>
+                                                )}
                                             </div>
                                         ),
                                         expandIcon: ({ expanded, onExpand, record }) => (
@@ -533,38 +744,85 @@ export const CashRegisterPage = () => {
                                 />
                             </Card>
                         )
-                    }
-                ]}
+                    },
+                    user?.role === 'ADMIN' ? {
+                        key: 'config',
+                        label: (
+                            <span>
+                                <SettingOutlined /> Gestión de Cajas
+                            </span>
+                        ),
+                        children: <RegistersManagement />
+                    } : null
+                ].filter(Boolean) as any}
             />
 
             {/* Modals */}
-            <CloseSessionModal
-                open={isCloseModalVisible}
-                session={activeSession}
-                onCancel={() => setIsCloseModalVisible(false)}
+            <OpenSessionModal
+                open={isOpenModalVisible}
+                registerId={registerId}
+                onCancel={() => {
+                    setIsOpenModalVisible(false);
+                    setRegisterId('');
+                }}
                 onSuccess={() => {
-                    setIsCloseModalVisible(false);
+                    setIsOpenModalVisible(false);
                     refetch();
-                    refetchHistory();
+                    refetchRegisters();
+                    queryClient.invalidateQueries({ queryKey: ['cashRegistersDashboard'] });
                 }}
             />
 
-            <AddMovementModal
-                open={isAddMovementOpen}
-                sessionId={activeSession.id}
-                onCancel={() => setIsAddMovementOpen(false)}
-                onSuccess={() => {
-                    setIsAddMovementOpen(false);
-                    refetch();
-                }}
-            />
+            {activeSession && (
+                <>
+                    <CloseSessionModal
+                        open={isCloseModalVisible}
+                        session={activeSession}
+                        onCancel={() => setIsCloseModalVisible(false)}
+                        onSuccess={() => {
+                            setIsCloseModalVisible(false);
+                            refetch();
+                            refetchHistory();
+                            refetchRegisters();
+                            queryClient.invalidateQueries({ queryKey: ['cashRegistersDashboard'] });
+                        }}
+                    />
 
-            <TransferToTreasuryModal
-                open={isTransferToTreasuryOpen}
-                sessionId={activeSession.id}
-                onClose={() => {
-                    setIsTransferToTreasuryOpen(false);
+                    <AddMovementModal
+                        open={isAddMovementOpen}
+                        sessionId={activeSession.id}
+                        onCancel={() => setIsAddMovementOpen(false)}
+                        onSuccess={() => {
+                            setIsAddMovementOpen(false);
+                            refetch();
+                            refetchRegisters();
+                            queryClient.invalidateQueries({ queryKey: ['cashRegistersDashboard'] });
+                        }}
+                    />
+
+                    <TransferToTreasuryModal
+                        open={isTransferToTreasuryOpen}
+                        sessionId={activeSession.id}
+                        onClose={() => {
+                            setIsTransferToTreasuryOpen(false);
+                            refetch();
+                            refetchRegisters();
+                            queryClient.invalidateQueries({ queryKey: ['cashRegistersDashboard'] });
+                        }}
+                    />
+                </>
+            )}
+
+            {/* Verification Modal - Only for the assigned cashier */}
+            <CashCountModal
+                mode="OPENING"
+                open={!!activeSession && activeSession.status === 'OPEN' && !activeSession.verifiedAt && activeSession.cashierId === user?.username}
+                sessionId={activeSession?.id || ''}
+                openingBalance={Number(activeSession?.openingBalance || 0)}
+                onSuccess={() => {
                     refetch();
+                    refetchRegisters();
+                    queryClient.invalidateQueries({ queryKey: ['cashRegistersDashboard'] });
                 }}
             />
         </div>

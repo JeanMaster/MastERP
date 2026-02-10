@@ -7,10 +7,10 @@ import { AuthGuard } from '@nestjs/passport';
 
 @ApiTags('departments')
 @Controller('departments')
-@UseGuards(AuthGuard('jwt'))
 export class DepartmentsController {
     constructor(private readonly departmentsService: DepartmentsService) { }
 
+    @UseGuards(AuthGuard('jwt'))
     @Post()
     @ApiOperation({ summary: 'Crear un nuevo departamento' })
     @ApiResponse({ status: 201, description: 'Departamento creado' })
@@ -41,6 +41,7 @@ export class DepartmentsController {
         return this.departmentsService.findOne(id);
     }
 
+    @UseGuards(AuthGuard('jwt'))
     @Patch(':id')
     @ApiOperation({ summary: 'Actualizar un departamento' })
     @ApiResponse({ status: 200, description: 'Departamento actualizado' })
@@ -49,6 +50,7 @@ export class DepartmentsController {
         return this.departmentsService.update(id, updateDepartmentDto);
     }
 
+    @UseGuards(AuthGuard('jwt'))
     @Delete(':id')
     @ApiOperation({ summary: 'Eliminar un departamento (soft delete)' })
     @ApiResponse({ status: 200, description: 'Departamento eliminado' })

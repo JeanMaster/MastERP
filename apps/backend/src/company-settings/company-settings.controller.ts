@@ -6,7 +6,6 @@ import { AuthGuard } from '@nestjs/passport';
 
 @ApiTags('company-settings')
 @Controller('company-settings')
-@UseGuards(AuthGuard('jwt'))
 export class CompanySettingsController {
     constructor(private readonly companySettingsService: CompanySettingsService) { }
 
@@ -17,6 +16,7 @@ export class CompanySettingsController {
         return this.companySettingsService.getSettings();
     }
 
+    @UseGuards(AuthGuard('jwt'))
     @Put()
     @ApiOperation({ summary: 'Actualizar configuración de la empresa' })
     @ApiResponse({ status: 200, description: 'Configuración actualizada' })

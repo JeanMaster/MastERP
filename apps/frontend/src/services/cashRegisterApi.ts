@@ -5,6 +5,14 @@ export interface CashRegister {
     name: string;
     location?: string;
     isActive: boolean;
+    activeSession?: {
+        id: string;
+        status: 'OPEN' | 'AWAITING_CLOSE' | 'CLOSED';
+        openedBy: string;
+        cashierId?: string;
+        openedAt: string;
+        currentBalance: number;
+    } | null;
 }
 
 export interface CashMovement {
@@ -13,6 +21,7 @@ export interface CashMovement {
     type: 'SALE' | 'EXPENSE' | 'DEPOSIT' | 'WITHDRAWAL' | 'OPENING' | 'CLOSING';
     amount: number;
     currencyCode: string;
+    exchangeRate: number;
     description: string;
     notes?: string;
     performedBy: string;
@@ -21,15 +30,27 @@ export interface CashMovement {
     createdAt: string;
 }
 
+export interface SessionCashCount {
+    id: string;
+    sessionId: string;
+    type: 'VERIFICATION' | 'CLOSING';
+    currencyCode: string;
+    value: number;
+    quantity: number;
+    total: number;
+    createdAt: string;
+}
+
 export interface CashSession {
     id: string;
     registerId: string;
     register: CashRegister;
     openedBy: string;
+    cashierId?: string;
     closedBy?: string;
     openedAt: string;
     closedAt?: string;
-    status: 'OPEN' | 'CLOSED';
+    status: 'OPEN' | 'CLOSED' | 'AWAITING_CLOSE';
     openingBalance: number;
     openingNotes?: string;
     expectedBalance?: number;
@@ -37,19 +58,32 @@ export interface CashSession {
     variance?: number;
     closingNotes?: string;
     movements: CashMovement[];
+    sales?: any[];
+    verifiedAt?: string;
+    verifiedBy?: string;
+    verificationDiff?: number;
+    cashCounts?: SessionCashCount[];
 }
 
 export interface OpenSessionDto {
     registerId: string;
     openingBalance: number;
     openedBy?: string;
+    cashierId?: string;
     openingNotes?: string;
+}
+
+export interface CashCountItemDto {
+    denominationId: string;
+    quantity: number;
 }
 
 export interface CloseSessionDto {
     actualBalance: number;
     closedBy?: string;
     closingNotes?: string;
+    items?: CashCountItemDto[];
+    exchangeRate?: number;
 }
 
 export interface CreateMovementDto {
@@ -60,6 +94,7 @@ export interface CreateMovementDto {
     description: string;
     notes?: string;
     performedBy?: string;
+    exchangeRate?: number;
 }
 
 export const cashRegisterApi = {
@@ -78,9 +113,20 @@ export const cashRegisterApi = {
         return data;
     },
 
-    getActiveSession: async (registerId?: string): Promise<CashSession | null> => {
+    requestClose: async (sessionId: string, dto: CloseSessionDto): Promise<CashSession> => {
+        const { data } = await api.post(`/cash-register/sessions/${sessionId}/request-close`, dto);
+        return data;
+    },
+
+    approveClose: async (sessionId: string, adminUser: string): Promise<CashSession> => {
+        const { data } = await api.post(`/cash-register/sessions/${sessionId}/approve-close`, { adminUser });
+        return data;
+    },
+
+    getActiveSession: async (registerId?: string, cashierId?: string): Promise<CashSession | null> => {
         const params: any = {};
         if (registerId) params.registerId = registerId;
+        if (cashierId) params.cashierId = cashierId;
         const { data } = await api.get('/cash-register/sessions/active', { params });
         return data;
     },
@@ -108,6 +154,36 @@ export const cashRegisterApi = {
 
     transferToTreasury: async (sessionId: string, dto: { bankAccountId: string, amount: number, description: string, performedBy?: string }): Promise<any> => {
         const { data } = await api.post(`/cash-register/sessions/${sessionId}/transfer-to-treasury`, dto);
+        return data;
+    },
+
+    getDenominations: async (): Promise<any[]> => {
+        const { data } = await api.get('/cash-register/denominations');
+        return data;
+    },
+
+    verifySession: async (sessionId: string, dto: any): Promise<any> => {
+        const { data } = await api.post(`/cash-register/sessions/${sessionId}/verify`, dto);
+        return data;
+    },
+
+    listRegisters: async (): Promise<CashRegister[]> => {
+        const { data } = await api.get('/cash-register/registers');
+        return data;
+    },
+
+    createRegister: async (data: { name: string, location?: string }): Promise<CashRegister> => {
+        const { data: result } = await api.post('/cash-register/registers', data);
+        return result;
+    },
+
+    updateRegister: async (id: string, data: { name?: string, location?: string, isActive?: boolean }): Promise<CashRegister> => {
+        const { data: result } = await api.patch(`/cash-register/registers/${id}`, data);
+        return result;
+    },
+
+    deleteRegister: async (id: string): Promise<CashRegister> => {
+        const { data } = await api.delete(`/cash-register/registers/${id}`);
         return data;
     }
 };

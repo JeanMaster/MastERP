@@ -7,10 +7,10 @@ import { AuthGuard } from '@nestjs/passport';
 
 @ApiTags('products')
 @Controller('products')
-@UseGuards(AuthGuard('jwt'))
 export class ProductsController {
     constructor(private readonly productsService: ProductsService) { }
 
+    @UseGuards(AuthGuard('jwt'))
     @Post()
     @ApiOperation({ summary: 'Crear un nuevo producto' })
     @ApiResponse({ status: 201, description: 'Producto creado exitosamente' })
@@ -51,6 +51,7 @@ export class ProductsController {
         return this.productsService.findOne(id);
     }
 
+    @UseGuards(AuthGuard('jwt'))
     @Patch(':id')
     @ApiOperation({ summary: 'Actualizar un producto' })
     @ApiResponse({ status: 200, description: 'Producto actualizado' })
@@ -59,6 +60,7 @@ export class ProductsController {
         return this.productsService.update(id, updateProductDto);
     }
 
+    @UseGuards(AuthGuard('jwt'))
     @Delete(':id')
     @ApiOperation({ summary: 'Eliminar un producto (soft delete)' })
     @ApiResponse({ status: 200, description: 'Producto marcado como inactivo' })
@@ -67,6 +69,7 @@ export class ProductsController {
         return this.productsService.remove(id);
     }
 
+    @UseGuards(AuthGuard('jwt'))
     @Post('batch-update-prices')
     @ApiOperation({ summary: 'Actualizar precios de venta en lote usando márgenes' })
     @ApiResponse({ status: 200, description: 'Precios actualizados exitosamente' })

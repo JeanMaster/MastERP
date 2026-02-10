@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param, Query, Patch, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Query, Patch, UseGuards, Delete } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { CashRegisterService } from './cash-register.service';
 import { OpenSessionDto } from './dto/open-session.dto';
@@ -38,8 +38,11 @@ export class CashRegisterController {
 
     @Get('sessions/active')
     @ApiOperation({ summary: 'Obtener sesión activa' })
-    getActiveSession(@Query('registerId') registerId?: string) {
-        return this.cashRegisterService.getActiveSession(registerId);
+    getActiveSession(
+        @Query('registerId') registerId?: string,
+        @Query('cashierId') cashierId?: string
+    ) {
+        return this.cashRegisterService.getActiveSession(registerId, cashierId);
     }
 
     @Get('sessions/:id')
@@ -87,4 +90,65 @@ export class CashRegisterController {
             dto.performedBy || 'Sistema'
         );
     }
+
+    @Post('sessions/:id/verify')
+    @ApiOperation({ summary: 'Verificar sesión (Arqueo inicial)' })
+    async verifySession(
+        @Param('id') id: string,
+        @Body() verifyDto: any,
+    ) {
+        return this.cashRegisterService.verifySession(id, verifyDto, 'Cajero');
+    }
+
+    @Post('sessions/:id/request-close')
+    @ApiOperation({ summary: 'Solicitar cierre de caja (Arqueo de cierre)' })
+    requestClose(
+        @Param('id') id: string,
+        @Body() closeDto: CloseSessionDto
+    ) {
+        return this.cashRegisterService.requestCloseSession(id, closeDto);
+    }
+
+    @Post('sessions/:id/approve-close')
+    @ApiOperation({ summary: 'Aprobar cierre de caja (Administrador)' })
+    approveClose(
+        @Param('id') id: string,
+        @Body() body: { adminUser: string }
+    ) {
+        return this.cashRegisterService.approveCloseSession(id, body.adminUser);
+    }
+
+    @Get('denominations')
+    @ApiOperation({ summary: 'Obtener denominaciones de moneda' })
+    getDenominations() {
+        return this.cashRegisterService.getDenominations();
+    }
+
+    @Get('registers')
+    @ApiOperation({ summary: 'Listar todas las cajas activas' })
+    listRegisters() {
+        return this.cashRegisterService.listRegisters();
+    }
+
+    @Post('registers')
+    @ApiOperation({ summary: 'Crear una nueva caja' })
+    createRegister(@Body() data: { name: string, location?: string }) {
+        return this.cashRegisterService.createRegister(data);
+    }
+
+    @Patch('registers/:id')
+    @ApiOperation({ summary: 'Actualizar una caja' })
+    updateRegister(
+        @Param('id') id: string,
+        @Body() data: { name?: string, location?: string, isActive?: boolean }
+    ) {
+        return this.cashRegisterService.updateRegister(id, data);
+    }
+
+    @Delete('registers/:id')
+    @ApiOperation({ summary: 'Eliminar una caja' })
+    deleteRegister(@Param('id') id: string) {
+        return this.cashRegisterService.deleteRegister(id);
+    }
 }
+
