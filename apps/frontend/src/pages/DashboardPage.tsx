@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import dayjs from 'dayjs';
 import { Card, Row, Col, Statistic, Button, Table, Spin, Empty, Segmented, FloatButton } from 'antd';
 import {
     ShoppingCartOutlined,
@@ -146,6 +147,16 @@ export const DashboardPage = () => {
         ? ((nominalMonthChange / stats.lastMonthSalesNominal) * 100).toFixed(1)
         : 0;
 
+    // Forecast: Days to reach last month's nominal total
+    const currentDay = dayjs().date();
+    const daysInMonth = dayjs().daysInMonth();
+    const daysRemaining = daysInMonth - currentDay;
+    const dailyVelocity = stats.thisMonthSalesNominal / currentDay;
+    const gapToLastMonth = stats.lastMonthSalesNominal - stats.thisMonthSalesNominal;
+    const daysToTarget = gapToLastMonth > 0 && dailyVelocity > 0
+        ? Math.ceil(gapToLastMonth / dailyVelocity)
+        : 0;
+
     const topProductsColumns = [
         {
             title: 'Producto',
@@ -224,8 +235,11 @@ export const DashboardPage = () => {
                                 )
                             }
                         />
-                        <div style={{ marginTop: 4, fontSize: 11, color: '#666' }}>
-                            {nominalMonthChange >= 0 ? '+' : ''}{nominalMonthChangePercent}% vs mes ant. (Monto exacto cobrado)
+                        <div style={{ marginTop: 4, fontSize: 11, color: '#666', display: 'flex', justifyContent: 'space-between' }}>
+                            <span>{nominalMonthChange >= 0 ? '+' : ''}{nominalMonthChangePercent}% vs mes ant.</span>
+                            <span style={{ fontWeight: 'bold', color: daysToTarget > daysRemaining ? '#cf1322' : '#3f8600' }}>
+                                Dias 0% : {daysToTarget} / {daysRemaining}
+                            </span>
                         </div>
                     </Card>
                 </Col>
