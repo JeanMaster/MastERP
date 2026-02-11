@@ -93,7 +93,7 @@ export class StatsService {
         const lastMonthEnd = dayjs().subtract(1, 'month').endOf('month').toDate();
 
         // All sales in dashboard are now revalued to current rate for coherence
-        const todaySales = await this.calculateNetSalesRevalued({ gte: today });
+        const todaySales = await this.calculateNetSalesRevalued({ gte: today }, 'VES', true);
         const thisMonthSales = await this.calculateNetSalesRevalued({ gte: monthStart });
         const thisMonthSalesNominal = await this.calculateNetSalesRevalued({ gte: monthStart }, 'VES', true);
         const lastMonthSales = await this.calculateNetSalesRevalued({ gte: lastMonthStart, lte: lastMonthEnd });
