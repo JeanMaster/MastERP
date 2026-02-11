@@ -5,6 +5,7 @@ export interface DashboardStats {
     thisMonthSales: number;
     thisMonthSalesNominal: number;
     lastMonthSales: number;
+    lastMonthSalesNominal: number;
     topProducts: { name: string; quantity: number }[];
     criticalStock: number;
     totalProducts: number;
