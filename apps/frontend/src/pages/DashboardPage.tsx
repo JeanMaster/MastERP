@@ -141,9 +141,9 @@ export const DashboardPage = () => {
         );
     }
 
-    const monthChange = stats.thisMonthSales - stats.lastMonthSales;
-    const monthChangePercent = stats.lastMonthSales
-        ? ((monthChange / stats.lastMonthSales) * 100).toFixed(1)
+    const nominalMonthChange = stats.thisMonthSalesNominal - stats.lastMonthSalesNominal;
+    const nominalMonthChangePercent = stats.lastMonthSalesNominal
+        ? ((nominalMonthChange / stats.lastMonthSalesNominal) * 100).toFixed(1)
         : 0;
 
     const topProductsColumns = [
@@ -207,17 +207,17 @@ export const DashboardPage = () => {
                         />
                     </Card>
                 </Col>
-                <Col xs={24} sm={12} lg={5}>
-                    <Card size="small">
+                <Col xs={24} sm={12} lg={7}>
+                    <Card size="small" style={{ border: '1px solid #1890ff44' }}>
                         <Statistic
-                            title="Ventas Mes (Ajustado)"
-                            value={getConvertedAmount(stats.thisMonthSales)}
+                            title="Ventas Mes (Nominal)"
+                            value={getConvertedAmount(stats.thisMonthSalesNominal)}
                             precision={2}
                             prefix={currentSymbol}
                             valueStyle={{ color: '#1890ff', fontSize: '20px' }}
                             styles={{ content: { color: '#1890ff', fontSize: '20px' } }}
                             suffix={
-                                monthChange >= 0 ? (
+                                nominalMonthChange >= 0 ? (
                                     <ArrowUpOutlined style={{ color: '#3f8600', fontSize: '14px' }} />
                                 ) : (
                                     <ArrowDownOutlined style={{ color: '#cf1322', fontSize: '14px' }} />
@@ -225,26 +225,11 @@ export const DashboardPage = () => {
                             }
                         />
                         <div style={{ marginTop: 4, fontSize: 11, color: '#666' }}>
-                            {monthChange >= 0 ? '+' : ''}{monthChangePercent}% vs mes ant.
+                            {nominalMonthChange >= 0 ? '+' : ''}{nominalMonthChangePercent}% vs mes ant. (Monto exacto cobrado)
                         </div>
                     </Card>
                 </Col>
-                <Col xs={24} sm={12} lg={5}>
-                    <Card size="small" style={{ border: '1px solid #d9d9d9' }}>
-                        <Statistic
-                            title="Ventas Mes (Nominal)"
-                            value={getConvertedAmount(stats.thisMonthSalesNominal)}
-                            precision={2}
-                            prefix={currentSymbol}
-                            valueStyle={{ color: '#595959', fontSize: '20px' }}
-                            styles={{ content: { color: '#595959', fontSize: '20px' } }}
-                        />
-                        <div style={{ marginTop: 4, fontSize: 11, color: '#666' }}>
-                            Monto exacto cobrado
-                        </div>
-                    </Card>
-                </Col>
-                <Col xs={24} sm={12} lg={5}>
+                <Col xs={24} sm={12} lg={6}>
                     <Card size="small">
                         <Statistic
                             title="Balance de Caja"

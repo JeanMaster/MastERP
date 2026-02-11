@@ -420,6 +420,7 @@ Se ha completado la **Fase de Robustez y Flexibilidad del POS**. El sistema ahor
 - **`POSPage.tsx`**: Lógica de bloqueo eliminada para `ADMIN`. Permite entrada sin sesión y selección manual de caja.
 - **`posStore.ts`**: `processSale` actualizado para enviar el `cashSessionId` actual al backend.
 - **`OpenSessionModal.tsx`**: Implementación de sistema de **Conteo Físico por Denominación**. Los usuarios deben ingresar la cantidad de billetes/monedas, y el sistema calcula el saldo inicial automáticamente, evitando errores de precisión decimal.
+- **Dashboard**: Refactorizado para mostrar únicamente las **Ventas Nominales** del mes con su porcentaje de comparación contra el mes anterior. Eliminada la métrica de "Ventas Ajustadas".
 
 ---
 
@@ -436,7 +437,11 @@ Para que la IA tome estos cambios y el sistema funcione correctamente, se recomi
     ```bash
     npx prisma db push
     ```
-3.  **Reconstruir Aplicaciones**:
+3.  **Actualizar Cono Monetario** (Billetes nuevos):
+    ```bash
+    npx ts-node prisma/seed-denominations.ts
+    ```
+4.  **Reconstruir Aplicaciones**:
     ```bash
     # En la raíz o carpetas respectivas
     npm run build

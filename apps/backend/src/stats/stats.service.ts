@@ -97,6 +97,7 @@ export class StatsService {
         const thisMonthSales = await this.calculateNetSalesRevalued({ gte: monthStart });
         const thisMonthSalesNominal = await this.calculateNetSalesRevalued({ gte: monthStart }, 'VES', true);
         const lastMonthSales = await this.calculateNetSalesRevalued({ gte: lastMonthStart, lte: lastMonthEnd });
+        const lastMonthSalesNominal = await this.calculateNetSalesRevalued({ gte: lastMonthStart, lte: lastMonthEnd }, 'VES', true);
 
         // Top 5 selling products
         const topProducts = await this.prisma.saleItem.groupBy({
@@ -225,6 +226,7 @@ export class StatsService {
             thisMonthSales,
             thisMonthSalesNominal,
             lastMonthSales,
+            lastMonthSalesNominal,
             topProducts: topProductsData,
             criticalStock,
             totalProducts,
