@@ -58,26 +58,53 @@ export class CashRegisterService {
             }
         }
 
+        // Calcular balance inicial si se proporcionan items
+        let openingBalance = openSessionDto.openingBalance || 0;
+        if (openSessionDto.items && openSessionDto.items.length > 0) {
+            openingBalance = 0;
+            const rate = openSessionDto.exchangeRate || 1;
+            for (const item of openSessionDto.items) {
+                const denom = await this.prisma.currencyDenomination.findUnique({
+                    where: { id: item.denominationId }
+                });
+                if (denom) {
+                    let amount = Number(denom.value) * item.quantity;
+                    if (denom.currencyCode !== 'VES') {
+                        amount *= rate;
+                    }
+                    openingBalance += amount;
+                }
+            }
+        }
+
         // Crear nueva sesión
         const session = await this.prisma.cashSession.create({
             data: {
                 registerId: openSessionDto.registerId,
-                openingBalance: openSessionDto.openingBalance,
+                openingBalance: openingBalance,
                 openedBy: openSessionDto.openedBy || 'Sistema',
                 cashierId: openSessionDto.cashierId,
                 openingNotes: openSessionDto.openingNotes,
-                openedAt: new Date() // Explicitly set to server (UTC) time
+                openedAt: new Date(),
+                verifiedAt: openSessionDto.items ? new Date() : null,
+                verifiedBy: openSessionDto.items ? (openSessionDto.openedBy || 'Sistema') : null,
+                verificationDiff: openSessionDto.items ? 0 : null
             },
             include: {
                 register: true
             }
         });
 
+        // Guardar desglose si se proporcionó
+        if (openSessionDto.items && openSessionDto.items.length > 0) {
+            await this.saveCashCounts(session.id, 'VERIFICATION', openSessionDto.items);
+        }
+
         // Crear movimiento de apertura
         await this.createMovement({
             sessionId: session.id,
             type: MovementType.OPENING,
-            amount: openSessionDto.openingBalance,
+            amount: openingBalance,
             currencyCode: 'VES',
             description: 'Apertura de caja',
             performedBy: openSessionDto.openedBy || 'Sistema'

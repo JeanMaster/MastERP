@@ -67,10 +67,12 @@ export interface CashSession {
 
 export interface OpenSessionDto {
     registerId: string;
-    openingBalance: number;
+    openingBalance?: number;
     openedBy?: string;
     cashierId?: string;
     openingNotes?: string;
+    items?: CashCountItemDto[];
+    exchangeRate?: number;
 }
 
 export interface CashCountItemDto {

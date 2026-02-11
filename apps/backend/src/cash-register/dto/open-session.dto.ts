@@ -6,10 +6,20 @@ export class OpenSessionDto {
     @IsString()
     registerId: string;
 
-    @ApiProperty({ description: 'Saldo inicial' })
+    @ApiProperty({ description: 'Saldo inicial (opcional, se calcula si hay items)', required: false })
+    @IsOptional()
     @IsNumber()
     @Min(0)
-    openingBalance: number;
+    openingBalance?: number;
+
+    @ApiProperty({ description: 'Desglose de efectivo', required: false })
+    @IsOptional()
+    items?: { denominationId: string, quantity: number }[];
+
+    @ApiProperty({ description: 'Tasa de cambio aplicada', required: false })
+    @IsOptional()
+    @IsNumber()
+    exchangeRate?: number;
 
     @ApiProperty({ description: 'Usuario que abre (Admin/Supervisor)', required: false })
     @IsOptional()
