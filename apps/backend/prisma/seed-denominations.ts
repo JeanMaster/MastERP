@@ -8,6 +8,8 @@ async function main() {
 
     const denominations = [
         // VES
+        { currencyCode: 'VES', value: 500.00, label: '500 Bolívares', type: 'BILL' },
+        { currencyCode: 'VES', value: 200.00, label: '200 Bolívares', type: 'BILL' },
         { currencyCode: 'VES', value: 100.00, label: '100 Bolívares', type: 'BILL' },
         { currencyCode: 'VES', value: 50.00, label: '50 Bolívares', type: 'BILL' },
         { currencyCode: 'VES', value: 20.00, label: '20 Bolívares', type: 'BILL' },

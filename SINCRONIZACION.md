@@ -408,6 +408,7 @@ Se ha completado la **Fase de Robustez y Flexibilidad del POS**. El sistema ahor
 - **`CashRegisterService`**:
   - `calculateExpectedBalance` ahora usa la tasa guardada en cada movimiento.
   - `transferToTreasury` modificado para restar el monto equivalente en Bs según la tasa del movimiento.
+  - **Fix Decimales**: El método `openSession` ahora recalcula el `openingBalance` sumando las denominaciones físicas recibidas (VES/USD), garantizando precisión total sin depender de la entrada manual.
 - **`SalesService`**: Acepta `cashSessionId` opcional en `CreateSaleDto` para forzar la atribución de venta a una caja específica.
 - **Controladores Públicos**: 
   - `ProductsController`: `findAll` y `findOne` (públicos).
@@ -418,6 +419,7 @@ Se ha completado la **Fase de Robustez y Flexibilidad del POS**. El sistema ahor
 - **`apiConfig.ts`**: Interceptor de Axios actualizado para excluir la ruta `/visor` de la redirección automática al login ante errores 401.
 - **`POSPage.tsx`**: Lógica de bloqueo eliminada para `ADMIN`. Permite entrada sin sesión y selección manual de caja.
 - **`posStore.ts`**: `processSale` actualizado para enviar el `cashSessionId` actual al backend.
+- **`OpenSessionModal.tsx`**: Implementación de sistema de **Conteo Físico por Denominación**. Los usuarios deben ingresar la cantidad de billetes/monedas, y el sistema calcula el saldo inicial automáticamente, evitando errores de precisión decimal.
 
 ---
 
