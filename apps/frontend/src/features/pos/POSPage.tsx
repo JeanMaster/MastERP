@@ -48,7 +48,7 @@ export const POSPage = () => {
     });
 
     // Fetch active session based on selected register OR cashier detection
-    const { data: activeSession, isLoading: isSessionLoading, isFetching } = useQuery({
+    const { data: activeSession, isLoading: isSessionLoading, isFetching, refetch: refetchSession } = useQuery({
         queryKey: ['activeSession', registerId, user?.username],
         queryFn: () => {
             // If user is a cashier, always prioritize finding THEIR active session
@@ -104,18 +104,27 @@ export const POSPage = () => {
         }
     }, [activeSession, isSessionLoading, isFetching, navigate, user, registerId]);
 
-    const handleCajaClick = () => {
-        if (!activeSession) {
-            message.error('CAJA NO APERTURADA');
-            return;
-        }
+    const handleCajaClick = async () => {
+        const hide = message.loading('Sincronizando estado de caja...', 0);
+        try {
+            const { data: freshSession } = await refetchSession();
 
-        if (!activeSession.verifiedAt && activeSession.cashierId === user?.username) {
-            // Caso: Aperturada pero no verificada por el cajero actual
-            setIsOpeningArqueoOpen(true);
-        } else {
-            // Caso: Verificada o abierta por otro (o simplemente queremos ver el resumen)
-            setIsSummaryOpen(true);
+            if (!freshSession) {
+                message.error('CAJA NO APERTURADA');
+                return;
+            }
+
+            if (!freshSession.verifiedAt && freshSession.cashierId === user?.username) {
+                // Caso: Aperturada pero no verificada por el cajero actual
+                setIsOpeningArqueoOpen(true);
+            } else {
+                // Caso: Verificada o abierta por otro (o simplemente queremos ver el resumen)
+                setIsSummaryOpen(true);
+            }
+        } catch (error) {
+            message.error('Error al sincronizar datos de caja');
+        } finally {
+            hide();
         }
     };
 

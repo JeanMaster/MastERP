@@ -63,33 +63,26 @@ export const SessionSummaryModal = ({ open, session, onCancel, onStartClose }: S
 
     // Calcular Efectivo Esperado (Apertura + Ventas Efectivo - Egresos/Depósitos)
     // Usamos los movimientos de la sesión para esto, que es más fiable para el flujo de caja
-    session.movements.forEach(m => {
-        if (m.currencyCode === 'VES') {
-            if (m.type === 'SALE' || m.type === 'DEPOSIT') {
-                // ... logic placeholder ...
-            }
-        }
-    });
-
-    // Recalcular localmente con lógica estándar para el usuario
     let expectedCashVES = Number(session.openingBalance);
     session.movements.forEach(m => {
         const amt = Number(m.amount);
+        const rate = Number(m.exchangeRate || 1);
+        const amtInVES = amt * rate;
 
         if (m.type === 'SALE' || m.type === 'DEPOSIT' || m.type === 'OPENING') {
-            if (m.type !== 'OPENING') expectedCashVES += amt;
+            if (m.type !== 'OPENING') expectedCashVES += amtInVES;
         } else if (m.type === 'EXPENSE' || m.type === 'WITHDRAWAL') {
-            expectedCashVES -= amt;
+            expectedCashVES -= amtInVES;
         }
     });
 
     const paymentMethodsList = [
-        { name: 'Efectivo (Bs)', amount: paymentSummary.CASH_VES, color: '#52c41a' },
-        { name: 'Efectivo (USD Equivalente)', amount: paymentSummary.CASH_USD, color: '#13c2c2' },
-        { name: 'Punto / Débito', amount: paymentSummary.DEBIT, color: '#1890ff' },
-        { name: 'Transferencias', amount: paymentSummary.TRANSFER, color: '#f5222d' },
-        { name: 'Créditos', amount: paymentSummary.CREDIT, color: '#faad14' },
-        { name: 'Otros', amount: paymentSummary.OTHER, color: '#d9d9d9' },
+        { name: 'Efectivo (Bs)', amount: paymentSummary.CASH_VES, color: '#52c41a', symbol: 'Bs' },
+        { name: 'Efectivo (USD)', amount: paymentSummary.CASH_USD, color: '#13c2c2', symbol: '$' },
+        { name: 'Punto / Débito', amount: paymentSummary.DEBIT, color: '#1890ff', symbol: 'Bs' },
+        { name: 'Transferencias', amount: paymentSummary.TRANSFER, color: '#f5222d', symbol: 'Bs' },
+        { name: 'Créditos', amount: paymentSummary.CREDIT, color: '#faad14', symbol: 'Bs' },
+        { name: 'Otros', amount: paymentSummary.OTHER, color: '#d9d9d9', symbol: 'Bs' },
     ];
 
     return (
@@ -142,7 +135,7 @@ export const SessionSummaryModal = ({ open, session, onCancel, onStartClose }: S
                 <List
                     dataSource={paymentMethodsList}
                     renderItem={item => (
-                        <List.Item extra={<Text strong style={{ fontSize: 16 }}>{formatVenezuelanPrice(item.amount, 'Bs')}</Text>}>
+                        <List.Item extra={<Text strong style={{ fontSize: 16 }}>{formatVenezuelanPrice(item.amount, item.symbol)}</Text>}>
                             <List.Item.Meta
                                 avatar={<div style={{ width: 12, height: 12, borderRadius: '50%', background: item.color, marginTop: 5 }} />}
                                 title={item.name}

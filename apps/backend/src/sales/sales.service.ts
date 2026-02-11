@@ -197,11 +197,12 @@ export class SalesService {
             // Si es compuesto "METHOD:AMOUNT"
             if (methodPart.includes(':')) {
                 const parts = methodPart.split(':');
-                method = parts[0];
+                method = parts[0].trim();
                 amount = parseFloat(parts[1]);
             }
 
-            // Identificar si es Efectivo (VES) o Divisa (USD, etc)
+            // Identificar si es Efectivo (VES) o Divisa (USD)
+            // Según indicación del usuario: Solo efectivo BS y efectivo $ van a gaveta.
             if (method === 'CASH') {
                 // Pago en efectivo Bs
                 await this.cashRegisterService.createMovement({
@@ -209,26 +210,23 @@ export class SalesService {
                     type: MovementType.SALE,
                     amount: amount,
                     currencyCode: 'VES',
-                    exchangeRate: 1, // Bs siempre es 1
+                    exchangeRate: 1,
                     description: `Venta #${sale.invoiceNumber}`,
                     saleId: sale.id
                 });
-            } else if (method.startsWith('CURRENCY_')) {
-                // Pago en Divisa Efectivo (CURRENCY_USD, CURRENCY_EUR, etc)
-                // El formato esperado es CURRENCY_CODE
-                const currencyCode = method.replace('CURRENCY_', '');
-
+            } else if (method === 'CURRENCY_USD') {
+                // Solo USD va a gaveta como divisa física
                 await this.cashRegisterService.createMovement({
                     sessionId,
                     type: MovementType.SALE,
                     amount: amount,
-                    currencyCode: currencyCode,
-                    exchangeRate: Number(sale.exchangeRate), // Usar la tasa de la venta
-                    description: `Venta #${sale.invoiceNumber} (${currencyCode})`,
+                    currencyCode: 'USD',
+                    exchangeRate: Number(sale.exchangeRate),
+                    description: `Venta #${sale.invoiceNumber} (USD)`,
                     saleId: sale.id
                 });
             }
-            // Otros métodos (DEBIT, CREDIT, TRANSFER) no generan movimiento de caja
+            // Otros métodos (CURRENCY_UDT, DEBIT, CREDIT, TRANSFER) no generan movimiento de caja físico (gaveta)
         }
     }
 

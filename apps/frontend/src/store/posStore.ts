@@ -560,7 +560,16 @@ export const usePOSStore = create<POSState>()(
                     discount: Math.round(totals.discount * 100) / 100,
                     tax: Math.round(totals.tax * 100) / 100,
                     total: Math.round(totals.total * 100) / 100,
-                    paymentMethod: paymentMethod,
+                    paymentMethod: paymentData.payments && paymentData.payments.length > 0
+                        ? paymentData.payments
+                            .map((p: any) => {
+                                // Crucial: Send original currency amount if available to prevent double conversion in backend
+                                const method = p.method;
+                                const amount = p.originalAmount || p.amount;
+                                return `${method}:${amount.toFixed(2)}`;
+                            })
+                            .join(', ')
+                        : paymentMethod,
                     tendered: Math.round(tendered * 100) / 100,
                     change: Math.round(change * 100) / 100,
                     exchangeRate: get().exchangeRate || 1,
