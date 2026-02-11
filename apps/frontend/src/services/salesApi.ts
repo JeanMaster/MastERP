@@ -55,6 +55,7 @@ export interface CreateSaleDto {
     change?: number;
     invoiceNumber?: string;
     exchangeRate?: number;
+    cashSessionId?: string;
 }
 
 export interface SalesFilters {

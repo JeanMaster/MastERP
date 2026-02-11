@@ -18,20 +18,20 @@ export const CloseSessionModal = ({ open, session, onCancel, onSuccess }: CloseS
 
     if (!session) return null;
 
-    // Calculate expected balance
+    // Calculate expected balance (In base currency VES)
     const calculateExpected = () => {
         let expected = Number(session.openingBalance);
 
         session.movements.forEach(movement => {
-            const amount = Number(movement.amount);
+            const amountInBs = Number(movement.amount) * Number(movement.exchangeRate || 1);
             switch (movement.type) {
                 case 'SALE':
                 case 'WITHDRAWAL':
-                    expected += amount;
+                    expected += amountInBs;
                     break;
                 case 'EXPENSE':
                 case 'DEPOSIT':
-                    expected -= amount;
+                    expected -= amountInBs;
                     break;
             }
         });

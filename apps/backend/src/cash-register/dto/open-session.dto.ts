@@ -11,10 +11,15 @@ export class OpenSessionDto {
     @Min(0)
     openingBalance: number;
 
-    @ApiProperty({ description: 'Usuario que abre', required: false })
+    @ApiProperty({ description: 'Usuario que abre (Admin/Supervisor)', required: false })
     @IsOptional()
     @IsString()
     openedBy?: string;
+
+    @ApiProperty({ description: 'Cajero asignado', required: false })
+    @IsOptional()
+    @IsString()
+    cashierId?: string;
 
     @ApiProperty({ description: 'Notas de apertura', required: false })
     @IsOptional()

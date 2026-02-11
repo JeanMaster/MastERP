@@ -622,14 +622,21 @@ model CashSession {
   
   // Session info
   openedBy          String         // Usuario que abre
+  cashierId         String?        // Cajero asignado
   closedBy          String?        // Usuario que cierra
   openedAt          DateTime       @default(now())
   closedAt          DateTime?
-  status            String         @default("OPEN") // OPEN, CLOSED
+  status            String         @default("OPEN") // OPEN, CLOSED, AWAITING_CLOSE
   
   // Opening balance
   openingBalance    Decimal        @db.Decimal(10, 2)
   openingNotes      String?
+
+  // Verification (Arqueo de Apertura)
+  verifiedAt        DateTime?
+  verifiedBy        String?
+  verificationDiff  Decimal?       @db.Decimal(10, 2) // Difference found during count
+
   
   // Closing info
   expectedBalance   Decimal?       @db.Decimal(10, 2)
@@ -641,12 +648,44 @@ model CashSession {
   movements         CashMovement[]
   bankMovements     BankMovement[]
   sales             Sale[]
+  cashCounts        SessionCashCount[]
   
   active            Boolean        @default(true)
   createdAt         DateTime       @default(now())
   updatedAt         DateTime       @updatedAt
   
   @@map("cash_sessions")
+}
+
+model SessionCashCount {
+  id            String      @id @default(uuid())
+  sessionId     String
+  session       CashSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  
+  type          String      // "VERIFICATION" or "CLOSING"
+  
+  currencyCode  String
+  value         Decimal     @db.Decimal(10, 2)
+  quantity      Int
+  total         Decimal     @db.Decimal(10, 2)
+  
+  createdAt     DateTime    @default(now())
+
+  @@map("session_cash_counts")
+}
+
+model CurrencyDenomination {
+  id        String   @id @default(uuid())
+  currencyCode String // VES, USD, EUR
+  value     Decimal  @db.Decimal(10, 2) // 1.00, 5.00, 10.00, 20.00, etc.
+  label     String   // "1 Bolívar", "5 Bolívares", "1 Dólar", etc.
+  type      String   // "BILL", "COIN"
+  
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("currency_denominations")
 }
 
 model CashMovement {
@@ -658,6 +697,7 @@ model CashMovement {
   type            String       // "SALE", "EXPENSE", "DEPOSIT", "WITHDRAWAL", "OPENING", "CLOSING"
   amount          Decimal      @db.Decimal(10, 2)
   currencyCode    String       @default("VES") // VES, USD, EUR, etc.
+  exchangeRate    Decimal      @db.Decimal(10, 4) @default(1.0)
   
   // References
   saleId          String?      // Si es de una venta

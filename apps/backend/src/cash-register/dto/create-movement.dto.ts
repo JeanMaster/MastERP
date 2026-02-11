@@ -47,4 +47,9 @@ export class CreateMovementDto {
     @IsOptional()
     @IsString()
     saleId?: string;
+
+    @ApiProperty({ description: 'Tasa de cambio histórica', required: false })
+    @IsOptional()
+    @IsNumber()
+    exchangeRate?: number;
 }
