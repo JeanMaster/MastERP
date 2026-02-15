@@ -1,11 +1,13 @@
 
 import { useEffect } from 'react';
-import { Modal, Form, Input, InputNumber, Select, message, Row, Col } from 'antd';
+import { Modal, Form, Input, InputNumber, Select, message, Row, Col, Switch, Space, Typography } from 'antd';
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { banksApi } from '../../../services/banksApi';
 import type { BankAccount, UpdateBankAccountDto } from '../../../services/banksApi';
 import { currenciesApi } from '../../../services/currenciesApi';
+
+const { Text } = Typography;
 
 interface BankFormModalProps {
     open: boolean;
@@ -60,6 +62,8 @@ export const BankFormModal = ({ open, bankAccount, onClose }: BankFormModalProps
                 holderName: bankAccount.holderName,
                 holderId: bankAccount.holderId,
                 currencyId: bankAccount.currencyId,
+                receivesPosLiquidation: bankAccount.receivesPosLiquidation,
+                receivesMobilePayment: bankAccount.receivesMobilePayment,
             });
         } else {
             form.resetFields();
@@ -182,6 +186,48 @@ export const BankFormModal = ({ open, bankAccount, onClose }: BankFormModalProps
                             </Form.Item>
                         </Col>
                     )}
+                </Row>
+
+                <Row gutter={16} style={{ marginTop: 16 }}>
+                    <Col span={24}>
+                        <div style={{ backgroundColor: '#f0faff', padding: '16px', borderRadius: '8px', border: '1px solid #91d5ff' }}>
+                            <Row gutter={16} align="middle">
+                                <Col flex="none">
+                                    <Form.Item name="receivesPosLiquidation" valuePropName="checked" noStyle>
+                                        <Switch />
+                                    </Form.Item>
+                                </Col>
+                                <Col flex="auto">
+                                    <Space direction="vertical" size={0}>
+                                        <Text strong>Recibir Liquidaciones de Punto de Venta</Text>
+                                        <Text type="secondary" style={{ fontSize: '12px' }}>
+                                            Si se activa, los pagos con tarjeta del POS se enviarán a esta cuenta como "Saldo en Tránsito".
+                                        </Text>
+                                    </Space>
+                                </Col>
+                            </Row>
+                        </div>
+                    </Col>
+
+                    <Col span={24} style={{ marginTop: 16 }}>
+                        <div style={{ backgroundColor: '#f9f0ff', padding: '16px', borderRadius: '8px', border: '1px solid #d3adf7' }}>
+                            <Row gutter={16} align="middle">
+                                <Col flex="none">
+                                    <Form.Item name="receivesMobilePayment" valuePropName="checked" noStyle>
+                                        <Switch />
+                                    </Form.Item>
+                                </Col>
+                                <Col flex="auto">
+                                    <Space direction="vertical" size={0}>
+                                        <Text strong>Recibir Pago Móvil</Text>
+                                        <Text type="secondary" style={{ fontSize: '12px' }}>
+                                            Habilitar para recibir pagos móviles en el POS.
+                                        </Text>
+                                    </Space>
+                                </Col>
+                            </Row>
+                        </div>
+                    </Col>
                 </Row>
             </Form>
         </Modal>

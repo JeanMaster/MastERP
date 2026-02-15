@@ -8,6 +8,8 @@ import {
     DeleteOutlined,
     CheckCircleOutlined
 } from '@ant-design/icons';
+import { useQuery } from '@tanstack/react-query';
+import { banksApi } from '../../../services/banksApi';
 import { usePOSStore } from '../../../store/posStore';
 import { formatVenezuelanPrice, formatVenezuelanPriceOnly } from '../../../utils/formatters';
 
@@ -22,6 +24,8 @@ interface PaymentEntry {
     originalAmount?: number; // Original amount if paid in foreign currency
     originalCurrency?: string;
     originalCurrencyId?: string;
+    bankId?: string;
+    bankName?: string;
 }
 
 interface CheckoutModalProps {
@@ -48,7 +52,7 @@ export const CheckoutModal = ({ open, onCancel, onProcess }: CheckoutModalProps)
     const [payments, setPayments] = useState<PaymentEntry[]>([]);
     const [selectedPaymentId, setSelectedPaymentId] = useState<string | null>(null);
     const [inputAmount, setInputAmount] = useState<number | null>(null);
-    const [selectedMethod, setSelectedMethod] = useState<string | null>(null);
+    const [, setSelectedMethod] = useState<string | null>(null);
     const [isProcessing, setIsProcessing] = useState(false);
     const [creditCurrencyId, setCreditCurrencyId] = useState<string | null>(null);
 
@@ -67,6 +71,16 @@ export const CheckoutModal = ({ open, onCancel, onProcess }: CheckoutModalProps)
             setCreditCurrencyId(primaryCurrency?.id || null);
         }
     }, [open, primaryCurrency]);
+
+    // Fetch banks for Mobile Payment
+    const { data: banks = [] } = useQuery({
+        queryKey: ['banks'],
+        queryFn: () => banksApi.getAll(),
+        enabled: open
+    });
+
+    const mobilePaymentBanks = banks.filter(b => b.active && b.receivesMobilePayment);
+    const [bankSelectorOpen, setBankSelectorOpen] = useState(false);
 
     // Auto-focus on amount input when modal opens
     useEffect(() => {
@@ -108,8 +122,12 @@ export const CheckoutModal = ({ open, onCancel, onProcess }: CheckoutModalProps)
                     setSelectedMethod('CARD_CREDIT');
                     addPayment('CARD_CREDIT', 'F3 T. Crédito');
                 } else if (e.key === 'F4' && inputAmount) {
-                    setSelectedMethod('MOBILE');
-                    addPayment('MOBILE', 'F4 Pago Móvil');
+                    if (mobilePaymentBanks.length > 0) {
+                        setBankSelectorOpen(true);
+                    } else {
+                        setSelectedMethod('MOBILE');
+                        addPayment('MOBILE', 'F4 Pago Móvil');
+                    }
                 } else if (e.key === 'F5' && inputAmount) {
                     setSelectedMethod('TRANSFER');
                     addPayment('TRANSFER', 'F5 Transferencia');
@@ -175,7 +193,7 @@ export const CheckoutModal = ({ open, onCancel, onProcess }: CheckoutModalProps)
         return () => window.removeEventListener('keydown', handleKeyDown, true);
     }, [open, selectedPaymentId, isFullyPaid, payments, inputAmount]);
 
-    const addPayment = (method: string, methodLabel: string, currencyId?: string, amountOverride?: number) => {
+    const addPayment = (method: string, methodLabel: string, currencyId?: string, amountOverride?: number, bankData?: { id: string, name: string }) => {
         const amountToProcess = amountOverride !== undefined ? amountOverride : inputAmount;
         if (!amountToProcess || amountToProcess <= 0) return;
         if (isFullyPaid) return; // Don't allow more payments if already paid
@@ -196,8 +214,10 @@ export const CheckoutModal = ({ open, onCancel, onProcess }: CheckoutModalProps)
             }
         }
 
-        // Don't allow payment that exceeds remaining
-        if (amountInBs > remaining) {
+        // Don't allow payment that exceeds remaining for non-cash methods
+        // For cash, we allow overpayment to calculate change/vuelto
+        const isCashMethod = method === 'CASH' || method.startsWith('CURRENCY_');
+        if (amountInBs > remaining && !isCashMethod) {
             amountInBs = remaining;
         }
 
@@ -211,7 +231,9 @@ export const CheckoutModal = ({ open, onCancel, onProcess }: CheckoutModalProps)
             currencySymbol,
             originalAmount: currencyId ? originalAmount : undefined,
             originalCurrency: currencyId ? originalCurrency : undefined,
-            originalCurrencyId: currencyId
+            originalCurrencyId: currencyId,
+            bankId: bankData?.id,
+            bankName: bankData?.name
         };
 
         // If it's plural payment, we need a way to store the rate too for backend
@@ -257,7 +279,8 @@ export const CheckoutModal = ({ open, onCancel, onProcess }: CheckoutModalProps)
                     method: p.method,
                     amount: p.amount,
                     originalAmount: p.originalAmount,
-                    originalCurrency: p.originalCurrency
+                    originalCurrency: p.originalCurrency,
+                    bankId: p.bankId
                 })),
                 total: totals.total,
                 totalPaid,
@@ -305,6 +328,11 @@ export const CheckoutModal = ({ open, onCancel, onProcess }: CheckoutModalProps)
                             ({record.originalCurrency} {formatVenezuelanPriceOnly(record.originalAmount)})
                         </Text>
                     )}
+                    {record.bankName && (
+                        <div style={{ fontSize: '0.8em', color: '#1890ff' }}>
+                            <BankOutlined /> {record.bankName}
+                        </div>
+                    )}
                 </div>
             ),
         },
@@ -329,6 +357,35 @@ export const CheckoutModal = ({ open, onCancel, onProcess }: CheckoutModalProps)
             maskClosable={false}
             styles={{ body: { padding: 0 } }}
         >
+            <Modal
+                title="Seleccione Banco para Pago Móvil"
+                open={bankSelectorOpen}
+                onCancel={() => setBankSelectorOpen(false)}
+                footer={null}
+                centered
+                width={400}
+                zIndex={2000} // Ensure it's above checkout modal
+            >
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                    {mobilePaymentBanks.map(bank => (
+                        <Button
+                            key={bank.id}
+                            size="large"
+                            onClick={() => {
+                                setSelectedMethod('MOBILE');
+                                addPayment('MOBILE', 'F4 Pago Móvil', undefined, undefined, { id: bank.id, name: bank.bankName });
+                                setBankSelectorOpen(false);
+                            }}
+                            style={{ height: 'auto', padding: '12px', textAlign: 'left', display: 'block' }}
+                        >
+                            <div style={{ fontWeight: 'bold' }}>{bank.bankName}</div>
+                            <div style={{ fontSize: '0.9em', color: '#666' }}>{bank.holderName}</div>
+                            <div style={{ fontSize: '0.8em', color: '#888' }}>{bank.accountNumber}</div>
+                        </Button>
+                    ))}
+                    {mobilePaymentBanks.length === 0 && <Text>No hay bancos configurados para Pago Móvil.</Text>}
+                </div>
+            </Modal>
             {/* Header with totals */}
             <div style={{
                 background: '#f0f2f5',
@@ -416,9 +473,6 @@ export const CheckoutModal = ({ open, onCancel, onProcess }: CheckoutModalProps)
                                 placeholder="0.00"
                                 disabled={isFullyPaid}
                                 min={0}
-                                max={selectedMethod?.startsWith('CURRENCY_')
-                                    ? remaining / (currencies.find(c => c.id === selectedMethod.replace('CURRENCY_', ''))?.exchangeRate || 1)
-                                    : remaining}
                             />
                         </div>
 
@@ -436,6 +490,12 @@ export const CheckoutModal = ({ open, onCancel, onProcess }: CheckoutModalProps)
                                                 size="large"
                                                 onClick={() => {
                                                     if (isCreditMethod && !customerId) return;
+
+                                                    if (method.key === 'MOBILE' && mobilePaymentBanks.length > 0) {
+                                                        setBankSelectorOpen(true);
+                                                        return;
+                                                    }
+
                                                     setSelectedMethod(method.key);
                                                     addPayment(method.key, method.label, isCreditMethod ? creditCurrencyId || undefined : undefined);
                                                 }}
@@ -584,9 +644,16 @@ export const CheckoutModal = ({ open, onCancel, onProcess }: CheckoutModalProps)
                                     <Text strong>Cambio/Vuelto:</Text>
                                 </Col>
                                 <Col span={12} style={{ textAlign: 'right' }}>
-                                    <Text strong style={{ color: totalPaid > totals.total ? 'green' : 'inherit' }}>
-                                        {formatVenezuelanPrice(Math.max(0, totalPaid - totals.total), primaryCurrency?.symbol)}
-                                    </Text>
+                                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+                                        <Text strong style={{ color: totalPaid > totals.total ? '#52c41a' : 'inherit', fontSize: '1.2em' }}>
+                                            {formatVenezuelanPrice(Math.max(0, totalPaid - totals.total), primaryCurrency?.symbol)}
+                                        </Text>
+                                        {preferredSecondaryCurrency && totalPaid > totals.total && (
+                                            <Text type="secondary" style={{ color: '#52c41a' }}>
+                                                ({formatVenezuelanPrice((totalPaid - totals.total) / (preferredSecondaryCurrency.exchangeRate || 1), preferredSecondaryCurrency.symbol)})
+                                            </Text>
+                                        )}
+                                    </div>
                                 </Col>
                             </Row>
                         </Card>

@@ -189,16 +189,22 @@ export class SalesService {
      */
     private async registerCashMovements(sessionId: string, sale: any, paymentMethodStr: string) {
         const methods = paymentMethodStr.split(', ');
+        console.log('Debugging Mobile Payment - Payment Strings:', methods);
 
         for (const methodPart of methods) {
+            console.log('Processing Method Part:', methodPart);
             let method = methodPart;
             let amount = Number(sale.total); // Por defecto todo el monto si es simple
 
-            // Si es compuesto "METHOD:AMOUNT"
+            // Si es compuesto "METHOD:AMOUNT" o "METHOD:AMOUNT:EXTRA"
+            let extraData: string | null = null;
             if (methodPart.includes(':')) {
                 const parts = methodPart.split(':');
                 method = parts[0].trim();
                 amount = parseFloat(parts[1]);
+                if (parts.length > 2) {
+                    extraData = parts[2];
+                }
             }
 
             // Identificar si es Efectivo (VES) o Divisa (USD)
@@ -225,8 +231,54 @@ export class SalesService {
                     description: `Venta #${sale.invoiceNumber} (USD)`,
                     saleId: sale.id
                 });
+            } else if (method === 'MOBILE' && extraData) {
+                // Pago Móvil directo a Banco
+                const bankId = extraData;
+                // Verificar que el ID sea válido (simple check de longitud/existencia)
+                if (bankId && bankId.length > 10) {
+                    try {
+                        // Crear movimiento bancario IN
+                        await this.prisma.bankMovement.create({
+                            data: {
+                                bankAccountId: bankId,
+                                type: 'IN',
+                                amount: amount,
+                                category: 'SALE',
+                                description: `Pago Móvil Venta #${sale.invoiceNumber}`,
+                                reference: `PM-${sale.invoiceNumber}`,
+                                createdAt: new Date()
+                            }
+                        });
+
+                        // Actualizar saldo del banco
+                        await this.prisma.bankAccount.update({
+                            where: { id: bankId },
+                            data: { balance: { increment: amount } }
+                        });
+                    } catch (error) {
+                        console.error(`Error registering bank movement for sale ${sale.id}:`, error);
+                    }
+                } else {
+                    console.warn(`Invalid Bank ID received for MOBILE payment: ${bankId}`);
+                }
+            } else if (method === 'MOBILE') {
+                console.warn(`MOBILE payment without valid extraData (Bank ID) received: ${methodPart}`);
             }
-            // Otros métodos (CURRENCY_UDT, DEBIT, CREDIT, TRANSFER) no generan movimiento de caja físico (gaveta)
+        }
+        // Otros métodos (CURRENCY_UDT, DEBIT, CREDIT, TRANSFER) no generan movimiento de caja físico (gaveta)
+
+
+        // Registrar el vuelto como una salida de caja si existe
+        if (Number(sale.change) > 0) {
+            await this.cashRegisterService.createMovement({
+                sessionId,
+                type: MovementType.CHANGE,
+                amount: Number(sale.change),
+                currencyCode: 'VES',
+                exchangeRate: 1,
+                description: `Vuelto de venta #${sale.invoiceNumber}`,
+                saleId: sale.id
+            });
         }
     }
 

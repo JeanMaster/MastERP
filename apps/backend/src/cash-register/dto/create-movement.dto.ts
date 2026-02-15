@@ -7,7 +7,9 @@ export enum MovementType {
     DEPOSIT = 'DEPOSIT',
     WITHDRAWAL = 'WITHDRAWAL',
     OPENING = 'OPENING',
-    CLOSING = 'CLOSING'
+    CLOSING = 'CLOSING',
+    ADJUSTMENT = 'ADJUSTMENT',
+    CHANGE = 'CHANGE'
 }
 
 export class CreateMovementDto {
@@ -21,7 +23,7 @@ export class CreateMovementDto {
 
     @ApiProperty({ description: 'Monto del movimiento' })
     @IsNumber()
-    @Min(0)
+    // No Min(0) to allow negative adjustments if needed
     amount: number;
 
     @ApiProperty({ description: 'Código de moneda', default: 'VES' })

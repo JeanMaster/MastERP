@@ -133,10 +133,9 @@ export const ExpensesPage = () => {
             }
         },
         {
-            title: 'Método',
-            dataIndex: 'paymentMethod',
+            title: 'Método / Cuenta',
             key: 'paymentMethod',
-            render: (method: string) => {
+            render: (_: any, record: Expense) => {
                 const methodMap: Record<string, string> = {
                     'CASH': 'Efectivo',
                     'TRANSFER': 'Transferencia',
@@ -146,7 +145,18 @@ export const ExpensesPage = () => {
                     'ZELLE': 'Zelle',
                     'USDT': 'USDT'
                 };
-                return methodMap[method] || method;
+                const methodName = methodMap[record.paymentMethod] || record.paymentMethod;
+
+                return (
+                    <Space direction="vertical" size={0}>
+                        <Typography.Text>{methodName}</Typography.Text>
+                        {record.bankAccount && (
+                            <Typography.Text type="secondary" style={{ fontSize: '12px' }}>
+                                {record.bankAccount.bankName}
+                            </Typography.Text>
+                        )}
+                    </Space>
+                );
             }
         },
         {

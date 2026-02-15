@@ -228,11 +228,22 @@ export class PurchasesService {
         return purchase;
     }
 
-    async registerPayment(dto: any) { // Use DTO type if imported, avoiding circular dep issues. Assuming CreatePurchasePaymentDto structure.
-        const { purchaseId, amount, paymentMethod, reference, notes } = dto;
+    async registerPayment(dto: any) {
+        const {
+            purchaseId,
+            amount,
+            paymentMethod,
+            reference,
+            notes,
+            paymentAmount,
+            currencyCode,
+            exchangeRate,
+            bankAccountId
+        } = dto;
 
         const purchase = await this.prisma.purchase.findUnique({
-            where: { id: purchaseId }
+            where: { id: purchaseId },
+            include: { supplier: true }
         });
 
         if (!purchase) {
@@ -243,24 +254,93 @@ export class PurchasesService {
             throw new BadRequestException('Esta compra ya está pagada');
         }
 
-        if (Number(purchase.balance) < amount) {
+        if (Number(purchase.balance) < Number(amount)) {
             throw new BadRequestException(`El monto excede el saldo pendiente (${purchase.balance})`);
         }
 
+        // 1. Pre-validation for Bank Balance if applicable
+        let amountToDeductFromBank = 0;
+        let bankAccount: any = null;
+
+        if (bankAccountId) {
+            bankAccount = await this.prisma.bankAccount.findUnique({
+                where: { id: bankAccountId },
+                include: { currency: true } as any
+            });
+
+            if (!bankAccount) {
+                throw new NotFoundException('Cuenta bancaria no encontrada');
+            }
+
+            // Calculate how much we take from the bank
+            // The payment currency is 'currencyCode' and amount is 'paymentAmount'
+            const pAmount = Number(paymentAmount || amount);
+            const pCurrency = currencyCode || purchase.currencyCode;
+            const rate = Number(exchangeRate || 1);
+
+            amountToDeductFromBank = pAmount;
+
+            if (pCurrency !== bankAccount.currency.code) {
+                if (bankAccount.currency.isPrimary) {
+                    // Bank is VES, Payment is USD
+                    amountToDeductFromBank = pAmount * rate;
+                } else {
+                    // Bank is USD, Payment is VES
+                    amountToDeductFromBank = pAmount / rate;
+                }
+            }
+
+            if (Number(bankAccount.balance) < amountToDeductFromBank) {
+                throw new BadRequestException(`Saldo insuficiente en cuenta bancaria. Saldo: ${bankAccount.balance}, Requerido: ${amountToDeductFromBank}`);
+            }
+        }
+
         return this.prisma.$transaction(async (tx) => {
-            // 1. Create Payment
+            // 2. Create Payment
             const payment = await tx.purchasePayment.create({
                 data: {
                     purchaseId,
                     amount,
+                    paymentAmount: paymentAmount || amount,
+                    currencyCode: currencyCode || purchase.currencyCode,
+                    exchangeRate: exchangeRate || 1,
                     paymentMethod,
                     reference,
                     notes,
+                    bankAccountId
                 }
             });
 
-            // 2. Update Purchase Balance
-            const newPaidAmount = Number(purchase.paidAmount) + amount;
+            // 3. Handle Bank Integration
+            if (bankAccountId && bankAccount) {
+                // Create Bank Movement (type OUT)
+                const movement = await tx.bankMovement.create({
+                    data: {
+                        bankAccountId,
+                        type: 'OUT',
+                        amount: amountToDeductFromBank,
+                        category: 'PURCHASE',
+                        description: `Pago a Proveedor: ${purchase.supplier.comercialName} (Factura: ${purchase.invoiceNumber || 'N/A'})`,
+                        reference: reference || `PAY-${payment.id.substring(0, 8)}`,
+                        date: new Date(),
+                    }
+                });
+
+                // Link movement to payment
+                await tx.purchasePayment.update({
+                    where: { id: payment.id },
+                    data: { bankMovementId: movement.id }
+                });
+
+                // Update Bank Balance
+                await tx.bankAccount.update({
+                    where: { id: bankAccountId },
+                    data: { balance: { decrement: amountToDeductFromBank } }
+                });
+            }
+
+            // 4. Update Purchase Balance
+            const newPaidAmount = Number(purchase.paidAmount) + Number(amount);
             const newBalance = Number(purchase.total) - newPaidAmount;
             const newStatus = newBalance <= 0.01 ? 'PAID' : 'PARTIAL'; // Tolerance for float
 

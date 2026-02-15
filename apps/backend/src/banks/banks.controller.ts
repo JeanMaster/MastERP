@@ -1,14 +1,20 @@
 
-import { Controller, Get, Post, Body, Patch, Param, Delete, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, Query, UseGuards, Request } from '@nestjs/common';
 import { BanksService } from './banks.service';
 import { CreateBankAccountDto } from './dto/create-bank-account.dto';
 import { UpdateBankAccountDto } from './dto/update-bank-account.dto';
+import { LiquidatePosBatchDto } from './dto/liquidate-pos-batch.dto';
 import { AuthGuard } from '@nestjs/passport';
 
 @Controller('banks')
 @UseGuards(AuthGuard('jwt'))
 export class BanksController {
     constructor(private readonly banksService: BanksService) { }
+
+    @Post('liquidate-pos')
+    liquidatePosBatch(@Body() dto: LiquidatePosBatchDto, @Request() req) {
+        return this.banksService.liquidatePosBatch(dto, req.user.id);
+    }
 
     @Post()
     create(@Body() createBankDto: CreateBankAccountDto) {

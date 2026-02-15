@@ -12,10 +12,14 @@ export interface BankAccount {
         id: string;
         name: string;
         symbol: string;
+        code: string;
         isPrimary: boolean;
     };
     balance: number;
     active: boolean;
+    receivesPosLiquidation: boolean;
+    pendingLiquidation: number;
+    receivesMobilePayment: boolean;
     createdAt: string;
     updatedAt: string;
 }
@@ -28,6 +32,8 @@ export interface CreateBankAccountDto {
     holderId: string;
     currencyId: string;
     initialBalance?: number;
+    receivesPosLiquidation?: boolean;
+    receivesMobilePayment?: boolean;
 }
 
 export interface UpdateBankAccountDto {
@@ -35,9 +41,15 @@ export interface UpdateBankAccountDto {
     accountNumber?: string;
     accountType?: string;
     holderName?: string;
-    active: boolean;
-    createdAt: string;
-    updatedAt: string;
+    active?: boolean;
+    receivesPosLiquidation?: boolean;
+    receivesMobilePayment?: boolean;
+}
+
+export interface LiquidatePosBatchDto {
+    bankAccountId: string;
+    commissionAmount: number;
+    notes?: string;
 }
 
 export interface BankMovement {
@@ -99,5 +111,10 @@ export const banksApi = {
 
     delete: async (id: string): Promise<void> => {
         await api.delete(`/banks/${id}`);
+    },
+
+    liquidatePos: async (dto: LiquidatePosBatchDto): Promise<any> => {
+        const { data } = await api.post('/banks/liquidate-pos', dto);
+        return data;
     },
 };

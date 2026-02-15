@@ -9,6 +9,7 @@ import { BankFormModal } from './components/BankFormModal';
 import { BankHistoryModal } from './components/BankHistoryModal';
 import { BankMovementModal } from './components/BankMovementModal';
 import { formatVenezuelanPrice } from '../../utils/formatters';
+import { LiquidateBatchModal } from './components/LiquidateBatchModal';
 
 const { useBreakpoint } = Grid;
 
@@ -20,6 +21,7 @@ export const BanksPage = () => {
     const [isMovementOpen, setIsMovementOpen] = useState(false);
     const [selectedBank, setSelectedBank] = useState<BankAccount | null>(null);
     const [editingBank, setEditingBank] = useState<BankAccount | null>(null);
+    const [isLiquidateOpen, setIsLiquidateOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     const queryClient = useQueryClient();
 
@@ -79,7 +81,7 @@ export const BanksPage = () => {
             )
         },
         {
-            title: 'Saldo',
+            title: 'Saldo Real',
             dataIndex: 'balance',
             key: 'balance',
             align: 'right' as const,
@@ -87,6 +89,32 @@ export const BanksPage = () => {
                 <span style={{ fontWeight: 600, color: balance >= 0 ? 'green' : 'red' }}>
                     {record.currency.symbol} {formatVenezuelanPrice(balance)}
                 </span>
+            )
+        },
+        {
+            title: 'En Tránsito (POS)',
+            dataIndex: 'pendingLiquidation',
+            key: 'pendingLiquidation',
+            align: 'right' as const,
+            render: (pending: number, record: BankAccount) => (
+                pending > 0 ? (
+                    <Space direction="vertical" size={0} align="end">
+                        <span style={{ fontWeight: 600, color: '#1890ff' }}>
+                            {record.currency.symbol} {formatVenezuelanPrice(pending)}
+                        </span>
+                        <Button
+                            type="link"
+                            size="small"
+                            style={{ padding: 0, fontSize: '11px' }}
+                            onClick={() => {
+                                setSelectedBank(record);
+                                setIsLiquidateOpen(true);
+                            }}
+                        >
+                            Liquidar Lote
+                        </Button>
+                    </Space>
+                ) : <span style={{ color: '#ccc' }}>-</span>
             )
         },
         {
@@ -172,7 +200,7 @@ export const BanksPage = () => {
             </div>
 
             <Row gutter={16} style={{ marginBottom: 24 }}>
-                <Col xs={24} sm={8}>
+                <Col xs={24} sm={6}>
                     <Card style={{ backgroundColor: '#f0f5ff' }}>
                         <Statistic
                             title="Total en Bancos"
@@ -183,10 +211,21 @@ export const BanksPage = () => {
                         />
                     </Card>
                 </Col>
-                <Col xs={24} sm={8}>
+                <Col xs={24} sm={6}>
+                    <Card style={{ backgroundColor: '#fffbe6' }}>
+                        <Statistic
+                            title="Total en Tránsito"
+                            value={banks.reduce((acc, b) => acc + Number(b.pendingLiquidation || 0), 0)}
+                            precision={2}
+                            prefix="Bs."
+                            valueStyle={{ color: '#d4b106' }}
+                        />
+                    </Card>
+                </Col>
+                <Col xs={24} sm={6}>
                     <Card style={{ backgroundColor: '#f6ffed' }}>
                         <Statistic
-                            title="Total en Bóveda / Efectivo"
+                            title="Total en Bóveda"
                             value={banks.filter(b => b.accountType === 'CASH_VAULT').reduce((acc, b) => acc + Number(b.balance), 0)}
                             precision={2}
                             prefix="Bs."
@@ -194,11 +233,11 @@ export const BanksPage = () => {
                         />
                     </Card>
                 </Col>
-                <Col xs={24} sm={8}>
+                <Col xs={24} sm={6}>
                     <Card style={{ backgroundColor: '#fff7e6', borderColor: '#ffa940', borderWidth: 2 }}>
                         <Statistic
-                            title="Liquidez Total (Consolidada)"
-                            value={banks.reduce((acc, b) => acc + Number(b.balance), 0)}
+                            title="Liquidez (Consolidada)"
+                            value={banks.reduce((acc, b) => acc + Number(b.balance) + Number(b.pendingLiquidation || 0), 0)}
                             precision={2}
                             prefix="Bs."
                             valueStyle={{ color: '#fa8c16', fontWeight: 'bold' }}
@@ -241,6 +280,18 @@ export const BanksPage = () => {
                     setSelectedBank(null);
                 }}
             />
+
+            {/* Nuevo Modal de Liquidación */}
+            {selectedBank && (
+                <LiquidateBatchModal
+                    open={isLiquidateOpen}
+                    bankAccount={selectedBank}
+                    onClose={() => {
+                        setIsLiquidateOpen(false);
+                        setSelectedBank(null);
+                    }}
+                />
+            )}
         </div >
     );
 };

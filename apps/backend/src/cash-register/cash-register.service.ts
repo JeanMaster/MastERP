@@ -156,15 +156,71 @@ export class CashRegisterService {
         if (!session) throw new NotFoundException('Sesión no encontrada');
         if (session.status !== 'AWAITING_CLOSE') throw new BadRequestException('La sesión no está esperando cierre');
 
-        // Crear movimiento de cierre oficial
+        const variance = Number(session.variance || 0);
+
+        // Si hay varianza, crear un movimiento de AJUSTE para cuadrar la caja oficialmente
+        if (Math.abs(variance) > 0.001) {
+            await this.createMovement({
+                sessionId: session.id,
+                type: MovementType.ADJUSTMENT,
+                amount: variance, // Usar varianza directamente (positiva si sobra, negativa si falta)
+                currencyCode: 'VES',
+                description: `Ajuste Automático por Varianza (${variance >= 0 ? 'Sobrante' : 'Faltante'})`,
+                performedBy: adminUser,
+                notes: `Cuadre oficial de caja por cierre autorizado.`
+            });
+        }
+
+        // Crear movimiento de cierre oficial (Salida del total hacia Tesorería/Cierre)
         await this.createMovement({
             sessionId: session.id,
             type: MovementType.CLOSING,
             amount: Number(session.actualBalance || 0),
             currencyCode: 'VES',
-            description: `Cierre de caja (Autorizado) - Varianza: ${Number(session.variance || 0).toFixed(2)}`,
+            description: `Cierre de caja (Autorizado) - Efectivo Entregado: ${Number(session.actualBalance || 0).toFixed(2)}`,
             performedBy: adminUser
         });
+
+        // --- Lógica de Liquidación de Tarjetas (Tesorería) ---
+        // 1. Calcular total de tarjetas (DEBIT, CREDIT)
+        const sales = await this.prisma.sale.findMany({
+            where: { cashSessionId: sessionId, isCancelled: false }
+        });
+
+        let cardTotalVES = 0;
+        sales.forEach(sale => {
+            const methods = sale.paymentMethod.split(', ');
+            methods.forEach(methodPart => {
+                let method = methodPart;
+                let amount = Number(sale.total);
+                if (methodPart.includes(':')) {
+                    const parts = methodPart.split(':');
+                    method = parts[0].trim();
+                    amount = parseFloat(parts[1]);
+                }
+
+                if (method === 'DEBIT' || method === 'CREDIT') {
+                    cardTotalVES += amount;
+                }
+            });
+        });
+
+        // 2. Buscar cuenta receptora y actualizar saldo en tránsito
+        const targetAccount = await (this.prisma as any).bankAccount.findFirst({
+            where: { receivesPosLiquidation: true, active: true }
+        });
+
+        if (targetAccount && cardTotalVES > 0) {
+            await (this.prisma as any).bankAccount.update({
+                where: { id: targetAccount.id },
+                data: {
+                    pendingLiquidation: {
+                        increment: cardTotalVES
+                    }
+                }
+            });
+        }
+        // ----------------------------------------------------
 
         const result = await this.prisma.cashSession.update({
             where: { id: sessionId },
@@ -255,7 +311,12 @@ export class CashRegisterService {
                     break;
                 case 'EXPENSE':
                 case 'DEPOSIT':
+                case 'CLOSING': // El cierre resta del balance para quedar en 0
+                case 'CHANGE': // El vuelto resta del balance
                     expected -= amountInVES;
+                    break;
+                case 'ADJUSTMENT':
+                    expected += amountInVES;
                     break;
             }
         }
@@ -346,6 +407,11 @@ export class CashRegisterService {
                         sale: true
                     }
                 },
+                sales: {
+                    include: {
+                        items: true
+                    }
+                },
                 cashCounts: true
             }
         });
@@ -389,7 +455,8 @@ export class CashRegisterService {
                 register: true,
                 movements: {
                     orderBy: { createdAt: 'asc' }
-                }
+                },
+                sales: true
             },
             orderBy: { openedAt: 'desc' }
         });

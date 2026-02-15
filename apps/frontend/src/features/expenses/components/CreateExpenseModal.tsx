@@ -5,6 +5,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import dayjs from 'dayjs';
 import { expensesApi, type UpdateExpenseDto, type Expense } from '../../../services/expensesApi';
 import { currenciesApi } from '../../../services/currenciesApi';
+import { banksApi } from '../../../services/banksApi';
 import { formatVenezuelanPrice } from '../../../utils/formatters';
 
 interface CreateExpenseModalProps {
@@ -44,11 +45,18 @@ export const CreateExpenseModal = ({ open, onCancel, expense }: CreateExpenseMod
     const selectedCurrencyId = Form.useWatch('currencyId', form);
     const amount = Form.useWatch('amount', form);
     const exchangeRate = Form.useWatch('exchangeRate', form);
+    const selectedBankId = Form.useWatch('bankAccountId', form);
 
     // Fetch currencies
     const { data: currencies = [] } = useQuery({
         queryKey: ['currencies'],
         queryFn: currenciesApi.getAll,
+    });
+
+    // Fetch banks
+    const { data: banks = [] } = useQuery({
+        queryKey: ['banks'],
+        queryFn: () => banksApi.getAll(),
     });
 
     // Set default values when modal opens
@@ -67,6 +75,7 @@ export const CreateExpenseModal = ({ open, onCancel, expense }: CreateExpenseMod
                     paymentMethod: expense.paymentMethod,
                     reference: expense.reference,
                     notes: expense.notes,
+                    bankAccountId: expense.bankAccountId,
                 });
             } else if (currencies.length > 0) {
                 // Create Mode: Set Defaults
@@ -146,6 +155,7 @@ export const CreateExpenseModal = ({ open, onCancel, expense }: CreateExpenseMod
                 paymentMethod: values.paymentMethod,
                 reference: values.reference,
                 notes: values.notes,
+                bankAccountId: values.bankAccountId,
             };
 
             if (expense) {
@@ -173,6 +183,21 @@ export const CreateExpenseModal = ({ open, onCancel, expense }: CreateExpenseMod
             const vesAmount = amount * exchangeRate;
             conversionPreview = `Equivalente en Bs: ${formatVenezuelanPrice(vesAmount, 'Bs.')}`;
         }
+    }
+
+    // Calculate bank deduction preview
+    const selectedBank = banks.find(b => b.id === selectedBankId);
+    let bankDeductionPreview = null;
+    if (selectedBank && amount && exchangeRate) {
+        let deductionAmount = amount;
+        if (selectedCurrencyObj?.code !== selectedBank.currency.code) {
+            if (selectedBank.currency.isPrimary) {
+                deductionAmount = amount * exchangeRate;
+            } else {
+                deductionAmount = amount / exchangeRate;
+            }
+        }
+        bankDeductionPreview = `Se descontarán ${formatVenezuelanPrice(deductionAmount, selectedBank.currency.symbol)} de la cuenta.`;
     }
 
     return (
@@ -274,6 +299,21 @@ export const CreateExpenseModal = ({ open, onCancel, expense }: CreateExpenseMod
                         <Select options={PAYMENT_METHODS} />
                     </Form.Item>
                 </Space>
+
+                <Form.Item
+                    name="bankAccountId"
+                    label="Cuenta Bancaria / Tesorería (Opcional)"
+                    help={bankDeductionPreview}
+                >
+                    <Select
+                        placeholder="Seleccione cuenta bancaria (Transferencias, Pago Móvil, etc.)"
+                        allowClear
+                        options={banks.map(b => ({
+                            value: b.id,
+                            label: `${b.bankName} - ${b.currency.code} (${b.accountNumber})`
+                        }))}
+                    />
+                </Form.Item>
 
                 <Form.Item
                     name="reference"

@@ -38,4 +38,14 @@ export class CreateBankAccountDto {
     @IsNumber()
     @Min(0)
     initialBalance?: number;
+
+    @ApiProperty()
+    @IsOptional()
+    @IsBoolean()
+    receivesPosLiquidation?: boolean;
+
+    @ApiProperty()
+    @IsOptional()
+    @IsBoolean()
+    receivesMobilePayment?: boolean;
 }

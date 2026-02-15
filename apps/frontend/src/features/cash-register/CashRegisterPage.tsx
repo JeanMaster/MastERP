@@ -26,7 +26,8 @@ import {
     LogoutOutlined,
     EyeOutlined,
     ShopOutlined,
-    InboxOutlined
+    InboxOutlined,
+    UndoOutlined
 } from '@ant-design/icons';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { cashRegisterApi, type CashSession, type CashMovement, type CashRegister } from '../../services/cashRegisterApi';
@@ -96,12 +97,39 @@ export const CashRegisterPage = () => {
         }
     }, [user, activeSession, navigate]);
 
+    const parsePaymentMethods = (methodStr: string, totalAmount: number): Record<string, number> => {
+        const result: Record<string, number> = {};
+        if (!methodStr) return result;
+
+        const parts = methodStr.split(', ');
+        parts.forEach(part => {
+            if (part.includes(':')) {
+                const [method, amountStr] = part.split(':');
+                result[method.trim()] = (result[method.trim()] || 0) + parseFloat(amountStr);
+            } else {
+                // If it's a simple method without amount, assume it takes the rest or the total if it's the only one
+                // But in this system, multi-method usually always includes amounts.
+                result[part.trim()] = (result[part.trim()] || 0) + totalAmount;
+            }
+        });
+        return result;
+    };
+
     const calculateSummary = (session: CashSession) => {
         let sales = 0;
         let expenses = 0;
         let deposits = 0;
         let withdrawals = 0;
+        const methodsBreakdown: Record<string, number> = {
+            CASH: 0,
+            CURRENCY_USD: 0,
+            DEBIT: 0,
+            MOBILE: 0,
+            TRANSFER: 0,
+            CREDIT: 0
+        };
 
+        // Aggregrate from movements (Physical Cash/USD)
         session.movements.forEach(movement => {
             const amountInBs = Number(movement.amount) * Number(movement.exchangeRate || 1);
             switch (movement.type) {
@@ -117,12 +145,41 @@ export const CashRegisterPage = () => {
                 case 'WITHDRAWAL':
                     withdrawals += amountInBs;
                     break;
+                case 'CHANGE':
+                    sales -= amountInBs;
+                    break;
+                case 'ADJUSTMENT':
+                    if (amountInBs > 0) withdrawals += amountInBs;
+                    else deposits += Math.abs(amountInBs);
+                    break;
             }
         });
 
-        const expected = Number(session.openingBalance) + sales + withdrawals - expenses - deposits;
+        // Aggregate ALL methods from Sales
+        session.sales?.forEach(sale => {
+            const saleMethods = parsePaymentMethods(sale.paymentMethod, Number(sale.total));
+            Object.entries(saleMethods).forEach(([method, amount]) => {
+                methodsBreakdown[method] = (methodsBreakdown[method] || 0) + amount;
+            });
+        });
 
-        return { sales, expenses, deposits, withdrawals, expected };
+        const round = (num: number) => Math.round((num + Number.EPSILON) * 100) / 100;
+
+        const expected = round(Number(session.openingBalance) + sales + withdrawals - expenses - deposits);
+
+        // Also round the breakdown amounts
+        Object.keys(methodsBreakdown).forEach(key => {
+            methodsBreakdown[key] = round(methodsBreakdown[key]);
+        });
+
+        return {
+            sales: round(sales),
+            expenses: round(expenses),
+            deposits: round(deposits),
+            withdrawals: round(withdrawals),
+            expected,
+            methodsBreakdown
+        };
     };
 
     const getMovementIcon = (type: string) => {
@@ -135,10 +192,12 @@ export const CashRegisterPage = () => {
                 return <BankOutlined style={{ color: '#1890ff' }} />;
             case 'WITHDRAWAL':
                 return <LogoutOutlined style={{ color: '#faad14' }} />;
-            case 'OPENING':
-                return <PlusOutlined style={{ color: '#722ed1' }} />;
             case 'CLOSING':
                 return <LogoutOutlined style={{ color: '#722ed1' }} />;
+            case 'ADJUSTMENT':
+                return <SettingOutlined style={{ color: '#faad14' }} />;
+            case 'CHANGE':
+                return <UndoOutlined style={{ color: '#ff4d4f' }} />;
             default:
                 return null;
         }
@@ -151,9 +210,24 @@ export const CashRegisterPage = () => {
             DEPOSIT: 'Retiro de Caja',
             WITHDRAWAL: 'Ingreso a Caja',
             OPENING: 'Apertura',
-            CLOSING: 'Cierre'
+            CLOSING: 'Cierre',
+            ADJUSTMENT: 'Ajuste de Caja',
+            CHANGE: 'Vuelto Entregado'
         };
         return labels[type] || type;
+    };
+
+    const i18nPaymentMethod = (method: string) => {
+        const labels: Record<string, string> = {
+            CASH: 'Efectivo Bs',
+            CURRENCY_USD: 'Efectivo $',
+            DEBIT: 'Tarjeta Débito',
+            MOBILE: 'Pago Móvil',
+            TRANSFER: 'Transferencia',
+            CREDIT: 'Crédito',
+            CURRENCY_UDT: 'Otros'
+        };
+        return labels[method] || method;
     };
 
     const movementsColumns = [
@@ -188,7 +262,8 @@ export const CashRegisterPage = () => {
             width: 140,
             align: 'right' as const,
             render: (amount: number, record: CashMovement) => {
-                const isPositive = ['SALE', 'WITHDRAWAL', 'OPENING'].includes(record.type);
+                const isPositive = ['SALE', 'WITHDRAWAL', 'OPENING', 'ADJUSTMENT'].includes(record.type) && amount >= 0;
+                // Si es ADJUSTMENT pero el monto es negativo, se verá rojo.
                 const color = isPositive ? '#52c41a' : '#ff4d4f';
 
                 if (record.currencyCode && record.currencyCode !== 'VES') {
@@ -506,7 +581,7 @@ export const CashRegisterPage = () => {
                     )}
 
                     {/* Summary Cards */}
-                    <Row gutter={16} style={{ marginBottom: 24 }}>
+                    <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
                         <Col xs={24} sm={12} md={6}>
                             <Card>
                                 <Statistic
@@ -521,8 +596,8 @@ export const CashRegisterPage = () => {
                         <Col xs={24} sm={12} md={6}>
                             <Card>
                                 <Statistic
-                                    title="Ventas"
-                                    value={summary.sales}
+                                    title="Ventas Totales"
+                                    value={activeSession.sales?.reduce((acc, curr) => acc + Number(curr.total), 0) || 0}
                                     precision={2}
                                     prefix="Bs."
                                     valueStyle={{ color: '#52c41a' }}
@@ -532,8 +607,8 @@ export const CashRegisterPage = () => {
                         <Col xs={24} sm={12} md={6}>
                             <Card>
                                 <Statistic
-                                    title="Gastos"
-                                    value={summary.expenses}
+                                    title="Gastos / Retiros"
+                                    value={summary.expenses + summary.deposits}
                                     precision={2}
                                     prefix="Bs."
                                     valueStyle={{ color: '#ff4d4f' }}
@@ -543,7 +618,7 @@ export const CashRegisterPage = () => {
                         <Col xs={24} sm={12} md={6}>
                             <Card style={{ borderColor: '#1890ff', borderWidth: 2 }}>
                                 <Statistic
-                                    title="Balance Esperado"
+                                    title="Efectivo en Gaveta (Esperado)"
                                     value={summary.expected}
                                     precision={2}
                                     prefix="Bs."
@@ -552,6 +627,25 @@ export const CashRegisterPage = () => {
                             </Card>
                         </Col>
                     </Row>
+
+                    {/* Payment Pillar Breakdown */}
+                    <Card title="Resumen por Formas de Pago" style={{ marginBottom: 24 }}>
+                        <Row gutter={[16, 16]}>
+                            {Object.entries(summary.methodsBreakdown).map(([method, amount]) => (
+                                amount > 0 && (
+                                    <Col xs={12} sm={8} md={4} key={method}>
+                                        <Statistic
+                                            title={i18nPaymentMethod(method)}
+                                            value={amount}
+                                            precision={2}
+                                            valueStyle={{ fontSize: 16 }}
+                                            prefix="Bs."
+                                        />
+                                    </Col>
+                                )
+                            ))}
+                        </Row>
+                    </Card>
 
                     {/* Actions */}
                     <Card style={{ marginBottom: 16 }}>
@@ -613,14 +707,79 @@ export const CashRegisterPage = () => {
                     )
                     }
 
-                    {/* Movements Table */}
-                    <Card title="Movimientos del Día">
-                        <Table
-                            dataSource={activeSession.movements}
-                            columns={movementsColumns}
-                            rowKey="id"
-                            pagination={false}
-                            scroll={{ y: 400 }}
+                    {/* Movements & Sales Detail */}
+                    <Card style={{ marginTop: 24 }}>
+                        <Tabs
+                            defaultActiveKey="movements"
+                            items={[
+                                {
+                                    key: 'movements',
+                                    label: <Space><HistoryOutlined /> Movimientos Generales</Space>,
+                                    children: (
+                                        <Table
+                                            dataSource={activeSession.movements}
+                                            columns={movementsColumns}
+                                            rowKey="id"
+                                            pagination={false}
+                                            scroll={{ y: 400 }}
+                                        />
+                                    )
+                                },
+                                {
+                                    key: 'sales',
+                                    label: <Space><ShopOutlined /> Detalle de Ventas</Space>,
+                                    children: (
+                                        <Table
+                                            dataSource={activeSession.sales}
+                                            columns={[
+                                                {
+                                                    title: 'Factura',
+                                                    dataIndex: 'invoiceNumber',
+                                                    key: 'invoice',
+                                                    render: (text: string) => <Text strong>{text}</Text>
+                                                },
+                                                {
+                                                    title: 'Hora',
+                                                    dataIndex: 'date',
+                                                    key: 'time',
+                                                    render: (date: string) => dayjs(date).format('HH:mm')
+                                                },
+                                                {
+                                                    title: 'Monto Total',
+                                                    dataIndex: 'total',
+                                                    key: 'total',
+                                                    align: 'right',
+                                                    render: (total: number) => formatVenezuelanPrice(Number(total))
+                                                },
+                                                {
+                                                    title: 'Métodos de Pago',
+                                                    dataIndex: 'paymentMethod',
+                                                    key: 'methods',
+                                                    render: (methods: string) => {
+                                                        const parts = methods.split(', ');
+                                                        return (
+                                                            <Space wrap>
+                                                                {parts.map((p, i) => {
+                                                                    const [name, amount] = p.split(':');
+                                                                    const label = i18nPaymentMethod(name.trim());
+                                                                    return (
+                                                                        <Tag key={i} color="blue">
+                                                                            {label}: {amount ? formatVenezuelanPrice(parseFloat(amount)) : ''}
+                                                                        </Tag>
+                                                                    );
+                                                                })}
+                                                            </Space>
+                                                        );
+                                                    }
+                                                }
+                                            ]}
+                                            rowKey="id"
+                                            pagination={false}
+                                            scroll={{ y: 400 }}
+                                        />
+                                    )
+                                }
+                            ]}
                         />
                     </Card>
                 </>
@@ -709,13 +868,41 @@ export const CashRegisterPage = () => {
                                         },
                                         expandedRowRender: (record: CashSession) => (
                                             <div style={{ padding: '0 24px' }}>
-                                                <Title level={5}>Caja: {record.register.name} - Movimientos</Title>
-                                                <Table
-                                                    dataSource={record.movements}
-                                                    columns={movementsColumns}
-                                                    rowKey="id"
-                                                    pagination={false}
+                                                <Title level={5}>Sesión de Caja: {record.register.name}</Title>
+                                                <Tabs
                                                     size="small"
+                                                    items={[
+                                                        {
+                                                            key: 'movements',
+                                                            label: 'Movimientos Generales',
+                                                            children: (
+                                                                <Table
+                                                                    dataSource={record.movements}
+                                                                    columns={movementsColumns}
+                                                                    rowKey="id"
+                                                                    pagination={false}
+                                                                    size="small"
+                                                                />
+                                                            )
+                                                        },
+                                                        {
+                                                            key: 'sales',
+                                                            label: 'Detalle de Ventas',
+                                                            children: (
+                                                                <Table
+                                                                    dataSource={record.sales}
+                                                                    columns={[
+                                                                        { title: 'Factura', dataIndex: 'invoiceNumber', key: 'invoice' },
+                                                                        { title: 'Monto Total', dataIndex: 'total', key: 'total', align: 'right', render: (total: number) => formatVenezuelanPrice(Number(total)) },
+                                                                        { title: 'Método de Pago', dataIndex: 'paymentMethod', key: 'methods', render: (m) => i18nPaymentMethod(m.split(':')[0]) }
+                                                                    ]}
+                                                                    rowKey="id"
+                                                                    pagination={false}
+                                                                    size="small"
+                                                                />
+                                                            )
+                                                        }
+                                                    ]}
                                                 />
 
                                                 {record.cashCounts && record.cashCounts.length > 0 && (

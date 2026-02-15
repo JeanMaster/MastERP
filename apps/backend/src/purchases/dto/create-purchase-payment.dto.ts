@@ -27,4 +27,24 @@ export class CreatePurchasePaymentDto {
     @IsString()
     @IsOptional()
     notes?: string;
+
+    @ApiProperty()
+    @IsNumber()
+    @IsOptional()
+    paymentAmount?: number;
+
+    @ApiProperty()
+    @IsString()
+    @IsOptional()
+    currencyCode?: string;
+
+    @ApiProperty()
+    @IsNumber()
+    @IsOptional()
+    exchangeRate?: number;
+
+    @ApiProperty()
+    @IsString()
+    @IsOptional()
+    bankAccountId?: string;
 }

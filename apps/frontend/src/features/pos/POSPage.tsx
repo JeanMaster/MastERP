@@ -131,18 +131,49 @@ export const POSPage = () => {
     // Helper para calcular el saldo esperado dinámicamente
     const calculateExpectedBalance = () => {
         if (!activeSession) return 0;
-        let expected = Number(activeSession.openingBalance);
 
-        activeSession.movements?.forEach((m: any) => {
-            const amt = Number(m.amount);
+        let sales = 0;
+        let expenses = 0;
+        let deposits = 0;
+        let withdrawals = 0;
 
-            if (m.type === 'SALE') {
-                expected += amt;
-            } else if (['EXPENSE', 'DEPOSIT', 'WITHDRAWAL'].includes(m.type)) {
-                expected -= amt;
+        activeSession.movements?.forEach((movement: any) => {
+            // Robust parsing of amount and rate
+            const rawAmount = Number(movement.amount || 0);
+            const rawRate = Number(movement.exchangeRate);
+
+            // If rate is valid (>0), use it. otherwise default to 1.
+            const rate = (!isNaN(rawRate) && rawRate > 0) ? rawRate : 1;
+            const amountInBs = rawAmount * rate;
+
+            const type = String(movement.type).trim();
+
+            switch (type) {
+                case 'SALE':
+                    sales += amountInBs;
+                    break;
+                case 'EXPENSE':
+                    expenses += amountInBs;
+                    break;
+                case 'DEPOSIT':
+                    deposits += amountInBs;
+                    break;
+                case 'WITHDRAWAL':
+                    withdrawals += amountInBs;
+                    break;
+                case 'CHANGE':
+                    sales -= amountInBs;
+                    break;
+                case 'ADJUSTMENT':
+                    if (amountInBs > 0) withdrawals += amountInBs;
+                    else deposits += Math.abs(amountInBs);
+                    break;
+                // OPENING is ignored
             }
         });
-        return expected;
+
+        const round = (num: number) => Math.round((num + Number.EPSILON) * 100) / 100;
+        return round(Number(activeSession.openingBalance) + sales + withdrawals - expenses - deposits);
     };
 
     const handleCheckoutProcess = async (paymentData: any) => {

@@ -168,11 +168,24 @@ model PurchasePayment {
   purchaseId      String
   purchase        Purchase @relation(fields: [purchaseId], references: [id])
   
-  amount          Decimal  @db.Decimal(10, 2)
+  amount          Decimal  @db.Decimal(10, 2) // Representa el monto descontado del saldo de la compra (en la moneda de la compra)
+  
+  // Datos del pago real (multimoneda)
+  paymentAmount   Decimal?  @db.Decimal(10, 2) // Monto pagado en la moneda del pago
+  currencyCode    String   @default("VES")
+  exchangeRate    Decimal  @default(1.0) @db.Decimal(10, 4)
+  
   paymentDate     DateTime @default(now())
   paymentMethod   String   
   reference       String?
   notes           String?
+  
+  // Relación con Banco (opcional)
+  bankAccountId   String?
+  bankAccount     BankAccount? @relation(fields: [bankAccountId], references: [id])
+  
+  bankMovementId  String? @unique
+  bankMovement    BankMovement? @relation(fields: [bankMovementId], references: [id])
   
   createdBy       String?
   
@@ -756,6 +769,13 @@ model Expense {
   // Relaciones con caja (opcional, si se paga con efectivo de caja)
   cashMovementId String? @unique
   
+  // Relación con Banco (opcional, si se paga con cuenta bancaria)
+  bankAccountId String?
+  bankAccount   BankAccount? @relation(fields: [bankAccountId], references: [id])
+  
+  bankMovementId String? @unique
+  bankMovement   BankMovement? @relation(fields: [bankMovementId], references: [id])
+  
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
@@ -872,9 +892,18 @@ model BankAccount {
   
   balance         Decimal  @db.Decimal(12, 2) @default(0)
   
-  active          Boolean  @default(true)
+  active                  Boolean  @default(true)
   
-  movements       BankMovement[]
+  // Pos Liquidation automation
+  receivesPosLiquidation  Boolean  @default(false)
+  pendingLiquidation      Decimal  @db.Decimal(12, 2) @default(0)
+  
+  // Mobile Payment (Pago Móvil)
+  receivesMobilePayment Boolean @default(false)
+  
+  movements               BankMovement[]
+  expenses                Expense[]
+  purchasePayments        PurchasePayment[]
   
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
@@ -899,6 +928,9 @@ model BankMovement {
   // Opcional: Relación con sesión de caja si viene de un traslado
   cashSessionId   String?
   cashSession     CashSession? @relation(fields: [cashSessionId], references: [id])
+  
+  expense         Expense?
+  purchasePayment PurchasePayment?
   
   createdAt       DateTime     @default(now())
   updatedAt       DateTime     @updatedAt

@@ -20,23 +20,49 @@ export const CloseSessionModal = ({ open, session, onCancel, onSuccess }: CloseS
 
     // Calculate expected balance (In base currency VES)
     const calculateExpected = () => {
-        let expected = Number(session.openingBalance);
+        let sales = 0;
+        let expenses = 0;
+        let deposits = 0;
+        let withdrawals = 0;
 
         session.movements.forEach(movement => {
-            const amountInBs = Number(movement.amount) * Number(movement.exchangeRate || 1);
-            switch (movement.type) {
+            // Robust parsing of amount and rate
+            const rawAmount = Number(movement.amount || 0);
+            const rawRate = Number(movement.exchangeRate);
+
+            // If rate is valid (>0), use it. otherwise default to 1.
+            const rate = (!isNaN(rawRate) && rawRate > 0) ? rawRate : 1;
+            const amountInBs = rawAmount * rate;
+
+            // Normalize type string just in case
+            const type = String(movement.type).trim();
+
+            switch (type) {
                 case 'SALE':
-                case 'WITHDRAWAL':
-                    expected += amountInBs;
+                    sales += amountInBs;
                     break;
                 case 'EXPENSE':
-                case 'DEPOSIT':
-                    expected -= amountInBs;
+                    expenses += amountInBs;
                     break;
+                case 'DEPOSIT':
+                    deposits += amountInBs;
+                    break;
+                case 'WITHDRAWAL':
+                    withdrawals += amountInBs;
+                    break;
+                case 'CHANGE':
+                    sales -= amountInBs;
+                    break;
+                case 'ADJUSTMENT':
+                    if (amountInBs > 0) withdrawals += amountInBs;
+                    else deposits += Math.abs(amountInBs);
+                    break;
+                // OPENING is ignored
             }
         });
 
-        return expected;
+        const round = (num: number) => Math.round((num + Number.EPSILON) * 100) / 100;
+        return round(Number(session.openingBalance) + sales + withdrawals - expenses - deposits);
     };
 
     const expectedBalance = calculateExpected();
@@ -70,7 +96,8 @@ export const CloseSessionModal = ({ open, session, onCancel, onSuccess }: CloseS
     };
 
     const actualBalance = form.getFieldValue('actualBalance');
-    const variance = actualBalance ? actualBalance - expectedBalance : 0;
+    const round = (num: number) => Math.round((num + Number.EPSILON) * 100) / 100;
+    const variance = actualBalance !== undefined ? round(actualBalance - expectedBalance) : 0;
 
     return (
         <Modal

@@ -28,15 +28,16 @@ export const SessionSummaryModal = ({ open, session, onCancel, onStartClose }: S
 
     let totalSales = 0;
 
+    const round = (num: number) => Math.round((num + Number.EPSILON) * 100) / 100;
+
     session.sales?.forEach(sale => {
         totalSales += Number(sale.total);
 
-        // El formato de paymentMethod puede ser simple "CASH" o compuesto "CASH:100.00, CURRENCY_USD:2.00"
         const payments = sale.paymentMethod.split(', ');
 
         payments.forEach((paymentPart: string) => {
             let method = paymentPart.toUpperCase();
-            let amount = Number(sale.total); // Por defecto si no hay ":"
+            let amount = Number(sale.total);
 
             if (paymentPart.includes(':')) {
                 const [m, a] = paymentPart.split(':');
@@ -44,7 +45,6 @@ export const SessionSummaryModal = ({ open, session, onCancel, onStartClose }: S
                 amount = parseFloat(a);
             }
 
-            // Mapeo robusto por método
             if (method === 'CASH') {
                 paymentSummary.CASH_VES += amount;
             } else if (method.includes('CURRENCY_USD')) {
@@ -61,7 +61,15 @@ export const SessionSummaryModal = ({ open, session, onCancel, onStartClose }: S
         });
     });
 
-    // Calcular Efectivo Esperado (Apertura + Ventas Efectivo - Egresos/Depósitos)
+    totalSales = round(totalSales);
+    paymentSummary.CASH_VES = round(paymentSummary.CASH_VES);
+    paymentSummary.CASH_USD = round(paymentSummary.CASH_USD);
+    paymentSummary.DEBIT = round(paymentSummary.DEBIT);
+    paymentSummary.TRANSFER = round(paymentSummary.TRANSFER);
+    paymentSummary.CREDIT = round(paymentSummary.CREDIT);
+    paymentSummary.OTHER = round(paymentSummary.OTHER);
+
+    // Calcular Efectivo Esperado (Apertura + Ventas Efectivo + Ingresos - Egresos - Retiros)
     // Usamos los movimientos de la sesión para esto, que es más fiable para el flujo de caja
     let expectedCashVES = Number(session.openingBalance);
     session.movements.forEach(m => {
@@ -69,12 +77,22 @@ export const SessionSummaryModal = ({ open, session, onCancel, onStartClose }: S
         const rate = Number(m.exchangeRate || 1);
         const amtInVES = amt * rate;
 
-        if (m.type === 'SALE' || m.type === 'DEPOSIT' || m.type === 'OPENING') {
-            if (m.type !== 'OPENING') expectedCashVES += amtInVES;
-        } else if (m.type === 'EXPENSE' || m.type === 'WITHDRAWAL') {
-            expectedCashVES -= amtInVES;
+        switch (m.type) {
+            case 'SALE':
+            case 'WITHDRAWAL':
+            case 'OPENING':
+            case 'ADJUSTMENT':
+                if (m.type !== 'OPENING') expectedCashVES += amtInVES;
+                break;
+            case 'EXPENSE':
+            case 'DEPOSIT':
+            case 'CLOSING':
+            case 'CHANGE':
+                expectedCashVES -= amtInVES;
+                break;
         }
     });
+    expectedCashVES = round(expectedCashVES);
 
     const paymentMethodsList = [
         { name: 'Efectivo (Bs)', amount: paymentSummary.CASH_VES, color: '#52c41a', symbol: 'Bs' },
