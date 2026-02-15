@@ -18,7 +18,7 @@ export interface CashRegister {
 export interface CashMovement {
     id: string;
     sessionId: string;
-    type: 'SALE' | 'EXPENSE' | 'DEPOSIT' | 'WITHDRAWAL' | 'OPENING' | 'CLOSING';
+    type: 'SALE' | 'EXPENSE' | 'DEPOSIT' | 'WITHDRAWAL' | 'OPENING' | 'CLOSING' | 'ADJUSTMENT' | 'CHANGE';
     amount: number;
     currencyCode: string;
     exchangeRate: number;
@@ -90,7 +90,7 @@ export interface CloseSessionDto {
 
 export interface CreateMovementDto {
     sessionId: string;
-    type: 'EXPENSE' | 'DEPOSIT' | 'WITHDRAWAL';
+    type: 'EXPENSE' | 'DEPOSIT' | 'WITHDRAWAL' | 'ADJUSTMENT';
     amount: number;
     currencyCode?: string;
     description: string;

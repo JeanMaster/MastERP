@@ -83,7 +83,8 @@ export const CashCountModal = ({ open, mode, sessionId, openingBalance, expected
             }
         });
 
-        const totalEquivalent = totalVES + (totalUSD * exchangeRate);
+        const round = (num: number) => Math.round((num + Number.EPSILON) * 100) / 100;
+        const totalEquivalent = round(totalVES + (totalUSD * exchangeRate));
         return { totalVES, totalUSD, totalEquivalent };
     };
 
@@ -280,11 +281,11 @@ export const CashCountModal = ({ open, mode, sessionId, openingBalance, expected
                         <Col span={8}>
                             <Statistic
                                 title="Diferencia"
-                                value={totalEquivalent - (mode === 'OPENING' ? openingBalance : (expectedBalance || 0))}
+                                value={Math.round((totalEquivalent - (mode === 'OPENING' ? openingBalance : (expectedBalance || 0))) * 100) / 100}
                                 precision={2}
                                 prefix="Bs."
                                 valueStyle={{
-                                    color: (totalEquivalent - (mode === 'OPENING' ? openingBalance : (expectedBalance || 0))) !== 0
+                                    color: Math.round((totalEquivalent - (mode === 'OPENING' ? openingBalance : (expectedBalance || 0))) * 100) / 100 !== 0
                                         ? '#ff4d4f'
                                         : '#3f8600'
                                 }}

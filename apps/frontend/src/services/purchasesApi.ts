@@ -66,6 +66,10 @@ export interface CreatePurchasePaymentDto {
     paymentMethod: string;
     reference?: string;
     notes?: string;
+    paymentAmount?: number;
+    currencyCode?: string;
+    exchangeRate?: number;
+    bankAccountId?: string;
 }
 
 export const purchasesApi = {

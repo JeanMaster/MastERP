@@ -1,4 +1,5 @@
 import { api } from './apiConfig';
+import { type BankAccount } from './banksApi';
 
 export interface Expense {
     id: string;
@@ -11,6 +12,8 @@ export interface Expense {
     paymentMethod: string;
     reference?: string;
     notes?: string;
+    bankAccountId?: string;
+    bankAccount?: BankAccount;
     createdAt: string;
     updatedAt: string;
 }
@@ -25,6 +28,7 @@ export interface CreateExpenseDto {
     paymentMethod: string;
     reference?: string;
     notes?: string;
+    bankAccountId?: string;
 }
 
 export interface UpdateExpenseDto extends Partial<CreateExpenseDto> { }

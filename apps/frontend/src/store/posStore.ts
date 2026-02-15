@@ -566,7 +566,11 @@ export const usePOSStore = create<POSState>()(
                                 // Crucial: Send original currency amount if available to prevent double conversion in backend
                                 const method = p.method;
                                 const amount = p.originalAmount || p.amount;
-                                return `${method}:${amount.toFixed(2)}`;
+                                let paymentString = `${method}:${amount.toFixed(2)}`;
+                                if (p.bankId) {
+                                    paymentString += `:${p.bankId}`;
+                                }
+                                return paymentString;
                             })
                             .join(', ')
                         : paymentMethod,

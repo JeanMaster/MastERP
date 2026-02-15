@@ -452,8 +452,83 @@ Para que la IA tome estos cambios y el sistema funcione correctamente, se recomi
 
 ---
 
+---
+
+**Fecha**: 2026-02-15
+**Para**: Producción / IA Desarrollador
+**De**: IA Antigravity (Google Deepmind)
+**Asunto**: ACTUALIZACIÓN - Reportes Históricos, Precisión y Liquidación POS
+
+## 🚀 RESUMEN EJECUTIVO
+
+Se ha completado la **Fase de Integridad Financiera**. El sistema ahora garantiza que los reportes históricos sean estáticos (no cambien con la tasa del día), elimina errores de precisión decimal y automatiza correctamente las comisiones bancarias.
+
+### ✅ Logros de esta sesión:
+1.  **Reportes Históricos Inmunes**: `StatsService` refactorizado para usar tasas históricas. El balance de enero no cambia si el dólar sube en febrero.
+2.  **Captura de Tasa en Gastos**: Los gastos (manuales y automáticos de POS) ahora guardan la tasa de cambio vigente al momento del registro.
+3.  **Fix de Precisión (e-13)**: Aplicado redondeo a 2 decimales en todos los cálculos críticos del frontend (Dashboard, Cierres, Arqueos).
+4.  **Liquidación POS Completa**: Nuevo flujo para consolidar lotes de tarjetas con generación automática de gasto por comisión.
+5.  **Edición de Gastos**: El backend ahora permite corregir la tasa de cambio y moneda en gastos ya registrados.
+
+---
+
+## 🛠️ CAMBIOS TÉCNICOS DETALLADOS
+
+### 1. Backend (NestJS)
+- **`StatsService`**:
+  - `getBalanceReport`, `getFinanceReport` y `getCOGSReport` ahora usan `sale.exchangeRate` o `expense.exchangeRate` para conversiones.
+  - El "Reporte de Inflación" sigue siendo el único que revalúa a tasa actual por diseño.
+- **`ExpensesService`**:
+  - `create` y `update` ahora manejan explícitamente `exchangeRate` y `currencyCode`.
+  - Los gastos en Bs ahora también guardan la tasa del dólar del momento.
+- **`BanksService`**:
+  - `liquidatePosBatch` ahora consulta `CompanySettings` para aplicar la tasa real a la comisión bancaria.
+
+### 2. Frontend (React)
+- **Rounding Helpers**: Implementados en `CashRegisterPage`, `SessionSummaryModal`, `CashCountModal` y `CloseSessionModal` para evitar números como `-2.27e-13`.
+- **Modales Actualizados**: `LiquidateBatchModal` integrado para manejar cierres de lotes bancarios.
+
+---
+
+## 📋 PASOS PARA ACTUALIZAR SERVIDOR (PRODUCCIÓN)
+
+Una vez realizado el `git push` desde esta terminal, siga estos pasos en el servidor de producción:
+
+1.  **Acceder a la carpeta del proyecto**:
+    ```bash
+    cd /ruta/a/ValeryPort
+    ```
+2.  **Actualizar el código**:
+    ```bash
+    git pull origin develop
+    ```
+3.  **Instalar/Actualizar dependencias**:
+    ```bash
+    npm install
+    ```
+4.  **Sincronizar Base de Datos (MIGRACOINES)**:
+    > [!IMPORTANT]
+    > Hay cambios en el esquema. Es vital ejecutar:
+    ```bash
+    cd apps/backend
+    npx prisma migrate deploy
+    npx prisma generate
+    ```
+5.  **Reiniciar Servicios**:
+    > [!TIP]
+    > Si usa PM2 o similar:
+    ```bash
+    pm2 restart all
+    ```
+    O si usa npm scripts:
+    ```bash
+    npm run build
+    # Luego reiniciar el proceso de ejecución
+    ```
+
+---
+
 ## ⚠️ ESTADO ACTUAL
-- **Compilación**: 100% Exitosa (Build verificado en backend y frontend).
-- **Pendientes**: 
-  - Mejorar la UI del panel de selección de caja para administradores (diseño actual funcional pero básico).
-  - Validar impresión de reportes de cierre con múltiples monedas.
+- **Compilación**: Exitosa.
+- **Base de Datos**: Requiere `migrate deploy`.
+- **Próximos Pasos**: Monitorear los reportes de cierre para verificar que la tasa histórica se capture correctamente en las primeras liquidaciones reales.
