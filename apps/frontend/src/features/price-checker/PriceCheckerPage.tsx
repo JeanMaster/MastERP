@@ -266,7 +266,7 @@ export const PriceCheckerPage = () => {
                     }}>
                         <img
                             alt={product.name}
-                            src={product.imageUrl || 'https://via.placeholder.com/200?text=No+Image'}
+                            src={(product.images && product.images.length > 0) ? product.images[0] : 'https://via.placeholder.com/200?text=No+Image'}
                             style={{ maxHeight: '100%', maxWidth: '100%', objectFit: 'contain' }}
                         />
                     </div>

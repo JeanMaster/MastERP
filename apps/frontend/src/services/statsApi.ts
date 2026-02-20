@@ -23,7 +23,14 @@ export interface DashboardStats {
 export interface InventoryReport {
     stockByDepartment: { department: string; units: number; value: number }[];
     lowStockProducts: { name: string; stock: number; category: { name: string } }[];
-    depletionForecast: { name: string; stock: number; category: string; dailySalesVelocity: number; daysRemaining: number }[];
+    depletionForecast: {
+        name: string;
+        stock: number;
+        category: string;
+        dailySalesVelocity: number;
+        daysRemaining: number;
+        unitsNeededUntilEndOfYear: number;
+    }[];
     totalInventoryValue: number;
 }
 

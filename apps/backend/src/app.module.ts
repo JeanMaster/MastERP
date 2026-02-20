@@ -29,6 +29,7 @@ import { HrModule } from './hr/hr.module';
 import { SystemModule } from './system/system.module';
 import { PurchaseOrdersModule } from './purchase-orders/purchase-orders.module';
 import { AIModule } from './ai/ai.module';
+import { MercadoLibreModule } from './mercadolibre/mercadolibre.module';
 
 @Module({
   imports: [
@@ -62,6 +63,7 @@ import { AIModule } from './ai/ai.module';
     SystemModule,
     PurchaseOrdersModule,
     AIModule,
+    MercadoLibreModule,
   ],
   controllers: [AppController, DevToolsController],
   providers: [AppService, DevToolsService],

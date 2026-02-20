@@ -528,7 +528,86 @@ Una vez realizado el `git push` desde esta terminal, siga estos pasos en el serv
 
 ---
 
+---
+
+**Fecha**: 2026-02-20
+**Para**: Producción / IA Desarrollador
+**De**: IA Antigravity (Google Deepmind)
+**Asunto**: ACTUALIZACIÓN - Integración Mercado Libre, Inteligencia de Inventario y Reportes Multi-moneda
+
+## 🚀 RESUMEN EJECUTIVO
+
+Se ha completado la **Fase de Expansión Digital e Inteligencia**. El sistema ahora permite una gestión profesional de Mercado Libre, ofrece proyecciones de stock para fin de año y garantiza reportes financieros 100% precisos en múltiples monedas.
+
+### ✅ Logros de esta sesión:
+1.  **Módulo Mercado Libre (Fase 7)**:
+    *   Publicación manual con control total (títulos, descripciones, categorías dinámicas).
+    *   Soporte para múltiples imágenes y selección inteligente de categorías.
+    *   **Sincronización de Stock**: Las ventas en la tienda física actualizan automáticamente las publicaciones en ML.
+    *   Control de pausa/reanudación desde el panel administrativo.
+2.  **Inteligencia de Inventario (Fase 8)**:
+    *   **Proyección a Fin de Año**: El sistema calcula cuánto stock "falta" para terminar el año basándose en el ritmo de venta (velocity) de los últimos 30 días.
+3.  **Integridad Financiera (Fase 9)**:
+    *   Reportes financieros corregidos para mostrar símbolos y conversiones exactas ($ / Bs).
+    *   El desglose de métodos de pago ahora suma exactamente el 100% en cualquier moneda.
+
+---
+
+## 🛠️ CAMBIOS TÉCNICOS DETALLADOS
+
+### 1. Backend (NestJS)
+- **`MercadoLibreService`**: Maneja OAuth y la API oficial de ML. Implementa lógica de "upsert" para stock.
+- **`StatsService`**:
+  - Incorpora lógica predictiva `(velocity * daysUntilYearEnd)`.
+  - Fix de revalorización: `(VES / hRate) * currentRate`.
+- **Prisma**: Nuevo modelo `MercadoLibreProductMapping` para vincular IDs locales con externos.
+
+### 2. Frontend (React)
+- **`MlPublishModal`**: Interfaz avanzada con conversión de moneda en tiempo real y buscador de categorías.
+- **`FinancialReports`**: Refactorizado para usar `currencySymbol` dinámico y evitar mezclas de símbolos.
+
+---
+
+## 📋 PASOS PARA ACTUALIZAR ENTORNO DE PRODUCCIÓN
+
+Siga estas instrucciones al pie de la letra para asegurar la estabilidad:
+
+1.  **Actualizar código y dependencias**:
+    ```bash
+    git pull origin develop
+    npm install
+    ```
+
+2.  **Sincronizar Esquema (MIGRACIONES)**:
+    > [!IMPORTANT]
+    > Hay una nueva tabla para Mercado Libre. Ejecutar sin falta:
+    ```bash
+    cd apps/backend
+    npx prisma migrate deploy
+    npx prisma generate
+    ```
+
+3.  **Configuración de Variables de Entorno**:
+    Asegúrese de que el `.env` de producción tenga las credenciales de Mercado Libre:
+    ```env
+    ML_CLIENT_ID=tu_client_id
+    ML_CLIENT_SECRET=tu_client_secret
+    ML_REDIRECT_URI=https://tu-dominio.com/api/mercadolibre/callback
+    ```
+
+4.  **Reconstruir y Reiniciar**:
+    ```bash
+    npm run build
+    pm2 restart all  # o el gestor de procesos que use
+    ```
+
+5.  **Validación**:
+    - Verificar que aparezca el botón "Publicar en ML" en el inventario.
+    - Confirmar que los reportes financieros en USD no muestran el símbolo "Bs" por error.
+
+---
+
 ## ⚠️ ESTADO ACTUAL
-- **Compilación**: Exitosa.
+- **Compilación**: Exitosa (Build verificado).
 - **Base de Datos**: Requiere `migrate deploy`.
-- **Próximos Pasos**: Monitorear los reportes de cierre para verificar que la tasa histórica se capture correctamente en las primeras liquidaciones reales.
+- **Próximos Pasos**: Monitorear las primeras publicaciones reales en Mercado Libre para verificar la carga de imágenes.

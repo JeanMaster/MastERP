@@ -65,7 +65,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({ visible,
                 <Col xs={24} md={12} style={{ textAlign: 'center' }}>
                     <Image
                         width="100%"
-                        src={product.imageUrl || 'https://via.placeholder.com/400x400?text=Sin+Imagen'}
+                        src={(product.images && product.images.length > 0) ? product.images[0] : 'https://via.placeholder.com/400x400?text=Sin+Imagen'}
                         alt={product.name}
                         style={{ objectFit: 'contain', maxHeight: '400px', borderRadius: '8px' }}
                         fallback="https://via.placeholder.com/400x400?text=Error+Carga"

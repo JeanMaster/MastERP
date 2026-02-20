@@ -73,11 +73,11 @@ export const CompositeProductsPage = () => {
             width: '25%',
             render: (text: string, record: Product) => (
                 <Space>
-                    {record.imageUrl && (
+                    {record.images && record.images.length > 0 && (
                         <Popover
                             content={
                                 <Image
-                                    src={record.imageUrl}
+                                    src={record.images[0]}
                                     alt={text}
                                     style={{ maxWidth: 200, maxHeight: 200 }}
                                     preview={false}

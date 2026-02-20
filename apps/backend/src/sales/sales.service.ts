@@ -5,6 +5,7 @@ import { InvoiceService } from '../invoice/invoice.service';
 import { CashRegisterService } from '../cash-register/cash-register.service';
 import { MovementType } from '../cash-register/dto/create-movement.dto';
 import { StatsService } from '../stats/stats.service';
+import { MercadoLibreService } from '../mercadolibre/mercadolibre.service';
 
 @Injectable()
 export class SalesService {
@@ -13,6 +14,7 @@ export class SalesService {
         private invoiceService: InvoiceService,
         private cashRegisterService: CashRegisterService,
         private statsService: StatsService,
+        private mlService: MercadoLibreService,
     ) { }
 
     /**
@@ -133,6 +135,24 @@ export class SalesService {
                             },
                         },
                     });
+                }
+            }
+
+            // --- Mercado Libre Auto-Sync Hook ---
+            // After stock is updated in local DB, trigger sync for any mapped ML products
+            for (const item of newSale.items) {
+                // For composed products, we should ideally sync the components if they are published too.
+                // But usually, the "finished product" (Composed) is what is published.
+                // The service handles checking if a mapping exists.
+                this.mlService.syncProductStock(item.productId).catch(err =>
+                    console.error(`Failed to auto-sync ML stock for product ${item.productId}:`, err)
+                );
+
+                // If it's composed, we might also want to sync component stocks if they are published separately
+                if (item.product.type === 'COMPOSED') {
+                    for (const component of item.product.components) {
+                        this.mlService.syncProductStock(component.componentProductId).catch(() => { });
+                    }
                 }
             }
 

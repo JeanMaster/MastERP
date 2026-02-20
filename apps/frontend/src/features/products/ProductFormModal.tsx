@@ -22,7 +22,7 @@ export const ProductFormModal = ({ open, product, onClose, defaultType }: Produc
     const [selectedCategory, setSelectedCategory] = useState<string | undefined>(undefined);
     const [hasSecondaryUnit, setHasSecondaryUnit] = useState(false);
     const [conversionDirection, setConversionDirection] = useState<string>('primary_to_secondary');
-    const [imageUrl, setImageUrl] = useState<string | undefined>(undefined);
+    const [images, setImages] = useState<string[]>([]);
     const [priceUpdateModalVisible, setPriceUpdateModalVisible] = useState(false);
     const [costChangeInfo, setCostChangeInfo] = useState<any>(null);
     const [priceUpdateLoading, setPriceUpdateLoading] = useState(false);
@@ -122,7 +122,7 @@ export const ProductFormModal = ({ open, product, onClose, defaultType }: Produc
 
             setHasSecondaryUnit(!!product.secondaryUnitId);
             setConversionDirection(product.conversionDirection || 'primary_to_secondary');
-            setImageUrl(product.imageUrl || undefined);
+            setImages(product.images || []);
 
             form.setFieldsValue({
                 sku: product.sku,
@@ -150,7 +150,7 @@ export const ProductFormModal = ({ open, product, onClose, defaultType }: Produc
                 secondaryOfferProfitPercent: Number(secondaryOfferProfitPercent.toFixed(2)),
                 secondaryWholesalePrice: product.secondaryWholesalePrice,
                 secondaryWholesaleProfitPercent: Number(secondaryWholesaleProfitPercent.toFixed(2)),
-                imageUrl: product.imageUrl,
+                images: product.images || [],
                 type: product.type || 'PRODUCT',
                 components: product.components?.map(c => ({
                     componentProductId: c.componentProductId,
@@ -167,9 +167,8 @@ export const ProductFormModal = ({ open, product, onClose, defaultType }: Produc
                 setSelectedCurrency(product.currency);
             }
 
-            // Pre-populate available ingredients to show labels instead of UUIDs
             if (product.type === 'COMPOSED' && product.components) {
-                setAvailableIngredients(product.components.map(c => c.componentProduct) as any);
+                setAvailableIngredients(product.components.map(c => (c as any).componentProduct));
             }
         } else {
             form.resetFields();
@@ -179,7 +178,7 @@ export const ProductFormModal = ({ open, product, onClose, defaultType }: Produc
             setSelectedCategory(undefined);
             setHasSecondaryUnit(false);
             setConversionDirection('primary_to_secondary');
-            setImageUrl(undefined);
+            setImages([]);
             setSelectedCurrency(null);
         }
     }, [product, form, open, defaultType]);
@@ -223,7 +222,7 @@ export const ProductFormModal = ({ open, product, onClose, defaultType }: Produc
                 secondarySalePrice: values.secondarySalePrice,
                 secondaryOfferPrice: values.secondaryOfferPrice,
                 secondaryWholesalePrice: values.secondaryWholesalePrice,
-                imageUrl: imageUrl,
+                images: images,
                 type: values.type,
                 components: values.type === 'COMPOSED' ? values.components?.map((c: any) => ({
                     componentProductId: c.componentProductId,
@@ -654,22 +653,35 @@ export const ProductFormModal = ({ open, product, onClose, defaultType }: Produc
                         <Input.TextArea rows={2} placeholder="Descripción del producto..." />
                     </Form.Item>
 
-                    {/* Imagen del producto */}
-                    <Form.Item label="Imagen del producto (opcional)">
-                        <Row gutter={16} align="middle">
-                            <Col>
+                    {/* Imágenes del producto */}
+                    <Form.Item label="Imágenes del producto (Máximo 12)">
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                            {images.map((url, index) => (
+                                <div key={index} style={{ position: 'relative', width: 100, height: 100, border: '1px solid #d9d9d9', borderRadius: 8, overflow: 'hidden' }}>
+                                    <img src={url} alt={`Imagen ${index}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                    <div
+                                        style={{ position: 'absolute', top: 0, right: 0, background: 'rgba(255, 77, 79, 0.8)', color: 'white', padding: '2px 6px', cursor: 'pointer', borderRadius: '0 0 0 8px' }}
+                                        onClick={() => setImages(prev => prev.filter((_, i) => i !== index))}
+                                    >
+                                        <DeleteOutlined />
+                                    </div>
+                                </div>
+                            ))}
+                            {images.length < 12 && (
                                 <Upload
                                     name="image"
                                     listType="picture-card"
                                     showUploadList={false}
                                     beforeUpload={async (file) => {
+                                        if (images.length >= 12) {
+                                            message.warning('Máximo 12 imágenes permitidas');
+                                            return false;
+                                        }
                                         try {
-                                            // Compression configuration
-                                            const maxWidth = 800;
-                                            const maxHeight = 800;
-                                            const quality = 0.7;
+                                            const maxWidth = 1000;
+                                            const maxHeight = 1000;
+                                            const quality = 0.8;
 
-                                            // Create a promise to handle the image loading and compression
                                             const compressImage = (file: File): Promise<string> => {
                                                 return new Promise((resolve, reject) => {
                                                     const reader = new FileReader();
@@ -680,8 +692,6 @@ export const ProductFormModal = ({ open, product, onClose, defaultType }: Produc
                                                         img.onload = () => {
                                                             let width = img.width;
                                                             let height = img.height;
-
-                                                            // Resize logic
                                                             if (width > height) {
                                                                 if (width > maxWidth) {
                                                                     height = Math.round((height * maxWidth) / width);
@@ -693,51 +703,37 @@ export const ProductFormModal = ({ open, product, onClose, defaultType }: Produc
                                                                     height = maxHeight;
                                                                 }
                                                             }
-
                                                             const canvas = document.createElement('canvas');
                                                             canvas.width = width;
                                                             canvas.height = height;
                                                             const ctx = canvas.getContext('2d');
                                                             ctx?.drawImage(img, 0, 0, width, height);
-
-                                                            // Compress to JPEG
-                                                            const compressedDataUrl = canvas.toDataURL('image/jpeg', quality);
-                                                            resolve(compressedDataUrl);
+                                                            resolve(canvas.toDataURL('image/jpeg', quality));
                                                         };
-                                                        img.onerror = (error) => reject(error);
+                                                        img.onerror = (e) => reject(e);
                                                     };
-                                                    reader.onerror = (error) => reject(error);
+                                                    reader.onerror = (e) => reject(e);
                                                 });
                                             };
 
-                                            message.loading({ content: 'Comprimiendo imagen...', key: 'compression' });
-                                            const compressedImage = await compressImage(file);
-                                            setImageUrl(compressedImage);
-                                            message.success({ content: 'Imagen procesada', key: 'compression' });
+                                            message.loading({ content: 'Procesando imagen...', key: 'img-proc' });
+                                            const compressed = await compressImage(file);
+                                            setImages(prev => [...prev, compressed]);
+                                            message.success({ content: 'Imagen añadida', key: 'img-proc' });
                                         } catch (error) {
-                                            console.error('Error compressing image:', error);
-                                            message.error('Error al procesar la imagen');
+                                            message.error('Error al procesar imagen');
                                         }
-                                        return false; // Prevent default upload
+                                        return false;
                                     }}
                                     accept="image/*"
                                 >
-                                    {imageUrl ? (
-                                        <img src={imageUrl} alt="producto" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                                    ) : (
-                                        <div>
-                                            <PlusOutlined />
-                                            <div style={{ marginTop: 8 }}>Subir</div>
-                                        </div>
-                                    )}
+                                    <div>
+                                        <PlusOutlined />
+                                        <div style={{ marginTop: 8 }}>Añadir</div>
+                                    </div>
                                 </Upload>
-                            </Col>
-                            {imageUrl && (
-                                <Col>
-                                    <a onClick={() => setImageUrl(undefined)} style={{ color: '#ff4d4f' }}>Eliminar imagen</a>
-                                </Col>
                             )}
-                        </Row>
+                        </div>
                     </Form.Item>
 
                     {/* Categorización */}

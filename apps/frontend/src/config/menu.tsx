@@ -152,6 +152,11 @@ export const menuItems: AppMenuItem[] = [
         label: 'Reportes',
     },
     {
+        key: '/mercadolibre',
+        icon: <ShopOutlined />,
+        label: 'Mercado Libre',
+    },
+    {
         type: 'group',
         label: '──────────────────',
         children: [],

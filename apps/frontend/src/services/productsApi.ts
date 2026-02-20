@@ -46,7 +46,7 @@ export interface Product {
     secondarySalePrice?: number;
     secondaryOfferPrice?: number;
     secondaryWholesalePrice?: number;
-    imageUrl?: string;
+    images: string[];
     active: boolean;
     type: 'PRODUCT' | 'SERVICE' | 'COMPOSED';
     components?: Array<{
@@ -93,7 +93,7 @@ export interface CreateProductDto {
     secondarySalePrice?: number;
     secondaryOfferPrice?: number;
     secondaryWholesalePrice?: number;
-    imageUrl?: string;
+    images?: string[];
     components?: Array<{ componentProductId: string; quantity: number }>;
 }
 
@@ -118,7 +118,7 @@ export interface UpdateProductDto {
     secondarySalePrice?: number;
     secondaryOfferPrice?: number;
     secondaryWholesalePrice?: number;
-    imageUrl?: string;
+    images?: string[];
     components?: Array<{ componentProductId: string; quantity: number }>;
 }
 

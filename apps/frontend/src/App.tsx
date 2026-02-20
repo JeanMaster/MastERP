@@ -43,6 +43,7 @@ import { AuthProvider } from './features/auth/AuthProvider';
 import { LoginPage } from './features/auth/LoginPage';
 import { ProtectedRoute } from './features/auth/ProtectedRoute';
 import { PriceCheckerPage } from './features/price-checker/PriceCheckerPage';
+import { MercadoLibrePage } from './features/mercadolibre/MercadoLibrePage';
 
 function App() {
   return (
@@ -95,6 +96,7 @@ function App() {
           <Route path="accounts-receivable" element={<AccountsReceivablePage />} />
           <Route path="hr" element={<ModulePage title="Nómina" icon={<TeamOutlined />} />} />
           <Route path="banks" element={<ModulePage title="Bancos" icon={<BankOutlined />} />} />
+          <Route path="mercadolibre" element={<MercadoLibrePage />} />
           <Route path="reports" element={<ReportsPage />} />
         </Route>
 

@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, IsOptional, IsNumber, Min, IsInt, IsUUID, ValidateIf, IsEnum } from 'class-validator';
+import { IsString, IsNotEmpty, IsOptional, IsNumber, Min, IsInt, IsUUID, ValidateIf, IsEnum, IsArray } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 
@@ -136,9 +136,11 @@ export class CreateProductDto {
     @Min(0)
     secondaryWholesalePrice?: number;
 
+    @ApiProperty({ example: ['https://example.com/image1.jpg'], required: false, description: 'URLs de las imágenes del producto' })
     @IsOptional()
-    @IsString()
-    imageUrl?: string;
+    @IsArray()
+    @IsString({ each: true })
+    images?: string[];
 
     @ApiProperty({
         example: [{ componentProductId: 'uuid', quantity: 2 }],

@@ -5,6 +5,9 @@ import { statsApi, type InventoryReport } from '../../../services/statsApi';
 import { usePOSStore } from '../../../store/posStore';
 import { ReportCurrencySelector } from './ReportCurrencySelector';
 import { formatVenezuelanPriceOnly } from '../../../utils/formatters';
+import { Typography } from 'antd';
+
+const { Text } = Typography;
 
 export const InventoryReports = () => {
     const [report, setReport] = useState<InventoryReport | null>(null);
@@ -95,6 +98,17 @@ export const InventoryReports = () => {
                 <span style={{ color: d <= 7 ? '#ff4d4f' : d <= 14 ? '#faad14' : '#52c41a', fontWeight: 'bold' }}>
                     {d} días
                 </span>
+            )
+        },
+        {
+            title: 'Necesario (Resto Año)',
+            dataIndex: 'unitsNeededUntilEndOfYear',
+            key: 'needed',
+            align: 'right' as const,
+            render: (n: number) => (
+                <Tooltip title="Unidades proyectadas necesarias hasta el 31 de diciembre">
+                    <Text strong>{n}</Text>
+                </Tooltip>
             )
         },
     ];

@@ -277,13 +277,16 @@ model Product {
   purchaseItems PurchaseItem[]
   purchaseOrderItems PurchaseOrderItem[]
 
-  // Imagen del producto (URL o base64)
-  imageUrl        String?
+  // Imágenes del producto (URLs o base64)
+  images          String[]    @default([])
 
   active          Boolean     @default(true)
   // Componentes si es producto compuesto
   components     ProductComponent[] @relation("CompositeProduct")
   usedIn         ProductComponent[] @relation("ComponentProduct")
+
+  // Mercado Libre integration
+  mlMapping       MercadoLibreProductMapping?
 
   createdAt       DateTime    @default(now())
   updatedAt       DateTime    @updatedAt
@@ -938,3 +941,43 @@ model BankMovement {
   @@map("bank_movements")
 }
 
+model MercadoLibreAccount {
+  id              String   @id @default(uuid())
+  mlUserId        String   @unique
+  username        String?
+  accessToken     String
+  refreshToken    String
+  expiresIn       Int
+  scope           String?
+  tokenType       String?
+  
+  // Last time tokens were updated
+  updatedAt       DateTime @updatedAt
+  createdAt       DateTime @default(now())
+
+  productMappings MercadoLibreProductMapping[]
+
+  @@map("mercadolibre_accounts")
+}
+
+model MercadoLibreProductMapping {
+  id                String   @id @default(uuid())
+  productId         String   @unique
+  product           Product  @relation(fields: [productId], references: [id])
+  
+  mlItemId          String   @unique // The "MLA12345678" ID
+  mlPermalink       String?
+  
+  mlAccountId       String
+  mlAccount         MercadoLibreAccount @relation(fields: [mlAccountId], references: [id])
+  
+  syncEnabled       Boolean  @default(true)
+  lastSync          DateTime?
+  syncStatus        String?  // SUCCESS, FAILED
+  syncError         String?
+
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@map("mercadolibre_product_mappings")
+}

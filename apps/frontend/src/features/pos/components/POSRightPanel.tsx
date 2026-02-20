@@ -131,12 +131,12 @@ export const POSRightPanel = () => {
                 bodyStyle={{ padding: '12px 10px', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', position: 'relative' }}
                 style={{ textAlign: 'center', height: 135, cursor: 'pointer', overflow: 'hidden' }}
             >
-                {prod.imageUrl && (
+                {prod.images && prod.images.length > 0 && (
                     <div style={{ position: 'absolute', top: 6, right: 6, zIndex: 20 }} onClick={(e) => e.stopPropagation()}>
                         <Popover
                             content={
                                 <Image
-                                    src={prod.imageUrl}
+                                    src={prod.images[0]}
                                     alt={prod.name}
                                     style={{ maxWidth: 200, maxHeight: 200 }}
                                     preview={false}
@@ -161,8 +161,8 @@ export const POSRightPanel = () => {
                         WebkitBoxOrient: 'vertical',
                         maxHeight: 32,
                         width: '100%',
-                        paddingLeft: prod.imageUrl ? 24 : 4,
-                        paddingRight: prod.imageUrl ? 24 : 4,
+                        paddingLeft: (prod.images && prod.images.length > 0) ? 24 : 4,
+                        paddingRight: (prod.images && prod.images.length > 0) ? 24 : 4,
                         marginBottom: 4
                     }}>
                         {prod.name}

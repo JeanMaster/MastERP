@@ -308,7 +308,8 @@ export class StatsService {
             take: 20,
         });
 
-        // Depletion Forecast: Products that will run out in <= 20 days based on last 30 days velocity
+        // Depletion Forecast: Products that will run out soon based on last 30 days velocity
+        const daysUntilEndOfYear = dayjs().endOf('year').diff(dayjs(), 'days');
         const thirtyDaysAgo = dayjs().subtract(30, 'days').toDate();
         const salesInLast30Days = await this.prisma.saleItem.groupBy({
             by: ['productId'],
@@ -353,6 +354,7 @@ export class StatsService {
                     stock: stock,
                     dailySalesVelocity: velocity,
                     daysRemaining,
+                    unitsNeededUntilEndOfYear: Math.ceil(velocity * daysUntilEndOfYear),
                     category: p.category?.name || 'Sin Categoría'
                 }];
             })
@@ -438,7 +440,6 @@ export class StatsService {
         let totalCostOfSales = 0;
 
         const targetRate = Number(targetCurrency?.exchangeRate || 1);
-        const conversionRate = (currencyCode === 'VES') ? 1 : targetRate;
 
         salesInRange.forEach((sale) => {
             const date = dayjs(sale.createdAt).format('YYYY-MM-DD');
@@ -531,7 +532,7 @@ export class StatsService {
                 // Convert to target currency for display
                 const amountInTarget = currencyCode === 'VES'
                     ? amountInVES
-                    : amountInVES / crossRateFactor;
+                    : (amountInVES / hRate) * crossRateFactor;
 
                 paymentBreakdown[method] = (paymentBreakdown[method] || 0) + amountInTarget;
 
@@ -591,7 +592,7 @@ export class StatsService {
                     // NOMINAL MODEL: Refund stays at nominal value
                     const refundValueTarget = currencyCode === 'VES'
                         ? Number(ret.refundAmount)
-                        : Number(ret.refundAmount) / conversionRate;
+                        : (Number(ret.refundAmount) / hRateRet) * crossRateFactor;
                     totalMonetaryRefunds += refundValueTarget;
 
                     if (ret.refundMethod && ret.refundMethod !== 'CREDIT_NOTE') {
@@ -617,7 +618,7 @@ export class StatsService {
                 if (ret.refundAmount && Number(ret.refundAmount) > 0) {
                     const refundValueTarget = currencyCode === 'VES'
                         ? Number(ret.refundAmount)
-                        : Number(ret.refundAmount) / conversionRate;
+                        : (Number(ret.refundAmount) / hRateRet) * crossRateFactor;
                     totalMonetaryRefunds += refundValueTarget;
 
                     if (ret.refundMethod && ret.refundMethod !== 'CREDIT_NOTE') {
@@ -643,7 +644,7 @@ export class StatsService {
                 ret.items.forEach(item => {
                     const productRate = item.product.currency?.isPrimary ? 1 : Number(item.product.currency?.exchangeRate || 1);
                     const itemCostInVES = Number(item.product.costPrice || 0) * productRate * Number(item.quantity);
-                    returnedCostOfSales += currencyCode === 'VES' ? itemCostInVES : itemCostInVES / conversionRate;
+                    returnedCostOfSales += currencyCode === 'VES' ? itemCostInVES : (itemCostInVES / hRateRet) * crossRateFactor;
                 });
             }
 
@@ -652,7 +653,7 @@ export class StatsService {
                 ret.replacementItems.forEach(item => {
                     const productRate = item.product.currency?.isPrimary ? 1 : Number(item.product.currency?.exchangeRate || 1);
                     const itemCostInVES = Number(item.product.costPrice || 0) * productRate * Number(item.quantity);
-                    replacementCostOfSales += currencyCode === 'VES' ? itemCostInVES : itemCostInVES / conversionRate;
+                    replacementCostOfSales += currencyCode === 'VES' ? itemCostInVES : (itemCostInVES / currentRefRate) * crossRateFactor;
                 });
             }
         });

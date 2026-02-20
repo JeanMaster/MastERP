@@ -1,11 +1,13 @@
 import { useState } from 'react';
-import { formatVenezuelanPrice } from '../../utils/formatters';
 import { Card, Table, Button, Space, Input, message, Popconfirm, Tag, Tooltip, Popover, Image, Grid } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined, ReloadOutlined, PictureOutlined } from '@ant-design/icons';
+import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined, ReloadOutlined, PictureOutlined, ShopOutlined, CloudUploadOutlined, CheckCircleOutlined, CloseCircleOutlined } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { productsApi } from '../../services/productsApi';
 import type { Product } from '../../services/productsApi';
+import { formatVenezuelanPrice } from '../../utils/formatters';
 import { ProductFormModal } from './ProductFormModal';
+import { MlPublishModal } from './MlPublishModal';
+import { mercadolibreApi } from '../../services/mercadolibreApi';
 
 export const ProductsPage = () => {
     const screens = Grid.useBreakpoint();
@@ -13,12 +15,25 @@ export const ProductsPage = () => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingProduct, setEditingProduct] = useState<Product | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
+    const [isMlModalOpen, setIsMlModalOpen] = useState(false);
+    const [mlProduct, setMlProduct] = useState<Product | null>(null);
     const queryClient = useQueryClient();
 
     // Fetch products
     const { data: products = [], isLoading } = useQuery({
         queryKey: ['products'],
         queryFn: () => productsApi.getAll(),
+    });
+
+    // Fetch ML mappings and accounts to show status in table
+    const { data: mlMappings = [] } = useQuery({
+        queryKey: ['ml-mappings'],
+        queryFn: () => mercadolibreApi.getMappings(),
+    });
+
+    const { data: mlAccounts = [] } = useQuery({
+        queryKey: ['ml-accounts'],
+        queryFn: () => mercadolibreApi.getAccounts(),
     });
 
     // Delete mutation
@@ -73,11 +88,11 @@ export const ProductsPage = () => {
             width: '20%',
             render: (text: string, record: Product) => (
                 <Space>
-                    {record.imageUrl && (
+                    {record.images && record.images.length > 0 && (
                         <Popover
                             content={
                                 <Image
-                                    src={record.imageUrl}
+                                    src={record.images[0]}
                                     alt={text}
                                     style={{ maxWidth: 200, maxHeight: 200 }}
                                     preview={false}
@@ -201,6 +216,49 @@ export const ProductsPage = () => {
             render: (_: any, record: Product) => record.unit?.abbreviation || '-',
         },
         {
+            title: <Space><ShopOutlined /> Mercado Libre</Space>,
+            key: 'mercadolibre',
+            width: '12%',
+            align: 'center' as const,
+            render: (_: any, record: Product) => {
+                const mapping = mlMappings.find(m => m.productId === record.id);
+                const hasAccounts = mlAccounts.length > 0;
+
+                if (mapping) {
+                    const isError = mapping.syncStatus === 'FAILED';
+                    return (
+                        <Tooltip title={isError ? `Error: ${mapping.syncError}` : "Publicado y sincronizado"}>
+                            <a href={mapping.mlPermalink || '#'} target="_blank" rel="noopener noreferrer">
+                                <Tag
+                                    icon={isError ? <CloseCircleOutlined /> : <CheckCircleOutlined />}
+                                    color={isError ? 'error' : 'success'}
+                                    style={{ cursor: 'pointer' }}
+                                >
+                                    ML
+                                </Tag>
+                            </a>
+                        </Tooltip>
+                    );
+                }
+
+                return (
+                    <Button
+                        type="text"
+                        size="small"
+                        icon={<CloudUploadOutlined />}
+                        disabled={!hasAccounts}
+                        onClick={() => {
+                            setMlProduct(record);
+                            setIsMlModalOpen(true);
+                        }}
+                        title={hasAccounts ? "Publicar en Mercado Libre" : "Vincula una cuenta de ML primero"}
+                    >
+                        Publicar
+                    </Button>
+                );
+            }
+        },
+        {
             title: 'Acciones',
             key: 'actions',
             width: '10%',
@@ -303,6 +361,15 @@ export const ProductsPage = () => {
                 open={isModalOpen}
                 product={editingProduct}
                 onClose={handleModalClose}
+            />
+
+            <MlPublishModal
+                open={isMlModalOpen}
+                product={mlProduct}
+                onClose={() => {
+                    setIsMlModalOpen(false);
+                    setMlProduct(null);
+                }}
             />
         </Card>
     );

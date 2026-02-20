@@ -86,6 +86,7 @@ export const FinancialReports = () => {
         return <Empty description="Error al cargar reporte financiero" />;
     }
 
+
     const profit = report.monthlySalesTotal - report.totalCostOfSales - report.totalExpenses;
     const paymentData = report.paymentMethodsBreakdown.map((item) => ({
         name: item.method,
@@ -305,7 +306,7 @@ export const FinancialReports = () => {
                                 <XAxis dataKey="date" />
                                 <YAxis />
                                 <Tooltip
-                                    formatter={(value: number) => formatVenezuelanPrice(value)}
+                                    formatter={(value: number) => formatVenezuelanPrice(value, currencySymbol)}
                                 />
                                 <Bar dataKey="amount" fill="#1890ff" />
                             </BarChart>
@@ -331,7 +332,7 @@ export const FinancialReports = () => {
                                     ))}
                                 </Pie>
                                 <Tooltip
-                                    formatter={(value: number) => formatVenezuelanPrice(value)}
+                                    formatter={(value: number) => formatVenezuelanPrice(value, currencySymbol)}
                                 />
                                 <Legend />
                             </PieChart>
@@ -379,7 +380,7 @@ export const FinancialReports = () => {
                                                 {info.displayName}
                                             </div>
                                             <div style={{ fontSize: 26, fontWeight: 'bold', color: '#262626', marginBottom: 4 }}>
-                                                {currencySymbol} {formatVenezuelanPrice(amount)}
+                                                {formatVenezuelanPrice(amount, currencySymbol)}
                                             </div>
                                             <div style={{ fontSize: 13, color: '#8c8c8c' }}>
                                                 {percentage}% del ingreso total
@@ -435,7 +436,7 @@ export const FinancialReports = () => {
                                                 {info.displayName}
                                             </div>
                                             <div style={{ fontSize: 18, fontWeight: 'bold', color: '#262626' }}>
-                                                {currencySymbol} {formatVenezuelanPrice(payment.amount)}
+                                                {formatVenezuelanPrice(payment.amount, currencySymbol)}
                                             </div>
                                             <div style={{ fontSize: 11, color: '#8c8c8c' }}>
                                                 {percentage}%
