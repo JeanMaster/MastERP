@@ -82,7 +82,7 @@ export const InventoryReports = () => {
         { title: 'Categoría', dataIndex: 'category', key: 'category' },
         { title: 'Stock', dataIndex: 'stock', key: 'stock', align: 'right' as const },
         {
-            title: 'Venta Diaria (Prom. 30d)',
+            title: 'Venta Diaria (Prom. 180d)',
             dataIndex: 'dailySalesVelocity',
             key: 'velocity',
             align: 'right' as const,
@@ -101,12 +101,12 @@ export const InventoryReports = () => {
             )
         },
         {
-            title: 'Necesario (Resto Año)',
-            dataIndex: 'unitsNeededUntilEndOfYear',
+            title: 'Necesario (6 Meses)',
+            dataIndex: 'unitsNeeded6Months',
             key: 'needed',
             align: 'right' as const,
             render: (n: number) => (
-                <Tooltip title="Unidades proyectadas necesarias hasta el 31 de diciembre">
+                <Tooltip title="Unidades proyectadas necesarias para los próximos 180 días">
                     <Text strong>{n}</Text>
                 </Tooltip>
             )

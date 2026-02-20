@@ -578,12 +578,18 @@ Siga estas instrucciones al pie de la letra para asegurar la estabilidad:
     npm install
     ```
 
-2.  **Sincronizar Esquema (MIGRACIONES)**:
+2.  **Sincronizar Esquema (PRISMA)**:
     > [!IMPORTANT]
-    > Hay una nueva tabla para Mercado Libre. Ejecutar sin falta:
+    > Hay una nueva tabla para Mercado Libre. Si `migrate deploy` falla por historial vacío (Error P3005), use `db push`:
     ```bash
     cd apps/backend
+    
+    # Intento 1 (Recomendado):
     npx prisma migrate deploy
+    
+    # Intento 2 (Si el anterior falla):
+    npx prisma db push
+    
     npx prisma generate
     ```
 
@@ -597,8 +603,12 @@ Siga estas instrucciones al pie de la letra para asegurar la estabilidad:
 
 4.  **Reconstruir y Reiniciar**:
     ```bash
+    # En la raíz del proyecto
     npm run build
-    pm2 restart all  # o el gestor de procesos que use
+    
+    # Reiniciar procesos (detener y volver a iniciar)
+    # Backend: npm run start:prod (dentro de apps/backend)
+    # Frontend: npm run preview o servir la carpeta dist/ (dentro de apps/frontend)
     ```
 
 5.  **Validación**:

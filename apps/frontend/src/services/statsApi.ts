@@ -29,7 +29,7 @@ export interface InventoryReport {
         category: string;
         dailySalesVelocity: number;
         daysRemaining: number;
-        unitsNeededUntilEndOfYear: number;
+        unitsNeeded6Months: number;
     }[];
     totalInventoryValue: number;
 }

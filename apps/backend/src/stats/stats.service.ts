@@ -308,13 +308,13 @@ export class StatsService {
             take: 20,
         });
 
-        // Depletion Forecast: Products that will run out soon based on last 30 days velocity
-        const daysUntilEndOfYear = dayjs().endOf('year').diff(dayjs(), 'days');
-        const thirtyDaysAgo = dayjs().subtract(30, 'days').toDate();
-        const salesInLast30Days = await this.prisma.saleItem.groupBy({
+        // Depletion Forecast: Products that will run out soon based on last 180 days velocity
+        const projectionDays = 180;
+        const sixMonthsAgo = dayjs().subtract(180, 'days').toDate();
+        const salesInLast180Days = await this.prisma.saleItem.groupBy({
             by: ['productId'],
             where: {
-                createdAt: { gte: thirtyDaysAgo },
+                createdAt: { gte: sixMonthsAgo },
                 sale: { isCancelled: false }
             },
             _sum: {
@@ -323,9 +323,9 @@ export class StatsService {
         });
 
         const velocityMap = new Map<string, number>();
-        salesInLast30Days.forEach(item => {
+        salesInLast180Days.forEach(item => {
             const totalSold = Number(item._sum.quantity || 0);
-            velocityMap.set(item.productId, totalSold / 30);
+            velocityMap.set(item.productId, totalSold / 180);
         });
 
         // Get all active products with their current stock and sales info
@@ -354,7 +354,7 @@ export class StatsService {
                     stock: stock,
                     dailySalesVelocity: velocity,
                     daysRemaining,
-                    unitsNeededUntilEndOfYear: Math.ceil(velocity * daysUntilEndOfYear),
+                    unitsNeeded6Months: Math.ceil(velocity * projectionDays),
                     category: p.category?.name || 'Sin Categoría'
                 }];
             })
