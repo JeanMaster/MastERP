@@ -82,6 +82,9 @@ export const CheckoutModal = ({ open, onCancel, onProcess }: CheckoutModalProps)
     const mobilePaymentBanks = banks.filter(b => b.active && b.receivesMobilePayment);
     const [bankSelectorOpen, setBankSelectorOpen] = useState(false);
 
+    // Get available foreign currencies (excluding primary)
+    const foreignCurrencies = currencies.filter(c => !c.isPrimary && c.active);
+
     // Auto-focus on amount input when modal opens
     useEffect(() => {
         if (open && amountInputRef.current) {
@@ -134,7 +137,6 @@ export const CheckoutModal = ({ open, onCancel, onProcess }: CheckoutModalProps)
                 } else if (e.key === 'F8' && inputAmount) {
                     if (!customerId) return;
                     setSelectedMethod('ACCOUNT_CREDIT');
-                    // No agregar automáticamente si queremos elegir moneda, o usar la por defecto
                     addPayment('ACCOUNT_CREDIT', 'F8 Crédito (Cuenta)', creditCurrencyId || undefined);
                 } else if (e.key === 'F6' && payments.length > 0) {
                     if (selectedPaymentId) {
@@ -152,32 +154,28 @@ export const CheckoutModal = ({ open, onCancel, onProcess }: CheckoutModalProps)
                     const currency = foreignCurrencies[0];
                     if (currency) {
                         setSelectedMethod(`CURRENCY_${currency.id}`);
-                        const finalAmount = (inputAmount === remaining) && currency.exchangeRate ? remaining / currency.exchangeRate : inputAmount;
-                        addPayment(`CURRENCY_${currency.code}`, `CT+F9 ${currency.name}`, currency.id, finalAmount || undefined);
+                        addPayment(`CURRENCY_${currency.code}`, `CT+F9 ${currency.name}`, currency.id);
                     }
                 } else if (e.ctrlKey && e.key === 'F10' && inputAmount && foreignCurrencies.length > 1) {
                     // Ctrl+F10 = second foreign currency (index 1)
                     const currency = foreignCurrencies[1];
                     if (currency) {
                         setSelectedMethod(`CURRENCY_${currency.id}`);
-                        const finalAmount = (inputAmount === remaining) && currency.exchangeRate ? remaining / currency.exchangeRate : inputAmount;
-                        addPayment(`CURRENCY_${currency.code}`, `CT+F10 ${currency.name}`, currency.id, finalAmount || undefined);
+                        addPayment(`CURRENCY_${currency.code}`, `CT+F10 ${currency.name}`, currency.id);
                     }
                 } else if (e.ctrlKey && e.key === 'F11' && inputAmount && foreignCurrencies.length > 2) {
                     // Ctrl+F11 = third foreign currency (index 2)
                     const currency = foreignCurrencies[2];
                     if (currency) {
                         setSelectedMethod(`CURRENCY_${currency.id}`);
-                        const finalAmount = (inputAmount === remaining) && currency.exchangeRate ? remaining / currency.exchangeRate : inputAmount;
-                        addPayment(`CURRENCY_${currency.code}`, `CT+F11 ${currency.name}`, currency.id, finalAmount || undefined);
+                        addPayment(`CURRENCY_${currency.code}`, `CT+F11 ${currency.name}`, currency.id);
                     }
                 } else if (e.ctrlKey && e.key === 'F12' && inputAmount && foreignCurrencies.length > 3) {
                     // Ctrl+F12 = fourth foreign currency (index 3)
                     const currency = foreignCurrencies[3];
                     if (currency) {
                         setSelectedMethod(`CURRENCY_${currency.id}`);
-                        const finalAmount = (inputAmount === remaining) && currency.exchangeRate ? remaining / currency.exchangeRate : inputAmount;
-                        addPayment(`CURRENCY_${currency.code}`, `CT+F12 ${currency.name}`, currency.id, finalAmount || undefined);
+                        addPayment(`CURRENCY_${currency.code}`, `CT+F12 ${currency.name}`, currency.id);
                     }
                 } else if (e.key === 'F9' && isFullyPaid) {
                     handleProcessSale();
@@ -191,25 +189,26 @@ export const CheckoutModal = ({ open, onCancel, onProcess }: CheckoutModalProps)
         // Add listener with capture to intercept before background
         window.addEventListener('keydown', handleKeyDown, true);
         return () => window.removeEventListener('keydown', handleKeyDown, true);
-    }, [open, selectedPaymentId, isFullyPaid, payments, inputAmount]);
+    }, [open, selectedPaymentId, isFullyPaid, payments, inputAmount, primaryCurrency, currencies, customerId, mobilePaymentBanks, creditCurrencyId, foreignCurrencies, totals.total, onCancel]);
 
-    const addPayment = (method: string, methodLabel: string, currencyId?: string, amountOverride?: number, bankData?: { id: string, name: string }) => {
-        const amountToProcess = amountOverride !== undefined ? amountOverride : inputAmount;
-        if (!amountToProcess || amountToProcess <= 0) return;
+    const addPayment = (method: string, methodLabel: string, currencyId?: string, amountOverrideInPrimary?: number, bankData?: { id: string, name: string }) => {
+        const amountBS = amountOverrideInPrimary !== undefined ? amountOverrideInPrimary : (inputAmount || 0);
+
+        if (amountBS <= 0) return;
         if (isFullyPaid) return; // Don't allow more payments if already paid
 
-        let amountInBs = amountToProcess;
-        let originalAmount = amountToProcess;
+        let amountInBs = amountBS;
+        let originalAmount = amountBS;
         let originalCurrency = primaryCurrency?.symbol || 'Bs';
         let currencySymbol = primaryCurrency?.symbol || 'Bs';
 
-        // If paying in foreign currency, convert to Bs
+        // If paying in foreign currency, originalAmount is in that currency, but internally we track BS too.
         if (currencyId && currencyId !== primaryCurrency?.id) {
             const currency = currencies.find(c => c.id === currencyId);
             if (currency && currency.exchangeRate) {
-                originalAmount = amountToProcess;
+                originalAmount = amountBS / currency.exchangeRate; // Convert BS -> Foreign
                 originalCurrency = currency.symbol;
-                amountInBs = amountToProcess * currency.exchangeRate; // Convert to Bs
+                amountInBs = amountBS; // Stored in BS
                 currencySymbol = currency.symbol;
             }
         }
@@ -305,9 +304,6 @@ export const CheckoutModal = ({ open, onCancel, onProcess }: CheckoutModalProps)
         { key: 'TRANSFER', label: 'F5 Transferencia', icon: <BankOutlined />, shortcut: 'F5' },
         { key: 'ACCOUNT_CREDIT', label: 'F8 Crédito (Cuenta)', icon: <CreditCardOutlined />, shortcut: 'F8', danger: true },
     ];
-
-    // Get available foreign currencies (excluding primary)
-    const foreignCurrencies = currencies.filter(c => !c.isPrimary && c.active);
 
     // Table columns for payment breakdown
     const columns = [
@@ -550,6 +546,11 @@ export const CheckoutModal = ({ open, onCancel, onProcess }: CheckoutModalProps)
                                 <Text type="secondary" style={{ fontSize: '0.9em' }}>Pagos en Divisas</Text>
                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 8 }}>
                                     {foreignCurrencies.map((currency, index) => {
+                                        const amountBS = inputAmount || 0;
+                                        const convertedValue = (amountBS && currency.exchangeRate)
+                                            ? amountBS / currency.exchangeRate
+                                            : 0;
+
                                         const suggestedAmount = remaining > 0 && currency.exchangeRate
                                             ? remaining / currency.exchangeRate
                                             : 0;
@@ -559,10 +560,7 @@ export const CheckoutModal = ({ open, onCancel, onProcess }: CheckoutModalProps)
                                                 size="large"
                                                 onClick={() => {
                                                     setSelectedMethod(`CURRENCY_${currency.id}`);
-                                                    const finalAmount = (inputAmount === remaining) && currency.exchangeRate
-                                                        ? remaining / currency.exchangeRate
-                                                        : inputAmount;
-                                                    addPayment(`CURRENCY_${currency.code}`, `CT+F${index + 9} ${currency.name}`, currency.id, finalAmount || undefined);
+                                                    addPayment(`CURRENCY_${currency.code}`, `CT+F${index + 9} ${currency.name}`, currency.id);
                                                 }}
                                                 disabled={isFullyPaid || !inputAmount || inputAmount <= 0}
                                                 style={{
@@ -580,7 +578,7 @@ export const CheckoutModal = ({ open, onCancel, onProcess }: CheckoutModalProps)
                                                 </Space>
                                                 <div style={{ textAlign: 'center' }}>
                                                     <Text type="secondary" style={{ fontSize: '0.75em' }}>
-                                                        {formatVenezuelanPrice(inputAmount || 0, currency.symbol)}
+                                                        {formatVenezuelanPrice(convertedValue, currency.symbol)}
                                                     </Text>
                                                     {!isFullyPaid && suggestedAmount > 0 && (
                                                         <div style={{ fontSize: '0.65em', color: '#52c41a', marginTop: 2 }}>

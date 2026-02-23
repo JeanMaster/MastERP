@@ -128,42 +128,69 @@ export const POSRightPanel = () => {
             <Card
                 hoverable
                 onMouseDown={() => handleProductClick(prod)}
-                bodyStyle={{ padding: '12px 10px', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', position: 'relative' }}
-                style={{ textAlign: 'center', height: 135, cursor: 'pointer', overflow: 'hidden' }}
+                bodyStyle={{ padding: '8px 6px', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', position: 'relative' }}
+                style={{ textAlign: 'center', height: 145, cursor: 'pointer', overflow: 'hidden', border: '1px solid #f0f0f0' }}
             >
-                {prod.images && prod.images.length > 0 && (
-                    <div style={{ position: 'absolute', top: 6, right: 6, zIndex: 20 }} onClick={(e) => e.stopPropagation()}>
-                        <Popover
-                            content={
-                                <Image
-                                    src={prod.images[0]}
-                                    alt={prod.name}
-                                    style={{ maxWidth: 200, maxHeight: 200 }}
-                                    preview={false}
-                                />
-                            }
-                            title={prod.name}
-                            trigger="hover"
-                            placement="left"
-                        >
-                            <PictureOutlined style={{ color: '#fff', fontSize: 14, cursor: 'pointer', background: '#1890ff', borderRadius: '50%', padding: 4, boxShadow: '0 2px 4px rgba(0, 0, 0, 0.2)' }} />
-                        </Popover>
+                {/* Product Thumbnail with Hover Preview */}
+                <Popover
+                    content={
+                        prod.images && prod.images.length > 0 ? (
+                            <Image
+                                src={prod.images[0]}
+                                alt={prod.name}
+                                style={{ maxWidth: 250, maxHeight: 250, borderRadius: 8 }}
+                                preview={false}
+                            />
+                        ) : (
+                            <div style={{ padding: '10px', color: '#888' }}>Sin imagen disponible</div>
+                        )
+                    }
+                    title={prod.name}
+                    trigger="hover"
+                    placement="right"
+                    mouseEnterDelay={0.3}
+                >
+                    <div style={{
+                        marginBottom: 6,
+                        width: 44,
+                        height: 44,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        borderRadius: '50%',
+                        background: '#fafafa',
+                        overflow: 'hidden',
+                        border: '1px solid #f0f0f0',
+                        flexShrink: 0
+                    }}>
+                        {prod.images && prod.images.length > 0 ? (
+                            <Image
+                                src={prod.images[0]}
+                                alt={prod.name}
+                                width={44}
+                                height={44}
+                                style={{ objectFit: 'cover' }}
+                                preview={false}
+                            />
+                        ) : (
+                            <PictureOutlined style={{ color: '#ccc', fontSize: 20 }} />
+                        )}
                     </div>
-                )}
+                </Popover>
+
                 <Tooltip title={prod.name} mouseEnterDelay={0.5}>
                     <div style={{
-                        fontSize: 13,
+                        fontSize: 12,
                         fontWeight: 'bold',
                         lineHeight: '1.2',
                         overflow: 'hidden',
                         display: '-webkit-box',
                         WebkitLineClamp: 2,
                         WebkitBoxOrient: 'vertical',
-                        maxHeight: 32,
+                        maxHeight: 30,
                         width: '100%',
-                        paddingLeft: (prod.images && prod.images.length > 0) ? 24 : 4,
-                        paddingRight: (prod.images && prod.images.length > 0) ? 24 : 4,
-                        marginBottom: 4
+                        marginBottom: 4,
+                        padding: '0 4px'
                     }}>
                         {prod.name}
                     </div>

@@ -87,7 +87,9 @@ export const FinancialReports = () => {
     }
 
 
-    const profit = report.monthlySalesTotal - report.totalCostOfSales - report.totalExpenses;
+    const isVES = selectedCurrency === 'VES';
+    const displayIncome = report.monthlySalesTotal;
+    const profit = displayIncome - report.totalCostOfSales - report.totalExpenses;
     const paymentData = report.paymentMethodsBreakdown.map((item) => ({
         name: item.method,
         value: item.amount,
@@ -175,7 +177,7 @@ export const FinancialReports = () => {
                     <Card>
                         <Statistic
                             title="Ingresos (Ventas)"
-                            value={report.monthlySalesTotal}
+                            value={displayIncome}
                             precision={2}
                             prefix={currencySymbol}
                             valueStyle={{ color: '#52c41a' }}

@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { Card, Table, Button, Space, Input, message, Popconfirm, Tag, Tooltip, Popover, Image, Grid } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined, ReloadOutlined, PictureOutlined, ShopOutlined, CloudUploadOutlined, CheckCircleOutlined, CloseCircleOutlined } from '@ant-design/icons';
+import { Card, Table, Button, Space, Input, message, Popconfirm, Tag, Tooltip, Image, Grid } from 'antd';
+import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined, ReloadOutlined, PictureOutlined, ShopOutlined, CloudUploadOutlined, CheckCircleOutlined, CloseCircleOutlined, EyeOutlined } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { productsApi } from '../../services/productsApi';
 import type { Product } from '../../services/productsApi';
@@ -76,6 +76,39 @@ export const ProductsPage = () => {
 
     const columns = [
         {
+            title: '',
+            key: 'image_thumb',
+            width: 60,
+            render: (_: any, record: Product) => (
+                <div style={{
+                    width: 40,
+                    height: 40,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    border: '1px solid #f0f0f0',
+                    borderRadius: 4,
+                    overflow: 'hidden',
+                    backgroundColor: '#fafafa'
+                }}>
+                    {record.images && record.images.length > 0 ? (
+                        <Image
+                            src={record.images[0]}
+                            alt="thumb"
+                            width={40}
+                            height={40}
+                            style={{ objectFit: 'cover' }}
+                            preview={{
+                                mask: <div style={{ fontSize: 12 }}><EyeOutlined /></div>,
+                            }}
+                        />
+                    ) : (
+                        <PictureOutlined style={{ color: '#ccc', fontSize: 20 }} />
+                    )}
+                </div>
+            ),
+        },
+        {
             title: 'SKU',
             dataIndex: 'sku',
             key: 'sku',
@@ -88,32 +121,29 @@ export const ProductsPage = () => {
             width: '20%',
             render: (text: string, record: Product) => (
                 <Space>
-                    {record.images && record.images.length > 0 && (
-                        <Popover
-                            content={
-                                <Image
-                                    src={record.images[0]}
-                                    alt={text}
-                                    style={{ maxWidth: 200, maxHeight: 200 }}
-                                    preview={false}
-                                />
-                            }
-                            title={text}
-                            trigger="hover"
-                            placement="right"
-                        >
-                            <PictureOutlined style={{ color: '#1890ff', cursor: 'pointer' }} />
-                        </Popover>
-                    )}
                     <Tooltip title={text} placement="topLeft">
-                        <div style={{
-                            whiteSpace: 'nowrap',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                        }}>
+                        <div
+                            style={{
+                                whiteSpace: 'nowrap',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                cursor: 'pointer',
+                                fontWeight: 500,
+                                color: '#1890ff'
+                            }}
+                            onClick={() => {
+                                setEditingProduct(record);
+                                setIsModalOpen(true);
+                            }}
+                        >
                             {text}
                         </div>
                     </Tooltip>
+                    {record.type === 'COMPOSED' && (
+                        <Tooltip title="Producto Compuesto (Combo)">
+                            <Tag color="purple" style={{ fontSize: '10px' }}>COMBO</Tag>
+                        </Tooltip>
+                    )}
                 </Space>
             ),
         },
