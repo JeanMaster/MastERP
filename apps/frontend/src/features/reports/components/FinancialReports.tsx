@@ -87,7 +87,6 @@ export const FinancialReports = () => {
     }
 
 
-    const isVES = selectedCurrency === 'VES';
     const displayIncome = report.monthlySalesTotal;
     const profit = displayIncome - report.totalCostOfSales - report.totalExpenses;
     const paymentData = report.paymentMethodsBreakdown.map((item) => ({
