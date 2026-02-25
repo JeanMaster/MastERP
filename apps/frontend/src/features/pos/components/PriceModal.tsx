@@ -1,7 +1,8 @@
-import { Modal, Radio, Button } from 'antd';
+import { Modal, Radio, Button, Select, type RadioChangeEvent } from 'antd';
 import { useEffect, useState } from 'react';
 import { CalculatorInput } from '../../../components/common/CalculatorInput';
 import { usePOSStore, type CartItem } from '../../../store/posStore';
+import { formatVenezuelanPrice } from '../../../utils/formatters';
 
 interface PriceModalProps {
     open: boolean;
@@ -11,10 +12,14 @@ interface PriceModalProps {
 }
 
 export const PriceModal = ({ open, cartItem, onOk, onCancel }: PriceModalProps) => {
-    const { primaryCurrency } = usePOSStore();
+    const { primaryCurrency, currencies } = usePOSStore();
     const [selectedTier, setSelectedTier] = useState<'normal' | 'offer' | 'wholesale' | 'custom'>('normal');
     const [customPrice, setCustomPrice] = useState<number>(0);
     const [customPriceError, setCustomPriceError] = useState<string | null>(null);
+
+    // Multi-currency support for custom price
+    const [customCurrencyCode, setCustomCurrencyCode] = useState<string>(primaryCurrency?.code || 'VES');
+    const [customInputValue, setCustomInputValue] = useState<number>(0);
 
     // Calculate prices in Primary Currency
     // Note: calculatePriceInPrimary uses 'salePrice' or 'secondarySalePrice' depending on unit.
@@ -28,7 +33,6 @@ export const PriceModal = ({ open, cartItem, onOk, onCancel }: PriceModalProps) 
     // It finds the rate and multiplies. 
 
     const { product, isSecondaryUnit } = cartItem;
-    const { currencies } = usePOSStore.getState(); // Get fresh state for calculation
 
     const getConvertedPrice = (priceVal: number | undefined) => {
         if (!priceVal) return 0;
@@ -49,6 +53,27 @@ export const PriceModal = ({ open, cartItem, onOk, onCancel }: PriceModalProps) 
     const normalPrice = roundPrice(getConvertedPrice(isSecondaryUnit ? product.secondarySalePrice : product.salePrice));
     const offerPrice = roundPrice(getConvertedPrice(isSecondaryUnit ? product.secondaryOfferPrice : product.offerPrice));
     const wholesalePrice = roundPrice(getConvertedPrice(isSecondaryUnit ? product.secondaryWholesalePrice : product.wholesalePrice));
+
+    // Calculate current BS price based on custom currency input
+    useEffect(() => {
+        if (selectedTier !== 'custom') return;
+
+        let baseInBS = customInputValue;
+        if (customCurrencyCode !== primaryCurrency?.code) {
+            const selectedCurr = currencies.find(c => c.code === customCurrencyCode);
+            if (selectedCurr && (selectedCurr.exchangeRate || 0) > 0) {
+                baseInBS = customInputValue * Number(selectedCurr.exchangeRate);
+            }
+        }
+        setCustomPrice(baseInBS);
+    }, [customInputValue, customCurrencyCode, primaryCurrency, currencies, selectedTier]);
+
+    // Validate BS price against cost
+    useEffect(() => {
+        if (selectedTier === 'custom') {
+            setCustomPriceError(validateCustomPrice(customPrice));
+        }
+    }, [customPrice, selectedTier]);
 
     const validateCustomPrice = (price: number | null): string | null => {
         if (price === null || price <= 0) return null;
@@ -84,22 +109,24 @@ export const PriceModal = ({ open, cartItem, onOk, onCancel }: PriceModalProps) 
         };
     }, [open, cartItem, normalPrice, offerPrice, wholesalePrice, selectedTier, customPrice, customPriceError]);
 
-    // Initialization logic (only when modal opens)
     useEffect(() => {
         if (open) {
             setSelectedTier('normal');
             setCustomPrice(0);
+            setCustomInputValue(0);
+            setCustomCurrencyCode(primaryCurrency?.code || 'VES');
             setCustomPriceError(null);
-            // Default to matching the current price?
+
             if (Math.abs(cartItem.price - normalPrice) < 0.01) setSelectedTier('normal');
             else if (offerPrice && Math.abs(cartItem.price - offerPrice) < 0.01) setSelectedTier('offer');
             else if (wholesalePrice && Math.abs(cartItem.price - wholesalePrice) < 0.01) setSelectedTier('wholesale');
             else {
                 setSelectedTier('custom');
+                setCustomInputValue(cartItem.price); // Set current BS price as input value initially
                 setCustomPrice(cartItem.price);
             }
         }
-    }, [open, cartItem, normalPrice, offerPrice, wholesalePrice]);
+    }, [open, cartItem, normalPrice, offerPrice, wholesalePrice, primaryCurrency]);
 
     const handleSubmit = () => {
         // Check for custom price validation errors first
@@ -160,7 +187,7 @@ export const PriceModal = ({ open, cartItem, onOk, onCancel }: PriceModalProps) 
 
                 <Radio.Group
                     value={selectedTier}
-                    onChange={e => {
+                    onChange={(e: RadioChangeEvent) => {
                         setSelectedTier(e.target.value);
                     }}
                     style={{ display: 'flex', flexDirection: 'column', gap: 10 }}
@@ -187,26 +214,37 @@ export const PriceModal = ({ open, cartItem, onOk, onCancel }: PriceModalProps) 
                 </Radio.Group>
 
                 {selectedTier === 'custom' && (
-                    <div style={{ marginLeft: 28 }}>
-                        <span style={{ marginRight: 8 }}>Monto:</span>
-                        <CalculatorInput
-                            value={customPrice}
-                            onChange={val => {
-                                setCustomPrice(val);
-                                setCustomPriceError(validateCustomPrice(val));
-                            }}
-                            style={{ width: 150 }}
-                            onPressEnter={handleSubmit}
-                            status={customPriceError ? 'error' : ''}
-                            autoFocus
-                        />
+                    <div style={{ marginLeft: 28, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <Select
+                                value={customCurrencyCode}
+                                onChange={setCustomCurrencyCode}
+                                options={currencies.map(c => ({ label: c.symbol, value: c.code }))}
+                                style={{ width: 80 }}
+                            />
+                            <CalculatorInput
+                                value={customInputValue}
+                                onChange={setCustomInputValue}
+                                style={{ width: 150 }}
+                                onPressEnter={handleSubmit}
+                                status={customPriceError ? 'error' : ''}
+                                autoFocus
+                            />
+                        </div>
+
                         {customPriceError && (
-                            <div style={{ fontSize: 11, color: '#ff4d4f', marginTop: 2 }}>
+                            <div style={{ fontSize: 11, color: '#ff4d4f' }}>
                                 {customPriceError}
                             </div>
                         )}
-                        <div style={{ fontSize: 11, color: '#888', marginTop: 5 }}>
-                            Costo: {currencySymbol} {costInPrimary.toFixed(2)}
+
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div style={{ fontSize: 13, color: '#1890ff', fontWeight: 'bold' }}>
+                                Total BS: {formatVenezuelanPrice(customPrice, currencySymbol)}
+                            </div>
+                            <div style={{ fontSize: 11, color: '#888' }}>
+                                Costo: {currencySymbol} {costInPrimary.toFixed(2)}
+                            </div>
                         </div>
                     </div>
                 )}
