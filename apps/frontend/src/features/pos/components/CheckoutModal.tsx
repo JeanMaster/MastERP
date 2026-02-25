@@ -195,31 +195,32 @@ export const CheckoutModal = ({ open, onCancel, onProcess }: CheckoutModalProps)
         const rawInput = amountOverrideInPrimary !== undefined ? amountOverrideInPrimary : (inputAmount || 0);
 
         if (rawInput <= 0) return;
-        if (isFullyPaid) return; // Don't allow more payments if already paid
+        if (isFullyPaid) return;
 
         let amountInBs = 0;
         let originalAmount = 0;
         let originalCurrency = primaryCurrency?.symbol || 'Bs';
         let currencySymbol = primaryCurrency?.symbol || 'Bs';
 
-        // Determine amounts based on selected currency
+        const currency = currencyId ? currencies.find(c => c.id === currencyId) : null;
+        const isForeign = currency && currency.id !== primaryCurrency?.id;
+
         if (amountOverrideInPrimary !== undefined) {
             amountInBs = amountOverrideInPrimary;
             originalAmount = amountInBs;
-        } else if (currencyId && currencyId !== primaryCurrency?.id) {
-            // Foreign currency: input is interpreted as the foreign amount
-            const currency = currencies.find(c => c.id === currencyId);
-            if (currency && currency.exchangeRate) {
+        } else if (isForeign && currency.exchangeRate) {
+            // Logic: if input is exactly the remaining BS, we assume they want to pay the full BS balance in $
+            // Otherwise, we interpret the input as the literal foreign amount (e.g. typing "5" means $5)
+            if (Math.abs(rawInput - remaining) < 0.01) {
+                amountInBs = remaining;
+                originalAmount = remaining / currency.exchangeRate;
+            } else {
                 originalAmount = rawInput;
                 amountInBs = rawInput * currency.exchangeRate;
-                originalCurrency = currency.symbol;
-                currencySymbol = currency.symbol;
-            } else {
-                amountInBs = rawInput;
-                originalAmount = rawInput;
             }
+            originalCurrency = currency.symbol;
+            currencySymbol = currency.symbol;
         } else {
-            // Primary currency: input is interpreted as BS
             amountInBs = rawInput;
             originalAmount = rawInput;
         }
@@ -558,15 +559,21 @@ export const CheckoutModal = ({ open, onCancel, onProcess }: CheckoutModalProps)
                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 8 }}>
                                     {foreignCurrencies.map((currency, index) => {
                                         const currentInput = inputAmount || 0;
-                                        // The input is interpreted directly as the foreign amount
-                                        const displayValue = currentInput;
-                                        const convertedBS = (currentInput && currency.exchangeRate)
-                                            ? currentInput * currency.exchangeRate
-                                            : 0;
+                                        const rate = currency.exchangeRate || 1;
 
-                                        const suggestedAmount = remaining > 0 && currency.exchangeRate
-                                            ? remaining / currency.exchangeRate
-                                            : 0;
+                                        let displayValue = 0;
+                                        let convertedBS = 0;
+
+                                        // If input is the BS total, show it converted to $
+                                        if (Math.abs(currentInput - remaining) < 0.01) {
+                                            displayValue = remaining / rate;
+                                            convertedBS = remaining;
+                                        } else {
+                                            // Otherwise show the typed amount as $ and its conversion to BS
+                                            displayValue = currentInput;
+                                            convertedBS = currentInput * rate;
+                                        }
+
                                         return (
                                             <Button
                                                 key={currency.id}
@@ -593,14 +600,9 @@ export const CheckoutModal = ({ open, onCancel, onProcess }: CheckoutModalProps)
                                                     <Text type="secondary" style={{ fontSize: '0.75em' }}>
                                                         {formatVenezuelanPrice(displayValue, currency.symbol)}
                                                     </Text>
-                                                    {currentInput > 0 && currency.exchangeRate && (
+                                                    {convertedBS > 0 && (
                                                         <div style={{ fontSize: '0.65em', color: '#1890ff' }}>
                                                             ≈ {formatVenezuelanPrice(convertedBS, primaryCurrency?.symbol)}
-                                                        </div>
-                                                    )}
-                                                    {!isFullyPaid && suggestedAmount > 0 && currentInput === 0 && (
-                                                        <div style={{ fontSize: '0.65em', color: '#52c41a', marginTop: 2 }}>
-                                                            Sugerido: {formatVenezuelanPrice(suggestedAmount, currency.symbol)}
                                                         </div>
                                                     )}
                                                 </div>

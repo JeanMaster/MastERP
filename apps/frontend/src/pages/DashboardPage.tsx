@@ -142,20 +142,12 @@ export const DashboardPage = () => {
         );
     }
 
-    const nominalMonthChange = stats.thisMonthSalesNominal - stats.lastMonthSalesNominal;
-    const nominalMonthChangePercent = stats.lastMonthSalesNominal
-        ? ((nominalMonthChange / stats.lastMonthSalesNominal) * 100).toFixed(1)
+    const salesMonthChange = stats.thisMonthSales - stats.lastMonthSales;
+    const salesMonthChangePercent = stats.lastMonthSales
+        ? ((salesMonthChange / stats.lastMonthSales) * 100).toFixed(1)
         : 0;
 
-    // Forecast: Days to reach last month's nominal total
-    const currentDay = dayjs().date();
-    const daysInMonth = dayjs().daysInMonth();
-    const daysRemaining = daysInMonth - currentDay;
-    const dailyVelocity = stats.thisMonthSalesNominal / currentDay;
-    const gapToLastMonth = stats.lastMonthSalesNominal - stats.thisMonthSalesNominal;
-    const daysToTarget = gapToLastMonth > 0 && dailyVelocity > 0
-        ? Math.ceil(gapToLastMonth / dailyVelocity)
-        : 0;
+    // Velocity/Forecast logic removed in favor of Nominal comparison
 
     const topProductsColumns = [
         {
@@ -221,14 +213,14 @@ export const DashboardPage = () => {
                 <Col xs={24} sm={12} lg={7}>
                     <Card size="small" style={{ border: '1px solid #1890ff44' }}>
                         <Statistic
-                            title="Ventas Mes (Nominal)"
-                            value={getConvertedAmount(stats.thisMonthSalesNominal)}
+                            title="Ventas Mes (Revaluado)"
+                            value={getConvertedAmount(stats.thisMonthSales)}
                             precision={2}
                             prefix={currentSymbol}
                             valueStyle={{ color: '#1890ff', fontSize: '20px' }}
                             styles={{ content: { color: '#1890ff', fontSize: '20px' } }}
                             suffix={
-                                nominalMonthChange >= 0 ? (
+                                salesMonthChange >= 0 ? (
                                     <ArrowUpOutlined style={{ color: '#3f8600', fontSize: '14px' }} />
                                 ) : (
                                     <ArrowDownOutlined style={{ color: '#cf1322', fontSize: '14px' }} />
@@ -236,9 +228,9 @@ export const DashboardPage = () => {
                             }
                         />
                         <div style={{ marginTop: 4, fontSize: 11, color: '#666', display: 'flex', justifyContent: 'space-between' }}>
-                            <span>{nominalMonthChange >= 0 ? '+' : ''}{nominalMonthChangePercent}% vs mes ant.</span>
-                            <span style={{ fontWeight: 'bold', color: daysToTarget > daysRemaining ? '#cf1322' : '#3f8600' }}>
-                                Dias 0% : {daysToTarget} / {daysRemaining}
+                            <span>{salesMonthChange >= 0 ? '+' : ''}{salesMonthChangePercent}% vs mes ant.</span>
+                            <span title="Monto cobrado físicamente (sin revaluar)">
+                                Nominal: {formatVenezuelanPrice(getConvertedAmount(stats.thisMonthSalesNominal), currentSymbol)}
                             </span>
                         </div>
                     </Card>

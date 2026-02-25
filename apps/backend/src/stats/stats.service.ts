@@ -32,10 +32,13 @@ export class StatsService {
         return { factor, currentRefRate };
     }
 
-    public async calculateNetSalesRevalued(dateFilter: any, currencyCode: string = 'VES', nominal: boolean = false) {
+    public async calculateNetSalesRevalued(dateFilter: any, currencyCode: string = 'VES', nominal: boolean = false, allCurrenciesInput?: any[]) {
+        // 1. Get All Currencies for revaluation
+        const allCurrencies = allCurrenciesInput || await this.prisma.currency.findMany({ where: { active: true } });
+
         const { factor: crossRateFactor, currentRefRate } = await this.getCrossRateFactor(currencyCode);
 
-        // 1. Get Gross Sales revalued
+        // 2. Get Gross Sales revalued
         const sales = await this.prisma.sale.findMany({
             where: { active: true, createdAt: dateFilter },
             select: { total: true, exchangeRate: true, paymentMethod: true }
@@ -48,7 +51,8 @@ export class StatsService {
                 sale,
                 currentRefRate,
                 crossRateFactor,
-                currencyCode === 'VES'
+                currencyCode === 'VES',
+                allCurrencies
             );
 
             grossSalesNominal += Number(sale.total);
@@ -93,12 +97,14 @@ export class StatsService {
         const lastMonthStart = dayjs().subtract(1, 'month').startOf('month').toDate();
         const lastMonthEnd = dayjs().subtract(1, 'month').endOf('month').toDate();
 
+        const allCurrencies = await this.prisma.currency.findMany({ where: { active: true } });
+
         // All sales in dashboard are now revalued to current rate for coherence
-        const todaySales = await this.calculateNetSalesRevalued({ gte: today }, 'VES', true);
-        const thisMonthSales = await this.calculateNetSalesRevalued({ gte: monthStart });
-        const thisMonthSalesNominal = await this.calculateNetSalesRevalued({ gte: monthStart }, 'VES', true);
-        const lastMonthSales = await this.calculateNetSalesRevalued({ gte: lastMonthStart, lte: lastMonthEnd });
-        const lastMonthSalesNominal = await this.calculateNetSalesRevalued({ gte: lastMonthStart, lte: lastMonthEnd }, 'VES', true);
+        const todaySales = await this.calculateNetSalesRevalued({ gte: today }, 'VES', false, allCurrencies); // Mixed Revalued
+        const thisMonthSales = await this.calculateNetSalesRevalued({ gte: monthStart }, 'VES', false, allCurrencies); // Mixed Revalued
+        const thisMonthSalesNominal = await this.calculateNetSalesRevalued({ gte: monthStart }, 'VES', true, allCurrencies);
+        const lastMonthSales = await this.calculateNetSalesRevalued({ gte: lastMonthStart, lte: lastMonthEnd }, 'VES', false, allCurrencies);
+        const lastMonthSalesNominal = await this.calculateNetSalesRevalued({ gte: lastMonthStart, lte: lastMonthEnd }, 'VES', true, allCurrencies);
 
         // Top 5 selling products
         const topProducts = await this.prisma.saleItem.groupBy({
@@ -145,7 +151,7 @@ export class StatsService {
 
                 salesTrend.push({
                     date: dayjs(date).format('DD/MM'),
-                    sales: await this.calculateNetSalesRevalued({ gte: date, lte: nextDate }),
+                    sales: await this.calculateNetSalesRevalued({ gte: date, lte: nextDate }, 'VES', false, allCurrencies),
                 });
             }
         } else if (range === '1year') {
@@ -155,7 +161,7 @@ export class StatsService {
 
                 salesTrend.push({
                     date: dayjs(date).format('MMM YY'),
-                    sales: await this.calculateNetSalesRevalued({ gte: date, lte: nextDate }),
+                    sales: await this.calculateNetSalesRevalued({ gte: date, lte: nextDate }, 'VES', false, allCurrencies),
                 });
             }
         } else if (range === 'all') {
@@ -174,7 +180,7 @@ export class StatsService {
 
                 salesTrend.push({
                     date: current.format('MMM YY'),
-                    sales: await this.calculateNetSalesRevalued({ gte: start, lte: end }),
+                    sales: await this.calculateNetSalesRevalued({ gte: start, lte: end }, 'VES', false, allCurrencies),
                 });
 
                 current = current.add(1, 'month');
@@ -385,7 +391,8 @@ export class StatsService {
         }
 
         // 1. Get Target Rate Info
-        const targetCurrency = await this.prisma.currency.findUnique({ where: { code: currencyCode } });
+        const allCurrencies = await this.prisma.currency.findMany({ where: { active: true } });
+        const targetCurrency = allCurrencies.find(c => c.code === currencyCode);
 
         // 2. Get Reference Currency (The one stored in sale.exchangeRate, usually USD)
         const companySettings = await this.prisma.companySettings.findFirst({
@@ -450,7 +457,8 @@ export class StatsService {
                 sale,
                 currentRefRate,
                 crossRateFactor,
-                currencyCode === 'VES'
+                currencyCode === 'VES',
+                allCurrencies
             );
 
             totalSalesAmount += totalInTarget;
@@ -574,20 +582,44 @@ export class StatsService {
 
         let totalPurchasesAmount = 0;
         purchasesInRangeList.forEach(p => {
-            let val = Number(p.total);
-            const pRate = Number(p.exchangeRate) || 1;
-            const valInVES = p.currencyCode === 'VES' ? val : val * pRate;
+            const val = Number(p.total);
+            const pCurrency = allCurrencies.find(c => c.code === p.currencyCode);
+            const isForeign = pCurrency && !pCurrency.isPrimary;
 
-            totalPurchasesAmount += (valInVES / currentRefRate) * crossRateFactor;
+            let valTarget = 0;
+            if (isForeign) {
+                // Revalued: Original Divisa Amount * Today's Cross-Rate to Target
+                // Today's USD value of this purchase: val * (todayRateOfForeign / todayRefRate)
+                // (e.g. 10 EUR * (1.1 EUR/USD) = 11 USD)
+                // Then convert to target: USD * crossRateFactor
+                const foreignRate = Number(pCurrency.exchangeRate || 1);
+                const usdValue = (val * foreignRate) / currentRefRate;
+                valTarget = usdValue * crossRateFactor;
+            } else {
+                // Nominal BS: Original BS / currentRefRate * crossRateFactor
+                // (If target is BS, it's just val / rate * rate = val)
+                valTarget = (val / currentRefRate) * crossRateFactor;
+            }
+
+            totalPurchasesAmount += valTarget;
         });
 
         let totalExpensesAmount = 0;
         expensesInRangeList.forEach(e => {
-            let val = Number(e.amount);
-            const eRate = Number(e.exchangeRate) || 1;
-            const valInVES = e.currencyCode === 'VES' ? val : val * eRate;
+            const val = Number(e.amount);
+            const eCurrency = allCurrencies.find(c => c.code === e.currencyCode);
+            const isForeign = eCurrency && !eCurrency.isPrimary;
 
-            totalExpensesAmount += (valInVES / currentRefRate) * crossRateFactor;
+            let valTarget = 0;
+            if (isForeign) {
+                const foreignRate = Number(eCurrency.exchangeRate || 1);
+                const usdValue = (val * foreignRate) / currentRefRate;
+                valTarget = usdValue * crossRateFactor;
+            } else {
+                valTarget = (val / currentRefRate) * crossRateFactor;
+            }
+
+            totalExpensesAmount += valTarget;
         });
 
         let adjustedCostOfSales = totalCostOfSales - returnedCostOfSales + replacementCostOfSales;
@@ -652,7 +684,8 @@ export class StatsService {
             dateFilter.gte = dayjs().startOf('month').toDate();
         }
 
-        const targetCurrency = await this.prisma.currency.findUnique({ where: { code: currencyCode } });
+        const allCurrencies = await this.prisma.currency.findMany({ where: { active: true } });
+        const targetCurrency = allCurrencies.find(c => c.code === currencyCode);
 
         // 2. Get Reference Currency (The one stored in sale.exchangeRate, usually USD)
         const companySettings = await this.prisma.companySettings.findFirst({
@@ -708,7 +741,8 @@ export class StatsService {
                 sale,
                 currentRefRate,
                 crossRateFactor,
-                currencyCode === 'VES'
+                currencyCode === 'VES',
+                allCurrencies
             );
 
             totalSales += totalInTarget;
@@ -902,9 +936,8 @@ export class StatsService {
 
         const now = dayjs();
 
-        const targetCurrency = currencyCode !== 'VES'
-            ? await this.prisma.currency.findUnique({ where: { code: currencyCode } })
-            : null;
+        const allCurrencies = await this.prisma.currency.findMany({ where: { active: true } });
+        const targetCurrency = allCurrencies.find(c => c.code === currencyCode);
 
         const companySettings = await this.prisma.companySettings.findFirst({
             include: { preferredSecondaryCurrency: true }
@@ -959,7 +992,8 @@ export class StatsService {
                     sale,
                     currentRefRate,
                     crossRateFactor,
-                    currencyCode === 'VES'
+                    currencyCode === 'VES',
+                    allCurrencies
                 );
 
                 monthlyIncome += totalInTarget;
@@ -1072,89 +1106,96 @@ export class StatsService {
         return balanceData;
     }
 
-    async getTopProducts(startDate?: string, endDate?: string, sortBy: 'units' | 'profit' = 'units', limit: number = 10, currency: string = 'VES') {
-        // Default to last 30 days if no dates provided
-        const start = startDate ? new Date(startDate) : dayjs().subtract(30, 'day').startOf('day').toDate();
-        const end = endDate ? new Date(endDate) : dayjs().endOf('day').toDate();
-        // Ensure end date covers the whole day
-        const endFinal = endDate ? dayjs(endDate).endOf('day').toDate() : end;
+    async getTopProducts(startDate?: string, endDate?: string, sortBy: 'units' | 'profit' = 'units', limit: number = 10, currencyCode: string = 'VES') {
+        const dateFilter: any = {};
+        if (startDate || endDate) {
+            if (startDate) dateFilter.gte = dayjs(startDate).startOf('day').toDate();
+            if (endDate) dateFilter.lte = dayjs(endDate).endOf('day').toDate();
+        } else {
+            // Default to current month
+            dateFilter.gte = dayjs().startOf('month').toDate();
+        }
 
-        // Determine if we need to convert to ANY target currency
-        // We will fetch the target currency's current rate to convert the Report totals.
-        // This answers "What is that past revenue worth in today's X currency?"
+        const allCurrencies = await this.prisma.currency.findMany({ where: { active: true } });
+        const targetCurrency = allCurrencies.find(c => c.code === currencyCode);
 
-        const rawResults = await this.prisma.$queryRaw<any[]>`
-            SELECT 
-                p.id,
-                p.name,
-                SUM(si.quantity) as units,
-                
-                -- Profit Calculation
-                -- 1. Calculate Profit in Primary Currency (VES)
-                --    Profit(VES) = Total(VES) - Cost(VES_Normalized)
-                -- 2. Convert to Target Currency using Current Rate of Target Currency
-                --    Profit(Target) = Profit(VES) / TargetRate
-                
-                SUM(
-                    (si.total - (COALESCE(NULLIF(si.cost, 0), (p."costPrice" * COALESCE(c."exchangeRate", 1)), 0) * si.quantity)) 
-                    / (CASE 
-                        WHEN tc."isPrimary" IS TRUE THEN 1 
-                        ELSE COALESCE(tc."exchangeRate", 1) 
-                       END)
-                ) as profit,
+        const companySettings = await this.prisma.companySettings.findFirst({
+            include: { preferredSecondaryCurrency: true }
+        });
+        const refCurrency = companySettings?.preferredSecondaryCurrency;
+        const currentRefRate = Number(refCurrency?.exchangeRate || 1);
 
-                -- Total Cost Calculation
-                SUM(
-                    (COALESCE(NULLIF(si.cost, 0), (p."costPrice" * COALESCE(c."exchangeRate", 1)), 0) * si.quantity)
-                    / (CASE 
-                        WHEN tc."isPrimary" IS TRUE THEN 1 
-                        ELSE COALESCE(tc."exchangeRate", 1) 
-                       END)
-                ) as total_cost,
+        let crossRateFactor = 1;
+        if (currencyCode === 'VES') {
+            crossRateFactor = currentRefRate;
+        } else if (targetCurrency && refCurrency && targetCurrency.code !== refCurrency.code) {
+            const tr = Number(targetCurrency.exchangeRate || 1);
+            if (tr > 0) crossRateFactor = currentRefRate / tr;
+        }
 
-                -- Revenue Calculation
-                SUM(
-                    si.total 
-                    / (CASE 
-                        WHEN tc."isPrimary" IS TRUE THEN 1 
-                        ELSE COALESCE(tc."exchangeRate", 1) 
-                       END)
-                ) as revenue
-
-            FROM "sale_items" si
-            JOIN "products" p ON si."productId" = p.id
-            LEFT JOIN "currencies" c ON p."currencyId" = c.id
-            CROSS JOIN "currencies" tc
-            JOIN "sales" s ON si."saleId" = s.id
-            WHERE s.active = true
-            AND tc.code = ${currency} -- Filter to get the target currency rate
-            AND s."createdAt" >= ${start}
-            AND s."createdAt" <= ${endFinal}
-            GROUP BY p.id, p.name, tc.id, tc."exchangeRate", tc."isPrimary"
-        `;
-
-        // Sort in JS to avoid dynamic SQL injection issues
-        const sorted = rawResults.sort((a, b) => {
-            const valA = Number(sortBy === 'profit' ? a.profit : a.units);
-            const valB = Number(sortBy === 'profit' ? b.profit : b.units);
-            return valB - valA;
+        const sales = await this.prisma.sale.findMany({
+            where: {
+                active: true,
+                createdAt: dateFilter,
+            },
+            include: {
+                items: {
+                    include: {
+                        product: { include: { category: true, currency: true } }
+                    }
+                }
+            },
         });
 
-        return sorted.slice(0, limit).map(item => {
-            const revenue = Number(item.revenue);
-            const profit = Number(item.profit);
-            const margin = revenue > 0 ? (profit / revenue) * 100 : 0;
+        const productMap: Record<string, { id: string, name: string, units: number, profit: number, revenue: number, totalCost: number }> = {};
 
-            return {
-                id: item.id,
-                name: item.name,
-                units: Number(item.units),
-                totalCost: Number(item.total_cost), // Mapped from snake_case alias
-                profit: profit,
-                revenue: revenue,
-                margin: Number(margin.toFixed(2))
-            };
+        sales.forEach(sale => {
+            const saleNominalTotal = Number(sale.total || 0);
+
+            const { totalInTarget } = this.revalueSaleByPayments(
+                sale,
+                currentRefRate,
+                crossRateFactor,
+                currencyCode === 'VES',
+                allCurrencies
+            );
+
+            sale.items.forEach(item => {
+                const pid = item.product.id;
+                if (!productMap[pid]) {
+                    productMap[pid] = { id: pid, name: item.product.name, units: 0, profit: 0, revenue: 0, totalCost: 0 };
+                }
+
+                const qty = Number(item.quantity);
+                productMap[pid].units += qty;
+
+                // Revenue is proportional part of revalued sale total
+                const itemRevenue = (saleNominalTotal > 0)
+                    ? (Number(item.total) / saleNominalTotal) * totalInTarget
+                    : 0;
+
+                productMap[pid].revenue += itemRevenue;
+
+                // Profit calculation: revaluedRevenue - currentCost
+                let itemCostInVES = Number(item.cost || 0);
+                if (itemCostInVES === 0 && item.product) {
+                    const productRate = item.product.currency?.isPrimary ? 1 : Number(item.product.currency?.exchangeRate || 1);
+                    itemCostInVES = Number(item.product.costPrice || 0) * productRate;
+                }
+                const currentCostTarget = (itemCostInVES * qty / currentRefRate) * crossRateFactor;
+
+                productMap[pid].totalCost += currentCostTarget;
+                productMap[pid].profit += (itemRevenue - currentCostTarget);
+            });
         });
+
+        return Object.values(productMap)
+            .sort((a, b) => b[sortBy] - a[sortBy])
+            .slice(0, limit)
+            .map(item => ({
+                ...item,
+                margin: item.revenue > 0 ? Number(((item.profit / item.revenue) * 100).toFixed(2)) : 0
+            }));
     }
 
     async getInflationReport(startDate?: string, endDate?: string) {
@@ -1166,6 +1207,7 @@ export class StatsService {
             dateFilter.gte = dayjs().startOf('month').toDate();
         }
 
+        const allCurrencies = await this.prisma.currency.findMany({ where: { active: true } });
         const { currentRefRate } = await this.getCrossRateFactor('VES');
 
         // 1. Fetch all required data
@@ -1233,7 +1275,8 @@ export class StatsService {
                 sale,
                 currentRefRate,
                 1, // crossRateFactor is 1 since target is VES (effectively just multiplying ref currency by currentRefRate)
-                true // target is VES
+                true, // target is VES
+                allCurrencies
             );
 
             m.revaluedSales += saleRevaluedVES;
@@ -1412,11 +1455,26 @@ export class StatsService {
             dateFilter.gte = dayjs().startOf('month').toDate();
         }
 
-        const { currentRefRate, factor: crossRateFactor } = await this.getCrossRateFactor(currencyCode);
+        const allCurrencies = await this.prisma.currency.findMany({ where: { active: true } });
+        const targetCurrency = allCurrencies.find(c => c.code === currencyCode);
+
+        const companySettings = await this.prisma.companySettings.findFirst({
+            include: { preferredSecondaryCurrency: true }
+        });
+        const refCurrency = companySettings?.preferredSecondaryCurrency;
+        const currentRefRate = Number(refCurrency?.exchangeRate || 1);
+
+        let crossRateFactor = 1;
+        if (currencyCode === 'VES') {
+            crossRateFactor = currentRefRate;
+        } else if (targetCurrency && refCurrency && targetCurrency.code !== refCurrency.code) {
+            const tr = Number(targetCurrency.exchangeRate || 1);
+            if (tr > 0) crossRateFactor = currentRefRate / tr;
+        }
 
         const sales = await this.prisma.sale.findMany({
             where: { active: true, createdAt: dateFilter },
-            select: { total: true, createdAt: true, exchangeRate: true }
+            select: { total: true, createdAt: true, exchangeRate: true, paymentMethod: true }
         });
 
         // Initialize weekdays (0=Sunday, 1=Monday, ... 6=Saturday)
@@ -1429,12 +1487,16 @@ export class StatsService {
 
         sales.forEach(sale => {
             const dayIndex = dayjs(sale.createdAt).day();
-            const historicalRate = (Number(sale.exchangeRate) && Number(sale.exchangeRate) !== 1)
-                ? Number(sale.exchangeRate)
-                : currentRefRate;
 
-            const revaluedAmount = (Number(sale.total) / historicalRate) * crossRateFactor;
-            performance[dayIndex].total += revaluedAmount;
+            const { totalInTarget } = this.revalueSaleByPayments(
+                sale,
+                currentRefRate,
+                crossRateFactor,
+                currencyCode === 'VES',
+                allCurrencies
+            );
+
+            performance[dayIndex].total += totalInTarget;
             performance[dayIndex].count += 1;
         });
 
@@ -1464,11 +1526,26 @@ export class StatsService {
             dateFilter.gte = dayjs().startOf('month').toDate();
         }
 
-        const { currentRefRate, factor: crossRateFactor } = await this.getCrossRateFactor(currencyCode);
+        const allCurrencies = await this.prisma.currency.findMany({ where: { active: true } });
+        const targetCurrency = allCurrencies.find(c => c.code === currencyCode);
+
+        const companySettings = await this.prisma.companySettings.findFirst({
+            include: { preferredSecondaryCurrency: true }
+        });
+        const refCurrency = companySettings?.preferredSecondaryCurrency;
+        const currentRefRate = Number(refCurrency?.exchangeRate || 1);
+
+        let crossRateFactor = 1;
+        if (currencyCode === 'VES') {
+            crossRateFactor = currentRefRate;
+        } else if (targetCurrency && refCurrency && targetCurrency.code !== refCurrency.code) {
+            const tr = Number(targetCurrency.exchangeRate || 1);
+            if (tr > 0) crossRateFactor = currentRefRate / tr;
+        }
 
         const sales = await this.prisma.sale.findMany({
             where: { active: true, createdAt: dateFilter },
-            select: { total: true, createdAt: true, exchangeRate: true }
+            select: { total: true, createdAt: true, exchangeRate: true, paymentMethod: true }
         });
 
         // Use dayjs to get the month and year of the filter
@@ -1483,12 +1560,15 @@ export class StatsService {
         sales.forEach(sale => {
             const dayOfMonth = dayjs(sale.createdAt).date();
             if (performance[dayOfMonth]) {
-                const historicalRate = (Number(sale.exchangeRate) && Number(sale.exchangeRate) !== 1)
-                    ? Number(sale.exchangeRate)
-                    : currentRefRate;
+                const { totalInTarget } = this.revalueSaleByPayments(
+                    sale,
+                    currentRefRate,
+                    crossRateFactor,
+                    currencyCode === 'VES',
+                    allCurrencies
+                );
 
-                const revaluedAmount = (Number(sale.total) / historicalRate) * crossRateFactor;
-                performance[dayOfMonth].total += revaluedAmount;
+                performance[dayOfMonth].total += totalInTarget;
                 performance[dayOfMonth].count += 1;
             }
         });
@@ -1522,7 +1602,8 @@ export class StatsService {
             dateFilter.gte = dayjs().startOf('month').toDate();
         }
 
-        const targetCurrency = await this.prisma.currency.findUnique({ where: { code: currencyCode } });
+        const allCurrencies = await this.prisma.currency.findMany({ where: { active: true } });
+        const targetCurrency = allCurrencies.find(c => c.code === currencyCode);
         const targetRate = Number(targetCurrency?.exchangeRate || 1);
         const conversionRate = (currencyCode === 'VES') ? 1 : targetRate;
 
@@ -1560,17 +1641,18 @@ export class StatsService {
 
         expenses.forEach(e => {
             const val = Number(e.amount);
-            const eRate = Number(e.exchangeRate) || 1;
-            const valInVES = e.currencyCode === 'VES' ? val : val * eRate;
+            const eCurrency = allCurrencies.find(c => c.code === e.currencyCode);
+            const isLocal = !eCurrency || eCurrency.isPrimary;
 
-            // Use historical rate usually for Expenses in other reports, but let's stick to consistent revaluation
-            // Actually, in Finance Report, expenses are revalued using historical rate * crossRateFactor.
-            const historicalRate = (eRate !== 1) ? eRate : currentRefRate;
-
-            // Wait, to be consistent with "Real Utility" calculation in Finance Report:
-            // monthlyOperationalExpenses += (amountInVES / historicalRate) * crossRateFactor;
-
-            const expenseValueTarget = (valInVES / historicalRate) * crossRateFactor;
+            let expenseValueTarget = 0;
+            if (currencyCode === 'VES' && isLocal) {
+                // VES Expense -> Nominal value
+                expenseValueTarget = val;
+            } else {
+                // Foreign Expense or Target is Foreign -> Revalued
+                const currentCurrencyRate = eCurrency?.isPrimary ? 1 : Number(eCurrency?.exchangeRate || 1);
+                expenseValueTarget = (val * currentCurrencyRate / currentRefRate) * crossRateFactor;
+            }
 
             totalExpenses += expenseValueTarget;
 
@@ -1582,18 +1664,21 @@ export class StatsService {
             dailyExpenses[dateStr] = (dailyExpenses[dateStr] || 0) + expenseValueTarget;
         });
 
-        // 3. Fetch Total Sales for Comparison (Consistency with Finance Report)
-
-        // A. Sales
+        // 3. Fetch Total Sales for Comparison
         const sales = await this.prisma.sale.findMany({
             where: { active: true, createdAt: dateFilter },
-            select: { total: true }
+            select: { total: true, paymentMethod: true, exchangeRate: true }
         });
         let totalSales = 0;
         sales.forEach(sale => {
-            const nominal = Number(sale.total);
-            // Standardize using conversionRate (Same as other reports)
-            totalSales += (currencyCode === 'VES' ? nominal : nominal / conversionRate);
+            const { totalInTarget } = this.revalueSaleByPayments(
+                sale,
+                currentRefRate,
+                crossRateFactor,
+                currencyCode === 'VES',
+                allCurrencies
+            );
+            totalSales += totalInTarget;
         });
 
         // B. Returns & Replacements
@@ -1634,7 +1719,7 @@ export class StatsService {
      * Treats Divisas as value-preserved (converted at current rate)
      * Treats Bolivares as nominal (converted at current rate for foreign reports)
      */
-    private revalueSaleByPayments(sale: any, currentRefRate: number, crossRateFactor: number, isTargetVES: boolean) {
+    private revalueSaleByPayments(sale: any, currentRefRate: number, crossRateFactor: number, isTargetVES: boolean, currencies: any[] = []) {
         const paymentStr = sale.paymentMethod || 'CASH';
         const parts = paymentStr.split(', ');
         const saleNominalTotal = Number(sale.total);
@@ -1650,24 +1735,44 @@ export class StatsService {
             const subpartsLength = subparts.length;
 
             let rawAmount = saleNominalTotal;
-            let isExplicit = false;
             if (subpartsLength > 1) {
                 rawAmount = parseFloat(subparts[1]);
-                isExplicit = true;
             } else if (parts.length > 1) {
                 rawAmount = saleNominalTotal / parts.length;
             }
 
-            const isForeign =
+            let isForeign =
                 method === 'ZELLE' ||
-                method === 'UDT' ||
+                method === 'USDT' ||
+                method === 'UDT' || // Backwards compatibility for typo
                 method.startsWith('CURRENCY_') ||
                 (method.startsWith('ACCOUNT_CREDIT_') && method !== 'ACCOUNT_CREDIT');
+
+            // More precise detection: check if method starts with CURRENCY_ and the code is not isPrimary
+            if (method.startsWith('CURRENCY_')) {
+                const code = method.replace('CURRENCY_', '');
+                const curr = currencies.find(c => c.code === code || c.id === code);
+                if (curr && curr.isPrimary) isForeign = false;
+            }
 
             let paymentVES = 0;
             let paymentUSD = 0;
 
             if (isForeign) {
+                // For foreign methods, rawAmount is the divisa (e.g. 10.00 for $10)
+                // We revalue using TODAY's rates
+                let foreignRate = currentRefRate; // Default to USD
+                if (method.startsWith('CURRENCY_')) {
+                    const code = method.replace('CURRENCY_', '');
+                    const curr = currencies.find(c => c.code === code || c.id === code);
+                    if (curr) foreignRate = Number(curr.exchangeRate || currentRefRate);
+                } else if (method.startsWith('ACCOUNT_CREDIT_')) {
+                    const code = method.replace('ACCOUNT_CREDIT_', '');
+                    const curr = currencies.find(c => c.code === code || c.id === code);
+                    if (curr) foreignRate = Number(curr.exchangeRate || currentRefRate);
+                }
+
+                // If rawAmount looks like BS (e.g. 300 for a $10 sale), it was mislabeled
                 const expectedTotalInUSD = saleNominalTotal / saleRate;
                 const isLikelyMisrepresented = rawAmount > (expectedTotalInUSD * 1.5) && rawAmount > 5;
 
@@ -1675,8 +1780,9 @@ export class StatsService {
                     paymentVES = rawAmount;
                     paymentUSD = rawAmount / currentRefRate;
                 } else {
-                    paymentUSD = rawAmount;
-                    paymentVES = rawAmount * currentRefRate;
+                    // Correct logic: amount is divisa. revalue to USD today then to target.
+                    paymentUSD = (rawAmount * foreignRate) / currentRefRate;
+                    paymentVES = rawAmount * foreignRate;
                 }
             } else {
                 // Local payment: Use nominal Bs directly (no revaluation)

@@ -1,6 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider      = "prisma-client-js"
   binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
@@ -11,287 +8,706 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// Modelo inicial de Usuario
 model User {
-  id          String   @id @default(uuid())
-  username    String   @unique
+  id          String    @id @default(uuid())
+  username    String    @unique
   password    String
   name        String
   role        String
   permissions String[]
-  isActive    Boolean  @default(true)
+  isActive    Boolean   @default(true)
   lastLogin   DateTime?
-  
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
   employee    Employee?
-
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
 
   @@map("users")
 }
 
 model Client {
-  id            String   @id // Will be manually set as "V-12345678"
-  name          String
-  address       String?
-  phone         String?
-  hasWhatsapp   Boolean  @default(false)
-  email         String?
-
-  social1       String?
-  social2       String?
-  social3       String?
-
-  // Ventas asociadas
-  sales         Sale[]
-  invoices      Invoice[]
-
-  active        Boolean  @default(true)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id          String    @id
+  name        String
+  address     String?
+  phone       String?
+  hasWhatsapp Boolean   @default(false)
+  email       String?
+  social1     String?
+  social2     String?
+  social3     String?
+  active      Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  invoices    Invoice[]
+  sales       Sale[]
 
   @@map("clients")
 }
 
 model Supplier {
-  id            String   @id @default(uuid())
-  rif           String   @unique
-  comercialName String
-  legalName     String?
-  contactName   String?
-  address       String?
-  phone         String?
-  email         String?
-  category      String?
-  active        Boolean  @default(true)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-
-  // Compras asociadas
-  purchases     Purchase[]
+  id             String          @id @default(uuid())
+  rif            String          @unique
+  comercialName  String
+  legalName      String?
+  contactName    String?
+  address        String?
+  phone          String?
+  email          String?
+  category       String?
+  active         Boolean         @default(true)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
   purchaseOrders PurchaseOrder[]
+  purchases      Purchase[]
 
   @@map("suppliers")
 }
 
 model Purchase {
-  id              String   @id @default(uuid())
+  id              String            @id @default(uuid())
   supplierId      String
-  supplier        Supplier @relation(fields: [supplierId], references: [id])
-  
-  invoiceDate     DateTime // Fecha de la factura del proveedor
-  invoiceNumber   String?  // Número de control/factura del proveedor
-  
-  subtotal        Decimal  @db.Decimal(10, 2)
-  taxAmount       Decimal  @db.Decimal(10, 2)
-  total           Decimal  @db.Decimal(10, 2)
-  
-  currencyCode    String   @default("VES") // Moneda de la compra (usualmente la del sistema)
-  exchangeRate    Decimal  @default(1.0)   @db.Decimal(10, 4)
-  
-  status          String   @default("COMPLETED") // PENDING, COMPLETED, CANCELLED
-  
-  // Cuentas por Pagar
-  paymentStatus   String   @default("UNPAID") // UNPAID, PARTIAL, PAID
+  invoiceDate     DateTime
+  invoiceNumber   String?
+  subtotal        Decimal           @db.Decimal(10, 2)
+  taxAmount       Decimal           @db.Decimal(10, 2)
+  total           Decimal           @db.Decimal(10, 2)
+  currencyCode    String            @default("VES")
+  exchangeRate    Decimal           @default(1.0) @db.Decimal(10, 4)
+  status          String            @default("COMPLETED")
+  paymentStatus   String            @default("UNPAID")
   dueDate         DateTime?
-  paidAmount      Decimal  @db.Decimal(10, 2) @default(0)
-  balance         Decimal  @db.Decimal(10, 2) @default(0)
-
+  paidAmount      Decimal           @default(0) @db.Decimal(10, 2)
+  balance         Decimal           @default(0) @db.Decimal(10, 2)
+  userId          String?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  purchaseOrderId String?           @unique
   items           PurchaseItem[]
   payments        PurchasePayment[]
-  
-  // Link to Purchase Order (optional)
-  purchaseOrderId String?  @unique
-  purchaseOrder   PurchaseOrder? @relation(fields: [purchaseOrderId], references: [id])
-  
-  userId          String?  // Usuario que registró la compra
-  
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  purchaseOrder   PurchaseOrder?    @relation(fields: [purchaseOrderId], references: [id])
+  supplier        Supplier          @relation(fields: [supplierId], references: [id])
 
   @@map("purchases")
 }
 
 model PurchaseOrder {
-  id              String   @id @default(uuid())
-  supplierId      String
-  supplier        Supplier @relation(fields: [supplierId], references: [id])
-  
-  orderDate       DateTime @default(now())
-  expectedDate    DateTime?
-  
-  subtotal        Decimal  @db.Decimal(10, 2)
-  taxAmount       Decimal  @db.Decimal(10, 2)
-  total           Decimal  @db.Decimal(10, 2)
-  
-  currencyCode    String   @default("VES")
-  exchangeRate    Decimal  @default(1.0)   @db.Decimal(10, 4)
-  
-  status          String   @default("PENDING") // PENDING, COMPLETED, CANCELLED, SENT
-  
-  notes           String?
-  
-  items           PurchaseOrderItem[]
-  
-  // Link to the resulting Purchase
-  purchase        Purchase?
-
-  userId          String?
-  
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id           String              @id @default(uuid())
+  supplierId   String
+  orderDate    DateTime            @default(now())
+  expectedDate DateTime?
+  subtotal     Decimal             @db.Decimal(10, 2)
+  taxAmount    Decimal             @db.Decimal(10, 2)
+  total        Decimal             @db.Decimal(10, 2)
+  currencyCode String              @default("VES")
+  exchangeRate Decimal             @default(1.0) @db.Decimal(10, 4)
+  status       String              @default("PENDING")
+  notes        String?
+  userId       String?
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+  items        PurchaseOrderItem[]
+  supplier     Supplier            @relation(fields: [supplierId], references: [id])
+  purchase     Purchase?
 
   @@map("purchase_orders")
 }
 
 model PurchaseOrderItem {
-  id              String   @id @default(uuid())
+  id              String        @id @default(uuid())
   purchaseOrderId String
-  purchaseOrder   PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
-  
   productId       String
-  product         Product  @relation(fields: [productId], references: [id])
-  
-  quantity        Decimal  @db.Decimal(10, 3)
-  cost            Decimal  @db.Decimal(10, 2)
-  total           Decimal  @db.Decimal(10, 2) // quantity * cost
-  
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  quantity        Decimal       @db.Decimal(10, 3)
+  cost            Decimal       @db.Decimal(10, 2)
+  total           Decimal       @db.Decimal(10, 2)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  product         Product       @relation(fields: [productId], references: [id])
+  purchaseOrder   PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
 
   @@map("purchase_order_items")
 }
 
 model PurchasePayment {
-  id              String   @id @default(uuid())
-  
-  purchaseId      String
-  purchase        Purchase @relation(fields: [purchaseId], references: [id])
-  
-  amount          Decimal  @db.Decimal(10, 2) // Representa el monto descontado del saldo de la compra (en la moneda de la compra)
-  
-  // Datos del pago real (multimoneda)
-  paymentAmount   Decimal?  @db.Decimal(10, 2) // Monto pagado en la moneda del pago
-  currencyCode    String   @default("VES")
-  exchangeRate    Decimal  @default(1.0) @db.Decimal(10, 4)
-  
-  paymentDate     DateTime @default(now())
-  paymentMethod   String   
-  reference       String?
-  notes           String?
-  
-  // Relación con Banco (opcional)
-  bankAccountId   String?
-  bankAccount     BankAccount? @relation(fields: [bankAccountId], references: [id])
-  
-  bankMovementId  String? @unique
-  bankMovement    BankMovement? @relation(fields: [bankMovementId], references: [id])
-  
-  createdBy       String?
-  
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id             String        @id @default(uuid())
+  purchaseId     String
+  amount         Decimal       @db.Decimal(10, 2)
+  paymentDate    DateTime      @default(now())
+  paymentMethod  String
+  reference      String?
+  notes          String?
+  createdBy      String?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  bankAccountId  String?
+  bankMovementId String?       @unique
+  currencyCode   String        @default("VES")
+  exchangeRate   Decimal       @default(1.0) @db.Decimal(10, 4)
+  paymentAmount  Decimal?      @db.Decimal(10, 2)
+  bankAccount    BankAccount?  @relation(fields: [bankAccountId], references: [id])
+  bankMovement   BankMovement? @relation(fields: [bankMovementId], references: [id])
+  purchase       Purchase      @relation(fields: [purchaseId], references: [id])
 
   @@map("purchase_payments")
 }
 
 model PurchaseItem {
-  id              String   @id @default(uuid())
-  purchaseId      String
-  purchase        Purchase @relation(fields: [purchaseId], references: [id])
-  
-  productId       String
-  product         Product  @relation(fields: [productId], references: [id])
-  
-  quantity        Decimal  @db.Decimal(10, 3)
-  cost            Decimal  @db.Decimal(10, 2) // Costo unitario al que se compró
-  total           Decimal  @db.Decimal(10, 2) // quantity * cost
-  
-  oldCost         Decimal? @db.Decimal(10, 2) // Referencia del costo anterior
-  
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id         String   @id @default(uuid())
+  purchaseId String
+  productId  String
+  quantity   Decimal  @db.Decimal(10, 3)
+  cost       Decimal  @db.Decimal(10, 2)
+  total      Decimal  @db.Decimal(10, 2)
+  oldCost    Decimal? @db.Decimal(10, 2)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  product    Product  @relation(fields: [productId], references: [id])
+  purchase   Purchase @relation(fields: [purchaseId], references: [id])
 
   @@map("purchase_items")
 }
 
 model Product {
-  id              String      @id @default(uuid())
-  sku             String      @unique
-  name            String
-  description     String?
-  
-  // Categorías (relaciones con Department)
-  categoryId      String
-  category        Department  @relation("ProductCategory", fields: [categoryId], references: [id])
-  subcategoryId   String?
-  subcategory     Department? @relation("ProductSubcategory", fields: [subcategoryId], references: [id])
-  
-  // Moneda
-  currencyId      String
-  currency        Currency    @relation(fields: [currencyId], references: [id])
-  
-  // Tipo de Producto
-  type            ProductType @default(PRODUCT)
-
-  // Precios (en la moneda seleccionada)
-  costPrice       Decimal?    @db.Decimal(10, 2)
-  salePrice       Decimal     @db.Decimal(10, 2)
-  offerPrice      Decimal?    @db.Decimal(10, 2)
-  wholesalePrice  Decimal?    @db.Decimal(10, 2)
-  
-  // Inventario
-  stock           Decimal     @default(0) @db.Decimal(10, 3)
-  
-  // Unidad principal (obligatoria para productos)
-  unitId          String?
-  unit            Unit?       @relation("ProductPrimaryUnit", fields: [unitId], references: [id])
-  
-  // Unidad secundaria (opcional - ej: caja, paquete)
-  secondaryUnitId       String?
-  secondaryUnit         Unit?   @relation("ProductSecondaryUnit", fields: [secondaryUnitId], references: [id])
-  unitsPerSecondaryUnit Int?    // Cantidad para conversión
-  conversionDirection   String? // "primary_to_secondary" o "secondary_to_primary"
-  
-  // Precios para unidad secundaria
-  secondaryCostPrice      Decimal? @db.Decimal(10, 2)
-  secondarySalePrice      Decimal? @db.Decimal(10, 2)
-  secondaryOfferPrice     Decimal? @db.Decimal(10, 2)
-  secondaryWholesalePrice Decimal? @db.Decimal(10, 2)
-
-  // Items de venta asociados
-  saleItems      SaleItem[]
-
-  // Política de devoluciones
-  isReturnable         Boolean  @default(true)
-  returnDeadlineDays   Int?     // null = usar default global (30)
-
-  // Relaciones con devoluciones
-  returnItems          ReturnItem[]
-  replacementReturnItems ReturnReplacementItem[]
-  
-  // Relación con ajustes de inventario
-  adjustments InventoryAdjustment[]
-  
-  // Relación con items de compra y pedidos
-  purchaseItems PurchaseItem[]
-  purchaseOrderItems PurchaseOrderItem[]
-
-  // Imágenes del producto (URLs o base64)
-  images          String[]    @default([])
-
-  active          Boolean     @default(true)
-  // Componentes si es producto compuesto
-  components     ProductComponent[] @relation("CompositeProduct")
-  usedIn         ProductComponent[] @relation("ComponentProduct")
-
-  // Mercado Libre integration
-  mlMapping       MercadoLibreProductMapping?
-
-  createdAt       DateTime    @default(now())
-  updatedAt       DateTime    @updatedAt
+  id                      String                      @id @default(uuid())
+  sku                     String                      @unique
+  name                    String
+  description             String?
+  categoryId              String
+  subcategoryId           String?
+  currencyId              String
+  type                    ProductType                 @default(PRODUCT)
+  costPrice               Decimal?                    @db.Decimal(10, 2)
+  salePrice               Decimal                     @db.Decimal(10, 2)
+  offerPrice              Decimal?                    @db.Decimal(10, 2)
+  wholesalePrice          Decimal?                    @db.Decimal(10, 2)
+  stock                   Decimal                     @default(0) @db.Decimal(10, 3)
+  unitId                  String?
+  secondaryUnitId         String?
+  unitsPerSecondaryUnit   Int?
+  conversionDirection     String?
+  secondaryCostPrice      Decimal?                    @db.Decimal(10, 2)
+  secondarySalePrice      Decimal?                    @db.Decimal(10, 2)
+  secondaryOfferPrice     Decimal?                    @db.Decimal(10, 2)
+  secondaryWholesalePrice Decimal?                    @db.Decimal(10, 2)
+  isReturnable            Boolean                     @default(true)
+  returnDeadlineDays      Int?
+  active                  Boolean                     @default(true)
+  createdAt               DateTime                    @default(now())
+  updatedAt               DateTime                    @updatedAt
+  images                  String[]                    @default([])
+  usedIn                  ProductComponent[]          @relation("ComponentProduct")
+  components              ProductComponent[]          @relation("CompositeProduct")
+  adjustments             InventoryAdjustment[]
+  mlMapping               MercadoLibreProductMapping?
+  category                Department                  @relation("ProductCategory", fields: [categoryId], references: [id])
+  currency                Currency                    @relation(fields: [currencyId], references: [id])
+  secondaryUnit           Unit?                       @relation("ProductSecondaryUnit", fields: [secondaryUnitId], references: [id])
+  subcategory             Department?                 @relation("ProductSubcategory", fields: [subcategoryId], references: [id])
+  unit                    Unit?                       @relation("ProductPrimaryUnit", fields: [unitId], references: [id])
+  purchaseItems           PurchaseItem[]
+  purchaseOrderItems      PurchaseOrderItem[]
+  returnItems             ReturnItem[]
+  replacementReturnItems  ReturnReplacementItem[]
+  saleItems               SaleItem[]
 
   @@map("products")
+}
+
+model ProductComponent {
+  id                 String   @id @default(uuid())
+  compositeProductId String
+  componentProductId String
+  quantity           Decimal  @db.Decimal(10, 3)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  componentProduct   Product  @relation("ComponentProduct", fields: [componentProductId], references: [id])
+  compositeProduct   Product  @relation("CompositeProduct", fields: [compositeProductId], references: [id])
+
+  @@unique([compositeProductId, componentProductId])
+}
+
+model CompanySettings {
+  id                           String    @id @default(uuid())
+  name                         String
+  rif                          String
+  logoUrl                      String?
+  preferredSecondaryCurrencyId String?
+  autoUpdateRates              Boolean   @default(false)
+  updateFrequency              Int       @default(60)
+  createdAt                    DateTime  @default(now())
+  updatedAt                    DateTime  @updatedAt
+  preferredSecondaryCurrency   Currency? @relation(fields: [preferredSecondaryCurrencyId], references: [id])
+
+  @@map("company_settings")
+}
+
+model Department {
+  id                    String       @id @default(uuid())
+  name                  String
+  description           String?
+  parentId              String?
+  active                Boolean      @default(true)
+  createdAt             DateTime     @default(now())
+  updatedAt             DateTime     @updatedAt
+  parent                Department?  @relation("DepartmentHierarchy", fields: [parentId], references: [id])
+  children              Department[] @relation("DepartmentHierarchy")
+  productsAsCategory    Product[]    @relation("ProductCategory")
+  productsAsSubcategory Product[]    @relation("ProductSubcategory")
+
+  @@map("departments")
+}
+
+model Unit {
+  id                  String    @id @default(uuid())
+  name                String    @unique
+  abbreviation        String
+  active              Boolean   @default(true)
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+  productsAsSecondary Product[] @relation("ProductSecondaryUnit")
+  productsAsPrimary   Product[] @relation("ProductPrimaryUnit")
+
+  @@map("units")
+}
+
+model Currency {
+  id              String            @id @default(uuid())
+  name            String            @unique
+  code            String            @unique
+  symbol          String
+  isPrimary       Boolean           @default(false)
+  exchangeRate    Decimal?          @db.Decimal(10, 4)
+  isAutomatic     Boolean           @default(false)
+  apiSymbol       String?
+  active          Boolean           @default(true)
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  bankAccounts    BankAccount[]
+  companySettings CompanySettings[]
+  products        Product[]
+
+  @@map("currencies")
+}
+
+model Sale {
+  id                 String         @id @default(uuid())
+  date               DateTime       @default(now())
+  invoiceNumber      String         @unique
+  clientId           String?
+  subtotal           Decimal        @db.Decimal(10, 2)
+  discount           Decimal        @default(0) @db.Decimal(10, 2)
+  tax                Decimal        @default(0) @db.Decimal(10, 2)
+  total              Decimal        @db.Decimal(10, 2)
+  paymentMethod      String
+  tendered           Decimal?       @db.Decimal(10, 2)
+  change             Decimal?       @db.Decimal(10, 2)
+  hasReturns         Boolean        @default(false)
+  isCancelled        Boolean        @default(false)
+  cashSessionId      String?
+  active             Boolean        @default(true)
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+  exchangeRate       Decimal        @default(1.0) @db.Decimal(10, 4)
+  cashMovements      CashMovement[]
+  invoice            Invoice?
+  replacementReturns Return[]       @relation("ReturnNewSale")
+  returns            Return[]       @relation("OriginalSale")
+  items              SaleItem[]
+  cashSession        CashSession?   @relation(fields: [cashSessionId], references: [id])
+  client             Client?        @relation(fields: [clientId], references: [id])
+
+  @@map("sales")
+}
+
+model SaleItem {
+  id        String   @id @default(uuid())
+  saleId    String
+  productId String
+  quantity  Decimal  @db.Decimal(10, 2)
+  unitPrice Decimal  @db.Decimal(10, 2)
+  total     Decimal  @db.Decimal(10, 2)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  cost      Decimal  @default(0) @db.Decimal(10, 2)
+  product   Product  @relation(fields: [productId], references: [id])
+  sale      Sale     @relation(fields: [saleId], references: [id], onDelete: Cascade)
+
+  @@map("sale_items")
+}
+
+model InvoiceCounter {
+  id            String   @id @default(uuid())
+  prefix        String   @default("FAC")
+  currentNumber Int      @default(1)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@map("invoice_counters")
+}
+
+model Invoice {
+  id           String    @id @default(uuid())
+  number       String    @unique
+  clientId     String
+  saleId       String?   @unique
+  subtotal     Decimal   @db.Decimal(10, 2)
+  discount     Decimal   @default(0) @db.Decimal(10, 2)
+  tax          Decimal   @default(0) @db.Decimal(10, 2)
+  total        Decimal   @db.Decimal(10, 2)
+  status       String    @default("PENDING")
+  dueDate      DateTime?
+  paidAmount   Decimal   @default(0) @db.Decimal(10, 2)
+  balance      Decimal   @db.Decimal(10, 2)
+  notes        String?
+  active       Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  currencyCode String    @default("VES")
+  exchangeRate Decimal   @default(1) @db.Decimal(10, 4)
+  client       Client    @relation(fields: [clientId], references: [id])
+  sale         Sale?     @relation(fields: [saleId], references: [id])
+  payments     Payment[]
+
+  @@map("invoices")
+}
+
+model Payment {
+  id            String   @id @default(uuid())
+  invoiceId     String
+  amount        Decimal  @db.Decimal(10, 2)
+  paymentDate   DateTime @default(now())
+  paymentMethod String
+  reference     String?
+  notes         String?
+  createdBy     String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  invoice       Invoice  @relation(fields: [invoiceId], references: [id])
+
+  @@map("payments")
+}
+
+model Return {
+  id               String                  @id @default(uuid())
+  originalSaleId   String
+  creditNoteNumber String                  @unique
+  returnType       String
+  reason           String
+  productCondition String
+  refundAmount     Decimal?                @db.Decimal(10, 2)
+  refundMethod     String?
+  newSaleId        String?
+  status           String                  @default("PENDING")
+  requestedBy      String?
+  approvedBy       String?
+  approvedAt       DateTime?
+  notes            String?
+  active           Boolean                 @default(true)
+  createdAt        DateTime                @default(now())
+  updatedAt        DateTime                @updatedAt
+  items            ReturnItem[]
+  replacementItems ReturnReplacementItem[]
+  newSale          Sale?                   @relation("ReturnNewSale", fields: [newSaleId], references: [id])
+  originalSale     Sale                    @relation("OriginalSale", fields: [originalSaleId], references: [id])
+
+  @@map("returns")
+}
+
+model ReturnItem {
+  id              String  @id @default(uuid())
+  returnId        String
+  productId       String
+  quantity        Decimal @db.Decimal(10, 3)
+  unitPrice       Decimal @db.Decimal(10, 2)
+  total           Decimal @db.Decimal(10, 2)
+  restockQuantity Int     @default(0)
+  product         Product @relation(fields: [productId], references: [id])
+  return          Return  @relation(fields: [returnId], references: [id], onDelete: Cascade)
+
+  @@map("return_items")
+}
+
+model ReturnReplacementItem {
+  id        String  @id @default(uuid())
+  returnId  String
+  productId String
+  quantity  Decimal @db.Decimal(10, 3)
+  unitPrice Decimal @db.Decimal(10, 2)
+  total     Decimal @db.Decimal(10, 2)
+  product   Product @relation(fields: [productId], references: [id])
+  return    Return  @relation(fields: [returnId], references: [id], onDelete: Cascade)
+
+  @@map("return_replacement_items")
+}
+
+model CashRegister {
+  id        String        @id @default(uuid())
+  name      String
+  location  String?
+  isActive  Boolean       @default(true)
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+  sessions  CashSession[]
+
+  @@map("cash_registers")
+}
+
+model CashSession {
+  id               String             @id @default(uuid())
+  registerId       String
+  openedBy         String
+  closedBy         String?
+  openedAt         DateTime           @default(now())
+  closedAt         DateTime?
+  status           String             @default("OPEN")
+  openingBalance   Decimal            @db.Decimal(10, 2)
+  openingNotes     String?
+  expectedBalance  Decimal?           @db.Decimal(10, 2)
+  actualBalance    Decimal?           @db.Decimal(10, 2)
+  variance         Decimal?           @db.Decimal(10, 2)
+  closingNotes     String?
+  active           Boolean            @default(true)
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+  cashierId        String?
+  verificationDiff Decimal?           @db.Decimal(10, 2)
+  verifiedAt       DateTime?
+  verifiedBy       String?
+  bankMovements    BankMovement[]
+  movements        CashMovement[]
+  register         CashRegister       @relation(fields: [registerId], references: [id])
+  sales            Sale[]
+  cashCounts       SessionCashCount[]
+
+  @@map("cash_sessions")
+}
+
+model SessionCashCount {
+  id           String      @id @default(uuid())
+  sessionId    String
+  type         String
+  currencyCode String
+  value        Decimal     @db.Decimal(10, 2)
+  quantity     Int
+  total        Decimal     @db.Decimal(10, 2)
+  createdAt    DateTime    @default(now())
+  session      CashSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@map("session_cash_counts")
+}
+
+model CurrencyDenomination {
+  id           String   @id @default(uuid())
+  currencyCode String
+  value        Decimal  @db.Decimal(10, 2)
+  label        String
+  type         String
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@map("currency_denominations")
+}
+
+model CashMovement {
+  id           String      @id @default(uuid())
+  sessionId    String
+  type         String
+  amount       Decimal     @db.Decimal(10, 2)
+  currencyCode String      @default("VES")
+  saleId       String?
+  description  String
+  notes        String?
+  performedBy  String
+  createdAt    DateTime    @default(now())
+  exchangeRate Decimal     @default(1.0) @db.Decimal(10, 4)
+  sale         Sale?       @relation(fields: [saleId], references: [id])
+  session      CashSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@map("cash_movements")
+}
+
+model InventoryAdjustment {
+  id            String   @id @default(uuid())
+  productId     String
+  type          String
+  quantity      Decimal  @db.Decimal(10, 3)
+  previousStock Decimal  @db.Decimal(10, 3)
+  newStock      Decimal  @db.Decimal(10, 3)
+  reason        String
+  notes         String?
+  performedBy   String
+  createdAt     DateTime @default(now())
+  product       Product  @relation(fields: [productId], references: [id])
+
+  @@map("inventory_adjustments")
+}
+
+model Expense {
+  id             String        @id @default(uuid())
+  description    String
+  amount         Decimal       @db.Decimal(10, 2)
+  currencyCode   String        @default("VES")
+  exchangeRate   Decimal       @default(1) @db.Decimal(10, 4)
+  date           DateTime      @default(now())
+  category       String
+  paymentMethod  String
+  reference      String?
+  notes          String?
+  userId         String?
+  cashMovementId String?       @unique
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  bankAccountId  String?
+  bankMovementId String?       @unique
+  bankAccount    BankAccount?  @relation(fields: [bankAccountId], references: [id])
+  bankMovement   BankMovement? @relation(fields: [bankMovementId], references: [id])
+
+  @@map("expenses")
+}
+
+model Employee {
+  id               String           @id @default(uuid())
+  firstName        String
+  lastName         String
+  identification   String           @unique
+  email            String?
+  phone            String?
+  address          String?
+  position         String
+  department       String?
+  baseSalary       Decimal          @db.Decimal(10, 2)
+  currency         String           @default("VES")
+  hireDate         DateTime         @default(now())
+  isActive         Boolean          @default(true)
+  paymentFrequency PaymentFrequency @default(BIWEEKLY)
+  userId           String?          @unique
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  user             User?            @relation(fields: [userId], references: [id])
+  payments         PayrollPayment[]
+
+  @@map("employees")
+}
+
+model PayrollPeriod {
+  id          String           @id @default(uuid())
+  name        String
+  startDate   DateTime
+  endDate     DateTime
+  paymentDate DateTime?
+  status      String           @default("DRAFT")
+  totalAmount Decimal          @default(0) @db.Decimal(12, 2)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  payments    PayrollPayment[]
+
+  @@map("payroll_periods")
+}
+
+model PayrollPayment {
+  id              String               @id @default(uuid())
+  payrollPeriodId String
+  employeeId      String
+  baseSalary      Decimal              @db.Decimal(10, 2)
+  currency        String
+  exchangeRate    Decimal              @default(1) @db.Decimal(10, 4)
+  totalIncome     Decimal              @db.Decimal(10, 2)
+  totalDeductions Decimal              @db.Decimal(10, 2)
+  netAmount       Decimal              @db.Decimal(10, 2)
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+  items           PayrollPaymentItem[]
+  employee        Employee             @relation(fields: [employeeId], references: [id])
+  payrollPeriod   PayrollPeriod        @relation(fields: [payrollPeriodId], references: [id])
+
+  @@map("payroll_payments")
+}
+
+model PayrollPaymentItem {
+  id               String         @id @default(uuid())
+  payrollPaymentId String
+  type             String
+  description      String
+  amount           Decimal        @db.Decimal(10, 2)
+  payrollPayment   PayrollPayment @relation(fields: [payrollPaymentId], references: [id], onDelete: Cascade)
+
+  @@map("payroll_payment_items")
+}
+
+model BankAccount {
+  id                     String            @id @default(uuid())
+  bankName               String
+  accountNumber          String
+  accountType            String            @default("CHECKING")
+  holderName             String
+  holderId               String
+  currencyId             String
+  balance                Decimal           @default(0) @db.Decimal(12, 2)
+  active                 Boolean           @default(true)
+  createdAt              DateTime          @default(now())
+  updatedAt              DateTime          @updatedAt
+  pendingLiquidation     Decimal           @default(0) @db.Decimal(12, 2)
+  receivesMobilePayment  Boolean           @default(false)
+  receivesPosLiquidation Boolean           @default(false)
+  currency               Currency          @relation(fields: [currencyId], references: [id])
+  movements              BankMovement[]
+  expenses               Expense[]
+  purchasePayments       PurchasePayment[]
+
+  @@map("bank_accounts")
+}
+
+model BankMovement {
+  id              String           @id @default(uuid())
+  bankAccountId   String
+  type            String
+  amount          Decimal          @db.Decimal(12, 2)
+  category        String
+  description     String
+  reference       String?
+  date            DateTime         @default(now())
+  cashSessionId   String?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  bankAccount     BankAccount      @relation(fields: [bankAccountId], references: [id], onDelete: Cascade)
+  cashSession     CashSession?     @relation(fields: [cashSessionId], references: [id])
+  expense         Expense?
+  purchasePayment PurchasePayment?
+
+  @@map("bank_movements")
+}
+
+model MercadoLibreAccount {
+  id              String                       @id @default(uuid())
+  mlUserId        String                       @unique
+  username        String?
+  accessToken     String
+  refreshToken    String
+  expiresIn       Int
+  scope           String?
+  tokenType       String?
+  updatedAt       DateTime                     @updatedAt
+  createdAt       DateTime                     @default(now())
+  productMappings MercadoLibreProductMapping[]
+
+  @@map("mercadolibre_accounts")
+}
+
+model MercadoLibreProductMapping {
+  id          String              @id @default(uuid())
+  productId   String              @unique
+  mlItemId    String              @unique
+  mlPermalink String?
+  mlAccountId String
+  syncEnabled Boolean             @default(true)
+  lastSync    DateTime?
+  syncStatus  String?
+  syncError   String?
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+  mlAccount   MercadoLibreAccount @relation(fields: [mlAccountId], references: [id])
+  product     Product             @relation(fields: [productId], references: [id])
+
+  @@map("mercadolibre_product_mappings")
 }
 
 enum ProductType {
@@ -300,684 +716,8 @@ enum ProductType {
   COMPOSED
 }
 
-model ProductComponent {
-  id                String   @id @default(uuid())
-  compositeProductId String
-  compositeProduct  Product  @relation("CompositeProduct", fields: [compositeProductId], references: [id])
-  
-  componentProductId String
-  componentProduct  Product  @relation("ComponentProduct", fields: [componentProductId], references: [id])
-  
-  quantity          Decimal  @db.Decimal(10, 3)
-  
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
-
-  @@unique([compositeProductId, componentProductId])
-}
-
-model CompanySettings {
-  id        String   @id @default(uuid())
-  name      String
-  rif       String
-  logoUrl   String?
-  
-  preferredSecondaryCurrencyId String?
-  preferredSecondaryCurrency   Currency? @relation(fields: [preferredSecondaryCurrencyId], references: [id])
-  
-  // Rate Automation
-  autoUpdateRates Boolean  @default(false)
-  updateFrequency Int      @default(60) // minutes
-  
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@map("company_settings")
-}
-
-model Department {
-  id          String       @id @default(uuid())
-  name        String
-  description String?
-  parentId    String?
-  parent      Department?  @relation("DepartmentHierarchy", fields: [parentId], references: [id], onDelete: SetNull)
-  children    Department[] @relation("DepartmentHierarchy")
-  
-  // Productos usando este departamento
-  productsAsCategory    Product[] @relation("ProductCategory")
-  productsAsSubcategory Product[] @relation("ProductSubcategory")
-  
-  active      Boolean      @default(true)
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
-
-  @@map("departments")
-}
-
-model Unit {
-  id           String   @id @default(uuid())
-  name         String   @unique
-  abbreviation String
-  
-  // Productos usando esta unidad
-  productsAsPrimary   Product[] @relation("ProductPrimaryUnit")
-  productsAsSecondary Product[] @relation("ProductSecondaryUnit")
-  
-  active       Boolean  @default(true)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-
-  @@map("units")
-}
-
-model Currency {
-  id           String   @id @default(uuid())
-  name         String   @unique
-  code         String   @unique
-  symbol       String
-  isPrimary    Boolean  @default(false)
-  exchangeRate Decimal? @db.Decimal(10, 4)
-  
-  // Automation
-  isAutomatic  Boolean  @default(false)
-  apiSymbol    String?  // "binance_p2p", "bcv", "enparalelo"
-
-  // Productos en esta moneda
-  products     Product[]
-
-  // Configuraciones que usan esta moneda
-  companySettings CompanySettings[]
-
-  // Cuentas Bancarias
-  bankAccounts BankAccount[]
-
-  active       Boolean  @default(true)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-
-  @@map("currencies")
-}
-
-model Sale {
-  id            String     @id @default(uuid())
-  date          DateTime   @default(now())
-  invoiceNumber String     @unique
-
-  // Cliente (opcional para ventas walk-in)
-  clientId      String?
-  client        Client?    @relation(fields: [clientId], references: [id])
-
-  // Totales
-  subtotal      Decimal    @db.Decimal(10, 2)
-  discount      Decimal    @db.Decimal(10, 2) @default(0)
-  tax           Decimal    @db.Decimal(10, 2) @default(0)
-  total         Decimal    @db.Decimal(10, 2)
-
-  // Pago
-  paymentMethod String     // CASH, DEBIT, CREDIT, etc.
-  tendered      Decimal?   @db.Decimal(10, 2)
-  change        Decimal?   @db.Decimal(10, 2)
-  
-  // Historical Exchange Rate (Cost of Opportunity)
-  exchangeRate  Decimal    @default(1.0) @db.Decimal(10, 4)
-
-  // Items de la venta
-  items         SaleItem[]
-
-  // Relaciones con devoluciones
-  returns           Return[] @relation("OriginalSale")
-  replacementReturns Return[] @relation("ReturnNewSale")
-
-  // Estado
-  hasReturns        Boolean  @default(false)
-  isCancelled       Boolean  @default(false)
-
-  // Relaciones con caja
-  cashMovements     CashMovement[]
-  
-  // Factura asociada (para ventas a crédito)
-  invoice           Invoice?
-  
-  // Caja
-  cashSessionId     String?
-  cashSession       CashSession? @relation(fields: [cashSessionId], references: [id])
-
-  active        Boolean    @default(true)
-  createdAt     DateTime   @default(now())
-  updatedAt     DateTime   @updatedAt
-
-  @@map("sales")
-}
-
-model SaleItem {
-  id        String  @id @default(uuid())
-  saleId    String
-  sale      Sale    @relation(fields: [saleId], references: [id], onDelete: Cascade)
-
-  productId String
-  product   Product @relation(fields: [productId], references: [id])
-
-  quantity  Decimal @db.Decimal(10, 2)
-  unitPrice Decimal @db.Decimal(10, 2)
-  cost      Decimal @db.Decimal(10, 2) @default(0) // Costo al momento de la venta
-  total     Decimal @db.Decimal(10, 2)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@map("sale_items")
-}
-
-model InvoiceCounter {
-  id        String   @id @default(uuid())
-  prefix    String   @default("FAC")
-  currentNumber Int   @default(1)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@map("invoice_counters")
-}
-
-model Invoice {
-  id              String   @id @default(uuid())
-  number          String   @unique
-  
-  // Cliente
-  clientId        String
-  client          Client   @relation(fields: [clientId], references: [id])
-  
-  // Venta relacionada (opcional, si viene de POS)
-  saleId          String?  @unique
-  sale            Sale?    @relation(fields: [saleId], references: [id])
-  
-  // Montos
-  subtotal        Decimal  @db.Decimal(10, 2)
-  discount        Decimal  @db.Decimal(10, 2) @default(0)
-  tax             Decimal  @db.Decimal(10, 2) @default(0)
-  total           Decimal  @db.Decimal(10, 2)
-  
-  // Control de crédito
-  status          String   @default("PENDING") // PENDING, PARTIAL, PAID, OVERDUE, CANCELLED
-  dueDate         DateTime?
-  paidAmount      Decimal  @db.Decimal(10, 2) @default(0)
-  balance         Decimal  @db.Decimal(10, 2) // total - paidAmount
-  
-  // Currency info for the debt
-  currencyCode    String   @default("VES")
-  exchangeRate    Decimal  @default(1) @db.Decimal(10, 4)
-  
-  // Pagos relacionados
-  payments        Payment[]
-  
-  // Notas
-  notes           String?
-  
-  active          Boolean  @default(true)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-
-  @@map("invoices")
-}
-
-model Payment {
-  id              String   @id @default(uuid())
-  
-  // Factura a la que se aplica el pago
-  invoiceId       String
-  invoice         Invoice  @relation(fields: [invoiceId], references: [id])
-  
-  // Detalles del pago
-  amount          Decimal  @db.Decimal(10, 2)
-  paymentDate     DateTime @default(now())
-  paymentMethod   String   // CASH, DEBIT, CREDIT, TRANSFER, MOBILE, ZELLE, etc
-  reference       String?  // Número de referencia bancaria
-  notes           String?
-  
-  // Auditoría (para futuro)
-  createdBy       String?
-  
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-
-  @@map("payments")
-}
-
-
-model Return {
-  id                String   @id @default(uuid())
-  
-  // Referencias
-  originalSaleId    String
-  originalSale      Sale     @relation("OriginalSale", fields: [originalSaleId], references: [id])
-  creditNoteNumber  String   @unique
-  
-  // Tipo y motivo
-  returnType        String   // "REFUND", "EXCHANGE_SAME", "EXCHANGE_DIFFERENT"
-  reason            String   // "DEFECTIVE", "UNSATISFIED", "ERROR", "EXPIRED", "OTHER"
-  productCondition  String   // "EXCELLENT", "GOOD", "DEFECTIVE", "DAMAGED"
-  
-  // Items devueltos
-  items             ReturnItem[]
-  
-  // Items entregados en cambio (para EXCHANGE_DIFFERENT)
-  replacementItems  ReturnReplacementItem[]
-  
-  // Financiero
-  refundAmount      Decimal? @db.Decimal(10, 2)
-  refundMethod      String?  // "CASH", "TRANSFER", "CREDIT_NOTE"
-  
-  // Nueva venta (si es cambio)
-  newSaleId         String?
-  newSale           Sale?    @relation("ReturnNewSale", fields: [newSaleId], references: [id])
-  
-  // Workflow
-  status            String   @default("PENDING") // "PENDING", "APPROVED", "REJECTED", "COMPLETED"
-  requestedBy       String?
-  approvedBy        String?
-  approvedAt        DateTime?
-  
-  // Notas
-  notes             String?
-  
-  // Auditoría
-  active            Boolean  @default(true)
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
-  
-  @@map("returns")
-}
-
-model ReturnItem {
-  id               String  @id @default(uuid())
-  returnId         String
-  return           Return  @relation(fields: [returnId], references: [id], onDelete: Cascade)
-  
-  productId        String
-  product          Product @relation(fields: [productId], references: [id])
-  
-  quantity         Decimal @db.Decimal(10, 3)
-  unitPrice        Decimal @db.Decimal(10, 2)
-  total            Decimal @db.Decimal(10, 2)
-  
-  restockQuantity  Int     @default(0) // Cantidad que se regresa al stock
-  
-  @@map("return_items")
-}
-
-model ReturnReplacementItem {
-  id               String  @id @default(uuid())
-  returnId         String
-  return           Return  @relation(fields: [returnId], references: [id], onDelete: Cascade)
-  
-  productId        String
-  product          Product @relation(fields: [productId], references: [id])
-  
-  quantity         Decimal @db.Decimal(10, 3)
-  unitPrice        Decimal @db.Decimal(10, 2)
-  total            Decimal @db.Decimal(10, 2)
-  
-  @@map("return_replacement_items")
-}
-
-model CashRegister {
-  id          String        @id @default(uuid())
-  name        String        // "Caja Principal", "Caja 2"
-  location    String?       // "Tienda", "Almacén"
-  isActive    Boolean       @default(true)
-  sessions    CashSession[]
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
-  
-  @@map("cash_registers")
-}
-
-model CashSession {
-  id                String         @id @default(uuid())
-  registerId        String
-  register          CashRegister   @relation(fields: [registerId], references: [id])
-  
-  // Session info
-  openedBy          String         // Usuario que abre
-  cashierId         String?        // Cajero asignado
-  closedBy          String?        // Usuario que cierra
-  openedAt          DateTime       @default(now())
-  closedAt          DateTime?
-  status            String         @default("OPEN") // OPEN, CLOSED, AWAITING_CLOSE
-  
-  // Opening balance
-  openingBalance    Decimal        @db.Decimal(10, 2)
-  openingNotes      String?
-
-  // Verification (Arqueo de Apertura)
-  verifiedAt        DateTime?
-  verifiedBy        String?
-  verificationDiff  Decimal?       @db.Decimal(10, 2) // Difference found during count
-
-  
-  // Closing info
-  expectedBalance   Decimal?       @db.Decimal(10, 2)
-  actualBalance     Decimal?       @db.Decimal(10, 2)
-  variance          Decimal?       @db.Decimal(10, 2) // actualBalance - expectedBalance
-  closingNotes      String?
-  
-  // Movements during session
-  movements         CashMovement[]
-  bankMovements     BankMovement[]
-  sales             Sale[]
-  cashCounts        SessionCashCount[]
-  
-  active            Boolean        @default(true)
-  createdAt         DateTime       @default(now())
-  updatedAt         DateTime       @updatedAt
-  
-  @@map("cash_sessions")
-}
-
-model SessionCashCount {
-  id            String      @id @default(uuid())
-  sessionId     String
-  session       CashSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  
-  type          String      // "VERIFICATION" or "CLOSING"
-  
-  currencyCode  String
-  value         Decimal     @db.Decimal(10, 2)
-  quantity      Int
-  total         Decimal     @db.Decimal(10, 2)
-  
-  createdAt     DateTime    @default(now())
-
-  @@map("session_cash_counts")
-}
-
-model CurrencyDenomination {
-  id        String   @id @default(uuid())
-  currencyCode String // VES, USD, EUR
-  value     Decimal  @db.Decimal(10, 2) // 1.00, 5.00, 10.00, 20.00, etc.
-  label     String   // "1 Bolívar", "5 Bolívares", "1 Dólar", etc.
-  type      String   // "BILL", "COIN"
-  
-  active    Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@map("currency_denominations")
-}
-
-model CashMovement {
-  id              String       @id @default(uuid())
-  sessionId       String
-  session         CashSession  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  
-  // Movement details
-  type            String       // "SALE", "EXPENSE", "DEPOSIT", "WITHDRAWAL", "OPENING", "CLOSING"
-  amount          Decimal      @db.Decimal(10, 2)
-  currencyCode    String       @default("VES") // VES, USD, EUR, etc.
-  exchangeRate    Decimal      @db.Decimal(10, 4) @default(1.0)
-  
-  // References
-  saleId          String?      // Si es de una venta
-  sale            Sale?        @relation(fields: [saleId], references: [id])
-  
-  // Description
-  description     String
-  notes           String?
-  performedBy     String       // Usuario que realiza
-  
-  createdAt       DateTime     @default(now())
-  
-  @@map("cash_movements")
-}
-
-model InventoryAdjustment {
-  id            String   @id @default(uuid())
-  
-  // Product reference
-  productId     String
-  product       Product  @relation(fields: [productId], references: [id])
-  
-  // Adjustment details
-  type          String   // "INCREASE" or "DECREASE"
-  quantity      Decimal  @db.Decimal(10, 3) // Absolute value
-  previousStock Decimal  @db.Decimal(10, 3) // Stock before adjustment
-  newStock      Decimal  @db.Decimal(10, 3) // Stock after adjustment
-  
-  // Reason and context
-  reason        String   // "DAMAGE", "LOSS", "ERROR", "INITIAL", "RETURN", "OTHER"
-  notes         String?  // Explanation
-  
-  // User tracking
-  performedBy   String   // Usuario que realiza
-  
-  // Timestamps
-  createdAt     DateTime @default(now())
-  
-  @@map("inventory_adjustments")
-}
-
-model Expense {
-  id            String   @id @default(uuid())
-  description   String
-  amount        Decimal  @db.Decimal(10, 2)
-  currencyCode  String   @default("VES")
-  exchangeRate  Decimal  @db.Decimal(10, 4) @default(1)
-  date          DateTime @default(now())
-  category      String   // "RENT", "UTILITIES", "SALARY", "SUPPLIES", "OTHER"
-  paymentMethod String   // "CASH", "TRANSFER", "DEBIT", "CREDIT"
-  reference     String?  // Factura #, Ref Bancaria
-  notes         String?
-  
-  userId        String?  // Quién registró el gasto
-  
-  // Relaciones con caja (opcional, si se paga con efectivo de caja)
-  cashMovementId String? @unique
-  
-  // Relación con Banco (opcional, si se paga con cuenta bancaria)
-  bankAccountId String?
-  bankAccount   BankAccount? @relation(fields: [bankAccountId], references: [id])
-  
-  bankMovementId String? @unique
-  bankMovement   BankMovement? @relation(fields: [bankMovementId], references: [id])
-  
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-
-  @@map("expenses")
-}
-
-model Employee {
-  id          String   @id @default(uuid())
-  firstName   String
-  lastName    String
-  identification String @unique // CI/DNI
-  
-  // Contact
-  email       String?
-  phone       String?
-  address     String?
-  
-  // Labor Data
-  position    String
-  department  String?
-  baseSalary  Decimal  @db.Decimal(10, 2)
-  currency    String   @default("VES") // Salary currency
-  hireDate    DateTime @default(now())
-  
-  isActive    Boolean  @default(true)
-  paymentFrequency PaymentFrequency @default(BIWEEKLY)
-  
-  // Relation to System User (Optional)
-  userId      String?  @unique
-  user        User?    @relation(fields: [userId], references: [id])
-  
-  payments    PayrollPayment[]
-  
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  @@map("employees")
-}
-
 enum PaymentFrequency {
   WEEKLY
   BIWEEKLY
   MONTHLY
-}
-
-model PayrollPeriod {
-  id          String   @id @default(uuid())
-  name        String   // "Quincena 1 - Diciembre 2025"
-  startDate   DateTime
-  endDate     DateTime
-  paymentDate DateTime?
-  
-  status      String   @default("DRAFT") // DRAFT, PROCESSED, PAID
-  
-  totalAmount Decimal  @db.Decimal(12, 2) @default(0)
-  
-  payments    PayrollPayment[]
-  
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  @@map("payroll_periods")
-}
-
-model PayrollPayment {
-  id              String   @id @default(uuid())
-  payrollPeriodId String
-  payrollPeriod   PayrollPeriod @relation(fields: [payrollPeriodId], references: [id])
-  
-  employeeId      String
-  employee        Employee @relation(fields: [employeeId], references: [id])
-  
-  // Snapshots (Salary might change later)
-  baseSalary      Decimal  @db.Decimal(10, 2)
-  currency        String
-  exchangeRate    Decimal  @db.Decimal(10, 4) @default(1)
-  
-  // Totals
-  totalIncome     Decimal  @db.Decimal(10, 2)
-  totalDeductions Decimal  @db.Decimal(10, 2)
-  netAmount       Decimal  @db.Decimal(10, 2)
-  
-  items           PayrollPaymentItem[]
-  
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  
-  @@map("payroll_payments")
-}
-
-model PayrollPaymentItem {
-  id               String         @id @default(uuid())
-  payrollPaymentId String
-  payrollPayment   PayrollPayment @relation(fields: [payrollPaymentId], references: [id], onDelete: Cascade)
-  
-  type             String         // INCOME, DEDUCTION
-  description      String         // "Bono Alimentación", "Faltas", "ISLR"
-  amount           Decimal        @db.Decimal(10, 2)
-  
-  @@map("payroll_payment_items")
-}
-
-model BankAccount {
-  id              String   @id @default(uuid())
-  bankName        String
-  accountNumber   String
-  accountType     String   @default("CHECKING") // CHECKING, SAVINGS, CASH_VAULT, MOBILE_PAYMENT
-  
-  holderName      String
-  holderId        String
-  
-  currencyId      String
-  currency        Currency @relation(fields: [currencyId], references: [id])
-  
-  balance         Decimal  @db.Decimal(12, 2) @default(0)
-  
-  active                  Boolean  @default(true)
-  
-  // Pos Liquidation automation
-  receivesPosLiquidation  Boolean  @default(false)
-  pendingLiquidation      Decimal  @db.Decimal(12, 2) @default(0)
-  
-  // Mobile Payment (Pago Móvil)
-  receivesMobilePayment Boolean @default(false)
-  
-  movements               BankMovement[]
-  expenses                Expense[]
-  purchasePayments        PurchasePayment[]
-  
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  
-  @@map("bank_accounts")
-}
-
-model BankMovement {
-  id              String       @id @default(uuid())
-  bankAccountId   String
-  bankAccount     BankAccount  @relation(fields: [bankAccountId], references: [id], onDelete: Cascade)
-  
-  type            String       // "IN", "OUT"
-  amount          Decimal      @db.Decimal(12, 2)
-  
-  category        String       // "SALE_TRANSFER", "EXPENSE", "INJECTION", "ADJUSTMENT", "TRANSFER"
-  description     String
-  reference       String?
-  
-  date            DateTime     @default(now())
-  
-  // Opcional: Relación con sesión de caja si viene de un traslado
-  cashSessionId   String?
-  cashSession     CashSession? @relation(fields: [cashSessionId], references: [id])
-  
-  expense         Expense?
-  purchasePayment PurchasePayment?
-  
-  createdAt       DateTime     @default(now())
-  updatedAt       DateTime     @updatedAt
-  
-  @@map("bank_movements")
-}
-
-model MercadoLibreAccount {
-  id              String   @id @default(uuid())
-  mlUserId        String   @unique
-  username        String?
-  accessToken     String
-  refreshToken    String
-  expiresIn       Int
-  scope           String?
-  tokenType       String?
-  
-  // Last time tokens were updated
-  updatedAt       DateTime @updatedAt
-  createdAt       DateTime @default(now())
-
-  productMappings MercadoLibreProductMapping[]
-
-  @@map("mercadolibre_accounts")
-}
-
-model MercadoLibreProductMapping {
-  id                String   @id @default(uuid())
-  productId         String   @unique
-  product           Product  @relation(fields: [productId], references: [id])
-  
-  mlItemId          String   @unique // The "MLA12345678" ID
-  mlPermalink       String?
-  
-  mlAccountId       String
-  mlAccount         MercadoLibreAccount @relation(fields: [mlAccountId], references: [id])
-  
-  syncEnabled       Boolean  @default(true)
-  lastSync          DateTime?
-  syncStatus        String?  // SUCCESS, FAILED
-  syncError         String?
-
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
-
-  @@map("mercadolibre_product_mappings")
 }
