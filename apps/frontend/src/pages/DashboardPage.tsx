@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import dayjs from 'dayjs';
 import { Card, Row, Col, Statistic, Button, Table, Spin, Empty, Segmented, FloatButton } from 'antd';
 import {
     ShoppingCartOutlined,
