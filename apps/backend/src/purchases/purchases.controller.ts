@@ -8,29 +8,33 @@ import { AuthGuard } from '@nestjs/passport';
 @Controller('purchases')
 @UseGuards(AuthGuard('jwt'))
 export class PurchasesController {
-    constructor(private readonly purchasesService: PurchasesService) { }
+  constructor(private readonly purchasesService: PurchasesService) {}
 
-    @Post()
-    @ApiOperation({ summary: 'Registrar una nueva compra' })
-    @ApiResponse({ status: 201, description: 'Compra registrada y stock actualizado exitosamente' })
-    create(@Body() createPurchaseDto: CreatePurchaseDto) {
-        return this.purchasesService.create(createPurchaseDto);
-    }
+  @Post()
+  @ApiOperation({ summary: 'Registrar una nueva compra' })
+  @ApiResponse({
+    status: 201,
+    description: 'Compra registrada y stock actualizado exitosamente',
+  })
+  create(@Body() createPurchaseDto: CreatePurchaseDto) {
+    return this.purchasesService.create(createPurchaseDto);
+  }
 
-    @Post('payments')
-    registerPayment(@Body() createPaymentDto: any) { // Use CreatePurchasePaymentDto
-        return this.purchasesService.registerPayment(createPaymentDto);
-    }
+  @Post('payments')
+  registerPayment(@Body() createPaymentDto: any) {
+    // Use CreatePurchasePaymentDto
+    return this.purchasesService.registerPayment(createPaymentDto);
+  }
 
-    @Get()
-    @ApiOperation({ summary: 'Listar historial de compras' })
-    findAll() {
-        return this.purchasesService.findAll();
-    }
+  @Get()
+  @ApiOperation({ summary: 'Listar historial de compras' })
+  findAll() {
+    return this.purchasesService.findAll();
+  }
 
-    @Get(':id')
-    @ApiOperation({ summary: 'Obtener detalle de una compra' })
-    findOne(@Param('id') id: string) {
-        return this.purchasesService.findOne(id);
-    }
+  @Get(':id')
+  @ApiOperation({ summary: 'Obtener detalle de una compra' })
+  findOne(@Param('id') id: string) {
+    return this.purchasesService.findOne(id);
+  }
 }

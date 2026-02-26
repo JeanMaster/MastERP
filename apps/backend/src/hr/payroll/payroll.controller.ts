@@ -7,25 +7,25 @@ import { AuthGuard } from '@nestjs/passport';
 @Controller('hr/payroll')
 @UseGuards(AuthGuard('jwt'))
 export class PayrollController {
-    constructor(private readonly payrollService: PayrollService) { }
+  constructor(private readonly payrollService: PayrollService) {}
 
-    @Post('period')
-    createPeriod(@Body() createPayrollPeriodDto: CreatePayrollPeriodDto) {
-        return this.payrollService.createPeriod(createPayrollPeriodDto);
-    }
+  @Post('period')
+  createPeriod(@Body() createPayrollPeriodDto: CreatePayrollPeriodDto) {
+    return this.payrollService.createPeriod(createPayrollPeriodDto);
+  }
 
-    @Get('period')
-    findAllPeriods() {
-        return this.payrollService.findAllPeriods();
-    }
+  @Get('period')
+  findAllPeriods() {
+    return this.payrollService.findAllPeriods();
+  }
 
-    @Get('period/:id')
-    findOnePeriod(@Param('id') id: string) {
-        return this.payrollService.findOnePeriod(id);
-    }
+  @Get('period/:id')
+  findOnePeriod(@Param('id') id: string) {
+    return this.payrollService.findOnePeriod(id);
+  }
 
-    @Post('generate')
-    generatePayroll(@Body() generatePayrollDto: GeneratePayrollDto) {
-        return this.payrollService.generatePayroll(generatePayrollDto);
-    }
+  @Post('generate')
+  generatePayroll(@Body() generatePayrollDto: GeneratePayrollDto) {
+    return this.payrollService.generatePayroll(generatePayrollDto);
+  }
 }

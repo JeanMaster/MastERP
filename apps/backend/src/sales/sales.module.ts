@@ -7,8 +7,8 @@ import { StatsModule } from '../stats/stats.module';
 import { MercadoLibreModule } from '../mercadolibre/mercadolibre.module';
 
 @Module({
-    imports: [InvoiceModule, CashRegisterModule, StatsModule, MercadoLibreModule],
-    providers: [SalesService],
-    controllers: [SalesController]
+  imports: [InvoiceModule, CashRegisterModule, StatsModule, MercadoLibreModule],
+  providers: [SalesService],
+  controllers: [SalesController],
 })
-export class SalesModule { }
+export class SalesModule {}

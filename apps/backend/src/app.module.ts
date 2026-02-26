@@ -68,4 +68,4 @@ import { MercadoLibreModule } from './mercadolibre/mercadolibre.module';
   controllers: [AppController, DevToolsController],
   providers: [AppService, DevToolsService],
 })
-export class AppModule { }
+export class AppModule {}

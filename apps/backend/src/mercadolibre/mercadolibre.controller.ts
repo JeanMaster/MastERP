@@ -1,11 +1,21 @@
-import { Controller, Get, Post, Delete, Put, Param, Query, Body, Res } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Delete,
+  Put,
+  Param,
+  Query,
+  Body,
+  Res,
+} from '@nestjs/common';
 import { MercadoLibreService } from './mercadolibre.service';
 import { ApiOperation, ApiTags, ApiQuery } from '@nestjs/swagger';
 
 @ApiTags('mercadolibre')
 @Controller('mercadolibre')
 export class MercadoLibreController {
-  constructor(private readonly mlService: MercadoLibreService) { }
+  constructor(private readonly mlService: MercadoLibreService) {}
 
   // ─── OAuth ──────────────────────────────────────────────
 
@@ -21,9 +31,13 @@ export class MercadoLibreController {
   async callback(@Query('code') code: string, @Res() res) {
     if (code) {
       await this.mlService.handleCallback(code);
-      return res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:5173'}/mercadolibre?status=success`);
+      return res.redirect(
+        `${process.env.FRONTEND_URL || 'http://localhost:5173'}/mercadolibre?status=success`,
+      );
     }
-    return res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:5173'}/mercadolibre?status=error`);
+    return res.redirect(
+      `${process.env.FRONTEND_URL || 'http://localhost:5173'}/mercadolibre?status=error`,
+    );
   }
 
   // ─── Accounts ───────────────────────────────────────────
@@ -44,7 +58,14 @@ export class MercadoLibreController {
 
   @Post('publish')
   @ApiOperation({ summary: 'Publish a product to Mercado Libre' })
-  async publishProduct(@Body() body: { productId: string; mlAccountId: string;[key: string]: any }) {
+  async publishProduct(
+    @Body()
+    body: {
+      productId: string;
+      mlAccountId: string;
+      [key: string]: any;
+    },
+  ) {
     const { productId, mlAccountId, ...overrides } = body;
     return this.mlService.publishProduct(productId, mlAccountId, overrides);
   }

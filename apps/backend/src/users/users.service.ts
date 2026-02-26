@@ -6,7 +6,7 @@ import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class UsersService {
-  constructor(private prisma: PrismaService) { }
+  constructor(private prisma: PrismaService) {}
 
   async create(createUserDto: CreateUserDto) {
     const hashedPassword = await bcrypt.hash(createUserDto.password, 10);
@@ -31,7 +31,7 @@ export class UsersService {
         createdAt: true,
         // Exclude password
       },
-      orderBy: { name: 'asc' }
+      orderBy: { name: 'asc' },
     });
   }
 
@@ -59,7 +59,9 @@ export class UsersService {
   async remove(id: string) {
     const user = await this.findOne(id);
     if (user.username === 'admin') {
-      throw new Error('No se puede eliminar el usuario administrador principal');
+      throw new Error(
+        'No se puede eliminar el usuario administrador principal',
+      );
     }
     return (this.prisma as any).user.delete({ where: { id } });
   }

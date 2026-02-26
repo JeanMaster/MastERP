@@ -1,4 +1,10 @@
-import { Injectable, Logger, HttpException, HttpStatus, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  HttpException,
+  HttpStatus,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import axios from 'axios';
 
@@ -7,7 +13,7 @@ export class MercadoLibreService {
   private readonly logger = new Logger(MercadoLibreService.name);
   private readonly mlApiUrl = 'https://api.mercadolibre.com';
 
-  constructor(private readonly prisma: PrismaService) { }
+  constructor(private readonly prisma: PrismaService) {}
 
   // ─── OAuth ──────────────────────────────────────────────
 
@@ -27,7 +33,14 @@ export class MercadoLibreService {
         redirect_uri: process.env.ML_REDIRECT_URI,
       });
 
-      const { access_token, refresh_token, expires_in, user_id, scope, token_type } = response.data;
+      const {
+        access_token,
+        refresh_token,
+        expires_in,
+        user_id,
+        scope,
+        token_type,
+      } = response.data;
 
       // Fetch username from ML profile
       let username: string | null = null;
@@ -61,15 +74,23 @@ export class MercadoLibreService {
         },
       });
     } catch (error: any) {
-      this.logger.error('Error in ML callback', error.response?.data || error.message);
-      throw new HttpException('Failed to authenticate with Mercado Libre', HttpStatus.BAD_GATEWAY);
+      this.logger.error(
+        'Error in ML callback',
+        error.response?.data || error.message,
+      );
+      throw new HttpException(
+        'Failed to authenticate with Mercado Libre',
+        HttpStatus.BAD_GATEWAY,
+      );
     }
   }
 
   // ─── Token Refresh ──────────────────────────────────────
 
   private async refreshToken(accountId: string): Promise<string> {
-    const account = await this.prisma.mercadoLibreAccount.findUnique({ where: { id: accountId } });
+    const account = await this.prisma.mercadoLibreAccount.findUnique({
+      where: { id: accountId },
+    });
     if (!account) throw new NotFoundException('ML account not found');
 
     try {
@@ -93,13 +114,21 @@ export class MercadoLibreService {
 
       return access_token;
     } catch (error: any) {
-      this.logger.error('Failed to refresh ML token', error.response?.data || error.message);
-      throw new HttpException('ML token refresh failed – re-authorize the account', HttpStatus.UNAUTHORIZED);
+      this.logger.error(
+        'Failed to refresh ML token',
+        error.response?.data || error.message,
+      );
+      throw new HttpException(
+        'ML token refresh failed – re-authorize the account',
+        HttpStatus.UNAUTHORIZED,
+      );
     }
   }
 
   private async getValidToken(accountId: string): Promise<string> {
-    const account = await this.prisma.mercadoLibreAccount.findUnique({ where: { id: accountId } });
+    const account = await this.prisma.mercadoLibreAccount.findUnique({
+      where: { id: accountId },
+    });
     if (!account) throw new NotFoundException('ML account not found');
 
     // Check if token is about to expire (within 5 minutes)
@@ -130,7 +159,9 @@ export class MercadoLibreService {
 
   async deleteAccount(accountId: string) {
     // First remove all mappings
-    await this.prisma.mercadoLibreProductMapping.deleteMany({ where: { mlAccountId: accountId } });
+    await this.prisma.mercadoLibreProductMapping.deleteMany({
+      where: { mlAccountId: accountId },
+    });
     return this.prisma.mercadoLibreAccount.delete({ where: { id: accountId } });
   }
 
@@ -153,7 +184,11 @@ export class MercadoLibreService {
     }
   }
 
-  async publishProduct(productId: string, mlAccountId: string, overrides: any = {}) {
+  async publishProduct(
+    productId: string,
+    mlAccountId: string,
+    overrides: any = {},
+  ) {
     const product = await this.prisma.product.findUnique({
       where: { id: productId },
       include: { currency: true, category: true },
@@ -165,11 +200,16 @@ export class MercadoLibreService {
       where: { productId },
     });
     if (existing) {
-      throw new HttpException('Product is already published on Mercado Libre', HttpStatus.CONFLICT);
+      throw new HttpException(
+        'Product is already published on Mercado Libre',
+        HttpStatus.CONFLICT,
+      );
     }
 
     const token = await this.getValidToken(mlAccountId);
-    const account = await this.prisma.mercadoLibreAccount.findUnique({ where: { id: mlAccountId } });
+    const account = await this.prisma.mercadoLibreAccount.findUnique({
+      where: { id: mlAccountId },
+    });
 
     // Build ML item payload with overrides
     const mlItem = {
@@ -177,19 +217,34 @@ export class MercadoLibreService {
       category_id: overrides.categoryId || 'MLV1055',
       price: Number(overrides.price || product.salePrice),
       currency_id: product.currency?.code === 'USD' ? 'USD' : 'VES',
-      available_quantity: Math.max(0, Math.floor(Number(overrides.availableQuantity !== undefined ? overrides.availableQuantity : product.stock))),
+      available_quantity: Math.max(
+        0,
+        Math.floor(
+          Number(
+            overrides.availableQuantity !== undefined
+              ? overrides.availableQuantity
+              : product.stock,
+          ),
+        ),
+      ),
       buying_mode: 'buy_it_now',
       condition: 'new',
       listing_type_id: overrides.listingTypeId || 'gold_special',
-      description: { plain_text: overrides.description || product.description || product.name },
-      pictures: overrides.images && overrides.images.length > 0
-        ? overrides.images.map(img => ({ source: img }))
-        : product.images.map(img => ({ source: img })),
+      description: {
+        plain_text:
+          overrides.description || product.description || product.name,
+      },
+      pictures:
+        overrides.images && overrides.images.length > 0
+          ? overrides.images.map((img) => ({ source: img }))
+          : product.images.map((img) => ({ source: img })),
     };
 
     // --- Handling Mock Account ---
     if (token === 'mock_access_token') {
-      this.logger.log(`Simulating publication for MOCK account: ${account?.username}`);
+      this.logger.log(
+        `Simulating publication for MOCK account: ${account?.username}`,
+      );
       const mockMlItemId = `MLV${Math.floor(Math.random() * 1000000000)}`;
       return await this.prisma.mercadoLibreProductMapping.create({
         data: {
@@ -205,7 +260,10 @@ export class MercadoLibreService {
 
     try {
       const response = await axios.post(`${this.mlApiUrl}/items`, mlItem, {
-        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
       });
 
       const { id: mlItemId, permalink } = response.data;
@@ -222,9 +280,13 @@ export class MercadoLibreService {
         },
       });
     } catch (error: any) {
-      this.logger.error('Failed to publish to ML', error.response?.data || error.message);
+      this.logger.error(
+        'Failed to publish to ML',
+        error.response?.data || error.message,
+      );
       throw new HttpException(
-        error.response?.data?.message || 'Failed to publish product on Mercado Libre',
+        error.response?.data?.message ||
+          'Failed to publish product on Mercado Libre',
         HttpStatus.BAD_GATEWAY,
       );
     }
@@ -243,7 +305,9 @@ export class MercadoLibreService {
 
     // --- Handling Mock Account ---
     if (token === 'mock_access_token') {
-      this.logger.log(`Simulating sync for MOCK account: ${mapping.mlAccount.username}`);
+      this.logger.log(
+        `Simulating sync for MOCK account: ${mapping.mlAccount.username}`,
+      );
       return await this.prisma.mercadoLibreProductMapping.update({
         where: { id: mapping.id },
         data: { syncStatus: 'SUCCESS', lastSync: new Date(), syncError: null },
@@ -252,13 +316,20 @@ export class MercadoLibreService {
 
     const updatePayload = {
       price: Number(mapping.product.salePrice),
-      available_quantity: Math.max(0, Math.floor(Number(mapping.product.stock))),
+      available_quantity: Math.max(
+        0,
+        Math.floor(Number(mapping.product.stock)),
+      ),
     };
 
     try {
-      await axios.put(`${this.mlApiUrl}/items/${mapping.mlItemId}`, updatePayload, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      await axios.put(
+        `${this.mlApiUrl}/items/${mapping.mlItemId}`,
+        updatePayload,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        },
+      );
 
       return await this.prisma.mercadoLibreProductMapping.update({
         where: { id: mapping.id },
@@ -270,7 +341,10 @@ export class MercadoLibreService {
         where: { id: mapping.id },
         data: { syncStatus: 'FAILED', syncError: errorMsg },
       });
-      throw new HttpException(`Sync failed: ${errorMsg}`, HttpStatus.BAD_GATEWAY);
+      throw new HttpException(
+        `Sync failed: ${errorMsg}`,
+        HttpStatus.BAD_GATEWAY,
+      );
     }
   }
 
@@ -287,7 +361,9 @@ export class MercadoLibreService {
     // --- Handling Mock Account ---
     if (token === 'mock_access_token') {
       this.logger.log(`Simulating unpublish for MOCK account`);
-      return this.prisma.mercadoLibreProductMapping.delete({ where: { id: mapping.id } });
+      return this.prisma.mercadoLibreProductMapping.delete({
+        where: { id: mapping.id },
+      });
     }
 
     try {
@@ -298,11 +374,16 @@ export class MercadoLibreService {
         { headers: { Authorization: `Bearer ${token}` } },
       );
     } catch (error: any) {
-      this.logger.warn('Could not close ML listing', error.response?.data || error.message);
+      this.logger.warn(
+        'Could not close ML listing',
+        error.response?.data || error.message,
+      );
     }
 
     // Remove local mapping
-    return this.prisma.mercadoLibreProductMapping.delete({ where: { id: mapping.id } });
+    return this.prisma.mercadoLibreProductMapping.delete({
+      where: { id: mapping.id },
+    });
   }
 
   // ─── Pause Listing ──────────────────────────────────────
@@ -318,7 +399,9 @@ export class MercadoLibreService {
 
     // --- Handling Mock Account ---
     if (token === 'mock_access_token') {
-      this.logger.log(`Simulating pause for MOCK account: ${mapping.mlAccount.username}`);
+      this.logger.log(
+        `Simulating pause for MOCK account: ${mapping.mlAccount.username}`,
+      );
       return await this.prisma.mercadoLibreProductMapping.update({
         where: { id: mapping.id },
         data: { syncStatus: 'SUCCESS', lastSync: new Date() },
@@ -339,7 +422,10 @@ export class MercadoLibreService {
     } catch (error: any) {
       const errorMsg = error.response?.data?.message || error.message;
       this.logger.error(`Pause failed: ${errorMsg}`);
-      throw new HttpException(`Pause failed: ${errorMsg}`, HttpStatus.BAD_GATEWAY);
+      throw new HttpException(
+        `Pause failed: ${errorMsg}`,
+        HttpStatus.BAD_GATEWAY,
+      );
     }
   }
 
@@ -356,7 +442,9 @@ export class MercadoLibreService {
 
     // --- Handling Mock Account ---
     if (token === 'mock_access_token') {
-      this.logger.log(`[Auto-Sync] Simulating stock sync for product ${productId}`);
+      this.logger.log(
+        `[Auto-Sync] Simulating stock sync for product ${productId}`,
+      );
       await this.prisma.mercadoLibreProductMapping.update({
         where: { id: mapping.id },
         data: { lastSync: new Date() },
@@ -368,7 +456,12 @@ export class MercadoLibreService {
       // Just update stock
       await axios.put(
         `${this.mlApiUrl}/items/${mapping.mlItemId}`,
-        { available_quantity: Math.max(0, Math.floor(Number(mapping.product.stock))) },
+        {
+          available_quantity: Math.max(
+            0,
+            Math.floor(Number(mapping.product.stock)),
+          ),
+        },
         { headers: { Authorization: `Bearer ${token}` } },
       );
 
@@ -380,7 +473,10 @@ export class MercadoLibreService {
       this.logger.warn(`Auto-sync failed for ${productId}: ${error.message}`);
       await this.prisma.mercadoLibreProductMapping.update({
         where: { id: mapping.id },
-        data: { syncStatus: 'FAILED', syncError: 'Auto-sync failed: ' + error.message },
+        data: {
+          syncStatus: 'FAILED',
+          syncError: 'Auto-sync failed: ' + error.message,
+        },
       });
     }
   }
@@ -391,7 +487,16 @@ export class MercadoLibreService {
     return this.prisma.mercadoLibreProductMapping.findMany({
       where: mlAccountId ? { mlAccountId } : undefined,
       include: {
-        product: { select: { id: true, name: true, sku: true, salePrice: true, stock: true, images: true } },
+        product: {
+          select: {
+            id: true,
+            name: true,
+            sku: true,
+            salePrice: true,
+            stock: true,
+            images: true,
+          },
+        },
         mlAccount: { select: { id: true, username: true } },
       },
       orderBy: { updatedAt: 'desc' },

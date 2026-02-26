@@ -30,7 +30,9 @@ async function bootstrap() {
   // Swagger/OpenAPI
   const config = new DocumentBuilder()
     .setTitle('Valery Corporativo API')
-    .setDescription('API REST para el sistema ERP Valery Corporativo - Migración Web')
+    .setDescription(
+      'API REST para el sistema ERP Valery Corporativo - Migración Web',
+    )
     .setVersion('1.0')
     .addTag('health', 'Endpoints de salud del sistema')
     .addBearerAuth()

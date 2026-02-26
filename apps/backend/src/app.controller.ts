@@ -5,7 +5,7 @@ import { AppService } from './app.service';
 @ApiTags('health')
 @Controller()
 export class AppController {
-  constructor(private readonly appService: AppService) { }
+  constructor(private readonly appService: AppService) {}
 
   @Get()
   @ApiOperation({ summary: 'Health check del servidor' })
@@ -14,8 +14,8 @@ export class AppController {
     description: 'Servidor funcionando correctamente',
     schema: {
       type: 'string',
-      example: 'Valery Corporativo API - Backend funcionando correctamente'
-    }
+      example: 'Valery Corporativo API - Backend funcionando correctamente',
+    },
   })
   getHello(): string {
     return this.appService.getHello();

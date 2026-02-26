@@ -1,47 +1,54 @@
-import { IsNotEmpty, IsNumber, IsString, IsOptional, IsDateString, Min } from 'class-validator';
+import {
+  IsNotEmpty,
+  IsNumber,
+  IsString,
+  IsOptional,
+  IsDateString,
+  Min,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class CreateExpenseDto {
-    @IsNotEmpty()
-    @IsString()
-    description: string;
+  @IsNotEmpty()
+  @IsString()
+  description: string;
 
-    @IsNotEmpty()
-    @IsNumber()
-    @Min(0)
-    @Type(() => Number)
-    amount: number;
+  @IsNotEmpty()
+  @IsNumber()
+  @Min(0)
+  @Type(() => Number)
+  amount: number;
 
-    @IsNotEmpty()
-    @IsString()
-    currencyCode: string;
+  @IsNotEmpty()
+  @IsString()
+  currencyCode: string;
 
-    @IsNotEmpty()
-    @IsNumber()
-    @Type(() => Number)
-    exchangeRate: number;
+  @IsNotEmpty()
+  @IsNumber()
+  @Type(() => Number)
+  exchangeRate: number;
 
-    @IsOptional()
-    @IsDateString()
-    date?: string;
+  @IsOptional()
+  @IsDateString()
+  date?: string;
 
-    @IsNotEmpty()
-    @IsString()
-    category: string;
+  @IsNotEmpty()
+  @IsString()
+  category: string;
 
-    @IsNotEmpty()
-    @IsString()
-    paymentMethod: string;
+  @IsNotEmpty()
+  @IsString()
+  paymentMethod: string;
 
-    @IsOptional()
-    @IsString()
-    reference?: string;
+  @IsOptional()
+  @IsString()
+  reference?: string;
 
-    @IsOptional()
-    @IsString()
-    notes?: string;
+  @IsOptional()
+  @IsString()
+  notes?: string;
 
-    @IsOptional()
-    @IsString()
-    bankAccountId?: string;
+  @IsOptional()
+  @IsString()
+  bankAccountId?: string;
 }

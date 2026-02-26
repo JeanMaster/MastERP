@@ -4,9 +4,9 @@ import { StatsController } from './stats.controller';
 import { PrismaModule } from '../prisma/prisma.module';
 
 @Module({
-    imports: [PrismaModule],
-    controllers: [StatsController],
-    providers: [StatsService],
-    exports: [StatsService],
+  imports: [PrismaModule],
+  controllers: [StatsController],
+  providers: [StatsService],
+  exports: [StatsService],
 })
-export class StatsModule { }
+export class StatsModule {}

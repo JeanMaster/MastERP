@@ -5,17 +5,19 @@ import { UpdateExpenseDto } from './dto/update-expense.dto';
 
 @Injectable()
 export class ExpensesService {
-  constructor(private prisma: PrismaService) { }
+  constructor(private prisma: PrismaService) {}
 
   async create(createExpenseDto: CreateExpenseDto) {
     // Get current exchange rate for secondary currency if not provided or 1
     let exchangeRate = createExpenseDto.exchangeRate;
     if (!exchangeRate || exchangeRate === 1) {
       const companySettings = await this.prisma.companySettings.findFirst({
-        include: { preferredSecondaryCurrency: true }
+        include: { preferredSecondaryCurrency: true },
       });
       if (companySettings?.preferredSecondaryCurrency?.exchangeRate) {
-        exchangeRate = Number(companySettings.preferredSecondaryCurrency.exchangeRate);
+        exchangeRate = Number(
+          companySettings.preferredSecondaryCurrency.exchangeRate,
+        );
       }
     }
 
@@ -27,7 +29,9 @@ export class ExpensesService {
           amount: createExpenseDto.amount,
           currencyCode: createExpenseDto.currencyCode,
           exchangeRate: exchangeRate || 1,
-          date: createExpenseDto.date ? new Date(createExpenseDto.date) : new Date(),
+          date: createExpenseDto.date
+            ? new Date(createExpenseDto.date)
+            : new Date(),
           category: createExpenseDto.category,
           paymentMethod: createExpenseDto.paymentMethod,
           reference: createExpenseDto.reference,
@@ -40,11 +44,13 @@ export class ExpensesService {
       if (createExpenseDto.bankAccountId) {
         const bankAccount = await (tx as any).bankAccount.findUnique({
           where: { id: createExpenseDto.bankAccountId },
-          include: { currency: true }
+          include: { currency: true },
         });
 
         if (!bankAccount) {
-          throw new NotFoundException(`Cuenta bancaria ${createExpenseDto.bankAccountId} no encontrada`);
+          throw new NotFoundException(
+            `Cuenta bancaria ${createExpenseDto.bankAccountId} no encontrada`,
+          );
         }
 
         // Calculate amount in bank account's currency
@@ -56,10 +62,12 @@ export class ExpensesService {
             // Bank is VES, Expense is likely USD (Secondary)
             // Or Expense is USD, Bank is VES.
             // Use the determined exchangeRate
-            amountInBankCurrency = createExpenseDto.amount * (exchangeRate || 1);
+            amountInBankCurrency =
+              createExpenseDto.amount * (exchangeRate || 1);
           } else {
             // Bank is USD (Secondary), Expense is VES (Primary)
-            amountInBankCurrency = createExpenseDto.amount / (exchangeRate || 1);
+            amountInBankCurrency =
+              createExpenseDto.amount / (exchangeRate || 1);
           }
         }
 
@@ -71,21 +79,22 @@ export class ExpensesService {
             amount: amountInBankCurrency,
             category: 'EXPENSE',
             description: `Gasto: ${createExpenseDto.description}`,
-            reference: createExpenseDto.reference || `EXP-${expense.id.substring(0, 8)}`,
+            reference:
+              createExpenseDto.reference || `EXP-${expense.id.substring(0, 8)}`,
             date: expense.date,
-          }
+          },
         });
 
         // Update Expense with movement link
         await (tx as any).expense.update({
           where: { id: expense.id },
-          data: { bankMovementId: movement.id }
+          data: { bankMovementId: movement.id },
         });
 
         // Update Bank Balance
         await (tx as any).bankAccount.update({
           where: { id: bankAccount.id },
-          data: { balance: { decrement: amountInBankCurrency } }
+          data: { balance: { decrement: amountInBankCurrency } },
         });
       }
 
@@ -126,7 +135,9 @@ export class ExpensesService {
         amount: updateExpenseDto.amount,
         currencyCode: updateExpenseDto.currencyCode,
         exchangeRate: updateExpenseDto.exchangeRate,
-        date: updateExpenseDto.date ? new Date(updateExpenseDto.date) : undefined,
+        date: updateExpenseDto.date
+          ? new Date(updateExpenseDto.date)
+          : undefined,
         category: updateExpenseDto.category,
         paymentMethod: updateExpenseDto.paymentMethod,
         reference: updateExpenseDto.reference,

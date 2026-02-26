@@ -5,9 +5,9 @@ import { ContextBuilderService } from './context-builder.service';
 import { PrismaModule } from '../prisma/prisma.module';
 
 @Module({
-    imports: [PrismaModule],
-    controllers: [AIController],
-    providers: [AIService, ContextBuilderService],
-    exports: [AIService],
+  imports: [PrismaModule],
+  controllers: [AIController],
+  providers: [AIService, ContextBuilderService],
+  exports: [AIService],
 })
-export class AIModule { }
+export class AIModule {}

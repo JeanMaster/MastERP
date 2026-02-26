@@ -3,9 +3,6 @@ import { EmployeesModule } from './employees/employees.module';
 import { PayrollModule } from './payroll/payroll.module';
 
 @Module({
-    imports: [
-        EmployeesModule,
-        PayrollModule,
-    ],
+  imports: [EmployeesModule, PayrollModule],
 })
-export class HrModule { }
+export class HrModule {}

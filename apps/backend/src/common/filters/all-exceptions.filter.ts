@@ -1,42 +1,43 @@
 import {
-    ExceptionFilter,
-    Catch,
-    ArgumentsHost,
-    HttpException,
-    HttpStatus,
-    Logger,
+  ExceptionFilter,
+  Catch,
+  ArgumentsHost,
+  HttpException,
+  HttpStatus,
+  Logger,
 } from '@nestjs/common';
 import { HttpAdapterHost } from '@nestjs/core';
 
 @Catch()
 export class AllExceptionsFilter implements ExceptionFilter {
-    private readonly logger = new Logger('AllExceptionsFilter');
+  private readonly logger = new Logger('AllExceptionsFilter');
 
-    constructor(private readonly httpAdapterHost: HttpAdapterHost) { }
+  constructor(private readonly httpAdapterHost: HttpAdapterHost) {}
 
-    catch(exception: any, host: ArgumentsHost): void {
-        const { httpAdapter } = this.httpAdapterHost;
-        const ctx = host.switchToHttp();
+  catch(exception: any, host: ArgumentsHost): void {
+    const { httpAdapter } = this.httpAdapterHost;
+    const ctx = host.switchToHttp();
 
-        const httpStatus =
-            exception instanceof HttpException
-                ? exception.getStatus()
-                : HttpStatus.INTERNAL_SERVER_ERROR;
+    const httpStatus =
+      exception instanceof HttpException
+        ? exception.getStatus()
+        : HttpStatus.INTERNAL_SERVER_ERROR;
 
-        const responseBody = {
-            statusCode: httpStatus,
-            timestamp: new Date().toISOString(),
-            path: httpAdapter.getRequestUrl(ctx.getRequest()),
-            message: exception.message || 'Internal server error',
-            // En producción, si queremos ver el detalle para debuguear este problema específico
-            stack: process.env.NODE_ENV === 'production' ? exception.stack : undefined,
-        };
+    const responseBody = {
+      statusCode: httpStatus,
+      timestamp: new Date().toISOString(),
+      path: httpAdapter.getRequestUrl(ctx.getRequest()),
+      message: exception.message || 'Internal server error',
+      // En producción, si queremos ver el detalle para debuguear este problema específico
+      stack:
+        process.env.NODE_ENV === 'production' ? exception.stack : undefined,
+    };
 
-        this.logger.error(
-            `Exception at ${responseBody.path}: ${exception.message}`,
-            exception.stack,
-        );
+    this.logger.error(
+      `Exception at ${responseBody.path}: ${exception.message}`,
+      exception.stack,
+    );
 
-        httpAdapter.reply(ctx.getResponse(), responseBody, httpStatus);
-    }
+    httpAdapter.reply(ctx.getResponse(), responseBody, httpStatus);
+  }
 }
