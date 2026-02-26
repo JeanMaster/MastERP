@@ -19,6 +19,7 @@ export const HourlyPerformanceReport = ({ currency, startDate, endDate }: Hourly
     const [loading, setLoading] = useState(true);
     const [data, setData] = useState<HourlyPerformanceResponse | null>(null);
     const [includeSundays, setIncludeSundays] = useState(false);
+    const [use12Hour, setUse12Hour] = useState(false);
 
     useEffect(() => {
         fetchData();
@@ -34,6 +35,13 @@ export const HourlyPerformanceReport = ({ currency, startDate, endDate }: Hourly
         } finally {
             setLoading(false);
         }
+    };
+
+    const formatHour = (hour: number) => {
+        if (!use12Hour) return `${hour}:00`;
+        const period = hour >= 12 ? 'PM' : 'AM';
+        const displayHour = hour % 12 || 12;
+        return `${displayHour} ${period}`;
     };
 
     if (loading && !data) {
@@ -55,15 +63,26 @@ export const HourlyPerformanceReport = ({ currency, startDate, endDate }: Hourly
             <Card>
                 <Row gutter={16} align="middle">
                     <Col xs={24} sm={12}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                            <span style={{ fontWeight: 'bold' }}>Incluir Domingos:</span>
-                            <Switch
-                                checked={includeSundays}
-                                onChange={setIncludeSundays}
-                                checkedChildren="Sí"
-                                unCheckedChildren="No"
-                            />
-                        </div>
+                        <Space size="large">
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                                <span style={{ fontWeight: 'bold' }}>Incluir Domingos:</span>
+                                <Switch
+                                    checked={includeSundays}
+                                    onChange={setIncludeSundays}
+                                    checkedChildren="Sí"
+                                    unCheckedChildren="No"
+                                />
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                                <span style={{ fontWeight: 'bold' }}>Formato 12h:</span>
+                                <Switch
+                                    checked={use12Hour}
+                                    onChange={setUse12Hour}
+                                    checkedChildren="12h"
+                                    unCheckedChildren="24h"
+                                />
+                            </div>
+                        </Space>
                     </Col>
                 </Row>
             </Card>
@@ -84,7 +103,7 @@ export const HourlyPerformanceReport = ({ currency, startDate, endDate }: Hourly
                     <Card bordered={false} className="stat-card">
                         <Statistic
                             title="Hora Pico"
-                            value={data ? `${data.stats.peakHour}:00` : '00:00'}
+                            value={data ? formatHour(data.stats.peakHour) : '00:00'}
                             prefix={<RiseOutlined />}
                         />
                     </Card>
@@ -107,9 +126,13 @@ export const HourlyPerformanceReport = ({ currency, startDate, endDate }: Hourly
                     <ResponsiveContainer width="100%" height="100%">
                         <BarChart data={data?.data || []}>
                             <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                            <XAxis dataKey="label" />
+                            <XAxis
+                                dataKey="hour"
+                                tickFormatter={formatHour}
+                            />
                             <YAxis />
                             <Tooltip
+                                labelFormatter={formatHour}
                                 formatter={(value: number) => [
                                     `${formatVenezuelanPrice(value, currencySymbol)}`,
                                     'Total Ventas'
