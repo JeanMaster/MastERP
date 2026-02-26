@@ -18,12 +18,21 @@ interface HourlyPerformanceReportProps {
 export const HourlyPerformanceReport = ({ currency, startDate, endDate }: HourlyPerformanceReportProps) => {
     const [loading, setLoading] = useState(true);
     const [data, setData] = useState<HourlyPerformanceResponse | null>(null);
-    const [includeSundays, setIncludeSundays] = useState(false);
-    const [use12Hour, setUse12Hour] = useState(false);
+    const [includeSundays, setIncludeSundays] = useState(() => {
+        return localStorage.getItem('reports_include_sundays') === 'true';
+    });
+    const [use12Hour, setUse12Hour] = useState(() => {
+        return localStorage.getItem('reports_use_12hour') === 'true';
+    });
 
     useEffect(() => {
         fetchData();
+        localStorage.setItem('reports_include_sundays', includeSundays.toString());
     }, [currency, startDate, endDate, includeSundays]);
+
+    useEffect(() => {
+        localStorage.setItem('reports_use_12hour', use12Hour.toString());
+    }, [use12Hour]);
 
     const fetchData = async () => {
         setLoading(true);
