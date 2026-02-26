@@ -9,6 +9,7 @@ import InflationReport from './components/InflationReport';
 import WeeklyPerformanceReport from './components/WeeklyPerformanceReport';
 import MonthlyDailyPerformanceReport from './components/MonthlyDailyPerformanceReport';
 import { ExpenseReports } from './components/ExpenseReports';
+import { HourlyPerformanceReport } from './components/HourlyPerformanceReport';
 
 export const ReportsPage = () => {
     const [activeTab, setActiveTab] = useState('inventory');
@@ -58,6 +59,11 @@ export const ReportsPage = () => {
             key: 'monthly-daily',
             label: 'Mapa de Ventas (Mensual)',
             children: <MonthlyDailyPerformanceReport />
+        },
+        {
+            key: 'hourly',
+            label: 'Horas Pico',
+            children: <HourlyPerformanceReport currency="VES" />
         }
     ];
 

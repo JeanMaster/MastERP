@@ -1714,6 +1714,84 @@ export class StatsService {
         };
     }
 
+    async getHourlyPerformance(currencyCode: string = 'VES', startDate?: string, endDate?: string, includeSundays: boolean = false) {
+        const dateFilter: any = {};
+        if (startDate || endDate) {
+            if (startDate) dateFilter.gte = dayjs(startDate).startOf('day').toDate();
+            if (endDate) dateFilter.lte = dayjs(endDate).endOf('day').toDate();
+        } else {
+            dateFilter.gte = dayjs().startOf('month').toDate();
+        }
+
+        const allCurrencies = await this.prisma.currency.findMany({ where: { active: true } });
+        const targetCurrency = allCurrencies.find(c => c.code === currencyCode);
+
+        const companySettings = await this.prisma.companySettings.findFirst({
+            include: { preferredSecondaryCurrency: true }
+        });
+        const refCurrency = companySettings?.preferredSecondaryCurrency;
+        const currentRefRate = Number(refCurrency?.exchangeRate || 1);
+
+        let crossRateFactor = 1;
+        if (currencyCode === 'VES') {
+            crossRateFactor = currentRefRate;
+        } else if (targetCurrency && refCurrency && targetCurrency.code !== refCurrency.code) {
+            const tr = Number(targetCurrency.exchangeRate || 1);
+            if (tr > 0) crossRateFactor = currentRefRate / tr;
+        }
+
+        const sales = await this.prisma.sale.findMany({
+            where: { active: true, createdAt: dateFilter },
+            select: { total: true, createdAt: true, exchangeRate: true, paymentMethod: true }
+        });
+
+        // Initialize hours (0-23)
+        const performance: Record<number, { hour: number, total: number, count: number }> = {};
+        for (let i = 0; i < 24; i++) {
+            performance[i] = { hour: i, total: 0, count: 0 };
+        }
+
+        sales.forEach(sale => {
+            const saleDate = dayjs(sale.createdAt);
+            const dayOfWeek = saleDate.day(); // 0 = Sunday
+
+            if (!includeSundays && dayOfWeek === 0) return;
+
+            const hour = saleDate.hour();
+
+            const { totalInTarget } = this.revalueSaleByPayments(
+                sale,
+                currentRefRate,
+                crossRateFactor,
+                currencyCode === 'VES',
+                allCurrencies
+            );
+
+            performance[hour].total += totalInTarget;
+            performance[hour].count += 1;
+        });
+
+        const results = Object.values(performance);
+        const totalSalesSum = results.reduce((sum, h) => sum + h.total, 0);
+
+        // Find peak hour
+        const peakHour = results.reduce((prev, current) => (prev.total > current.total) ? prev : current, results[0]);
+
+        return {
+            data: results.map(h => ({
+                ...h,
+                label: `${h.hour}:00`,
+                percentage: totalSalesSum > 0 ? (h.total / totalSalesSum) * 100 : 0
+            })),
+            stats: {
+                totalSalesSum,
+                peakHour: peakHour.hour,
+                peakAmount: peakHour.total,
+                excludedSundays: !includeSundays
+            }
+        };
+    }
+
     /**
      * Helper to revalue a sale based on its payment methods.
      * Treats Divisas as value-preserved (converted at current rate)

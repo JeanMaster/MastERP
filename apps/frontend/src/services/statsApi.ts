@@ -197,7 +197,30 @@ export const statsApi = {
         });
         return response.data;
     },
+
+    getHourlyPerformance: async (currency: string, includeSundays: boolean, startDate?: string, endDate?: string): Promise<HourlyPerformanceResponse> => {
+        const response = await api.get('/stats/hourly-performance', {
+            params: { currency, includeSundays, startDate, endDate }
+        });
+        return response.data;
+    },
 };
+
+export interface HourlyPerformanceResponse {
+    data: {
+        hour: number;
+        label: string;
+        total: number;
+        count: number;
+        percentage: number;
+    }[];
+    stats: {
+        totalSalesSum: number;
+        peakHour: number;
+        peakAmount: number;
+        excludedSundays: boolean;
+    };
+}
 
 export interface ExpenseReport {
     totalSales: number;

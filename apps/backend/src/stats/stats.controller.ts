@@ -111,6 +111,22 @@ export class StatsController {
     ) {
         return this.statsService.getMonthlyDailyPerformance(currency, startDate, endDate);
     }
+
+    @Get('hourly-performance')
+    @ApiOperation({ summary: 'Get sales performance by hour of the day (0-23)' })
+    @ApiQuery({ name: 'currency', required: false })
+    @ApiQuery({ name: 'startDate', required: false })
+    @ApiQuery({ name: 'endDate', required: false })
+    @ApiQuery({ name: 'includeSundays', required: false, type: Boolean })
+    getHourlyPerformance(
+        @Query('currency') currency: string = 'VES',
+        @Query('startDate') startDate?: string,
+        @Query('endDate') endDate?: string,
+        @Query('includeSundays') includeSundays: any = 'false'
+    ) {
+        return this.statsService.getHourlyPerformance(currency, startDate, endDate, includeSundays === 'true');
+    }
+
     @Get('expenses')
     @ApiOperation({ summary: 'Get expenses report broken down by category' })
     @ApiQuery({ name: 'currency', required: false })
