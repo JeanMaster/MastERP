@@ -235,7 +235,7 @@ export const InventoryReports = () => {
                     columns={depletionColumns}
                     rowKey="name"
                     pagination={{
-                        pageSize: 10,
+                        defaultPageSize: 10,
                         showSizeChanger: true,
                         pageSizeOptions: ['10', '20', '50']
                     }}

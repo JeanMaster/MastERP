@@ -182,6 +182,17 @@ export const CurrencyFormModal = ({ open, currency, onClose }: CurrencyFormModal
                                             style={{ width: '100%' }}
                                             precision={4}
                                             min={0.0001}
+                                            onKeyDown={(e) => {
+                                                if (e.key === ',') {
+                                                    e.preventDefault();
+                                                    const input = e.target as HTMLInputElement;
+                                                    const start = input.selectionStart || 0;
+                                                    const end = input.selectionEnd || 0;
+                                                    input.setRangeText('.', start, end, 'end');
+                                                    const event = new Event('input', { bubbles: true });
+                                                    input.dispatchEvent(event);
+                                                }
+                                            }}
                                         />
                                     </Form.Item>
                                 )

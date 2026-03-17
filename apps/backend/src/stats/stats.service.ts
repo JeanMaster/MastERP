@@ -419,37 +419,42 @@ export class StatsService {
     const velocityMap = new Map<string, number>();
     salesInLast180Days.forEach((item) => {
       const totalSold = Number(item._sum.quantity || 0);
-      velocityMap.set(item.productId, totalSold / 180);
+      velocityMap.set(item.productId, totalSold);
     });
 
-    // Get all active products with their current stock and sales info
+    // Get all active products with their current stock, sales info, and createdAt
     const allProducts = await this.prisma.product.findMany({
       where: { active: true },
       select: {
         id: true,
         name: true,
         stock: true,
+        createdAt: true,
         category: { select: { name: true } },
       },
     });
 
     const depletionForecast = allProducts
       .flatMap((p) => {
-        const velocity = velocityMap.get(p.id) || 0;
+        const totalSold = velocityMap.get(p.id) || 0; // The map actually stores (totalSold / 180) currently, but we will fix that above
         const stock = Number(p.stock);
 
-        if (velocity <= 0) return []; // No sales, no forecast
+        if (totalSold <= 0) return []; // No sales, no forecast
 
-        const daysRemaining = Math.ceil(stock / velocity);
+        // Calculate actual product age in days, capped at 180
+        const ageInDays = Math.max(1, Math.min(180, dayjs().diff(dayjs(p.createdAt), 'day')));
+        const actualVelocity = totalSold / ageInDays;
+
+        const daysRemaining = Math.max(0, Math.ceil(stock / actualVelocity));
         if (daysRemaining > 20) return []; // Only critical ones
 
         return [
           {
             name: p.name,
             stock: stock,
-            dailySalesVelocity: velocity,
+            dailySalesVelocity: actualVelocity,
             daysRemaining,
-            unitsNeeded6Months: Math.ceil(velocity * projectionDays),
+            unitsNeeded6Months: Math.ceil(actualVelocity * projectionDays),
             category: p.category?.name || 'Sin Categoría',
           },
         ];
