@@ -10,6 +10,7 @@ import WeeklyPerformanceReport from './components/WeeklyPerformanceReport';
 import MonthlyDailyPerformanceReport from './components/MonthlyDailyPerformanceReport';
 import { ExpenseReports } from './components/ExpenseReports';
 import { HourlyPerformanceReport } from './components/HourlyPerformanceReport';
+import { ProductsReport } from './components/ProductsReport';
 
 export const ReportsPage = () => {
     const [activeTab, setActiveTab] = useState('inventory');
@@ -39,6 +40,11 @@ export const ReportsPage = () => {
             key: 'top-products',
             label: 'Productos Más Vendidos',
             children: <TopProductsReport />
+        },
+        {
+            key: 'products',
+            label: 'Producto',
+            children: <ProductsReport />
         },
         {
             key: 'cogs',

@@ -204,6 +204,16 @@ export const statsApi = {
         });
         return response.data;
     },
+
+    getProductsReport: async (currency?: string): Promise<ProductsReportItem[]> => {
+        const response = await api.get('/stats/products-report', { params: { currency } });
+        return response.data;
+    },
+
+    getProductStats: async (id: string, currency?: string): Promise<ProductStatsResponse> => {
+        const response = await api.get(`/stats/product/${id}`, { params: { currency } });
+        return response.data;
+    },
 };
 
 export interface HourlyPerformanceResponse {
@@ -242,4 +252,34 @@ export interface MonthlyDailyPerformance {
     count: number;
     status: 'HIGH' | 'AVERAGE' | 'LOW';
     percentage: number;
+}
+
+export interface ProductsReportItem {
+    id: string;
+    name: string;
+    stock: number;
+    dailySalesVelocity: number;
+    daysRemaining: number;
+    unitsNeeded6Months: number;
+    category: string;
+}
+
+export interface ProductStatsResponse {
+    product: {
+        id: string;
+        name: string;
+        stock: number;
+        category: string;
+        costInTarget: number;
+        margin: number;
+    };
+    salesHistory: {
+        month: string;
+        unitsSold: number;
+        revenue: number;
+    }[];
+    metrics: {
+        totalUnitsSold6Months: number;
+        totalRevenue6Months: number;
+    };
 }

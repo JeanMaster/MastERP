@@ -1,4 +1,4 @@
-import { Controller, Get, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Query, UseGuards, Param } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiQuery } from '@nestjs/swagger';
 import { StatsService } from './stats.service';
 import { AuthGuard } from '@nestjs/passport';
@@ -157,5 +157,22 @@ export class StatsController {
     @Query('endDate') endDate?: string,
   ) {
     return this.statsService.getExpenseStats(currency, startDate, endDate);
+  }
+
+  @Get('products-report')
+  @ApiOperation({ summary: 'Get all products with depletion forecast' })
+  @ApiQuery({ name: 'currency', required: false })
+  getProductsReport(@Query('currency') currency: string = 'VES') {
+    return this.statsService.getProductsReport(currency);
+  }
+
+  @Get('product/:id')
+  @ApiOperation({ summary: 'Get detailed stats for a specific product' })
+  @ApiQuery({ name: 'currency', required: false })
+  getProductStats(
+    @Param('id') id: string,
+    @Query('currency') currency: string = 'VES'
+  ) {
+    return this.statsService.getProductStats(id, currency);
   }
 }

@@ -2613,4 +2613,165 @@ export class StatsService {
 
     return { totalInTarget, breakdown, typeBreakdown };
   }
+
+  async getProductsReport(currencyCode: string = 'VES') {
+    // Depletion Forecast for ALL products based on last 180 days velocity
+    const projectionDays = 180;
+    const sixMonthsAgo = dayjs().subtract(180, 'days').toDate();
+    const salesInLast180Days = await this.prisma.saleItem.groupBy({
+      by: ['productId'],
+      where: {
+        createdAt: { gte: sixMonthsAgo },
+        sale: { isCancelled: false },
+      },
+      _sum: {
+        quantity: true,
+      },
+    });
+
+    const velocityMap = new Map<string, number>();
+    salesInLast180Days.forEach((item) => {
+      const totalSold = Number(item._sum.quantity || 0);
+      velocityMap.set(item.productId, totalSold);
+    });
+
+    // Get all active products with their current stock, sales info, and createdAt
+    const allProducts = await this.prisma.product.findMany({
+      where: { active: true },
+      select: {
+        id: true,
+        name: true,
+        stock: true,
+        createdAt: true,
+        category: { select: { name: true } },
+      },
+    });
+
+    const productsReport = allProducts.map((p) => {
+      const totalSold = velocityMap.get(p.id) || 0;
+      const stock = Number(p.stock);
+
+      // Calculate actual product age in days, capped at 180
+      const ageInDays = Math.max(1, Math.min(180, dayjs().diff(dayjs(p.createdAt), 'day')));
+      const actualVelocity = totalSold / ageInDays;
+
+      const daysRemaining = actualVelocity > 0 ? Math.ceil(stock / actualVelocity) : Number.MAX_SAFE_INTEGER;
+
+      return {
+        id: p.id,
+        name: p.name,
+        stock: stock,
+        dailySalesVelocity: Number(actualVelocity.toFixed(4)),
+        daysRemaining: daysRemaining === Number.MAX_SAFE_INTEGER ? -1 : daysRemaining,
+        unitsNeeded6Months: Math.ceil(actualVelocity * projectionDays),
+        category: p.category?.name || 'Sin Categoría',
+      };
+    }).sort((a, b) => {
+      // Sort by days remaining (ascending). Products with 0 velocity (-1 daysRemaining) go at the end
+      if (a.daysRemaining === -1) return 1;
+      if (b.daysRemaining === -1) return -1;
+      return a.daysRemaining - b.daysRemaining;
+    });
+
+    return productsReport;
+  }
+
+  async getProductStats(productId: string, currencyCode: string = 'VES') {
+    const product = await this.prisma.product.findUnique({
+      where: { id: productId },
+      include: {
+        category: true,
+        currency: true,
+      }
+    });
+
+    if (!product) {
+      throw new Error('Product not found');
+    }
+
+    // Currency conversion logic for cost
+    const targetCurrency = await this.prisma.currency.findUnique({
+      where: { code: currencyCode },
+    });
+    const targetRate = Number(targetCurrency?.exchangeRate || 1);
+    const productRate = product.currency?.isPrimary ? 1 : Number(product.currency?.exchangeRate || 1);
+    
+    // Cost in primary
+    const costInPrimary = Number(product.costPrice || 0) * productRate;
+    // Cost in target
+    const costInTarget = targetCurrency?.isPrimary ? costInPrimary : costInPrimary / targetRate;
+
+    // Sales history (last 6 months)
+    const sixMonthsAgo = dayjs().subtract(5, 'month').startOf('month');
+    const salesData = await this.prisma.saleItem.findMany({
+      where: {
+        productId,
+        createdAt: { gte: sixMonthsAgo.toDate() },
+        sale: { isCancelled: false }
+      },
+      select: {
+        quantity: true,
+        cost: true,
+        unitPrice: true,
+        createdAt: true,
+        sale: {
+          select: { exchangeRate: true }
+        }
+      }
+    });
+
+    const monthlySales: Record<string, { month: string, unitsSold: number, revenue: number }> = {};
+    
+    // Initialize last 6 months
+    for (let i = 5; i >= 0; i--) {
+      const monthStr = dayjs().subtract(i, 'month').format('MMM YY');
+      monthlySales[monthStr] = { month: monthStr, unitsSold: 0, revenue: 0 };
+    }
+
+    let totalUnitsSold6Months = 0;
+    let totalRevenue6Months = 0;
+
+    salesData.forEach(item => {
+      const monthStr = dayjs(item.createdAt).format('MMM YY');
+      const qty = Number(item.quantity);
+      
+      let itemRevenueInPrimary = Number(item.unitPrice || 0) * qty;
+      let saleRate = Number(item.sale.exchangeRate || 1);
+      
+      let revenueInTarget = 0;
+      if (currencyCode === 'VES') {
+         revenueInTarget = itemRevenueInPrimary;
+      } else {
+         revenueInTarget = itemRevenueInPrimary / saleRate; 
+      }
+
+      if (monthlySales[monthStr]) {
+        monthlySales[monthStr].unitsSold += qty;
+        monthlySales[monthStr].revenue += revenueInTarget;
+      }
+
+      totalUnitsSold6Months += qty;
+      totalRevenue6Months += revenueInTarget;
+    });
+
+    const costPriceVal = Number(product.costPrice || 0);
+    const salePriceVal = Number(product.salePrice || 0);
+    const calculatedMargin = costPriceVal > 0 ? ((salePriceVal - costPriceVal) / costPriceVal) * 100 : 0;
+
+    return {
+      product: {
+        id: product.id,
+        name: product.name,
+        stock: Number(product.stock),
+        category: product.category?.name || 'Sin Categoría',
+        costInTarget: costInTarget,
+        margin: Number(calculatedMargin.toFixed(2))
+      },
+      salesHistory: Object.values(monthlySales),
+      metrics: {
+        totalUnitsSold6Months,
+        totalRevenue6Months
+      }
+    };
+  }
 }
