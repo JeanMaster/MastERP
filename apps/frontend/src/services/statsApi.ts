@@ -214,6 +214,13 @@ export const statsApi = {
         const response = await api.get(`/stats/product/${id}`, { params: { currency } });
         return response.data;
     },
+
+    getPurchasesReport: async (currency: string, startDate?: string, endDate?: string): Promise<PurchasesReportResponse> => {
+        const response = await api.get('/stats/purchases', {
+            params: { currency, startDate, endDate }
+        });
+        return response.data;
+    },
 };
 
 export interface HourlyPerformanceResponse {
@@ -282,4 +289,18 @@ export interface ProductStatsResponse {
         totalUnitsSold6Months: number;
         totalRevenue6Months: number;
     };
+}
+
+export interface PurchasesReportResponse {
+    totalPurchases: number;
+    totalCOGS: number;
+    inventoryDelta: number;
+    purchasesBySupplier: {
+        supplier: string;
+        amount: number;
+    }[];
+    dailyPurchases: {
+        date: string;
+        amount: number;
+    }[];
 }

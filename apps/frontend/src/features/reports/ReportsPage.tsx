@@ -11,6 +11,7 @@ import MonthlyDailyPerformanceReport from './components/MonthlyDailyPerformanceR
 import { ExpenseReports } from './components/ExpenseReports';
 import { HourlyPerformanceReport } from './components/HourlyPerformanceReport';
 import { ProductsReport } from './components/ProductsReport';
+import { PurchasesReport } from './components/PurchasesReport';
 
 export const ReportsPage = () => {
     const [activeTab, setActiveTab] = useState('inventory');
@@ -45,6 +46,11 @@ export const ReportsPage = () => {
             key: 'products',
             label: 'Producto',
             children: <ProductsReport />
+        },
+        {
+            key: 'purchases',
+            label: 'Compras',
+            children: <PurchasesReport />
         },
         {
             key: 'cogs',

@@ -175,4 +175,17 @@ export class StatsController {
   ) {
     return this.statsService.getProductStats(id, currency);
   }
+
+  @Get('purchases')
+  @ApiOperation({ summary: 'Get expenses report broken down by category' })
+  @ApiQuery({ name: 'currency', required: false })
+  @ApiQuery({ name: 'startDate', required: false })
+  @ApiQuery({ name: 'endDate', required: false })
+  getPurchasesReport(
+    @Query('currency') currency: string = 'VES',
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+  ) {
+    return this.statsService.getPurchasesReport(currency, startDate, endDate);
+  }
 }

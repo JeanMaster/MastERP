@@ -2774,4 +2774,109 @@ export class StatsService {
       }
     };
   }
+
+  async getPurchasesReport(
+    currencyCode: string = 'VES',
+    startDate?: string,
+    endDate?: string,
+  ) {
+    const dateFilter: any = {};
+
+    if (startDate || endDate) {
+      if (startDate) dateFilter.gte = dayjs(startDate).startOf('day').toDate();
+      if (endDate) dateFilter.lte = dayjs(endDate).endOf('day').toDate();
+    } else {
+      // Default to current month
+      dateFilter.gte = dayjs().startOf('month').toDate();
+    }
+
+    const allCurrencies = await this.prisma.currency.findMany({
+      where: { active: true },
+    });
+    const targetCurrency = allCurrencies.find((c) => c.code === currencyCode);
+
+    // Get Reference Currency Info for Cross-Rate logic
+    const companySettings = await this.prisma.companySettings.findFirst({
+      include: { preferredSecondaryCurrency: true },
+    });
+    const refCurrency = companySettings?.preferredSecondaryCurrency;
+    const currentRefRate = Number(refCurrency?.exchangeRate || 1);
+
+    let crossRateFactor = 1;
+    if (currencyCode === 'VES') {
+      crossRateFactor = currentRefRate;
+    } else if (
+      targetCurrency &&
+      refCurrency &&
+      targetCurrency.code !== refCurrency.code
+    ) {
+      const tr = Number(targetCurrency.exchangeRate || 1);
+      if (tr > 0) crossRateFactor = currentRefRate / tr;
+    }
+
+    // Fetch Purchases
+    const purchases = await this.prisma.purchase.findMany({
+      where: { 
+        createdAt: dateFilter,
+        status: 'COMPLETED'
+      },
+      include: {
+        supplier: true
+      }
+    });
+
+    const purchasesBySupplier: Record<string, number> = {};
+    const dailyPurchases: Record<string, number> = {};
+    let totalPurchases = 0;
+
+    purchases.forEach((p) => {
+      const val = Number(p.total);
+      const pCurrency = allCurrencies.find((c) => c.code === p.currencyCode);
+      const isForeign = pCurrency && !pCurrency.isPrimary;
+
+      // Revalue to target currency logic from getFinanceReport
+      let valTarget = 0;
+      if (isForeign) {
+        // Today's USD value of this purchase: val * (todayRateOfForeign / todayRefRate)
+        const foreignRate = Number(pCurrency.exchangeRate || 1);
+        const usdValue = (val * foreignRate) / currentRefRate;
+        valTarget = usdValue * crossRateFactor;
+      } else {
+        // Nominal BS: Original BS / currentRefRate * crossRateFactor
+        valTarget = (val / currentRefRate) * crossRateFactor;
+      }
+
+      totalPurchases += valTarget;
+
+      // Group by Supplier
+      const supplierName = p.supplier?.comercialName || p.supplier?.legalName || 'Proveedor Desconocido';
+      purchasesBySupplier[supplierName] =
+        (purchasesBySupplier[supplierName] || 0) + valTarget;
+
+      // Group by Date
+      const dateStr = dayjs(p.createdAt).format('YYYY-MM-DD');
+      dailyPurchases[dateStr] =
+        (dailyPurchases[dateStr] || 0) + valTarget;
+    });
+
+    const cogsData = await this.getCOGSReport(currencyCode, startDate, endDate);
+
+    return {
+      totalPurchases: Number(totalPurchases.toFixed(2)),
+      totalCOGS: cogsData.totalCOGS,
+      inventoryDelta: Number((totalPurchases - cogsData.totalCOGS).toFixed(2)),
+      purchasesBySupplier: Object.entries(purchasesBySupplier)
+        .map(([supplier, amount]) => ({
+          supplier,
+          amount: Number(amount.toFixed(2)),
+        }))
+        .sort((a, b) => b.amount - a.amount),
+      dailyPurchases: Object.entries(dailyPurchases)
+        .map(([date, amount]) => ({
+          date,
+          amount: Number(amount.toFixed(2)),
+        }))
+        .sort((a, b) => dayjs(a.date).valueOf() - dayjs(b.date).valueOf()),
+    };
+  }
 }
