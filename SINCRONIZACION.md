@@ -1,4 +1,4 @@
-# 🔄 Documento de Sincronización - Proyecto Zenith
+# 🔄 Documento de Sincronización - Proyecto MastERP
 **Fecha**: 2025-12-20
 **Rama**: `develop`
 **Contexto**: Despliegue en Producción y Limpieza de Proyecto
@@ -496,7 +496,7 @@ Una vez realizado el `git push` desde esta terminal, siga estos pasos en el serv
 
 1.  **Acceder a la carpeta del proyecto**:
     ```bash
-    cd /ruta/a/ValeryPort
+    cd /ruta/a/MastERP
     ```
 2.  **Actualizar el código**:
     ```bash
@@ -621,3 +621,77 @@ Siga estas instrucciones al pie de la letra para asegurar la estabilidad:
 - **Compilación**: Exitosa (Build verificado).
 - **Base de Datos**: Requiere `migrate deploy`.
 - **Próximos Pasos**: Monitorear las primeras publicaciones reales en Mercado Libre para verificar la carga de imágenes.
+
+---
+
+**Fecha**: 2026-04-10
+**Para**: Producción / Administrador
+**De**: IA Antigravity (Google Deepmind)
+**Asunto**: ACTUALIZACIÓN - Rebranding MastERP, Pagos Inteligentes y Tesorería Dinámica
+
+## 🚀 RESUMEN EJECUTIVO
+
+Se ha completado la **Fase de Identidad y Flexibilidad de Pagos**. El sistema ha sido formalmente rebautizado como MastERP, abandonando los nombres clave "Zenith/ValeryPort". Además, se han optimizado los módulos de pagos para ofrecer cálculos automáticos y mayor control sobre las cajas.
+
+### ✅ Logros de esta sesión:
+1.  **Rebranding (MastERP)**: Identidad visual y textual actualizada en todo el monorepo. Se implementó un nuevo Favicon corporativo con la letra "M" y la paleta Azul/Verde.
+2.  **Configuración de Tesorería**: Nuevo switch "Rigurosidad Contable" en Opciones Generales. Ahora las empresas pueden decidir si registrar el Banco/Caja en los pagos es obligatorio o totalmente opcional.
+3.  **Auto-Ajustes Multimoneda en Pagos**: Al cambiar de moneda o ajustar la tasa manualmente en Cuentas por Pagar (compras), el sistema re-calcula el monto a pagar en tiempo real para cubrir el 100% de la deuda.
+4.  **Fix POS UI**: Problema de desbordamiento de pantalla (scroll) en el carrito del Punto de Venta corregido.
+
+---
+
+## 🛠️ CAMBIOS TÉCNICOS DETALLADOS
+
+### 1. Base de Datos & Backend
+- **Esquema Prisma**: Nuevo campo `requireBankAccountForPayments` (Boolean) añadido a `company_settings`.
+- **Backend DTOs**: Actualizados los DTOs de `UpdateCompanySettings` y `CompanySettingsApi` para recibir esta nueva variable.
+
+### 2. Frontend (React)
+- **Modal de Pago a Proveedores (`RegisterPurchasePaymentModal.tsx`)**: Integración de recálculo en vivo reactivando dependencias en `useEffect` y enlazando `settingsApi`.
+- **Registro de Gastos (`CreateExpenseModal.tsx`)**: Reglas de validación y etiqueta de "Opcional" dinámicas.
+- **Configuración (`CompanySettingsPage.tsx`)**: Switch introducido dentro del bloque general.
+- **Carrito POS (`POSLeftPanel.tsx`)**: Inclusión de reglas CSS flex dinámicas (`minHeight: 0`, `overflowY: 'auto'`) al layout.
+- **Public**: Favicon `.svg` reemplazado.
+
+---
+
+## 📋 PASOS PARA ACTUALIZAR ENTORNO DE PRODUCCIÓN
+
+En su terminal/servidor de producción, siga estos pasos estrictamente:
+
+1.  **Detener los servicios (Si están corriendo)**:
+    ```bash
+    stopz # O el comando configurado localmente para matar procesos PM2/node
+    ```
+
+2.  **Hacer Git Pull**:
+    ```bash
+    git pull origin develop
+    ```
+
+3.  **Sincronizar Esquema (PRISMA DATABASE)**:
+    > [!IMPORTANT]
+    > Se ha agregado un nuevo campo en CompanySettings. Como es un setup local sincronizado:
+    ```bash
+    cd apps/backend
+    npx prisma db push --accept-data-loss
+    npx prisma generate
+    ```
+
+4.  **Reconstruir el Frontend y Backend**:
+    El pull traerá cambios Typescript. Para evitar cualquier error visual:
+    ```bash
+    cd ../.. # Regresar a la ruta principal
+    cd apps/frontend && npm run build
+    cd ../backend && npm run build
+    ```
+
+5.  **Iniciar Servidor**:
+    ```bash
+    cd ../..
+    bash start-local.sh # O start-prod.sh
+    ```
+
+6.  **Borrar Caché del Navegador**:
+    Para ver el nuevo Favicon (La M de MastERP) presione `Ctrl + F5` en su navegador.

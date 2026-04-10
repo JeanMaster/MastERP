@@ -76,8 +76,8 @@ export class PurchasesService {
     // Let's add `total` and `tax` to DTO or calculate.
     // I'll calculate subtotal from items.
     // I'll assume 0 tax for now to avoid specific tax logic issues unless products have tax.
-    const taxRate = 0; // TODO: Get from settings or per product
-    const taxAmount = subtotal * taxRate;
+    // Calculate tax from DTO or default to 0
+    const taxAmount = createPurchaseDto.taxAmount || 0;
     const total = subtotal + taxAmount;
 
     // Calculate initial balance

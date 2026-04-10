@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Modal, Form, Input, InputNumber, Select, message, Row, Col, Divider, Card, Alert, Upload, Button } from 'antd';
+import { Modal, Form, Input, InputNumber, Select, message, Row, Col, Divider, Card, Alert, Upload, Button, Switch } from 'antd';
 import { PlusOutlined, NodeIndexOutlined, DeleteOutlined } from '@ant-design/icons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { productsApi } from '../../services/productsApi';
@@ -8,6 +8,7 @@ import { departmentsApi } from '../../services/departmentsApi';
 import { currenciesApi } from '../../services/currenciesApi';
 import { unitsApi } from '../../services/unitsApi';
 import { PriceUpdateConfirmModal } from '../purchases/components/PriceUpdateConfirmModal';
+import { companySettingsApi } from '../../services/companySettingsApi';
 
 interface ProductFormModalProps {
     open: boolean;
@@ -53,6 +54,13 @@ export const ProductFormModal = ({ open, product, onClose, defaultType }: Produc
     const { data: units = [] } = useQuery({
         queryKey: ['units'],
         queryFn: unitsApi.getAll,
+        enabled: open,
+    });
+
+    // Fetch company settings for tax config
+    const { data: settings } = useQuery({
+        queryKey: ['company-settings'],
+        queryFn: companySettingsApi.getSettings,
         enabled: open,
     });
 
@@ -151,6 +159,7 @@ export const ProductFormModal = ({ open, product, onClose, defaultType }: Produc
                 secondaryWholesalePrice: product.secondaryWholesalePrice,
                 secondaryWholesaleProfitPercent: Number(secondaryWholesaleProfitPercent.toFixed(2)),
                 images: product.images || [],
+                isTaxExempt: product.isTaxExempt || false,
                 type: product.type || 'PRODUCT',
                 components: product.components?.map(c => ({
                     componentProductId: c.componentProductId,
@@ -180,6 +189,7 @@ export const ProductFormModal = ({ open, product, onClose, defaultType }: Produc
             setConversionDirection('primary_to_secondary');
             setImages([]);
             setSelectedCurrency(null);
+            form.setFieldValue('isTaxExempt', false);
         }
     }, [product, form, open, defaultType]);
 
@@ -223,6 +233,7 @@ export const ProductFormModal = ({ open, product, onClose, defaultType }: Produc
                 secondaryOfferPrice: values.secondaryOfferPrice,
                 secondaryWholesalePrice: values.secondaryWholesalePrice,
                 images: images,
+                isTaxExempt: values.isTaxExempt || false,
                 type: values.type,
                 components: values.type === 'COMPOSED' ? values.components?.map((c: any) => ({
                     componentProductId: c.componentProductId,
@@ -652,6 +663,12 @@ export const ProductFormModal = ({ open, product, onClose, defaultType }: Produc
                     <Form.Item label="Descripción" name="description">
                         <Input.TextArea rows={2} placeholder="Descripción del producto..." />
                     </Form.Item>
+
+                    {settings?.taxEnabled && (
+                        <Form.Item name="isTaxExempt" valuePropName="checked">
+                            <Switch checkedChildren="Producto EXENTO de IVA" unCheckedChildren="Producto GRAVA IVA" />
+                        </Form.Item>
+                    )}
 
                     {/* Imágenes del producto */}
                     <Form.Item label="Imágenes del producto (Máximo 12)">

@@ -17,10 +17,12 @@ import {
     Checkbox
 } from 'antd';
 import { SearchOutlined, CloseCircleOutlined } from '@ant-design/icons';
+import { usePOSStore } from '../../../store/posStore';
 import { salesApi, type Sale } from '../../../services/salesApi';
 import { returnsApi, type CreateReturnDto, type CreateReturnItemDto } from '../../../services/returnsApi';
 import { productsApi } from '../../../services/productsApi';
 import { formatVenezuelanPrice } from '../../../utils/formatters';
+import { getRoundedPrice } from '../../../utils/rounding';
 import dayjs from 'dayjs';
 
 const { Title, Text } = Typography;
@@ -38,6 +40,7 @@ interface SelectedItem extends CreateReturnItemDto {
 }
 
 export const CreateReturnModal = ({ open, onCancel, onSuccess }: CreateReturnModalProps) => {
+    const { roundingEnabled, roundingFactor } = usePOSStore();
     const [currentStep, setCurrentStep] = useState(0);
     const [invoiceNumber, setInvoiceNumber] = useState('');
     const [sale, setSale] = useState<Sale | null>(null);
@@ -173,7 +176,7 @@ export const CreateReturnModal = ({ open, onCancel, onSuccess }: CreateReturnMod
         }
 
         // Apply POS rounding
-        unitPrice = Math.ceil(unitPrice / 10) * 10;
+        unitPrice = getRoundedPrice(unitPrice, roundingFactor, roundingEnabled);
 
         const newItem: SelectedItem = {
             productId: product.id,
@@ -197,7 +200,7 @@ export const CreateReturnModal = ({ open, onCancel, onSuccess }: CreateReturnMod
     };
 
     const updateReplacementPrice = (productId: string, price: number) => {
-        const roundedPrice = Math.ceil(price / 10) * 10;
+        const roundedPrice = getRoundedPrice(price, roundingFactor, roundingEnabled);
 
         setReplacementItems(replacementItems.map(item =>
             item.productId === productId

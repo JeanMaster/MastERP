@@ -6,6 +6,7 @@ import { purchasesApi } from '../../../services/purchasesApi';
 import type { Purchase } from '../../../services/purchasesApi';
 import { currenciesApi } from '../../../services/currenciesApi';
 import { banksApi } from '../../../services/banksApi';
+import { companySettingsApi } from '../../../services/companySettingsApi';
 import { formatVenezuelanNumber, formatVenezuelanPrice } from '../../../utils/formatters';
 
 interface RegisterPurchasePaymentModalProps {
@@ -32,6 +33,12 @@ export const RegisterPurchasePaymentModal = ({ open, purchase, onClose }: Regist
         enabled: open
     });
 
+    const { data: settings } = useQuery({
+        queryKey: ['company-settings'],
+        queryFn: companySettingsApi.getSettings,
+        enabled: open
+    });
+
     const watchBankId = Form.useWatch('bankAccountId', form);
     const watchAmount = Form.useWatch('paymentAmount', form);
     const watchRate = Form.useWatch('exchangeRate', form);
@@ -50,12 +57,13 @@ export const RegisterPurchasePaymentModal = ({ open, purchase, onClose }: Regist
         }
     }, [open, purchase, form]);
 
-    // Update exchange rate when payment currency changes
+    // Update exchange rate and auto-fill paymentAmount when currency changes
     useEffect(() => {
         if (!purchase || !paymentCurrency) return;
 
         if (paymentCurrency === purchase.currencyCode) {
-            form.setFieldsValue({ exchangeRate: 1 });
+            form.setFieldsValue({ exchangeRate: 1, paymentAmount: purchase.balance });
+            setEquivalentAmount(purchase.balance);
             return;
         }
 
@@ -63,23 +71,44 @@ export const RegisterPurchasePaymentModal = ({ open, purchase, onClose }: Regist
         const targetCurrency = currencies.find(c => c.code === paymentCurrency);
         const invoiceCurrencyObj = currencies.find(c => c.code === purchase.currencyCode);
 
+        let newRate = 0;
         // Case A: Paying in primary (VES) for a Foreign invoice (USD, EUR, etc.)
         if (paymentCurrency === 'VES' && purchase.currencyCode !== 'VES') {
-            // Use the invoice currency's rate (e.g., 55 VES/EUR)
-            const exchangeRate = invoiceCurrencyObj?.exchangeRate || 0;
-            form.setFieldsValue({ exchangeRate: exchangeRate });
+            newRate = invoiceCurrencyObj?.exchangeRate || 0;
         }
         // Case B: Paying in Foreign for a primary (VES) invoice
         else if (paymentCurrency !== 'VES' && purchase.currencyCode === 'VES') {
-            // Use the payment currency's rate (e.g., 55 VES/EUR)
-            const exchangeRate = targetCurrency?.exchangeRate || 0;
-            form.setFieldsValue({ exchangeRate: exchangeRate });
-        }
-        else {
-            form.setFieldsValue({ exchangeRate: 0 });
+            newRate = targetCurrency?.exchangeRate || 0;
         }
 
+        form.setFieldsValue({ exchangeRate: newRate });
+
+        // Auto-calculate full payment amount
+        let newAmount = purchase.balance;
+        if (paymentCurrency === 'VES') newAmount = purchase.balance * newRate;
+        else if (purchase.currencyCode === 'VES') newAmount = purchase.balance / newRate;
+        else newAmount = purchase.balance * newRate;
+
+        form.setFieldsValue({ paymentAmount: newAmount });
+        setEquivalentAmount(purchase.balance); // The equivalent is always the original balance when auto-filled
+
     }, [paymentCurrency, purchase, currencies, form]);
+
+    const handleRateChange = (value: number | null) => {
+        const rate = value || 0;
+        let newAmount = purchase?.balance || 0;
+        
+        if (purchase && paymentCurrency !== purchase.currencyCode) {
+            if (paymentCurrency === 'VES') newAmount = purchase.balance * rate;
+            else if (purchase.currencyCode === 'VES') newAmount = purchase.balance / rate;
+            else newAmount = purchase.balance * rate;
+        }
+        
+        form.setFieldsValue({ paymentAmount: newAmount });
+        
+        // Update the equivalent alert directly
+        setEquivalentAmount(purchase?.balance || 0);
+    };
 
 
     const registerPaymentMutation = useMutation({
@@ -253,7 +282,7 @@ export const RegisterPurchasePaymentModal = ({ open, purchase, onClose }: Regist
                         <InputNumber
                             style={{ width: '100%' }}
                             precision={4}
-                            onChange={updateEquivalent}
+                            onChange={handleRateChange}
                         />
                     </Form.Item>
                 )}
@@ -312,7 +341,7 @@ export const RegisterPurchasePaymentModal = ({ open, purchase, onClose }: Regist
                     <Form.Item
                         label="Cuenta Bancaria / Tesorería"
                         name="bankAccountId"
-                        rules={[{ required: true, message: 'Seleccione una cuenta' }]}
+                        rules={[{ required: settings?.requireBankAccountForPayments !== false, message: 'Seleccione una cuenta' }]}
                     >
                         <Select
                             placeholder="Seleccione cuenta"

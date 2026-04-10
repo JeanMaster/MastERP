@@ -67,6 +67,7 @@ model Purchase {
   supplierId      String
   invoiceDate     DateTime
   invoiceNumber   String?
+  invoiceControlNumber String?
   subtotal        Decimal           @db.Decimal(10, 2)
   taxAmount       Decimal           @db.Decimal(10, 2)
   total           Decimal           @db.Decimal(10, 2)
@@ -85,6 +86,7 @@ model Purchase {
   payments        PurchasePayment[]
   purchaseOrder   PurchaseOrder?    @relation(fields: [purchaseOrderId], references: [id])
   supplier        Supplier          @relation(fields: [supplierId], references: [id])
+  retentions      TaxRetention[]
 
   @@map("purchases")
 }
@@ -189,6 +191,7 @@ model Product {
   secondaryWholesalePrice Decimal?                    @db.Decimal(10, 2)
   isReturnable            Boolean                     @default(true)
   returnDeadlineDays      Int?
+  isTaxExempt             Boolean                     @default(false)
   active                  Boolean                     @default(true)
   createdAt               DateTime                    @default(now())
   updatedAt               DateTime                    @updatedAt
@@ -232,6 +235,14 @@ model CompanySettings {
   preferredSecondaryCurrencyId String?
   autoUpdateRates              Boolean   @default(false)
   updateFrequency              Int       @default(60)
+  taxEnabled                   Boolean   @default(false)
+  taxRate                      Decimal   @default(16.00) @db.Decimal(5, 2)
+  roundingEnabled              Boolean   @default(true)
+  roundingFactor               Int       @default(10)
+  igtfEnabled                  Boolean   @default(false)
+  igtfRate                     Decimal   @default(3.00) @db.Decimal(5, 2)
+  isSpecialTaxpayer            Boolean   @default(false)
+  requireBankAccountForPayments Boolean  @default(true)
   createdAt                    DateTime  @default(now())
   updatedAt                    DateTime  @updatedAt
   preferredSecondaryCurrency   Currency? @relation(fields: [preferredSecondaryCurrencyId], references: [id])
@@ -295,6 +306,7 @@ model Sale {
   subtotal           Decimal        @db.Decimal(10, 2)
   discount           Decimal        @default(0) @db.Decimal(10, 2)
   tax                Decimal        @default(0) @db.Decimal(10, 2)
+  igtfAmount         Decimal        @default(0) @db.Decimal(10, 2)
   total              Decimal        @db.Decimal(10, 2)
   paymentMethod      String
   tendered           Decimal?       @db.Decimal(10, 2)
@@ -306,6 +318,7 @@ model Sale {
   createdAt          DateTime       @default(now())
   updatedAt          DateTime       @updatedAt
   exchangeRate       Decimal        @default(1.0) @db.Decimal(10, 4)
+  controlNumber      String?
   cashMovements      CashMovement[]
   invoice            Invoice?
   replacementReturns Return[]       @relation("ReturnNewSale")
@@ -327,6 +340,7 @@ model SaleItem {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   cost      Decimal  @default(0) @db.Decimal(10, 2)
+  isTaxExempt Boolean  @default(false)
   product   Product  @relation(fields: [productId], references: [id])
   sale      Sale     @relation(fields: [saleId], references: [id], onDelete: Cascade)
 
@@ -362,9 +376,11 @@ model Invoice {
   updatedAt    DateTime  @updatedAt
   currencyCode String    @default("VES")
   exchangeRate Decimal   @default(1) @db.Decimal(10, 4)
-  client       Client    @relation(fields: [clientId], references: [id])
-  sale         Sale?     @relation(fields: [saleId], references: [id])
+  controlNumber String?
+  client       Client         @relation(fields: [clientId], references: [id])
+  sale         Sale?          @relation(fields: [saleId], references: [id])
   payments     Payment[]
+  retentions   TaxRetention[]
 
   @@map("invoices")
 }
@@ -383,6 +399,28 @@ model Payment {
   invoice       Invoice  @relation(fields: [invoiceId], references: [id])
 
   @@map("payments")
+}
+
+model TaxRetention {
+  id               String   @id @default(uuid())
+  type             String   // IVA, ISLR, MUNICIPAL
+  voucherNumber    String   @unique
+  voucherDate      DateTime @default(now())
+  amount           Decimal  @db.Decimal(10, 2)
+  baseAmount       Decimal  @db.Decimal(10, 2)
+  retentionPercent Decimal  @db.Decimal(5, 2)
+  
+  // Relations
+  invoiceId        String?
+  purchaseId       String?
+  
+  invoice          Invoice? @relation(fields: [invoiceId], references: [id])
+  purchase         Purchase? @relation(fields: [purchaseId], references: [id])
+  
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@map("tax_retentions")
 }
 
 model Return {
@@ -407,6 +445,7 @@ model Return {
   replacementItems ReturnReplacementItem[]
   newSale          Sale?                   @relation("ReturnNewSale", fields: [newSaleId], references: [id])
   originalSale     Sale                    @relation("OriginalSale", fields: [originalSaleId], references: [id])
+  controlNumber    String?
 
   @@map("returns")
 }
@@ -545,6 +584,8 @@ model Expense {
   id             String        @id @default(uuid())
   description    String
   amount         Decimal       @db.Decimal(10, 2)
+  taxAmount      Decimal       @default(0) @db.Decimal(10, 2)
+  isTaxable      Boolean       @default(false)
   currencyCode   String        @default("VES")
   exchangeRate   Decimal       @default(1) @db.Decimal(10, 4)
   date           DateTime      @default(now())
@@ -552,6 +593,8 @@ model Expense {
   paymentMethod  String
   reference      String?
   notes          String?
+  invoiceNumber  String?
+  invoiceControlNumber String?
   userId         String?
   cashMovementId String?       @unique
   createdAt      DateTime      @default(now())
@@ -674,6 +717,16 @@ model BankMovement {
   purchasePayment PurchasePayment?
 
   @@map("bank_movements")
+}
+
+model SaleControlCounter {
+  id            String   @id @default(uuid())
+  prefix        String   @default("00")
+  currentNumber Int      @default(1)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@map("sale_control_counters")
 }
 
 model MercadoLibreAccount {

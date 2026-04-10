@@ -117,6 +117,32 @@ export interface InflationReport {
     }[];
 }
 
+export interface TaxReport {
+    period: { start: Date; end: Date };
+    sales: {
+        base: number;
+        tax: number;
+        retentions: number;
+        netDebit: number;
+        igtf: number;
+        count: number;
+    };
+    purchases: {
+        base: number;
+        tax: number;
+        retentions: number;
+        netCredit: number;
+        count: number;
+    };
+    summary: {
+        vatBalance: number;
+        vatToPay: number;
+        vatCreditExcess: number;
+        igtfToPay: number;
+        isAValueFavor: boolean;
+    };
+}
+
 export interface WeeklyPerformance {
     day: string;
     total: number;
@@ -125,10 +151,47 @@ export interface WeeklyPerformance {
     percentage: number;
 }
 
+export interface FiscalBookRow {
+    id: string;
+    date: Date;
+    rif: string;
+    name: string;
+    invoiceNumber: string;
+    controlNumber: string;
+    affectedDoc?: string;
+    totalWithVat: number;
+    exemptAmount: number;
+    baseAmount: number;
+    vatPercent: number;
+    vatAmount: number;
+    vatRetained: number;
+    retentionVoucher: string;
+    type: 'FACT' | 'N/CR' | 'COMPRA' | 'GASTO';
+}
+
+export interface FiscalBookReport {
+    period: { start: Date; end: Date };
+    rows: FiscalBookRow[];
+}
+
 export const statsApi = {
     getDashboardStats: async (range?: string): Promise<DashboardStats> => {
         const response = await api.get('/stats/dashboard', {
             params: { range }
+        });
+        return response.data;
+    },
+
+    getLibroVentas: async (startDate?: string, endDate?: string): Promise<FiscalBookReport> => {
+        const response = await api.get('/stats/libro-ventas', {
+            params: { startDate, endDate }
+        });
+        return response.data;
+    },
+
+    getLibroCompras: async (startDate?: string, endDate?: string): Promise<FiscalBookReport> => {
+        const response = await api.get('/stats/libro-compras', {
+            params: { startDate, endDate }
         });
         return response.data;
     },
@@ -172,6 +235,13 @@ export const statsApi = {
 
     getInflationReport: async (startDate?: string, endDate?: string): Promise<InflationReport> => {
         const response = await api.get('/stats/inflation', {
+            params: { startDate, endDate }
+        });
+        return response.data;
+    },
+
+    getTaxReport: async (startDate?: string, endDate?: string): Promise<TaxReport> => {
+        const response = await api.get('/stats/tax', {
             params: { startDate, endDate }
         });
         return response.data;

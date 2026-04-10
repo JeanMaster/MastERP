@@ -60,7 +60,7 @@ export const ClientsPage = () => {
             cleanPhone = '58' + cleanPhone;
         }
 
-        const message = encodeURIComponent(`Hola ${name}, te contactamos de Zenith...`);
+        const message = encodeURIComponent(`Hola ${name}, te contactamos de MastERP...`);
         return `https://wa.me/${cleanPhone}/?text=${message}`;
     };
 

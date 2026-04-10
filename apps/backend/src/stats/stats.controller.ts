@@ -146,6 +146,17 @@ export class StatsController {
     );
   }
 
+  @Get('tax')
+  @ApiOperation({ summary: 'Get VAT (IVA) report' })
+  @ApiQuery({ name: 'startDate', required: false })
+  @ApiQuery({ name: 'endDate', required: false })
+  getTaxReport(
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+  ) {
+    return this.statsService.getTaxReport(startDate, endDate);
+  }
+
   @Get('expenses')
   @ApiOperation({ summary: 'Get expenses report broken down by category' })
   @ApiQuery({ name: 'currency', required: false })
@@ -187,5 +198,27 @@ export class StatsController {
     @Query('endDate') endDate?: string,
   ) {
     return this.statsService.getPurchasesReport(currency, startDate, endDate);
+  }
+
+  @Get('libro-ventas')
+  @ApiOperation({ summary: 'Get Libro de Ventas (Fiscal)' })
+  @ApiQuery({ name: 'startDate', required: false })
+  @ApiQuery({ name: 'endDate', required: false })
+  getLibroVentas(
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+  ) {
+    return this.statsService.getLibroVentas(startDate, endDate);
+  }
+
+  @Get('libro-compras')
+  @ApiOperation({ summary: 'Get Libro de Compras (Fiscal)' })
+  @ApiQuery({ name: 'startDate', required: false })
+  @ApiQuery({ name: 'endDate', required: false })
+  getLibroCompras(
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+  ) {
+    return this.statsService.getLibroCompras(startDate, endDate);
   }
 }

@@ -14,7 +14,7 @@ export class AppController {
     description: 'Servidor funcionando correctamente',
     schema: {
       type: 'string',
-      example: 'Valery Corporativo API - Backend funcionando correctamente',
+      example: 'MastERP API - Backend funcionando correctamente',
     },
   })
   getHello(): string {

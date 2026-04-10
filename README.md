@@ -1,4 +1,4 @@
-# Zenith - Next-Gen ERP System
+# MastERP - Next-Gen ERP System
 
 Sistema ERP completo migrado desde aplicación de escritorio Windows a plataforma web moderna.
 
@@ -26,7 +26,7 @@ Sistema ERP completo migrado desde aplicación de escritorio Windows a plataform
 ## 📁 Estructura del Proyecto (Monorepo)
 
 ```
-ValeryPort/
+MastERP/
 ├── apps/
 │   ├── frontend/          # Aplicación React + Vite
 │   └── backend/           # API NestJS
@@ -52,7 +52,7 @@ ValeryPort/
 
 ```bash
 git clone <repository-url>
-cd ValeryPort
+cd MastERP
 ```
 
 ### 2. Instalar dependencias
@@ -146,7 +146,7 @@ Si usas un cliente externo (como pgAdmin en Windows o DBeaver):
 - **Host**: `localhost` (o `127.0.0.1`)
 - **Port**: `5432`
 - **Database**: `valery_db`
-- **Username**: `valery`
+- **Username**: `masterp`
 - **Password**: `valery_dev_password`
 
 > **Nota**: Si usas pgAdmin vía Docker, el host debe ser `host.docker.internal` para conectar al PostgreSQL de WSL/Windows.
@@ -296,4 +296,4 @@ Ver archivo [LICENSE](LICENSE)
 
 ---
 
-**Desarrollado con** ❤️ **para Valery Corporativo**
+**Desarrollado con** ❤️ **para MastERP**

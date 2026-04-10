@@ -1,6 +1,6 @@
 {
-  "name": "zenith-frontend",
-  "description": "Zenith ERP - Frontend Application",
+  "name": "masterp-frontend",
+  "description": "MastERP - Frontend Application",
   "private": true,
   "version": "1.0.0",
   "type": "module",

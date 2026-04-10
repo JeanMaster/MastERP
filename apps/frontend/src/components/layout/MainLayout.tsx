@@ -23,7 +23,7 @@ export const MainLayout = () => {
     const isMobile = !screens.lg;
     const [collapsed, setCollapsed] = useState(false);
     const [drawerVisible, setDrawerVisible] = useState(false);
-    const [companyName, setCompanyName] = useState('Zenith');
+    const [companyName, setCompanyName] = useState('MastERP');
     const [companyLogo, setCompanyLogo] = useState<string | null>(null);
     const [isDarkMode, setIsDarkMode] = useState(() => {
         const saved = localStorage.getItem('theme');

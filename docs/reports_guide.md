@@ -1,4 +1,4 @@
-# Módulo de Reportes - ValeryPort
+# Módulo de Reportes - MastERP
 
 ## Descripción
 
@@ -123,4 +123,4 @@ Para soporte técnico o reportar problemas con el módulo de reportes, contactar
 
 **Versión**: 1.0  
 **Fecha**: Diciembre 2024  
-**Módulo**: Reportes - ValeryPort ERP
+**Módulo**: Reportes - MastERP ERP

@@ -57,6 +57,7 @@ export interface CreatePurchaseDto {
     paymentStatus?: string;
     paidAmount?: number;
     dueDate?: Date;
+    taxAmount?: number;
     purchaseOrderId?: string;
 }
 

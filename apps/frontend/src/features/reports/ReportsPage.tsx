@@ -12,6 +12,8 @@ import { ExpenseReports } from './components/ExpenseReports';
 import { HourlyPerformanceReport } from './components/HourlyPerformanceReport';
 import { ProductsReport } from './components/ProductsReport';
 import { PurchasesReport } from './components/PurchasesReport';
+import { TaxReports } from './components/TaxReports';
+import { FiscalBooks } from './components/FiscalBooks';
 
 export const ReportsPage = () => {
     const [activeTab, setActiveTab] = useState('inventory');
@@ -26,6 +28,11 @@ export const ReportsPage = () => {
             key: 'financial',
             label: 'Financiero',
             children: <FinancialReports />
+        },
+        {
+            key: 'tax',
+            label: 'Impuestos / IVA',
+            children: <TaxReports />
         },
         {
             key: 'expenses',
@@ -76,6 +83,11 @@ export const ReportsPage = () => {
             key: 'hourly',
             label: 'Horas Pico',
             children: <HourlyPerformanceReport currency="VES" />
+        },
+        {
+            key: 'fiscal-books',
+            label: 'Libros de IVA (SENIAT)',
+            children: <FiscalBooks />
         }
     ];
 

@@ -6,6 +6,33 @@ export class InvoiceService {
   constructor(private prisma: PrismaService) {}
 
   /**
+   * Generate the next control number (00-XXXXXX)
+   */
+  async generateControlNumber(): Promise<string> {
+    return await this.prisma.$transaction(async (prisma) => {
+      let counter = await prisma.saleControlCounter.findFirst();
+
+      if (!counter) {
+        counter = await prisma.saleControlCounter.create({
+          data: {
+            prefix: '00',
+            currentNumber: 1,
+          },
+        });
+      }
+
+      const controlNumber = `${counter.prefix}-${counter.currentNumber.toString().padStart(8, '0')}`;
+
+      await prisma.saleControlCounter.update({
+        where: { id: counter.id },
+        data: { currentNumber: counter.currentNumber + 1 },
+      });
+
+      return controlNumber;
+    });
+  }
+
+  /**
    * Generate the next invoice number
    */
   async generateInvoiceNumber(): Promise<string> {
@@ -114,7 +141,54 @@ export class InvoiceService {
   }
 
   /**
-   * Create a credit invoice
+   * Create an invoice
+   */
+  async create(data: {
+    clientId: string;
+    saleId?: string;
+    subtotal: number;
+    discount?: number;
+    tax?: number;
+    total: number;
+    dueDate?: Date;
+    notes?: string;
+    invoiceNumber?: string;
+    currencyCode?: string;
+    exchangeRate?: number;
+    status?: string;
+    paidAmount?: number;
+    balance?: number;
+  }) {
+    const invoiceNumber = data.invoiceNumber || (await this.generateInvoiceNumber());
+    const status = data.status || 'PENDING';
+    const paidAmount = data.paidAmount || 0;
+    const balance = data.balance !== undefined ? data.balance : (data.total - paidAmount);
+
+    return this.prisma.invoice.create({
+      data: {
+        number: invoiceNumber,
+        clientId: data.clientId,
+        saleId: data.saleId,
+        subtotal: data.subtotal,
+        discount: data.discount || 0,
+        tax: data.tax || 0,
+        total: data.total,
+        balance,
+        paidAmount,
+        dueDate: data.dueDate,
+        notes: data.notes,
+        status,
+        currencyCode: data.currencyCode || 'VES',
+        exchangeRate: data.exchangeRate || 1,
+      },
+      include: {
+        client: true,
+      },
+    });
+  }
+
+  /**
+   * Create a credit invoice (Maintained for backward compatibility)
    */
   async createCreditInvoice(data: {
     clientId: string;
@@ -125,37 +199,16 @@ export class InvoiceService {
     total: number;
     dueDate?: Date;
     notes?: string;
-    invoiceNumber?: string; // Optional: specify invoice number
+    invoiceNumber?: string;
     currencyCode?: string;
     exchangeRate?: number;
   }) {
-    // Use provided invoice number or generate a new one
-    const invoiceNumber =
-      data.invoiceNumber || (await this.generateInvoiceNumber());
-    const balance = data.total; // Initially, full amount is due
-
-    const invoice = await this.prisma.invoice.create({
-      data: {
-        number: invoiceNumber,
-        clientId: data.clientId,
-        saleId: data.saleId,
-        subtotal: data.subtotal,
-        discount: data.discount || 0,
-        tax: data.tax || 0,
-        total: data.total,
-        balance,
-        dueDate: data.dueDate,
-        notes: data.notes,
-        status: 'PENDING',
-        currencyCode: data.currencyCode || 'VES',
-        exchangeRate: data.exchangeRate || 1,
-      },
-      include: {
-        client: true,
-      },
+    return this.create({
+      ...data,
+      status: 'PENDING',
+      paidAmount: 0,
+      balance: data.total,
     });
-
-    return invoice;
   }
 
   /**

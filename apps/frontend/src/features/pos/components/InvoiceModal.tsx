@@ -49,7 +49,7 @@ export const InvoiceModal = ({ open, sale, onClose }: InvoiceModalProps) => {
         ).join('\n') || '';
 
         const invoiceMessage = encodeURIComponent(
-            `🏢 *${companyInfo?.name || 'ZENITH'}*\n` +
+            `🏢 *${companyInfo?.name || 'MastERP'}*\n` +
             `RIF: ${companyInfo?.rif || 'J-00000000-0'}\n` +
             `━━━━━━━━━━━━━━━━\n\n` +
             `🧾 *FACTURA ${sale.invoiceNumber}*\n\n` +
@@ -63,7 +63,7 @@ export const InvoiceModal = ({ open, sale, onClose }: InvoiceModalProps) => {
             `💰 *TOTAL: ${formatVenezuelanPrice(sale.total)}*\n\n` +
             `💳 Método de pago: ${sale.paymentMethod}\n\n` +
             `¡Gracias por tu compra! 🙏\n` +
-            `_${companyInfo?.name || 'Zenith ERP'}_`
+            `_${companyInfo?.name || 'MastERP'}_`
         );
         return `https://wa.me/${cleanPhone}?text=${invoiceMessage}`;
     };
@@ -80,14 +80,14 @@ export const InvoiceModal = ({ open, sale, onClose }: InvoiceModalProps) => {
 
     const handleEmail = () => {
         if (clientEmail) {
-            const subject = encodeURIComponent(`Factura ${sale.invoiceNumber} - ${companyInfo?.name || 'Zenith'}`);
+            const subject = encodeURIComponent(`Factura ${sale.invoiceNumber} - ${companyInfo?.name || 'MastERP'}`);
             const body = encodeURIComponent(
                 `Estimado/a ${clientName},\n\n` +
                 `Adjunto encontrará los detalles de su factura:\n\n` +
                 `Número de Factura: ${sale.invoiceNumber}\n` +
                 `Fecha: ${new Date(sale.date).toLocaleDateString('es-VE')}\n` +
                 `Total: ${formatVenezuelanPrice(sale.total)}\n\n` +
-                `¡Gracias por su preferencia!\n\n${companyInfo?.name || 'Zenith ERP'}`
+                `¡Gracias por su preferencia!\n\n${companyInfo?.name || 'MastERP'}`
             );
             window.open(`mailto:${clientEmail}?subject=${subject}&body=${body}`, '_blank');
             message.success('Abriendo cliente de correo...');
@@ -124,7 +124,7 @@ export const InvoiceModal = ({ open, sale, onClose }: InvoiceModalProps) => {
             </head>
             <body>
                 <div class="header">
-                    <div class="company-name">${companyInfo?.name || 'ZENITH'}</div>
+                    <div class="company-name">${companyInfo?.name || 'MastERP'}</div>
                     <div class="fiscal-info">RIF: ${companyInfo?.rif || 'J-00000000-0'}</div>
                     <div class="fiscal-info">Dirección Fiscal: Venezuela</div>
                     <div class="invoice-title">FACTURA</div>
@@ -182,7 +182,7 @@ export const InvoiceModal = ({ open, sale, onClose }: InvoiceModalProps) => {
                 
                 <div class="footer">
                     ¡Gracias por su compra!<br>
-                    Generado por ${companyInfo?.name || 'Zenith ERP'}
+                    Generado por ${companyInfo?.name || 'MastERP'}
                 </div>
             </body>
             </html>

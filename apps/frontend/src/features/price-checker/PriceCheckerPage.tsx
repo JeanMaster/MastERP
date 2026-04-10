@@ -7,6 +7,7 @@ import { companySettingsApi } from '../../services/companySettingsApi';
 import { ProductDetailModal } from './ProductDetailModal';
 import { useNavigate } from 'react-router-dom';
 import { formatVenezuelanPrice } from '../../utils/formatters';
+import { getRoundedPrice } from '../../utils/rounding';
 
 const { Header, Content } = Layout;
 const { Title, Text } = Typography;
@@ -179,8 +180,15 @@ export const PriceCheckerPage = () => {
             priceInPrimary = product.salePrice * prodRate;
         }
 
-        // Apply POS Rounding Logic: Ceil to nearest 10
-        priceInPrimary = Math.ceil(priceInPrimary / 10) * 10;
+        // Add IVA if enabled and product is not exempt
+        if (companySettings.taxEnabled && !product.isTaxExempt) {
+            priceInPrimary = priceInPrimary * (1 + (Number(companySettings.taxRate) || 16) / 100);
+        }
+
+        // Apply POS Rounding Logic
+        const roundingEnabled = companySettings.roundingEnabled !== undefined ? companySettings.roundingEnabled : true;
+        const roundingFactor = companySettings.roundingFactor || 10;
+        priceInPrimary = getRoundedPrice(priceInPrimary, roundingFactor, roundingEnabled);
 
         // 2. Calculate Price in Secondary
         let priceInSecondary = 0;
@@ -296,6 +304,11 @@ export const PriceCheckerPage = () => {
                                 <Text strong style={{ color: '#389e0d', fontSize: 18, display: 'block' }}>
                                     {formatVenezuelanPrice(primary, primarySymbol)}
                                 </Text>
+                                {companySettings?.taxEnabled && (
+                                    <span style={{ fontSize: 10, color: product.isTaxExempt ? '#888' : '#52c41a', fontWeight: 'bold' }}>
+                                        {product.isTaxExempt ? 'EXENTO' : 'IVA INCL.'}
+                                    </span>
+                                )}
                             </div>
 
                             {secondary > 0 && (

@@ -1,4 +1,4 @@
-# 🏗️ Plan Maestro de Migración: Valery Corporativo (Legacy to Web)
+# 🏗️ Plan Maestro de Migración: MastERP (Legacy to Web)
 
 **Documento de Estrategia y Arquitectura**
 **Estado**: En Progreso (Fase 3: POS Core)
@@ -11,7 +11,7 @@
 Basado en el requerimiento de "agilidad de escritorio" y "capacidad de nube", confirmamos el stack actual como la elección óptima:
 
 ### Frontend: **React + Ant Design**
--   **Por qué**: Ant Design es el estándar de oro para aplicaciones empresariales (ERP). Sus componentes de tablas (`Table`), formularios (`Form`) y árboles (`Tree`) son superiores para manejar la densidad de datos de Valery.
+-   **Por qué**: Ant Design es el estándar de oro para aplicaciones empresariales (ERP). Sus componentes de tablas (`Table`), formularios (`Form`) y árboles (`Tree`) son superiores para manejar la densidad de datos de masterp.
 -   **Agilidad**: React con Vite garantiza tiempos de carga instantáneos.
 -   **Estado**: React Query manejará el caché de datos, vital para que la app se sienta "local" aunque los datos vengan de la nube.
 
@@ -32,7 +32,7 @@ Basado en el requerimiento de "agilidad de escritorio" y "capacidad de nube", co
 Para evitar un "monolito inmanejable", usaremos una arquitectura basada en **Features** (Características) dentro del Monorepo.
 
 ```
-ValeryPort/
+MastERP/
 ├── apps/
 │   ├── frontend/
 │   │   └── src/

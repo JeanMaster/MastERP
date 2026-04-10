@@ -7,6 +7,7 @@ import { salesApi } from '../../services/salesApi';
 import { currenciesApi } from '../../services/currenciesApi';
 
 import { RegisterPaymentModal } from './components/RegisterPaymentModal';
+import { RegisterRetentionModal } from './components/RegisterRetentionModal';
 import { ClientStatementModal } from './components/ClientStatementModal';
 import { formatVenezuelanNumber } from '../../utils/formatters';
 import dayjs from 'dayjs';
@@ -22,6 +23,7 @@ export const AccountsReceivablePage = () => {
 
     // Modal states
     const [paymentModalVisible, setPaymentModalVisible] = useState(false);
+    const [retentionModalVisible, setRetentionModalVisible] = useState(false);
     const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
     const [statementModalVisible, setStatementModalVisible] = useState(false);
     const [statementClient, setStatementClient] = useState<string>('');
@@ -64,6 +66,11 @@ export const AccountsReceivablePage = () => {
     const handleRegisterPayment = (invoice: Invoice) => {
         setSelectedInvoice(invoice);
         setPaymentModalVisible(true);
+    };
+
+    const handleRegisterRetention = (invoice: Invoice) => {
+        setSelectedInvoice(invoice);
+        setRetentionModalVisible(true);
     };
 
     const handlePaymentSuccess = () => {
@@ -235,7 +242,16 @@ export const AccountsReceivablePage = () => {
                         onClick={() => handleRegisterPayment(record)}
                         disabled={record.status === 'PAID'}
                     >
-                        Registrar Pago
+                        Pagó
+                    </Button>
+                    <Button
+                        type="primary"
+                        size="small"
+                        style={{ backgroundColor: '#722ed1', borderColor: '#722ed1' }}
+                        onClick={() => handleRegisterRetention(record)}
+                        disabled={record.status === 'PAID'}
+                    >
+                        Retención
                     </Button>
                     <Button
                         size="small"
@@ -393,6 +409,16 @@ export const AccountsReceivablePage = () => {
                 invoice={selectedInvoice}
                 onClose={() => {
                     setPaymentModalVisible(false);
+                    setSelectedInvoice(null);
+                }}
+                onSuccess={handlePaymentSuccess}
+            />
+
+            <RegisterRetentionModal
+                visible={retentionModalVisible}
+                invoice={selectedInvoice}
+                onClose={() => {
+                    setRetentionModalVisible(false);
                     setSelectedInvoice(null);
                 }}
                 onSuccess={handlePaymentSuccess}

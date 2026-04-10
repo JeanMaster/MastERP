@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Modal, Form, Select, DatePicker, Input, Button, Table, InputNumber, message, Divider, Row, Col, Typography } from 'antd';
+import { Modal, Form, Select, DatePicker, Input, Button, Table, InputNumber, message, Divider, Row, Col, Typography, Space } from 'antd';
 import { DeleteOutlined, SearchOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { suppliersApi } from '../../../services/suppliersApi';
@@ -192,6 +192,7 @@ export const CreatePurchaseModal: React.FC<CreatePurchaseModalProps> = ({ visibl
                 })),
                 currencyCode: selectedCurrency?.code || 'VES',
                 exchangeRate: exchangeRate,
+                taxAmount: values.taxAmount || 0,
                 purchaseOrderId: selectedOrderId || undefined
             };
 
@@ -424,18 +425,65 @@ export const CreatePurchaseModal: React.FC<CreatePurchaseModalProps> = ({ visibl
                 pagination={false}
                 size="small"
                 summary={() => {
-                    const total = calculateTotal();
+                    const subtotal = calculateTotal();
+                    const taxAmount = form.getFieldValue('taxAmount') || 0;
+                    const total = subtotal + taxAmount;
                     return (
-                        <Table.Summary.Row>
-                            <Table.Summary.Cell index={0} colSpan={3} align="right">
-                                <Typography.Text strong>TOTAL</Typography.Text>
-                            </Table.Summary.Cell>
-                            <Table.Summary.Cell index={1}>
-                                <Typography.Text type="success" strong>
-                                    {selectedCurrency?.symbol || ''} {total.toFixed(2)}
-                                </Typography.Text>
-                            </Table.Summary.Cell>
-                        </Table.Summary.Row>
+                        <>
+                            <Table.Summary.Row>
+                                <Table.Summary.Cell index={0} colSpan={3} align="right">
+                                    <Typography.Text strong>SUBTOTAL</Typography.Text>
+                                </Table.Summary.Cell>
+                                <Table.Summary.Cell index={1}>
+                                    <Typography.Text strong>
+                                        {selectedCurrency?.symbol || ''} {subtotal.toFixed(2)}
+                                    </Typography.Text>
+                                </Table.Summary.Cell>
+                            </Table.Summary.Row>
+                            <Table.Summary.Row>
+                                <Table.Summary.Cell index={0} colSpan={3} align="right">
+                                    <Space>
+                                        <Typography.Text type="secondary">Incluye IVA (Crédito Fiscal)</Typography.Text>
+                                        <Form.Item name="isTaxable" valuePropName="checked" noStyle>
+                                            <Select
+                                                size="small"
+                                                style={{ width: 60 }}
+                                                onChange={(val) => {
+                                                    if (!val) form.setFieldValue('taxAmount', 0);
+                                                    else form.setFieldValue('taxAmount', subtotal * 0.16);
+                                                }}
+                                                options={[
+                                                    { value: true, label: 'SÍ' },
+                                                    { value: false, label: 'NO' }
+                                                ]}
+                                            />
+                                        </Form.Item>
+                                        <Typography.Text strong>IVA</Typography.Text>
+                                    </Space>
+                                </Table.Summary.Cell>
+                                <Table.Summary.Cell index={1}>
+                                    <Form.Item name="taxAmount" noStyle>
+                                        <InputNumber
+                                            size="small"
+                                            min={0}
+                                            step={0.01}
+                                            style={{ width: 100 }}
+                                            disabled={!form.getFieldValue('isTaxable')}
+                                        />
+                                    </Form.Item>
+                                </Table.Summary.Cell>
+                            </Table.Summary.Row>
+                            <Table.Summary.Row style={{ background: '#fafafa' }}>
+                                <Table.Summary.Cell index={0} colSpan={3} align="right">
+                                    <Typography.Text strong style={{ fontSize: 16 }}>TOTAL</Typography.Text>
+                                </Table.Summary.Cell>
+                                <Table.Summary.Cell index={1}>
+                                    <Typography.Text type="success" strong style={{ fontSize: 16 }}>
+                                        {selectedCurrency?.symbol || ''} {total.toFixed(2)}
+                                    </Typography.Text>
+                                </Table.Summary.Cell>
+                            </Table.Summary.Row>
+                        </>
                     );
                 }}
             />

@@ -5,9 +5,16 @@ import { InvoiceModule } from '../invoice/invoice.module';
 import { CashRegisterModule } from '../cash-register/cash-register.module';
 import { StatsModule } from '../stats/stats.module';
 import { MercadoLibreModule } from '../mercadolibre/mercadolibre.module';
+import { TaxRetentionsModule } from '../tax-retentions/tax-retentions.module';
 
 @Module({
-  imports: [InvoiceModule, CashRegisterModule, StatsModule, MercadoLibreModule],
+  imports: [
+    InvoiceModule,
+    CashRegisterModule,
+    StatsModule,
+    MercadoLibreModule,
+    TaxRetentionsModule,
+  ],
   providers: [SalesService],
   controllers: [SalesController],
 })

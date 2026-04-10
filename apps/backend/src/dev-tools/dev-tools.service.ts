@@ -135,7 +135,7 @@ export class DevToolsService {
           data: {
             username: 'admin',
             password: hashedPassword,
-            name: 'Zenith Admin',
+            name: 'MastERP Admin',
             role: 'ADMIN',
             permissions: allPermissions,
           },

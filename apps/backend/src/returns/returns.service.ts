@@ -174,11 +174,25 @@ export class ReturnsService {
     // Generar número de NC
     const creditNoteNumber = await this.generateCreditNoteNumber();
 
+    // Generar número de control para la NC
+    let controlCounter = await this.prisma.saleControlCounter.findFirst();
+    if (!controlCounter) {
+      controlCounter = await this.prisma.saleControlCounter.create({
+        data: { prefix: '00', currentNumber: 1 }
+      });
+    }
+    const controlNumber = `${controlCounter.prefix}-${controlCounter.currentNumber.toString().padStart(8, '0')}`;
+    await this.prisma.saleControlCounter.update({
+      where: { id: controlCounter.id },
+      data: { currentNumber: controlCounter.currentNumber + 1 }
+    });
+
     // Crear la devolución
     const returnRecord = await this.prisma.return.create({
       data: {
         originalSaleId: createReturnDto.originalSaleId,
         creditNoteNumber,
+        controlNumber,
         returnType: createReturnDto.returnType,
         reason: createReturnDto.reason,
         productCondition: createReturnDto.productCondition,

@@ -6,6 +6,7 @@ import { CashRegisterService } from '../cash-register/cash-register.service';
 import { MovementType } from '../cash-register/dto/create-movement.dto';
 import { StatsService } from '../stats/stats.service';
 import { MercadoLibreService } from '../mercadolibre/mercadolibre.service';
+import { TaxRetentionsService } from '../tax-retentions/tax-retentions.service';
 
 @Injectable()
 export class SalesService {
@@ -15,6 +16,7 @@ export class SalesService {
     private cashRegisterService: CashRegisterService,
     private statsService: StatsService,
     private mlService: MercadoLibreService,
+    private taxRetentionsService: TaxRetentionsService,
   ) {}
 
   /**
@@ -79,6 +81,7 @@ export class SalesService {
       itemsWithCost.push({
         ...item,
         cost: costInPrimary, // Capturar costo normalizado
+        isTaxExempt: product.isTaxExempt, // Capturar estatus fiscal histórico
       });
     }
 
@@ -94,6 +97,13 @@ export class SalesService {
       activeSession = await this.cashRegisterService.getActiveSession();
     }
 
+    // Validar que si hay retenciones de IVA, el cliente esté seleccionado
+    if (saleData.paymentMethod.includes('RETENTION_IVA') && !saleData.clientId) {
+      throw new BadRequestException(
+        'Debe seleccionar un cliente para poder aplicar retenciones de IVA',
+      );
+    }
+
     // Crear la venta con items en una transacción
     const sale = await this.prisma.$transaction(async (prisma) => {
       // Use reserved invoice number if provided, otherwise generate a new one
@@ -102,11 +112,26 @@ export class SalesService {
         invoiceNumber = await this.invoiceService.generateInvoiceNumber();
       }
 
-      // Crear la venta con número de factura
+      // Generar automáticamente el número de control usando el servicio de facturas (simulado aquí para usar la misma transacción de prisma si es posible)
+      let controlCounter = await prisma.saleControlCounter.findFirst();
+      if (!controlCounter) {
+        controlCounter = await prisma.saleControlCounter.create({
+          data: { prefix: '00', currentNumber: 1 }
+        });
+      }
+      const controlNumber = `${controlCounter.prefix}-${controlCounter.currentNumber.toString().padStart(8, '0')}`;
+      await prisma.saleControlCounter.update({
+        where: { id: controlCounter.id },
+        data: { currentNumber: controlCounter.currentNumber + 1 }
+      });
+
+      // Crear la venta con número de factura y control
       const newSale = await prisma.sale.create({
         data: {
           ...saleData,
           invoiceNumber,
+          controlNumber, // <--- Assign the control number
+          igtfAmount: createSaleDto.igtfAmount || 0,
           cashSessionId: activeSession?.id,
           items: {
             create: itemsWithCost,
@@ -235,6 +260,60 @@ export class SalesService {
       }
     }
 
+    // --- New: Detect and Process Tax Retentions from POS ---
+    if (saleData.paymentMethod.includes('RETENTION_IVA')) {
+      try {
+        const methods = saleData.paymentMethod.split(', ');
+        for (const methodPart of methods) {
+          if (methodPart.startsWith('RETENTION_IVA')) {
+            // Format: RETENTION_IVA:amount:voucherNumber
+            const parts = methodPart.split(':');
+            const amount = parseFloat(parts[1]);
+            const voucherNumber = parts[2] || `POS-${sale.invoiceNumber}`;
+
+            // Create retention record
+            // We find or create the invoice for this sale
+            let invoice = await this.prisma.invoice.findFirst({
+              where: { saleId: sale.id }
+            });
+
+            if (!invoice) {
+              // Create a "Paid" invoice for the POS sale so we can attach the retention
+              invoice = await this.invoiceService.create({
+                clientId: sale.clientId || '',
+                saleId: sale.id,
+                subtotal: Number(sale.subtotal),
+                discount: Number(sale.discount),
+                tax: Number(sale.tax),
+                total: Number(sale.total),
+                paidAmount: Number(sale.total), // Mark as paid, retention will be registered as a payment
+                balance: 0,
+                status: 'PAID',
+                notes: `Factura generada para registro de retención - ${sale.invoiceNumber}`,
+                invoiceNumber: sale.invoiceNumber,
+                currencyCode: 'VES',
+                exchangeRate: Number(sale.exchangeRate)
+              });
+            }
+
+            if (invoice) {
+              await this.taxRetentionsService.create({
+                invoiceId: invoice.id,
+                voucherNumber,
+                voucherDate: new Date(),
+                type: 'IVA',
+                baseAmount: Number(sale.subtotal),
+                retentionPercent: Math.round((amount / Number(sale.tax)) * 100),
+                amount: amount,
+              });
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error processing automatic tax retention:', error);
+      }
+    }
+
     return sale;
   }
 
@@ -267,6 +346,11 @@ export class SalesService {
 
       // Identificar si es Efectivo (VES) o Divisa (USD)
       // Según indicación del usuario: Solo efectivo BS y efectivo $ van a gaveta.
+      // Ignorar formas de pago de Retención en movimientos de caja físico
+      if (method.startsWith('RETENTION')) {
+        continue;
+      }
+
       if (method === 'CASH') {
         // Pago en efectivo Bs
         await this.cashRegisterService.createMovement({

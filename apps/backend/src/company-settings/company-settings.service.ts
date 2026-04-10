@@ -19,7 +19,7 @@ export class CompanySettingsService {
     if (!settings) {
       settings = await this.prisma.companySettings.create({
         data: {
-          name: 'Zenith',
+          name: 'MastERP',
           rif: 'J-00000000-0',
           logoUrl: null,
         },

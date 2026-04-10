@@ -14,6 +14,8 @@ export interface Expense {
     notes?: string;
     bankAccountId?: string;
     bankAccount?: BankAccount;
+    taxAmount?: number;
+    isTaxable?: boolean;
     createdAt: string;
     updatedAt: string;
 }
@@ -29,6 +31,8 @@ export interface CreateExpenseDto {
     reference?: string;
     notes?: string;
     bankAccountId?: string;
+    taxAmount?: number;
+    isTaxable?: boolean;
 }
 
 export interface UpdateExpenseDto extends Partial<CreateExpenseDto> { }

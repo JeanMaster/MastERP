@@ -51,6 +51,10 @@ export class CreateSaleDto {
   tax: number;
 
   @IsNumber({ maxDecimalPlaces: 2 })
+  @IsOptional()
+  igtfAmount?: number;
+
+  @IsNumber({ maxDecimalPlaces: 2 })
   @Min(0)
   total: number;
 

@@ -31,6 +31,7 @@ import { AccountsPayablePage } from './features/purchases/AccountsPayablePage';
 import { PurchaseOrdersPage } from './features/purchases/PurchaseOrdersPage';
 import { BanksPage } from './features/banks/BanksPage'; // Importación
 import { UsersPage } from './features/users/UsersPage';
+import { RetentionsListPage } from './features/tax-retentions/pages/RetentionsListPage';
 import {
   ShoppingCartOutlined,
   ShoppingOutlined,
@@ -77,6 +78,7 @@ function App() {
           <Route path="sales" element={<ModulePage title="Ventas" icon={<ShoppingCartOutlined />} />} />
           <Route path="sales/pos" element={<POSPage />} />
           <Route path="sales/history" element={<SalesHistoryPage />} />
+          <Route path="sales/retentions" element={<RetentionsListPage />} />
           <Route path="sales/returns" element={<ReturnsPage />} />
           <Route path="sales/cash-register" element={<CashRegisterPage />} />
 

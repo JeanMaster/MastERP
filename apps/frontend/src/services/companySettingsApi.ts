@@ -6,6 +6,14 @@ export interface CompanySettings {
     rif: string;
     logoUrl?: string;
     preferredSecondaryCurrencyId?: string;
+    taxEnabled: boolean;
+    taxRate: number;
+    roundingEnabled: boolean;
+    roundingFactor: number;
+    igtfEnabled: boolean;
+    igtfRate: number;
+    isSpecialTaxpayer: boolean;
+    requireBankAccountForPayments: boolean;
     createdAt: string;
     updatedAt: string;
 }
@@ -15,6 +23,14 @@ export interface UpdateCompanySettingsDto {
     rif: string;
     logoUrl?: string;
     preferredSecondaryCurrencyId?: string;
+    taxEnabled?: boolean;
+    taxRate?: number;
+    roundingEnabled?: boolean;
+    roundingFactor?: number;
+    igtfEnabled?: boolean;
+    igtfRate?: number;
+    isSpecialTaxpayer?: boolean;
+    requireBankAccountForPayments?: boolean;
 }
 
 export const companySettingsApi = {

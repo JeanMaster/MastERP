@@ -37,6 +37,8 @@ export class ExpensesService {
           reference: createExpenseDto.reference,
           notes: createExpenseDto.notes,
           bankAccountId: createExpenseDto.bankAccountId,
+          taxAmount: createExpenseDto.taxAmount || 0,
+          isTaxable: createExpenseDto.isTaxable || false,
         },
       });
 
@@ -142,6 +144,8 @@ export class ExpensesService {
         paymentMethod: updateExpenseDto.paymentMethod,
         reference: updateExpenseDto.reference,
         notes: updateExpenseDto.notes,
+        taxAmount: (updateExpenseDto as any).taxAmount,
+        isTaxable: (updateExpenseDto as any).isTaxable,
       },
     });
   }

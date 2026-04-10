@@ -6,6 +6,7 @@ import dayjs from 'dayjs';
 import { expensesApi, type UpdateExpenseDto, type Expense } from '../../../services/expensesApi';
 import { currenciesApi } from '../../../services/currenciesApi';
 import { banksApi } from '../../../services/banksApi';
+import { companySettingsApi } from '../../../services/companySettingsApi';
 import { formatVenezuelanPrice } from '../../../utils/formatters';
 
 interface CreateExpenseModalProps {
@@ -57,6 +58,12 @@ export const CreateExpenseModal = ({ open, onCancel, expense }: CreateExpenseMod
     const { data: banks = [] } = useQuery({
         queryKey: ['banks'],
         queryFn: () => banksApi.getAll(),
+    });
+
+    const { data: settings } = useQuery({
+        queryKey: ['company-settings'],
+        queryFn: companySettingsApi.getSettings,
+        enabled: open
     });
 
     // Set default values when modal opens
@@ -156,6 +163,10 @@ export const CreateExpenseModal = ({ open, onCancel, expense }: CreateExpenseMod
                 reference: values.reference,
                 notes: values.notes,
                 bankAccountId: values.bankAccountId,
+                taxAmount: values.taxAmount || 0,
+                isTaxable: values.isTaxable || false,
+                invoiceNumber: values.isTaxable ? values.invoiceNumber : undefined,
+                invoiceControlNumber: values.isTaxable ? values.invoiceControlNumber : undefined,
             };
 
             if (expense) {
@@ -223,6 +234,70 @@ export const CreateExpenseModal = ({ open, onCancel, expense }: CreateExpenseMod
                 >
                     <Input placeholder="Ej. Pago servicio internet" autoFocus />
                 </Form.Item>
+
+                <Space style={{ display: 'flex', marginBottom: 16 }} align="start" size={16}>
+                    <Form.Item
+                        name="isTaxable"
+                        label="¿Es Gasto Fiscal (IVA)?"
+                        valuePropName="checked"
+                    >
+                        <Select
+                            placeholder="Fiscal?"
+                            style={{ width: '150px' }}
+                            onChange={(val) => {
+                                if (!val) form.setFieldValue('taxAmount', 0);
+                                else {
+                                    // Default to 16% of amount
+                                    const amountVal = form.getFieldValue('amount') || 0;
+                                    form.setFieldValue('taxAmount', amountVal * 0.16);
+                                }
+                            }}
+                            options={[
+                                { value: true, label: 'Sí (Con Factura)' },
+                                { value: false, label: 'No (Formal/Nota)' }
+                            ]}
+                        />
+                    </Form.Item>
+
+                    <Form.Item
+                        name="taxAmount"
+                        label="Monto del IVA"
+                        dependencies={['isTaxable']}
+                    >
+                        <InputNumber
+                            style={{ width: '150px' }}
+                            min={0}
+                            precision={2}
+                            disabled={!form.getFieldValue('isTaxable')}
+                        />
+                    </Form.Item>
+                    
+                    <Form.Item
+                        noStyle
+                        shouldUpdate={(prevValues, currentValues) => prevValues.isTaxable !== currentValues.isTaxable}
+                    >
+                        {({ getFieldValue }) =>
+                            getFieldValue('isTaxable') ? (
+                                <>
+                                    <Form.Item
+                                        name="invoiceNumber"
+                                        label="Número Factura"
+                                        rules={[{ required: true, message: 'Requerido' }]}
+                                    >
+                                        <Input placeholder="Ej. 00123" />
+                                    </Form.Item>
+                                    <Form.Item
+                                        name="invoiceControlNumber"
+                                        label="Número Control"
+                                        rules={[{ required: true, message: 'Requerido' }]}
+                                    >
+                                        <Input placeholder="Ej. 00-00123" />
+                                    </Form.Item>
+                                </>
+                            ) : null
+                        }
+                    </Form.Item>
+                </Space>
 
                 <Space style={{ display: 'flex', marginBottom: 0 }} align="start" size={16}>
                     <Form.Item
@@ -302,7 +377,8 @@ export const CreateExpenseModal = ({ open, onCancel, expense }: CreateExpenseMod
 
                 <Form.Item
                     name="bankAccountId"
-                    label="Cuenta Bancaria / Tesorería (Opcional)"
+                    label={settings?.requireBankAccountForPayments ? "Cuenta Bancaria / Tesorería" : "Cuenta Bancaria / Tesorería (Opcional)"}
+                    rules={[{ required: settings?.requireBankAccountForPayments !== false, message: 'Seleccione una cuenta' }]}
                     help={bankDeductionPreview}
                 >
                     <Select

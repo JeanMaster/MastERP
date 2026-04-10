@@ -47,6 +47,7 @@ export interface Product {
     secondaryOfferPrice?: number;
     secondaryWholesalePrice?: number;
     images: string[];
+    isTaxExempt: boolean;
     active: boolean;
     type: 'PRODUCT' | 'SERVICE' | 'COMPOSED';
     components?: Array<{
@@ -94,6 +95,7 @@ export interface CreateProductDto {
     secondaryOfferPrice?: number;
     secondaryWholesalePrice?: number;
     images?: string[];
+    isTaxExempt?: boolean;
     components?: Array<{ componentProductId: string; quantity: number }>;
 }
 
@@ -119,6 +121,7 @@ export interface UpdateProductDto {
     secondaryOfferPrice?: number;
     secondaryWholesalePrice?: number;
     images?: string[];
+    isTaxExempt?: boolean;
     components?: Array<{ componentProductId: string; quantity: number }>;
 }
 

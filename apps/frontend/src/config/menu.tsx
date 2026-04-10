@@ -23,7 +23,7 @@ export interface AppMenuItem {
 
 /**
  * Configuración del menú principal de navegación
- * Basado en los módulos del ERP Zenith
+ * Basado en los módulos del ERP MastERP
  */
 export const menuItems: AppMenuItem[] = [
     {
@@ -90,6 +90,10 @@ export const menuItems: AppMenuItem[] = [
             {
                 key: '/sales/cash-register',
                 label: 'Caja',
+            },
+            {
+                key: '/sales/retentions',
+                label: 'Retenciones Fiscales',
             },
             {
                 key: '/clients',

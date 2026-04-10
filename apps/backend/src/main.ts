@@ -29,9 +29,9 @@ async function bootstrap() {
 
   // Swagger/OpenAPI
   const config = new DocumentBuilder()
-    .setTitle('Valery Corporativo API')
+    .setTitle('MastERP API')
     .setDescription(
-      'API REST para el sistema ERP Valery Corporativo - Migración Web',
+      'API REST para el sistema ERP MastERP - Migración Web',
     )
     .setVersion('1.0')
     .addTag('health', 'Endpoints de salud del sistema')

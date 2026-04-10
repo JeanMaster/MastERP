@@ -5,7 +5,7 @@ GREEN='\033[0;32m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
-echo -e "${BLUE}🚀 Iniciando servicios de Valery Corporativo...${NC}"
+echo -e "${BLUE}🚀 Iniciando servicios de MastERP...${NC}"
 
 # Iniciar Backend
 echo -e "${GREEN}📦 Iniciando Backend (NestJS)...${NC}"

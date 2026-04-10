@@ -2,6 +2,7 @@ import React from 'react';
 import { Modal, Typography, Row, Col, Descriptions, Button, Tag, Image, Divider } from 'antd';
 import type { Product } from '../../services/productsApi';
 import { formatVenezuelanPrice } from '../../utils/formatters';
+import { getRoundedPrice } from '../../utils/rounding';
 
 const { Title, Text } = Typography;
 
@@ -29,8 +30,16 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({ visible,
             priceInPrimary = product.salePrice * prodRate;
         }
 
-        // Apply POS Rounding Logic: Ceil to nearest 10
-        priceInPrimary = Math.ceil(priceInPrimary / 10) * 10;
+        // Add IVA if enabled and product is not exempt
+        if (companySettings?.taxEnabled && !product.isTaxExempt) {
+            const taxRate = Number(companySettings.taxRate) || 16;
+            priceInPrimary = priceInPrimary * (1 + taxRate / 100);
+        }
+
+        // Apply POS Rounding Logic
+        const roundingEnabled = companySettings?.roundingEnabled !== undefined ? companySettings.roundingEnabled : true;
+        const roundingFactor = companySettings?.roundingFactor || 10;
+        priceInPrimary = getRoundedPrice(priceInPrimary, roundingFactor, roundingEnabled);
 
         let priceInSecondary = 0;
         if (secondaryRate > 0) {
@@ -85,6 +94,11 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({ visible,
                             <Title level={1} style={{ margin: 0, color: '#389e0d', fontSize: '48px' }}>
                                 {formatVenezuelanPrice(primary, primarySymbol)}
                             </Title>
+                            {companySettings?.taxEnabled && (
+                                <Tag color={product.isTaxExempt ? 'default' : 'success'} style={{ fontSize: '14px', marginTop: -8 }}>
+                                    {product.isTaxExempt ? 'EXENTO DE IVA' : 'IVA INCLUIDO'}
+                                </Tag>
+                            )}
 
                             {secondary > 0 && (
                                 <Text style={{ fontSize: '22px', color: '#8c8c8c', marginTop: 4, fontWeight: 500 }}>

@@ -80,6 +80,12 @@ export class CreatePurchaseDto {
   paidAmount?: number;
 
   @ApiProperty()
+  @IsNumber()
+  @IsOptional()
+  @Min(0)
+  taxAmount?: number;
+
+  @ApiProperty()
   @IsString()
   @IsOptional()
   purchaseOrderId?: string;

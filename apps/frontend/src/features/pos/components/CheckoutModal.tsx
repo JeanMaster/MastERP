@@ -1,17 +1,19 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Modal, Button, Row, Col, Typography, Table, InputNumber, Space, Card } from 'antd';
+import { Modal, Button, Row, Col, Typography, Table, InputNumber, Space, Card, Divider, Switch } from 'antd';
 import {
     DollarOutlined,
     CreditCardOutlined,
     BankOutlined,
     MobileOutlined,
     DeleteOutlined,
-    CheckCircleOutlined
+    CheckCircleOutlined,
+    FileTextOutlined
 } from '@ant-design/icons';
 import { useQuery } from '@tanstack/react-query';
 import { banksApi } from '../../../services/banksApi';
 import { usePOSStore } from '../../../store/posStore';
 import { formatVenezuelanPrice, formatVenezuelanPriceOnly } from '../../../utils/formatters';
+import { Input } from 'antd';
 
 const { Title, Text } = Typography;
 
@@ -43,7 +45,11 @@ export const CheckoutModal = ({ open, onCancel, onProcess }: CheckoutModalProps)
         activeCustomer,
         customerId,
         nextInvoiceNumber,
-        reservedInvoiceNumber
+        reservedInvoiceNumber,
+        taxEnabled,
+        taxRate,
+        igtfEnabled,
+        igtfRate
     } = usePOSStore();
 
     // Ref for auto-focus on amount input
@@ -55,10 +61,20 @@ export const CheckoutModal = ({ open, onCancel, onProcess }: CheckoutModalProps)
     const [, setSelectedMethod] = useState<string | null>(null);
     const [isProcessing, setIsProcessing] = useState(false);
     const [creditCurrencyId, setCreditCurrencyId] = useState<string | null>(null);
+    const [applyIGTF, setApplyIGTF] = useState(true);
+
+    // Calculate IGTF (3%) based on payments in divisas
+    const totalIGTF = (applyIGTF && igtfEnabled) ? payments.reduce((sum, p) => {
+        // Only apply if it's a foreign currency payment
+        if (p.originalCurrencyId && p.originalCurrencyId !== primaryCurrency?.id) {
+            return sum + (p.amount * (igtfRate / 100));
+        }
+        return sum;
+    }, 0) : 0;
 
     // Calculate remaining amount
     const totalPaid = payments.reduce((sum, p) => sum + p.amount, 0);
-    const remaining = Math.max(0, totals.total - totalPaid);
+    const remaining = Math.max(0, (totals.total + totalIGTF) - totalPaid);
     const isFullyPaid = remaining < 0.01; // Tolerance for floating point
 
     // Reset state when modal opens
@@ -69,8 +85,11 @@ export const CheckoutModal = ({ open, onCancel, onProcess }: CheckoutModalProps)
             setInputAmount(totals.total);
             setSelectedMethod(null);
             setCreditCurrencyId(primaryCurrency?.id || null);
+            setApplyIGTF(igtfEnabled);
+            setRetentionModalOpen(false);
+            setRetentionVoucher('');
         }
-    }, [open, primaryCurrency]);
+    }, [open, primaryCurrency, igtfEnabled]);
 
     // Fetch banks for Mobile Payment
     const { data: banks = [] } = useQuery({
@@ -81,6 +100,8 @@ export const CheckoutModal = ({ open, onCancel, onProcess }: CheckoutModalProps)
 
     const mobilePaymentBanks = banks.filter(b => b.active && b.receivesMobilePayment);
     const [bankSelectorOpen, setBankSelectorOpen] = useState(false);
+    const [retentionModalOpen, setRetentionModalOpen] = useState(false);
+    const [retentionVoucher, setRetentionVoucher] = useState('');
 
     // Get available foreign currencies (excluding primary)
     const foreignCurrencies = currencies.filter(c => !c.isPrimary && c.active);
@@ -105,7 +126,7 @@ export const CheckoutModal = ({ open, onCancel, onProcess }: CheckoutModalProps)
             if (!open) return;
 
             // Modal-exclusive keys - prevent propagation to background
-            const modalKeys = ['F1', 'F2', 'F3', 'F4', 'F5', 'F6', 'F8', 'F9', 'Escape'];
+            const modalKeys = ['F1', 'F2', 'F3', 'F4', 'F5', 'F6', 'F7', 'F8', 'F9', 'Escape'];
 
             // Check for Ctrl+Fn combinations (excluding F6 which is now standalone)
             const isCtrlFn = e.ctrlKey && ['F9', 'F10', 'F11', 'F12'].includes(e.key);
@@ -134,6 +155,8 @@ export const CheckoutModal = ({ open, onCancel, onProcess }: CheckoutModalProps)
                 } else if (e.key === 'F5' && inputAmount) {
                     setSelectedMethod('TRANSFER');
                     addPayment('TRANSFER', 'F5 Transferencia');
+                } else if (e.key === 'F7' && inputAmount) {
+                    handleRetentionClick();
                 } else if (e.key === 'F8' && inputAmount) {
                     if (!customerId) return;
                     setSelectedMethod('ACCOUNT_CREDIT');
@@ -260,9 +283,41 @@ export const CheckoutModal = ({ open, onCancel, onProcess }: CheckoutModalProps)
 
         // Calculate new remaining and set as default for next payment
         const newTotalPaid = newPayments.reduce((sum, p) => sum + p.amount, 0);
-        const newRemaining = Math.max(0, totals.total - newTotalPaid);
+        
+        // Dynamic IGTF for new payments state
+        const newIGTF = (applyIGTF && igtfEnabled) ? newPayments.reduce((sum, p) => {
+            if (p.originalCurrencyId && p.originalCurrencyId !== primaryCurrency?.id) {
+                return sum + (p.amount * (igtfRate / 100));
+            }
+            return sum;
+        }, 0) : 0;
+
+        const newRemaining = Math.max(0, (totals.total + newIGTF) - newTotalPaid);
         setInputAmount(newRemaining > 0 ? newRemaining : null);
         setSelectedMethod(null);
+    };
+
+    const handleRetentionClick = () => {
+        if (!totals.tax || totals.tax <= 0) return;
+        
+        // Suggest 75% of tax as default retention
+        const suggestedAmount = totals.tax * 0.75;
+        setInputAmount(suggestedAmount);
+        setRetentionModalOpen(true);
+    };
+
+    const addRetentionPayment = () => {
+        if (!retentionVoucher || !inputAmount) return;
+        
+        addPayment(
+            `RETENTION_IVA:${inputAmount}:${retentionVoucher}`, 
+            `F7 Retención IVA (#${retentionVoucher})`,
+            undefined,
+            inputAmount
+        );
+        
+        setRetentionModalOpen(false);
+        setRetentionVoucher('');
     };
 
     const removePayment = (id: string) => {
@@ -271,7 +326,15 @@ export const CheckoutModal = ({ open, onCancel, onProcess }: CheckoutModalProps)
 
         // Recalculate remaining and update input
         const newTotalPaid = newPayments.reduce((sum, p) => sum + p.amount, 0);
-        const newRemaining = Math.max(0, totals.total - newTotalPaid);
+
+        const newIGTF = (applyIGTF && igtfEnabled) ? newPayments.reduce((sum, p) => {
+            if (p.originalCurrencyId && p.originalCurrencyId !== primaryCurrency?.id) {
+                return sum + (p.amount * (igtfRate / 100));
+            }
+            return sum;
+        }, 0) : 0;
+
+        const newRemaining = Math.max(0, (totals.total + newIGTF) - newTotalPaid);
         setInputAmount(newRemaining);
 
         if (selectedPaymentId === id) {
@@ -293,9 +356,10 @@ export const CheckoutModal = ({ open, onCancel, onProcess }: CheckoutModalProps)
                     originalCurrency: p.originalCurrency,
                     bankId: p.bankId
                 })),
-                total: totals.total,
+                total: totals.total + totalIGTF,
+                igtfAmount: totalIGTF,
                 totalPaid,
-                change: totalPaid - totals.total
+                change: totalPaid - (totals.total + totalIGTF)
             };
 
             await onProcess(paymentData);
@@ -314,6 +378,7 @@ export const CheckoutModal = ({ open, onCancel, onProcess }: CheckoutModalProps)
         { key: 'CARD_CREDIT', label: 'F3 T. Crédito', icon: <CreditCardOutlined />, shortcut: 'F3' },
         { key: 'MOBILE', label: 'F4 Pago Móvil', icon: <MobileOutlined />, shortcut: 'F4' },
         { key: 'TRANSFER', label: 'F5 Transferencia', icon: <BankOutlined />, shortcut: 'F5' },
+        { key: 'RETENTION_IVA', label: 'F7 Retención IVA', icon: <FileTextOutlined />, shortcut: 'F7', info: '75% IVA' },
         { key: 'ACCOUNT_CREDIT', label: 'F8 Crédito (Cuenta)', icon: <CreditCardOutlined />, shortcut: 'F8', danger: true },
     ];
 
@@ -394,6 +459,47 @@ export const CheckoutModal = ({ open, onCancel, onProcess }: CheckoutModalProps)
                     {mobilePaymentBanks.length === 0 && <Text>No hay bancos configurados para Pago Móvil.</Text>}
                 </div>
             </Modal>
+
+            {/* Modal for Retention Voucher Number */}
+            <Modal
+                title="Comprobante de Retención"
+                open={retentionModalOpen}
+                onCancel={() => setRetentionModalOpen(false)}
+                onOk={addRetentionPayment}
+                okText="Agregar Retención"
+                cancelText="Cancelar"
+                centered
+                width={400}
+                zIndex={2000}
+            >
+                <div style={{ padding: '8px 0' }}>
+                    <Text type="secondary">Monto Sugerido (75% IVA):</Text>
+                    <div style={{ marginBottom: 16 }}>
+                        <Title level={4} style={{ margin: 0 }}>
+                            {formatVenezuelanPrice(totals.tax * 0.75, primaryCurrency?.symbol)}
+                        </Title>
+                    </div>
+
+                    <Text strong>Monto a Retener:</Text>
+                    <InputNumber
+                        style={{ width: '100%', marginTop: 8, marginBottom: 16 }}
+                        size="large"
+                        value={inputAmount}
+                        onChange={setInputAmount}
+                    />
+
+                    <Text strong>Número de Comprobante:</Text>
+                    <Input 
+                        autoFocus
+                        style={{ width: '100%', marginTop: 8 }}
+                        size="large"
+                        placeholder="Ej: 202404080001"
+                        value={retentionVoucher}
+                        onChange={(e) => setRetentionVoucher(e.target.value)}
+                        onPressEnter={addRetentionPayment}
+                    />
+                </div>
+            </Modal>
             {/* Header with totals */}
             <div style={{
                 background: '#f0f2f5',
@@ -429,7 +535,7 @@ export const CheckoutModal = ({ open, onCancel, onProcess }: CheckoutModalProps)
                 <Row gutter={24}>
                     <Col span={12}>
                         <Card size="small" style={{ background: '#e6f7ff', border: '1px solid #91d5ff' }}>
-                            <Text type="secondary">Total a Pagar</Text>
+                            <Text type="secondary">Total a Pagar {taxEnabled && '(IVA Incl.)'}</Text>
                             <Title level={2} style={{ margin: '8px 0', color: '#1890ff' }}>
                                 {formatVenezuelanPrice(totals.total, primaryCurrency?.symbol)}
                             </Title>
@@ -490,17 +596,23 @@ export const CheckoutModal = ({ open, onCancel, onProcess }: CheckoutModalProps)
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 8 }}>
                                 {bsPaymentMethods.map(method => {
                                     const isCreditMethod = method.key === 'ACCOUNT_CREDIT';
-                                    const isDisabled = isFullyPaid || !inputAmount || inputAmount <= 0 || (isCreditMethod && !customerId);
+                                    const isRetentionMethod = method.key === 'RETENTION_IVA';
+                                    const isDisabled = isFullyPaid || !inputAmount || inputAmount <= 0 || ((isCreditMethod || isRetentionMethod) && !customerId);
 
                                     return (
                                         <div key={method.key}>
                                             <Button
                                                 size="large"
                                                 onClick={() => {
-                                                    if (isCreditMethod && !customerId) return;
+                                                    if ((isCreditMethod || isRetentionMethod) && !customerId) return;
 
                                                     if (method.key === 'MOBILE' && mobilePaymentBanks.length > 0) {
                                                         setBankSelectorOpen(true);
+                                                        return;
+                                                    }
+
+                                                    if (method.key === 'RETENTION_IVA') {
+                                                        handleRetentionClick();
                                                         return;
                                                     }
 
@@ -508,7 +620,11 @@ export const CheckoutModal = ({ open, onCancel, onProcess }: CheckoutModalProps)
                                                     addPayment(method.key, method.label, isCreditMethod ? creditCurrencyId || undefined : undefined);
                                                 }}
                                                 disabled={isDisabled}
-                                                title={isCreditMethod && !customerId ? 'Debe seleccionar un cliente para venta a crédito' : ''}
+                                                title={
+                                                    (isCreditMethod && !customerId) ? 'Debe seleccionar un cliente para venta a crédito' : 
+                                                    (isRetentionMethod && !customerId) ? 'Debe seleccionar un cliente para aplicar retención' : 
+                                                    ''
+                                                }
                                                 style={{
                                                     height: 80,
                                                     width: '100%',
@@ -649,7 +765,70 @@ export const CheckoutModal = ({ open, onCancel, onProcess }: CheckoutModalProps)
 
                         {/* Summary */}
                         <Card size="small" style={{ background: '#fafafa' }}>
+                            {taxEnabled && (
+                                <>
+                                    <Row>
+                                        <Col span={12}>
+                                            <Text type="secondary">Base Imponible:</Text>
+                                        </Col>
+                                        <Col span={12} style={{ textAlign: 'right' }}>
+                                            <Text>{formatVenezuelanPrice(totals.subtotal, primaryCurrency?.symbol)}</Text>
+                                        </Col>
+                                    </Row>
+                                    <Row style={{ marginTop: 4 }}>
+                                        <Col span={12}>
+                                            <Text type="secondary">IVA ({taxRate}%):</Text>
+                                        </Col>
+                                        <Col span={12} style={{ textAlign: 'right' }}>
+                                            <Text>{formatVenezuelanPrice(totals.tax, primaryCurrency?.symbol)}</Text>
+                                        </Col>
+                                    </Row>
+                                    <Divider style={{ margin: '8px 0' }} />
+                                </>
+                            )}
                             <Row>
+                                <Col span={12}>
+                                    <Text strong>Total de la Venta:</Text>
+                                </Col>
+                                <Col span={12} style={{ textAlign: 'right' }}>
+                                    <Text strong>{formatVenezuelanPrice(totals.total, primaryCurrency?.symbol)}</Text>
+                                </Col>
+                            </Row>
+                            {igtfEnabled && (
+                                <Row style={{ marginTop: 8, alignItems: 'center' }}>
+                                    <Col span={12}>
+                                        <Space direction="vertical" size={0}>
+                                            <Text strong style={{ color: '#ff4d4f' }}>IGTF ({igtfRate}%):</Text>
+                                            <Text type="secondary" style={{ fontSize: '10px' }}>Por pagos en Divisas</Text>
+                                        </Space>
+                                    </Col>
+                                    <Col span={12} style={{ textAlign: 'right' }}>
+                                        <Space>
+                                            <Text strong style={{ color: '#ff4d4f' }}>
+                                                {formatVenezuelanPrice(totalIGTF, primaryCurrency?.symbol)}
+                                            </Text>
+                                            <Switch 
+                                                size="small" 
+                                                checked={applyIGTF} 
+                                                onChange={setApplyIGTF} 
+                                                title="Activar/Desactivar cobro de IGTF"
+                                            />
+                                        </Space>
+                                    </Col>
+                                </Row>
+                            )}
+                            <Divider style={{ margin: '12px 0' }} />
+                            <Row>
+                                <Col span={12}>
+                                    <Title level={4} style={{ margin: 0 }}>Total Pago:</Title>
+                                </Col>
+                                <Col span={12} style={{ textAlign: 'right' }}>
+                                    <Title level={4} style={{ margin: 0, color: '#1890ff' }}>
+                                        {formatVenezuelanPrice(totals.total + totalIGTF, primaryCurrency?.symbol)}
+                                    </Title>
+                                </Col>
+                            </Row>
+                            <Row style={{ marginTop: 8 }}>
                                 <Col span={12}>
                                     <Text strong>Total Pagado:</Text>
                                 </Col>
@@ -663,12 +842,12 @@ export const CheckoutModal = ({ open, onCancel, onProcess }: CheckoutModalProps)
                                 </Col>
                                 <Col span={12} style={{ textAlign: 'right' }}>
                                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
-                                        <Text strong style={{ color: totalPaid > totals.total ? '#52c41a' : 'inherit', fontSize: '1.2em' }}>
-                                            {formatVenezuelanPrice(Math.max(0, totalPaid - totals.total), primaryCurrency?.symbol)}
+                                        <Text strong style={{ color: totalPaid > (totals.total + totalIGTF) ? '#52c41a' : 'inherit', fontSize: '1.2em' }}>
+                                            {formatVenezuelanPrice(Math.max(0, totalPaid - (totals.total + totalIGTF)), primaryCurrency?.symbol)}
                                         </Text>
-                                        {preferredSecondaryCurrency && totalPaid > totals.total && (
+                                        {preferredSecondaryCurrency && totalPaid > (totals.total + totalIGTF) && (
                                             <Text type="secondary" style={{ color: '#52c41a' }}>
-                                                ({formatVenezuelanPrice((totalPaid - totals.total) / (preferredSecondaryCurrency.exchangeRate || 1), preferredSecondaryCurrency.symbol)})
+                                                ({formatVenezuelanPrice((totalPaid - (totals.total + totalIGTF)) / (preferredSecondaryCurrency.exchangeRate || 1), preferredSecondaryCurrency.symbol)})
                                             </Text>
                                         )}
                                     </div>

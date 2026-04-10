@@ -26,6 +26,8 @@ export const POSLeftPanel = () => {
         toggleSelectedItemUnit,
         totals,
         preferredSecondaryCurrency,
+        taxEnabled,
+        taxRate,
         calculatePriceInPrimary,
         calculatePriceInCurrency,
         calculateCostInPrimary,
@@ -174,11 +176,14 @@ export const POSLeftPanel = () => {
                 <div>
                     <span style={{ fontWeight: 'bold' }}>{product.name}</span>
                     {record.isSecondaryUnit && <div style={{ fontSize: 10, color: '#888' }}>({product.secondaryUnit?.name || 'Sec.'})</div>}
-                    {record.discount > 0 && (
-                        <div style={{ fontSize: 11, color: 'green' }}>
-                            Desc: {record.discountPercent}% (-{formatVenezuelanPriceOnly(record.discount, 2, false)})
-                        </div>
-                    )}
+                    <div style={{ display: 'flex', gap: 4, marginTop: 2 }}>
+                        {product.isTaxExempt && <Tag color="default" style={{ fontSize: 9, margin: 0 }}>EXENTO</Tag>}
+                        {record.discount > 0 && (
+                            <span style={{ fontSize: 11, color: 'green' }}>
+                                Desc: {record.discountPercent}% (-{formatVenezuelanPriceOnly(record.discount, 2, false)})
+                            </span>
+                        )}
+                    </div>
                 </div>
             )
         },
@@ -256,7 +261,7 @@ export const POSLeftPanel = () => {
     ].filter(Boolean) as any;
 
     return (
-        <div style={{ height: '100%', display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <div style={{ height: '100%', minHeight: 0, display: 'flex', flexDirection: 'column', gap: 10 }}>
 
             {/* Buscador */}
             <Select
@@ -304,7 +309,7 @@ export const POSLeftPanel = () => {
             />
 
             {/* Grid del Carrito */}
-            <div style={{ flex: 1, border: '1px solid #d9d9d9', background: 'white', borderRadius: 4, overflow: 'hidden' }}>
+            <div style={{ flex: 1, minHeight: 0, border: '1px solid #d9d9d9', background: 'white', borderRadius: 4, overflowY: 'auto' }}>
                 <Table
                     dataSource={cart}
                     columns={columns}
@@ -373,40 +378,70 @@ export const POSLeftPanel = () => {
 
             {/* Mini Totales Inferiores */}
             <Card size="small" style={{ background: '#333', color: 'white', border: 0 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5 }}>
-                    <span style={{ color: 'white' }}>Sub Total</span>
-                    <strong
-                        style={{ fontSize: 16, color: 'white' }}
-                        title={formatVenezuelanPriceOnly(totals.subtotal || 0, 2, false)}
-                    >
-                        {formatVenezuelanPriceOnly(totals.subtotal || 0, 2, false)}
-                    </strong>
-                </div>
+                {taxEnabled && (
+                    <>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 2 }}>
+                            <span style={{ color: '#aaa', fontSize: 13 }}>Base Imponible</span>
+                            <span
+                                style={{ fontSize: 14, color: '#fff' }}
+                                title={formatVenezuelanPriceOnly(totals.subtotal || 0, 2, false)}
+                            >
+                                {formatVenezuelanPriceOnly(totals.subtotal || 0, 2, false)}
+                            </span>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5 }}>
+                            <span style={{ color: '#aaa', fontSize: 13 }}>IVA ({taxRate}%)</span>
+                            <span
+                                style={{ fontSize: 14, color: '#fff' }}
+                                title={formatVenezuelanPriceOnly(totals.tax || 0, 2, false)}
+                            >
+                                {formatVenezuelanPriceOnly(totals.tax || 0, 2, false)}
+                            </span>
+                        </div>
+                    </>
+                )}
+
+                {!taxEnabled && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5 }}>
+                        <span style={{ color: 'white' }}>Sub Total</span>
+                        <strong
+                            style={{ fontSize: 16, color: 'white' }}
+                            title={formatVenezuelanPriceOnly(totals.subtotal || 0, 2, false)}
+                        >
+                            {formatVenezuelanPriceOnly(totals.subtotal || 0, 2, false)}
+                        </strong>
+                    </div>
+                )}
+
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5 }}>
                     <span style={{ color: 'white' }}>Descuento</span>
                     <strong style={{ fontSize: 16, color: 'orange' }}>
                         {(totals.discount || 0).toFixed(2)}
                     </strong>
                 </div>
+
                 <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid #555', marginTop: 5, paddingTop: 5 }}>
-                    <span style={{ color: 'white' }}>Total</span>
-                    <strong
-                        style={{ fontSize: 20, color: 'yellow' }}
-                        title={formatVenezuelanPriceOnly(totals.total || 0, 2, false)}
-                    >
-                        {formatVenezuelanPriceOnly(totals.total || 0, 2, false)}
-                    </strong>
-                </div>
-                {preferredSecondaryCurrency && (
-                    <div style={{ textAlign: 'right', marginTop: -2 }}>
-                        <span
-                            style={{ fontSize: 12, color: '#aaa' }}
-                            title={formatVenezuelanPrice(totals.totalUsd || 0, preferredSecondaryCurrency.symbol, 2, false)}
+                    <span style={{ color: 'white', fontSize: 16, fontWeight: 'bold' }}>TOTAL</span>
+                    <div style={{ textAlign: 'right' }}>
+                        <strong
+                            style={{ fontSize: 24, color: 'yellow' }}
+                            title={formatVenezuelanPriceOnly(totals.total || 0, 2, false)}
                         >
-                            {formatVenezuelanPrice(totals.totalUsd || 0, preferredSecondaryCurrency.symbol, 2, false)}
-                        </span>
+                            {formatVenezuelanPriceOnly(totals.total || 0, 2, false)}
+                        </strong>
+                        {preferredSecondaryCurrency && (
+                            <div style={{ marginTop: -5 }}>
+                                <span
+                                    style={{ fontSize: 14, color: '#aaa' }}
+                                    title={formatVenezuelanPrice(totals.totalUsd || 0, preferredSecondaryCurrency.symbol, 2, false)}
+                                >
+                                    {formatVenezuelanPrice(totals.totalUsd || 0, preferredSecondaryCurrency.symbol, 2, false)}
+                                </span>
+                            </div>
+                        )}
                     </div>
-                )}
+                </div>
+
                 <div style={{ fontSize: 11, color: '#aaa', marginTop: 5, textAlign: 'right' }}>
                     Items: {totals.itemsCount}
                 </div>

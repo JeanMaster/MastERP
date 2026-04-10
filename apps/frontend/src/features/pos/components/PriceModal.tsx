@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { CalculatorInput } from '../../../components/common/CalculatorInput';
 import { usePOSStore, type CartItem } from '../../../store/posStore';
 import { formatVenezuelanPrice } from '../../../utils/formatters';
+import { getRoundedPrice } from '../../../utils/rounding';
 
 interface PriceModalProps {
     open: boolean;
@@ -12,7 +13,7 @@ interface PriceModalProps {
 }
 
 export const PriceModal = ({ open, cartItem, onOk, onCancel }: PriceModalProps) => {
-    const { primaryCurrency, currencies } = usePOSStore();
+    const { primaryCurrency, currencies, roundingEnabled, roundingFactor } = usePOSStore();
     const [selectedTier, setSelectedTier] = useState<'normal' | 'offer' | 'wholesale' | 'custom'>('normal');
     const [customPrice, setCustomPrice] = useState<number>(0);
     const [customPriceError, setCustomPriceError] = useState<string | null>(null);
@@ -47,7 +48,7 @@ export const PriceModal = ({ open, cartItem, onOk, onCancel }: PriceModalProps) 
         return priceVal;
     };
 
-    const roundPrice = (price: number) => Math.ceil(price / 10) * 10;
+    const roundPrice = (price: number) => getRoundedPrice(price, roundingFactor, roundingEnabled);
 
     const costInPrimary = getConvertedPrice(isSecondaryUnit ? product.secondaryCostPrice : product.costPrice);
     const normalPrice = roundPrice(getConvertedPrice(isSecondaryUnit ? product.secondarySalePrice : product.salePrice));

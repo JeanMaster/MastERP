@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 /**
- * Centralized API configuration for Zenith
+ * Centralized API configuration for MastERP
  */
 
 const getApiBaseUrl = () => {

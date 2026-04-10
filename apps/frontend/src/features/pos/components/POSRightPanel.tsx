@@ -7,6 +7,7 @@ import { productsApi } from '../../../services/productsApi';
 import type { Product } from '../../../services/productsApi';
 import { usePOSStore } from '../../../store/posStore';
 import { formatVenezuelanPrice } from '../../../utils/formatters';
+import { getRoundedPrice } from '../../../utils/rounding';
 
 export const POSRightPanel = () => {
     const { addItem, searchTerm, searchResults, setSearchTerm, setSearchResults } = usePOSStore();
@@ -266,11 +267,17 @@ export const POSRightPanel = () => {
     };
 
     const TagPrice = ({ product }: { product: Product }) => {
-        const { calculatePriceInPrimary, calculatePriceInCurrency, preferredSecondaryCurrency, primaryCurrency } = usePOSStore();
+        const { calculatePriceInPrimary, calculatePriceInCurrency, preferredSecondaryCurrency, primaryCurrency, taxEnabled, taxRate, roundingEnabled, roundingFactor } = usePOSStore();
 
         // 1. Calculate Price in Primary Currency (Bs)
-        const rawPriceInPrimary = calculatePriceInPrimary(product, false);
-        const priceInPrimary = Math.ceil(rawPriceInPrimary / 10) * 10;
+        let rawPriceInPrimary = calculatePriceInPrimary(product, false);
+
+        // Add IVA if enabled and product is not exempt
+        if (taxEnabled && !product.isTaxExempt) {
+            rawPriceInPrimary = rawPriceInPrimary * (1 + taxRate / 100);
+        }
+
+        const priceInPrimary = getRoundedPrice(rawPriceInPrimary, roundingFactor, roundingEnabled);
 
         // 2. Calculate Price in Preferred Secondary Currency
         const priceInSecondary = preferredSecondaryCurrency
@@ -305,6 +312,12 @@ export const POSRightPanel = () => {
                 >
                     {formatVenezuelanPrice(priceInPrimary, primaryCurrency?.symbol, 2, false)}
                 </div>
+
+                {taxEnabled && (
+                    <div style={{ fontSize: 9, color: product.isTaxExempt ? '#888' : '#52c41a', marginTop: -2, fontWeight: 'bold' }}>
+                        {product.isTaxExempt ? 'EXENTO' : 'IVA INCL.'}
+                    </div>
+                )}
 
                 {/* Secondary & Ref Prices Row */}
                 <div style={{

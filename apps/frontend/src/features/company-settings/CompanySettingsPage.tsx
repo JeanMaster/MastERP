@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Card, Form, Input, Button, Upload, message, Space, Skeleton } from 'antd';
-import { UploadOutlined } from '@ant-design/icons';
+import { Card, Form, Input, Button, Upload, message, Space, Skeleton, Switch, Divider, Alert } from 'antd';
+import { UploadOutlined, BankOutlined } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { companySettingsApi } from '../../services/companySettingsApi';
 
@@ -15,6 +15,7 @@ const CompanySettingsForm = ({ settings, onSubmit, isUpdating }: { settings: any
             form.setFieldsValue({
                 name: settings.name,
                 rif: settings.rif,
+                requireBankAccountForPayments: settings.requireBankAccountForPayments ?? true,
             });
             if (settings.logoUrl) {
                 setLogoUrl(settings.logoUrl);
@@ -47,7 +48,7 @@ const CompanySettingsForm = ({ settings, onSubmit, isUpdating }: { settings: any
                 name="name"
                 rules={[{ required: true, message: 'El nombre es requerido' }]}
             >
-                <Input placeholder="Zenith" size="large" />
+                <Input placeholder="MastERP" size="large" />
             </Form.Item>
 
             <Form.Item
@@ -97,6 +98,28 @@ const CompanySettingsForm = ({ settings, onSubmit, isUpdating }: { settings: any
                     </span>
                 </Space>
             </Form.Item>
+
+            <Divider>Rigurosidad Contable</Divider>
+
+            <Form.Item
+                name="requireBankAccountForPayments"
+                valuePropName="checked"
+                style={{ marginBottom: 24 }}
+            >
+                <Switch
+                    checkedChildren="Estricto"
+                    unCheckedChildren="Opcional"
+                />
+            </Form.Item>
+            
+            <Alert 
+                type="info" 
+                showIcon 
+                icon={<BankOutlined />}
+                style={{ marginBottom: 24 }}
+                message="Cuenta Bancaria Obligatoria" 
+                description="Si activas esto, obligarás al personal a seleccionar de qué banco o caja sale el dinero al registrar Gastos o pagarle a Proveedores." 
+            />
 
             <Form.Item>
                 <Button

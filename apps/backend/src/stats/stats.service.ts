@@ -1604,6 +1604,240 @@ export class StatsService {
       }));
   }
 
+  async getTaxReport(startDate?: string, endDate?: string) {
+    const start = startDate ? dayjs(startDate).startOf('day').toDate() : dayjs().startOf('month').toDate();
+    const end = endDate ? dayjs(endDate).endOf('day').toDate() : dayjs().endOf('day').toDate();
+
+    const dateFilter = { gte: start, lte: end };
+
+    // 1. Débitos Fiscales (Ventas)
+    const sales = await this.prisma.sale.findMany({
+      where: { active: true, createdAt: dateFilter },
+      select: { subtotal: true, tax: true, igtfAmount: true }
+    });
+
+    const totalSalesBase = sales.reduce((sum, s) => sum + Number(s.subtotal), 0);
+    const totalVatDebit = sales.reduce((sum, s) => sum + Number(s.tax), 0);
+    const totalIgtfCollected = sales.reduce((sum, s) => sum + Number(s.igtfAmount), 0);
+
+    // 2. Retenciones Recibidas (Ventas)
+    const retentionsReceived = await this.prisma.taxRetention.findMany({
+      where: { 
+        type: 'IVA', 
+        voucherDate: dateFilter,
+        invoiceId: { not: null }
+      },
+      select: { amount: true }
+    });
+
+    const totalRetentionsReceived = retentionsReceived.reduce((sum, r) => sum + Number(r.amount), 0);
+
+    // 3. Créditos Fiscales (Compras)
+    const purchases = await this.prisma.purchase.findMany({
+      where: { status: 'COMPLETED', createdAt: dateFilter },
+      select: { subtotal: true, taxAmount: true }
+    });
+
+    const totalPurchasesBase = purchases.reduce((sum, p) => sum + Number(p.subtotal), 0);
+    const purchasesVatCredit = purchases.reduce((sum, p) => sum + Number(p.taxAmount), 0);
+
+    // 3.1 Créditos Fiscales de Gastos
+    const expenses = await this.prisma.expense.findMany({
+      where: { 
+        isTaxable: true, 
+        date: dateFilter // Use document date instead of createdAt
+      },
+      select: { amount: true, taxAmount: true }
+    });
+
+    const totalExpensesBase = expenses.reduce((sum, e) => sum + (Number(e.amount) - Number(e.taxAmount)), 0);
+    const expensesVatCredit = expenses.reduce((sum, e) => sum + Number(e.taxAmount), 0);
+
+    const totalVatCredit = purchasesVatCredit + expensesVatCredit;
+    const totalFiscalBase = totalPurchasesBase + totalExpensesBase;
+
+    // 4. Retenciones Emitidas (Compras) - Aplicable solo si es Contribuyente Especial
+    const retentionsEmitted = await this.prisma.taxRetention.findMany({
+      where: { 
+        type: 'IVA', 
+        voucherDate: dateFilter,
+        purchaseId: { not: null }
+      },
+      select: { amount: true }
+    });
+
+    const totalRetentionsEmitted = retentionsEmitted.reduce((sum, r) => sum + Number(r.amount), 0);
+
+    // Cálculo Final
+    const rawBalance = totalVatDebit - totalVatCredit;
+    const finalVatToPay = rawBalance - totalRetentionsReceived + totalRetentionsEmitted;
+
+    return {
+      period: { start, end },
+      sales: {
+        base: totalSalesBase,
+        tax: totalVatDebit,
+        retentions: totalRetentionsReceived,
+        netDebit: totalVatDebit - totalRetentionsReceived,
+        igtf: totalIgtfCollected
+      },
+      purchases: {
+        base: totalFiscalBase,
+        tax: totalVatCredit,
+        retentions: totalRetentionsEmitted,
+        netCredit: totalVatCredit - totalRetentionsEmitted
+      },
+      summary: {
+        vatBalance: rawBalance,
+        vatToPay: Math.max(0, finalVatToPay),
+        vatCreditExcess: finalVatToPay < 0 ? Math.abs(finalVatToPay) : 0,
+        igtfToPay: totalIgtfCollected,
+        isAValueFavor: finalVatToPay < 0
+      }
+    };
+  }
+
+  /**
+   * Libro de Ventas detallado
+   */
+  async getLibroVentas(startDate?: string, endDate?: string) {
+    const start = startDate ? dayjs(startDate).startOf('day').toDate() : dayjs().startOf('month').toDate();
+    const end = endDate ? dayjs(endDate).endOf('day').toDate() : dayjs().endOf('day').toDate();
+
+    const dateFilter = { gte: start, lte: end };
+
+    const sales = await this.prisma.sale.findMany({
+      where: { active: true, createdAt: dateFilter },
+      include: { 
+        client: true,
+        invoice: {
+          include: { retentions: { where: { type: 'IVA' } } }
+        }
+      },
+      orderBy: { createdAt: 'asc' }
+    });
+
+    const returns = await this.prisma.return.findMany({
+      where: { active: true, createdAt: dateFilter, status: 'COMPLETED' },
+      include: { 
+        originalSale: { include: { client: true } }
+      },
+      orderBy: { createdAt: 'asc' }
+    });
+
+    // Formatear filas de ventas
+    const saleRows = sales.map(s => {
+      const retention = s.invoice?.retentions[0];
+      return {
+        id: s.id,
+        date: s.createdAt,
+        rif: s.client?.id || 'V-00000000-0', // ID is RIF in your system
+        name: s.client?.name || 'CONTADO',
+        invoiceNumber: s.invoiceNumber,
+        controlNumber: s.controlNumber || s.invoice?.controlNumber || '',
+        affectedDoc: '',
+        totalWithVat: Number(s.total),
+        exemptAmount: 0, // Simplificado, podrías calcularlo x items
+        baseAmount: Number(s.subtotal),
+        vatPercent: 16,
+        vatAmount: Number(s.tax),
+        vatRetained: Number(retention?.amount || 0),
+        retentionVoucher: retention?.voucherNumber || '',
+        type: 'FACT'
+      };
+    });
+
+    // Formatear filas de devoluciones (Notas de Crédito)
+    const returnRows = returns.map(r => ({
+      id: r.id,
+      date: r.createdAt,
+      rif: r.originalSale.client?.id || 'V-00000000-0',
+      name: r.originalSale.client?.name || 'CONTADO',
+      invoiceNumber: r.creditNoteNumber,
+      controlNumber: r.controlNumber || '',
+      affectedDoc: r.originalSale.invoiceNumber,
+      totalWithVat: -Number(r.refundAmount || 0),
+      exemptAmount: 0,
+      baseAmount: -Number(r.refundAmount || 0) / 1.16, // Estimado si no hay desglose
+      vatPercent: 16,
+      vatAmount: -(Number(r.refundAmount || 0) - (Number(r.refundAmount || 0) / 1.16)),
+      vatRetained: 0,
+      retentionVoucher: '',
+      type: 'N/CR'
+    }));
+
+    return {
+      period: { start, end },
+      rows: [...saleRows, ...returnRows].sort((a, b) => dayjs(a.date).diff(dayjs(b.date)))
+    };
+  }
+
+  /**
+   * Libro de Compras detallado (Compras + Gastos Gravados)
+   */
+  async getLibroCompras(startDate?: string, endDate?: string) {
+    const start = startDate ? dayjs(startDate).startOf('day').toDate() : dayjs().startOf('month').toDate();
+    const end = endDate ? dayjs(endDate).endOf('day').toDate() : dayjs().endOf('day').toDate();
+
+    const dateFilter = { gte: start, lte: end };
+
+    const purchases = await this.prisma.purchase.findMany({
+      where: { status: 'COMPLETED', createdAt: dateFilter },
+      include: { 
+        supplier: true,
+        retentions: { where: { type: 'IVA' } }
+      },
+      orderBy: { createdAt: 'asc' }
+    });
+
+    const expenses = await this.prisma.expense.findMany({
+      where: { isTaxable: true, date: dateFilter },
+      orderBy: { date: 'asc' }
+    });
+
+    const purchaseRows = purchases.map(p => {
+      const retention = p.retentions[0];
+      return {
+        id: p.id,
+        date: p.invoiceDate,
+        rif: p.supplier.rif,
+        name: p.supplier.comercialName,
+        invoiceNumber: p.invoiceNumber || '',
+        controlNumber: p.invoiceControlNumber || '',
+        totalWithVat: Number(p.total),
+        exemptAmount: 0,
+        baseAmount: Number(p.subtotal),
+        vatPercent: 16,
+        vatAmount: Number(p.taxAmount),
+        vatRetained: Number(retention?.amount || 0),
+        retentionVoucher: retention?.voucherNumber || '',
+        type: 'COMPRA'
+      };
+    });
+
+    const expenseRows = expenses.map(e => ({
+      id: e.id,
+      date: e.date,
+      rif: '', // Deberíamos capturarlo o dejarlo en blanco si es gasto genérico
+      name: e.description,
+      invoiceNumber: e.invoiceNumber || '',
+      controlNumber: e.invoiceControlNumber || '',
+      totalWithVat: Number(e.amount),
+      exemptAmount: 0,
+      baseAmount: Number(e.amount) - Number(e.taxAmount),
+      vatPercent: 16,
+      vatAmount: Number(e.taxAmount),
+      vatRetained: 0,
+      retentionVoucher: '',
+      type: 'GASTO'
+    }));
+
+    return {
+      period: { start, end },
+      rows: [...purchaseRows, ...expenseRows].sort((a, b) => dayjs(a.date).diff(dayjs(b.date)))
+    };
+  }
+
   async getInflationReport(startDate?: string, endDate?: string) {
     const dateFilter: any = {};
     if (startDate || endDate) {

@@ -30,6 +30,7 @@ import { SystemModule } from './system/system.module';
 import { PurchaseOrdersModule } from './purchase-orders/purchase-orders.module';
 import { AIModule } from './ai/ai.module';
 import { MercadoLibreModule } from './mercadolibre/mercadolibre.module';
+import { TaxRetentionsModule } from './tax-retentions/tax-retentions.module';
 
 @Module({
   imports: [
@@ -64,6 +65,7 @@ import { MercadoLibreModule } from './mercadolibre/mercadolibre.module';
     PurchaseOrdersModule,
     AIModule,
     MercadoLibreModule,
+    TaxRetentionsModule,
   ],
   controllers: [AppController, DevToolsController],
   providers: [AppService, DevToolsService],

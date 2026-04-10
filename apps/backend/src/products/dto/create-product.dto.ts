@@ -201,6 +201,14 @@ export class CreateProductDto {
   secondaryWholesalePrice?: number;
 
   @ApiProperty({
+    example: false,
+    required: false,
+    description: 'Si el producto está exento de IVA',
+  })
+  @IsOptional()
+  isTaxExempt?: boolean;
+
+  @ApiProperty({
     example: ['https://example.com/image1.jpg'],
     required: false,
     description: 'URLs de las imágenes del producto',

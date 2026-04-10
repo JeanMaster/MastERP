@@ -5,6 +5,7 @@ import {
   IsOptional,
   IsDateString,
   Min,
+  IsBoolean,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 
@@ -47,6 +48,16 @@ export class CreateExpenseDto {
   @IsOptional()
   @IsString()
   notes?: string;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  @Type(() => Number)
+  taxAmount?: number;
+
+  @IsOptional()
+  @IsBoolean()
+  isTaxable?: boolean;
 
   @IsOptional()
   @IsString()

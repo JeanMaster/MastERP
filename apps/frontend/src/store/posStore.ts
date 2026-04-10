@@ -4,6 +4,7 @@ import type { Product } from '../services/productsApi';
 import { companySettingsApi } from '../services/companySettingsApi';
 import { currenciesApi, type Currency } from '../services/currenciesApi';
 import { salesApi, type CreateSaleDto } from '../services/salesApi';
+import { getRoundedPrice } from '../utils/rounding';
 
 
 export interface CartItem {
@@ -35,9 +36,16 @@ interface POSState {
     };
     exchangeRate: number; // Rate of Preferred Secondary Currency
     preferredSecondaryCurrency: Currency | null;
+    taxEnabled: boolean;
+    taxRate: number;
     currencies: Currency[]; // All available currencies
     primaryCurrency: Currency | null;
     companyInfo: { name: string; rif: string } | null;
+    roundingEnabled: boolean;
+    roundingFactor: number;
+    igtfEnabled: boolean;
+    igtfRate: number;
+    isSpecialTaxpayer: boolean;
     searchTerm: string;
     searchResults: Product[];
 
@@ -89,9 +97,16 @@ export const usePOSStore = create<POSState>()(
             },
             exchangeRate: 0,
             preferredSecondaryCurrency: null,
+            taxEnabled: false,
+            taxRate: 16,
             currencies: [],
             primaryCurrency: null,
             companyInfo: null,
+            roundingEnabled: true,
+            roundingFactor: 10,
+            igtfEnabled: false,
+            igtfRate: 3,
+            isSpecialTaxpayer: false,
             searchTerm: '',
             searchResults: [],
             setSearchTerm: (term) => set({ searchTerm: term }),
@@ -195,10 +210,25 @@ export const usePOSStore = create<POSState>()(
                     (item) => item.product.id === product.id && item.isSecondaryUnit === isSecondary
                 );
 
+                const taxEnabled = get().taxEnabled;
+                const taxRate = get().taxRate;
+
                 // Calculate price normalized to Primary Currency (Bs)
-                const rawPriceInPrimary = calculatePriceInPrimary(product, isSecondary);
-                // Round up to nearest 10
-                const priceInPrimary = Math.ceil(rawPriceInPrimary / 10) * 10;
+                let rawPriceInPrimary = calculatePriceInPrimary(product, isSecondary);
+
+                // Add IVA if enabled and product is not exempt
+                if (taxEnabled && !product.isTaxExempt) {
+                    rawPriceInPrimary = rawPriceInPrimary * (1 + taxRate / 100);
+                }
+
+                // Round using global settings
+                const { roundingEnabled, roundingFactor } = get();
+                const priceInPrimary = getRoundedPrice(rawPriceInPrimary, roundingFactor, roundingEnabled);
+
+                // Tax contained in each unit (rounded price)
+                const unitTax = (taxEnabled && !product.isTaxExempt)
+                    ? priceInPrimary - (priceInPrimary / (1 + (taxRate / 100)))
+                    : 0;
 
                 if (existingItem) {
                     get().updateQuantity(product.id, existingItem.quantity + 1);
@@ -207,7 +237,7 @@ export const usePOSStore = create<POSState>()(
                         product,
                         quantity: 1,
                         price: priceInPrimary,
-                        tax: 0,
+                        tax: unitTax,
                         discount: 0,
                         discountPercent: 0,
                         total: priceInPrimary * 1,
@@ -244,6 +274,7 @@ export const usePOSStore = create<POSState>()(
                 const newCart = cart.map((item) => {
                     if (item.product.id === productId) {
                         const subtotalLine = item.price * quantity;
+                        // For IVA included, discount applies to the full price (which already has IVA)
                         const discountAmount = subtotalLine * (item.discountPercent / 100);
 
                         return {
@@ -298,8 +329,9 @@ export const usePOSStore = create<POSState>()(
 
                 const newIsSecondaryUnit = !item.isSecondaryUnit;
                 const rawNewPriceInPrimary = calculatePriceInPrimary(item.product, newIsSecondaryUnit);
-                // Round up to nearest 10
-                const newPriceInPrimary = Math.ceil(rawNewPriceInPrimary / 10) * 10;
+                // Round using global settings
+                const { roundingEnabled, roundingFactor } = get();
+                const newPriceInPrimary = getRoundedPrice(rawNewPriceInPrimary, roundingFactor, roundingEnabled);
 
                 const newCart = cart.map((cartItem) => {
                     if (cartItem.product.id === productId) {
@@ -393,17 +425,28 @@ export const usePOSStore = create<POSState>()(
             },
 
             calculateTotals: () => {
-                const { cart, exchangeRate } = get();
+                const { cart, exchangeRate, taxEnabled, taxRate } = get();
 
-                const subtotal = cart.reduce((acc, item) => acc + (item.price * item.quantity), 0);
-                const totalDiscount = cart.reduce((acc, item) => acc + item.discount, 0);
-                const tax = 0; // Implement tax later
+                const totalWithTax = cart.reduce((acc, item) => acc + (item.price * item.quantity), 0);
+                const totalDiscount = cart.reduce((acc, item) => acc + (item.discount || 0), 0);
 
-                const total = subtotal - totalDiscount + tax;
+                const total = totalWithTax - totalDiscount;
+
+                // Calculate the tax portion from the total
+                // Since total includes IVA, tax = Total - (Total / 1.16)
+                // But only for items that are taxable and taking into account their individual discounts
+                const tax = cart.reduce((acc, item) => {
+                    if (taxEnabled && !item.product.isTaxExempt) {
+                        const itemTotalAfterDiscount = (item.price * item.quantity) - (item.discount || 0);
+                        const itemTax = itemTotalAfterDiscount - (itemTotalAfterDiscount / (1 + (taxRate / 100)));
+                        return acc + itemTax;
+                    }
+                    return acc;
+                }, 0);
+
+                const subtotal = total - tax; // This is the Base Imponible in our context (Total without Tax)
                 const itemsCount = cart.reduce((acc, item) => acc + item.quantity, 0);
 
-                // Calculate Total in Secondary Currency (e.g. USD)
-                // If total is in Bs (600) and rate is 260 Bs/$, result is 2.30 $
                 const totalUsd = exchangeRate > 0 ? total / exchangeRate : 0;
 
                 set({
@@ -444,6 +487,13 @@ export const usePOSStore = create<POSState>()(
                         primaryCurrency: primary,
                         preferredSecondaryCurrency: secondaryDetails,
                         exchangeRate: secondaryRate,
+                        taxEnabled: settings.taxEnabled || false,
+                        taxRate: Number(settings.taxRate) || 16,
+                        roundingEnabled: settings.roundingEnabled !== undefined ? settings.roundingEnabled : true,
+                        roundingFactor: settings.roundingFactor || 10,
+                        igtfEnabled: settings.igtfEnabled !== undefined ? settings.igtfEnabled : false,
+                        igtfRate: Number(settings.igtfRate) || 3,
+                        isSpecialTaxpayer: settings.isSpecialTaxpayer !== undefined ? settings.isSpecialTaxpayer : false,
                         companyInfo: { name: settings.name, rif: settings.rif }
                     });
 
