@@ -117,7 +117,7 @@ export const CashCountModal = ({ open, mode, sessionId, openingBalance, expected
                 await queryClient.invalidateQueries({ queryKey: ['activeSession'] });
 
                 onSuccess();
-                navigate('/sales/pos');
+                navigate('/app/sales/pos');
             } else {
                 // Modo CIERRE: Solicitar autorización
                 await cashRegisterApi.requestClose(sessionId, {

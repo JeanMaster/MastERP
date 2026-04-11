@@ -63,7 +63,7 @@ export const PayrollDetailPage = () => {
         <div style={{ padding: '24px' }}>
             <Button
                 icon={<ArrowLeftOutlined />}
-                onClick={() => navigate('/hr/payroll')}
+                onClick={() => navigate('/app/hr/payroll')}
                 style={{ marginBottom: 16 }}
             >
                 Volver

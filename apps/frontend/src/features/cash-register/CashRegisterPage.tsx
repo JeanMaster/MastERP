@@ -93,7 +93,7 @@ export const CashRegisterPage = () => {
     // Redirect Cashiers to POS if session is already verified
     useEffect(() => {
         if (user?.role === 'CASHIER' && activeSession?.verifiedAt) {
-            navigate('/sales/pos', { replace: true });
+            navigate('/app/sales/pos', { replace: true });
         }
     }, [user, activeSession, navigate]);
 

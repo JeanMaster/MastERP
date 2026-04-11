@@ -27,136 +27,136 @@ export interface AppMenuItem {
  */
 export const menuItems: AppMenuItem[] = [
     {
-        key: '/',
+        key: '/app',
         icon: <DashboardOutlined />,
         label: 'Dashboard',
     },
     {
-        key: '/inventory',
+        key: '/app/inventory',
         icon: <ShopOutlined />,
         label: 'Inventario',
         children: [
             {
-                key: '/inventory/products',
+                key: '/app/inventory/products',
                 label: 'Productos Terminados',
             },
             {
-                key: '/inventory/composites',
+                key: '/app/inventory/composites',
                 label: 'Productos Compuestos',
             },
             {
-                key: '/inventory/currencies',
+                key: '/app/inventory/currencies',
                 label: 'Monedas',
             },
             {
-                key: '/inventory/departments',
+                key: '/app/inventory/departments',
                 label: 'Departamentos',
             },
             {
-                key: '/inventory/units',
+                key: '/app/inventory/units',
                 label: 'Unidades',
             },
             {
-                key: '/inventory/adjustments',
+                key: '/app/inventory/adjustments',
                 label: 'Ajustes de Inventario',
             },
             {
-                key: '/inventory/services',
+                key: '/app/inventory/services',
                 label: 'Servicios',
             },
         ],
     },
     {
-        key: '/sales',
+        key: '/app/sales',
         icon: <DollarOutlined />,
         label: 'Ventas',
         children: [
             {
-                key: '/sales/pos',
+                key: '/app/sales/pos',
                 label: 'Punto de Venta',
             },
             {
-                key: '/sales/history',
+                key: '/app/sales/history',
                 label: 'Historial de Ventas',
             },
             {
-                key: '/sales/returns',
+                key: '/app/sales/returns',
                 label: 'Cambios y Devoluciones',
             },
             {
-                key: '/accounts-receivable',
+                key: '/app/accounts-receivable',
                 label: 'Cuentas por Cobrar',
             },
             {
-                key: '/sales/cash-register',
+                key: '/app/sales/cash-register',
                 label: 'Caja',
             },
             {
-                key: '/sales/retentions',
+                key: '/app/sales/retentions',
                 label: 'Retenciones Fiscales',
             },
             {
-                key: '/clients',
+                key: '/app/clients',
                 label: 'Clientes',
             },
         ],
     },
     {
-        key: '/purchases',
+        key: '/app/purchases',
         icon: <ShoppingOutlined />,
         label: 'Compras',
         children: [
             {
-                key: '/suppliers',
+                key: '/app/suppliers',
                 label: 'Proveedores',
             },
             {
-                key: '/purchases/orders',
+                key: '/app/purchases/orders',
                 label: 'Pedidos',
             },
             {
-                key: '/purchases/history',
+                key: '/app/purchases/history',
                 label: 'Historial de Compras',
             },
             {
-                key: '/accounts-payable',
+                key: '/app/accounts-payable',
                 icon: <CreditCardOutlined />,
                 label: 'Cuentas por Pagar',
             },
         ],
     },
     {
-        key: '/expenses',
+        key: '/app/expenses',
         icon: <DollarOutlined />,
         label: 'Gastos',
     },
     {
-        key: '/hr',
+        key: '/app/hr',
         icon: <TeamOutlined />,
         label: 'Nómina',
         children: [
             {
-                key: '/hr/employees',
+                key: '/app/hr/employees',
                 label: 'Empleados',
             },
             {
-                key: '/hr/payroll',
+                key: '/app/hr/payroll',
                 label: 'Periodos de Nómina',
             },
         ]
     },
     {
-        key: '/banks',
+        key: '/app/banks',
         icon: <BankOutlined />,
         label: 'Bancos',
     },
     {
-        key: '/reports',
+        key: '/app/reports',
         icon: <BarChartOutlined />,
         label: 'Reportes',
     },
     {
-        key: '/mercadolibre',
+        key: '/app/mercadolibre',
         icon: <ShopOutlined />,
         label: 'Mercado Libre',
     },
@@ -167,29 +167,29 @@ export const menuItems: AppMenuItem[] = [
         roles: ['ADMIN'], // Only admin sees the divider group for config
     },
     {
-        key: '/configuration',
+        key: '/app/configuration',
         icon: <SettingOutlined />,
         label: 'Configuración',
         roles: ['ADMIN'], // Only admin sees configuration
         children: [
             {
-                key: '/configuration/company',
+                key: '/app/configuration/company',
                 label: 'Datos de Empresa',
             },
             {
-                key: '/configuration/dev-tools',
+                key: '/app/configuration/dev-tools',
                 label: 'Opciones de Desarrollador',
             },
             {
-                key: '/configuration/general',
+                key: '/app/configuration/general',
                 label: 'Opciones Generales',
             },
             {
-                key: '/configuration/network',
+                key: '/app/configuration/network',
                 label: 'Conexión de Red (LAN)',
             },
             {
-                key: '/configuration/users',
+                key: '/app/configuration/users',
                 label: 'Gestión de Usuarios',
                 roles: ['ADMIN'],
             },

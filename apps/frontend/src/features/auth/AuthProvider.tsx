@@ -53,7 +53,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         localStorage.setItem('user', JSON.stringify(newUser));
         axios.defaults.headers.common['Authorization'] = `Bearer ${newToken}`;
         message.success(`Bienvenido, ${newUser.name}`);
-        navigate('/');
+        navigate('/app');
     };
 
     const logout = () => {

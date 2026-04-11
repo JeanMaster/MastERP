@@ -29,7 +29,7 @@ export const DashboardPage = () => {
     // Redirect Cashiers to POS as they shouldn't see the dashboard
     useEffect(() => {
         if (user?.role === 'CASHIER') {
-            navigate('/sales/pos', { replace: true });
+            navigate('/app/sales/pos', { replace: true });
         }
     }, [user, navigate]);
 
@@ -325,7 +325,7 @@ export const DashboardPage = () => {
                             type="primary"
                             size="large"
                             icon={<ShoppingCartOutlined />}
-                            onClick={() => navigate('/sales/pos')}
+                            onClick={() => navigate('/app/sales/pos')}
                             block
                         >
                             Punto de Venta
@@ -335,7 +335,7 @@ export const DashboardPage = () => {
                         <Button
                             size="large"
                             icon={<PlusOutlined />}
-                            onClick={() => navigate('/purchases/history')}
+                            onClick={() => navigate('/app/purchases/history')}
                             block
                         >
                             Registrar Compra
@@ -345,7 +345,7 @@ export const DashboardPage = () => {
                         <Button
                             size="large"
                             icon={<FileTextOutlined />}
-                            onClick={() => navigate('/reports')}
+                            onClick={() => navigate('/app/reports')}
                             block
                         >
                             Ver Reportes

@@ -45,15 +45,17 @@ import { LoginPage } from './features/auth/LoginPage';
 import { ProtectedRoute } from './features/auth/ProtectedRoute';
 import { PriceCheckerPage } from './features/price-checker/PriceCheckerPage';
 import { MercadoLibrePage } from './features/mercadolibre/MercadoLibrePage';
+import { LandingPage } from './features/landing/LandingPage';
 
 function App() {
   return (
     <AuthProvider>
       <Routes>
+        <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/visor" element={<PriceCheckerPage />} />
 
-        <Route path="/" element={
+        <Route path="/app" element={
           <ProtectedRoute>
             <MainLayout />
           </ProtectedRoute>
