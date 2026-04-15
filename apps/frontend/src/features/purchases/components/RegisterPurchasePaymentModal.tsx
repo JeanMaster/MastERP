@@ -44,6 +44,9 @@ export const RegisterPurchasePaymentModal = ({ open, purchase, onClose }: Regist
     const watchRate = Form.useWatch('exchangeRate', form);
     const watchPaymentMethod = Form.useWatch('paymentMethod', form);
 
+    const primaryCurrency = currencies.find(c => c.isPrimary);
+    const primaryCode = primaryCurrency?.code || 'VES';
+
     useEffect(() => {
         if (open && purchase) {
             form.resetFields();
@@ -59,55 +62,58 @@ export const RegisterPurchasePaymentModal = ({ open, purchase, onClose }: Regist
 
     // Update exchange rate and auto-fill paymentAmount when currency changes
     useEffect(() => {
-        if (!purchase || !paymentCurrency) return;
+        if (!purchase || !paymentCurrency || currencies.length === 0) return;
 
-        if (paymentCurrency === purchase.currencyCode) {
-            form.setFieldsValue({ exchangeRate: 1, paymentAmount: purchase.balance });
-            setEquivalentAmount(purchase.balance);
-            return;
-        }
-
-        // Find relevant rates
+        // 1. Identify Currencies and Primary Currency
         const targetCurrency = currencies.find(c => c.code === paymentCurrency);
         const invoiceCurrencyObj = currencies.find(c => c.code === purchase.currencyCode);
+        const primaryCurrency = currencies.find(c => c.isPrimary);
+        
+        if (!primaryCurrency) return;
 
-        let newRate = 0;
-        // Case A: Paying in primary (VES) for a Foreign invoice (USD, EUR, etc.)
-        if (paymentCurrency === 'VES' && purchase.currencyCode !== 'VES') {
-            newRate = invoiceCurrencyObj?.exchangeRate || 0;
-        }
-        // Case B: Paying in Foreign for a primary (VES) invoice
-        else if (paymentCurrency !== 'VES' && purchase.currencyCode === 'VES') {
-            newRate = targetCurrency?.exchangeRate || 0;
-        }
+        const primaryCode = primaryCurrency.code;
+        const targetRate = Number(targetCurrency?.exchangeRate || 1);
+        const invoiceRate = Number(invoiceCurrencyObj?.exchangeRate || purchase.exchangeRate || 1);
 
-        form.setFieldsValue({ exchangeRate: newRate });
-
-        // Auto-calculate full payment amount
+        // Always use Target/Primary rate as the reference for the form
+        // (Unless it's the primary itself, then it's 1)
+        const newRate = targetRate;
         let newAmount = purchase.balance;
-        if (paymentCurrency === 'VES') newAmount = purchase.balance * newRate;
-        else if (purchase.currencyCode === 'VES') newAmount = purchase.balance / newRate;
-        else newAmount = purchase.balance * newRate;
 
-        form.setFieldsValue({ paymentAmount: newAmount });
-        setEquivalentAmount(purchase.balance); // The equivalent is always the original balance when auto-filled
+        // If currencies are different, calculate the suggested amount
+        if (paymentCurrency !== purchase.currencyCode) {
+            // Formula: Amount_Target = (Amount_Invoice * Rate_Invoice) / Rate_Target
+            // Both rates are relative to Primary.
+            // If invoice is Primary, its rate is 1. If payment is Primary, its rate is 1.
+            const invRateForCalc = purchase.currencyCode === primaryCode ? 1 : invoiceRate;
+            const payRateForCalc = paymentCurrency === primaryCode ? 1 : targetRate;
+
+            newAmount = payRateForCalc > 0 ? (purchase.balance * invRateForCalc) / payRateForCalc : 0;
+        }
+
+        form.setFieldsValue({ exchangeRate: newRate, paymentAmount: newAmount });
+        setEquivalentAmount(purchase.balance);
 
     }, [paymentCurrency, purchase, currencies, form]);
 
     const handleRateChange = (value: number | null) => {
         const rate = value || 0;
-        let newAmount = purchase?.balance || 0;
-        
-        if (purchase && paymentCurrency !== purchase.currencyCode) {
-            if (paymentCurrency === 'VES') newAmount = purchase.balance * rate;
-            else if (purchase.currencyCode === 'VES') newAmount = purchase.balance / rate;
-            else newAmount = purchase.balance * rate;
-        }
-        
+        if (!purchase || !paymentCurrency || currencies.length === 0) return;
+
+        const primaryCurrency = currencies.find(c => c.isPrimary);
+        const primaryCode = primaryCurrency?.code || 'VES';
+
+        // Recalculate equivalent payment amount
+        const invoiceCurrencyObj = currencies.find(c => c.code === purchase.currencyCode);
+        const invoiceRate = Number(invoiceCurrencyObj?.exchangeRate || purchase.exchangeRate || 1);
+        const invRateForCalc = purchase.currencyCode === primaryCode ? 1 : invoiceRate;
+
+        // The 'rate' is always Payment/Primary.
+        // Amount_Pay = (Balance_Inv * Rate_Inv) / rate
+        const newAmount = rate > 0 ? (purchase.balance * invRateForCalc) / rate : 0;
+
         form.setFieldsValue({ paymentAmount: newAmount });
-        
-        // Update the equivalent alert directly
-        setEquivalentAmount(purchase?.balance || 0);
+        setEquivalentAmount(purchase.balance);
     };
 
 
@@ -126,22 +132,18 @@ export const RegisterPurchasePaymentModal = ({ open, purchase, onClose }: Regist
 
     const calculateEquivalent = (payAmount: number, rate: number, payCurr: string, invCurr: string): number => {
         if (payCurr === invCurr) return payAmount;
-        if (!rate) return 0;
+        if (!rate || currencies.length === 0) return 0;
 
-        // General logic for VES / Foreign conversions
-        // We assume 'rate' is always "VES per 1 Foreign Unit" (e.g. 50 VES/USD or 55 VES/EUR)
+        const primaryCurrency = currencies.find(c => c.isPrimary);
+        const primaryCode = primaryCurrency?.code || 'VES';
+        const invoiceCurrencyObj = currencies.find(c => c.code === invCurr);
+        const invoiceRate = Number(invoiceCurrencyObj?.exchangeRate || purchase?.exchangeRate || 1);
 
-        if (payCurr === 'VES' && invCurr !== 'VES') {
-            // Case: Paying in VES for a Foreign invoice. Equivalent_Foreign = Amount_VES / Rate
-            return payAmount / rate;
-        }
-        if (payCurr !== 'VES' && invCurr === 'VES') {
-            // Case: Paying in Foreign for a VES invoice. Equivalent_VES = Amount_Foreign * Rate
-            return payAmount * rate;
-        }
+        const invRateForCalc = invCurr === primaryCode ? 1 : invoiceRate;
+        const payRateForCalc = payCurr === primaryCode ? 1 : rate;
 
-        // Fallback: assume direct multiplier if neither is VES (less common)
-        return payAmount * rate;
+        // Bridge Logic: (Amount_Pay * Rate_Pay) / Rate_Inv
+        return (payAmount * payRateForCalc) / invRateForCalc;
     };
 
     const handleSubmit = async () => {
@@ -171,11 +173,18 @@ export const RegisterPurchasePaymentModal = ({ open, purchase, onClose }: Regist
             if (values.bankAccountId) {
                 const bank = banks.find(b => b.id === values.bankAccountId);
                 if (bank && paymentCurrency !== bank.currency.code) {
-                    if (bank.currency.isPrimary) {
-                        amountToDeductFromBank = values.paymentAmount * values.exchangeRate;
-                    } else {
-                        amountToDeductFromBank = values.paymentAmount / values.exchangeRate;
-                    }
+                    const primaryCurrency = currencies.find(c => c.isPrimary);
+                    const primaryCode = primaryCurrency?.code || 'VES';
+
+                    // Standard conversion rates relative to Primary
+                    const payRateForCalc = paymentCurrency === primaryCode ? 1 : (values.exchangeRate || 1);
+                    const bankRateForCalc = bank.currency.code === primaryCode ? 1 : Number(bank.currency.exchangeRate || 1);
+
+                    // Multi-currency rule: (Amount_Pay * Rate_Pay) / Rate_Bank
+                    amountToDeductFromBank = (values.paymentAmount * payRateForCalc) / bankRateForCalc;
+                } else if (bank && paymentCurrency === bank.currency.code) {
+                    // DIRECT DEDUCTION RULE: 1:1 if currencies match
+                    amountToDeductFromBank = values.paymentAmount;
                 }
 
                 if (bank && bank.balance < amountToDeductFromBank) {
@@ -242,21 +251,24 @@ export const RegisterPurchasePaymentModal = ({ open, purchase, onClose }: Regist
                     type="dashed"
                     onClick={() => {
                         let amount = purchase.balance;
-                        const rate = form.getFieldValue('exchangeRate') || 1;
+                        const primaryCurrency = currencies.find(c => c.isPrimary);
+                        const primaryCode = primaryCurrency?.code || 'VES';
 
                         if (paymentCurrency !== purchase.currencyCode) {
-                            if (paymentCurrency === 'VES') {
-                                amount = purchase.balance * rate;
-                            } else if (purchase.currencyCode === 'VES') {
-                                amount = purchase.balance / rate;
-                            }
+                            const invoiceCurrencyObj = currencies.find(c => c.code === purchase.currencyCode);
+                            const invoiceRate = Number(invoiceCurrencyObj?.exchangeRate || purchase.exchangeRate || 1);
+                            
+                            const invRateForCalc = purchase.currencyCode === primaryCode ? 1 : invoiceRate;
+                            const payRateForCalc = paymentCurrency === primaryCode ? 1 : (form.getFieldValue('exchangeRate') || 1);
+
+                            amount = (purchase.balance * invRateForCalc) / payRateForCalc;
                         }
 
                         form.setFieldsValue({ paymentAmount: amount });
                         updateEquivalent();
                     }}
                 >
-                    Pagar Total: {purchase.currencyCode === 'VES' ? 'Bs' : (currencies.find(c => c.code === purchase.currencyCode)?.symbol || '')} {formatVenezuelanNumber(purchase.balance)}
+                    Pagar Total: {purchase.currencyCode === primaryCode ? 'Bs.' : (currencies.find(c => c.code === purchase.currencyCode)?.symbol || '')} {formatVenezuelanNumber(purchase.balance)}
                 </Button>
             </div>
 
@@ -272,12 +284,12 @@ export const RegisterPurchasePaymentModal = ({ open, purchase, onClose }: Regist
                     />
                 </Form.Item>
 
-                {paymentCurrency !== purchase.currencyCode && (
+                {paymentCurrency !== (currencies.find(c => c.isPrimary)?.code || 'VES') && (
                     <Form.Item
-                        label={`Tasa de Cambio (${purchase.currencyCode === 'VES' ? `${paymentCurrency}/VES` : `VES/${purchase.currencyCode}`})`}
+                        label={`Tasa Pactada (BS / ${paymentCurrency})`}
                         name="exchangeRate"
                         rules={[{ required: true, message: 'Requerido' }]}
-                        help={`Ingrese la tasa de cambio actual para ${purchase.currencyCode === 'VES' ? paymentCurrency : purchase.currencyCode}`}
+                        help={`Valor de 1 ${paymentCurrency} acordado para este pago`}
                     >
                         <InputNumber
                             style={{ width: '100%' }}
@@ -361,9 +373,18 @@ export const RegisterPurchasePaymentModal = ({ open, purchase, onClose }: Regist
                             if (!bank) return 'info';
 
                             let deduction = watchAmount || 0;
-                            if (paymentCurrency !== bank.currency.code) {
-                                if (bank.currency.isPrimary) deduction *= (watchRate || 1);
-                                else deduction /= (watchRate || 1);
+                            const isDirectDeduction = bank.currency.code === paymentCurrency;
+
+                            if (!isDirectDeduction) {
+                                const primaryCurrency = currencies.find(c => c.isPrimary);
+                                const primaryCode = primaryCurrency?.code || 'VES';
+                                const bankRate = Number(bank.currency.exchangeRate || 1); 
+
+                                const payRateForCalc = paymentCurrency === primaryCode ? 1 : (watchRate || 1);
+                                const bankRateForCalc = bank.currency.code === primaryCode ? 1 : bankRate;
+
+                                // Deduct = (Amount * Rate_Pay) / Rate_Bank
+                                deduction = (deduction * payRateForCalc) / bankRateForCalc;
                             }
                             return bank.balance < deduction ? 'error' : 'success';
                         })()}
@@ -372,9 +393,17 @@ export const RegisterPurchasePaymentModal = ({ open, purchase, onClose }: Regist
                             if (!bank) return '';
                             let deduction = watchAmount || 0;
                             let currencyMsg = '';
-                            if (paymentCurrency !== bank.currency.code) {
-                                if (bank.currency.isPrimary) deduction *= (watchRate || 1);
-                                else deduction /= (watchRate || 1);
+                            const isDirectDeduction = bank.currency.code === paymentCurrency;
+
+                            if (!isDirectDeduction) {
+                                const primaryCurrency = currencies.find(c => c.isPrimary);
+                                const primaryCode = primaryCurrency?.code || 'VES';
+                                const bankRate = Number(bank.currency.exchangeRate || 1);
+
+                                const payRateForCalc = paymentCurrency === primaryCode ? 1 : (watchRate || 1);
+                                const bankRateForCalc = bank.currency.code === primaryCode ? 1 : bankRate;
+
+                                deduction = (deduction * payRateForCalc) / bankRateForCalc;
                                 currencyMsg = ` (Conv. a ${bank.currency.code})`;
                             }
                             return (
