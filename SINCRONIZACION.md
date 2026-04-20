@@ -1,697 +1,79 @@
-# 🔄 Documento de Sincronización - Proyecto MastERP
-**Fecha**: 2025-12-20
-**Rama**: `develop`
-**Contexto**: Despliegue en Producción y Limpieza de Proyecto
+# Guía de Sincronización y Actualización de Producción
 
-## 🚀 RESUMEN EJECUTIVO (Última Sesión)
-Se ha completado la migración a producción y se ha establecido una estructura de trabajo basada en ramas. El sistema es ahora 100% funcional tanto en local (WSL) como en remoto (Render/Vercel/Neon).
+Este documento contiene las instrucciones críticas para actualizar el entorno de producción de MastERP, resolviendo los conflictos de historial de Prisma que impiden la carga de los módulos de Marketing e IA.
 
-### ✅ Logros:
-1. **Despliegue Exitoso**: Backend en Render, Frontend en Vercel, DB en Neon.
-2. **Auto-Seed**: El backend inicializa automáticamente el usuario admin con todos los permisos al detectar BD vacía.
-3. **API Dinámica**: El frontend usa `VITE_API_URL` o `VITE_APP_URL` con fallback a localhost. Soporta cambio de modo Manual en caliente.
-4. **Gestión de Ramas**: Creada rama `develop` para separar desarrollo de producción (`master`).
-5. **Limpieza**: Documentación organizada en `/docs` y archivos temporales eliminados.
-
-## 🛠️ CONFIGURACIÓN ACTUAL
-- **Rama Actual**: `develop`
-- **Frontend Config**: `apiConfig.ts` soporta modos `Local`, `LAN`, y `Remote`.
-- **Docs**: Guía de despliegue consolidada en `docs/deployment.md`.
+## Contexto del Problema
+La base de datos de producción tiene columnas y tablas creadas manualmente o por migraciones interrumpidas de Febrero 2026. Al intentar actualizar al código más reciente, Prisma intenta crear de nuevo estas columnas, causando errores de tipo `P3009` (columna ya existe) y `P2021` (tabla no encontrada).
 
 ---
 
-## 🛠️ CAMBIOS TÉCNICOS RECIENTES
+## Procedimiento de Actualización (MODO OFFLINE)
 
-### 1. Frontend - CheckoutModal Completo (`CheckoutModal.tsx`)
-
-**Estructura del Modal:**
-- **Header**: Cliente y número de factura
-- **Sección Superior**: 
-  - Total a Pagar (Bs grande + moneda secundaria pequeña)
-  - Restante a Pagar (actualización en tiempo real, colores según estado)
-- **Panel Izquierdo (40%)**:
-  - Input de "Cantidad:" (sin confusión con monedas)
-  - Botones de pago en Bs: F1 Efectivo, F2 T. Débito, F3 T. Crédito, F4 Pago Móvil, F5 Transferencia
-  - **Montos sugeridos**: Cada botón muestra cuánto se necesita para completar el pago
-  - Botones de divisas: CT+F9 USD, CT+F10 EUR, etc. (dinámico según monedas activas)
-  - **Altura optimizada**: 80px para mejor legibilidad
-- **Panel Derecho (60%)**:
-  - Tabla con desglose de pagos agregados
-  - Selección de pago con radio buttons
-  - Botón para eliminar pago seleccionado (F6)
-  - Resumen: Total Pagado y Cambio/Vuelto
-- **Footer**: Botones Cancelar (Esc) y Registrar (F9, solo activo cuando restante = 0)
-
-**Características Clave:**
-```typescript
-interface PaymentEntry {
-    id: string;
-    method: string;              // CASH, DEBIT, CREDIT, CURRENCY_USD, etc.
-    methodLabel: string;         // "F1 Efectivo", "CT+F9 USD"
-    amount: number;              // Monto en Bs (siempre convertido)
-    currencySymbol: string;      // Símbolo de la moneda
-    originalAmount?: number;     // Monto original si es divisa
-    originalCurrency?: string;   // Símbolo de divisa original
-}
+### 1. Detención del Sistema
+Asegúrese de que ningún proceso esté bloqueando la base de datos o los puertos.
+```bash
+# Desde la raíz del proyecto
+stopz
 ```
 
-**Lógica de Conversión:**
-- Pagos en Bs: Se agregan directamente
-- Pagos en divisas: `amountInBs = inputAmount * exchangeRate`
-- Ejemplo: 2 USD × 130 Bs/USD = 260 Bs
-- Prevención de sobrepago: Si monto > restante, se ajusta automáticamente
-
-**Atajos de Teclado:**
-- F1-F5: Agregar pago en Bs (Efectivo, Débito, Crédito, Móvil, Transferencia)
-- F6: Eliminar pago seleccionado o último pago agregado
-- Ctrl+F9, Ctrl+F10, etc.: Agregar pago en divisas
-- F9: Procesar venta (solo si restante = 0)
-- Esc: Cancelar
-
-### 2. Frontend - Store Actualizado (`posStore.ts`)
-
-**Función `processSale` Mejorada:**
-```typescript
-processSale: async (paymentData: any) => {
-    // Maneja múltiples pagos
-    let paymentMethod = 'MIXED';
-    
-    // Si solo hay un pago, usa ese método
-    if (paymentData.payments.length === 1) {
-        paymentMethod = paymentData.payments[0].method;
-    } else {
-        // Múltiples pagos: crea descripción detallada
-        paymentMethod = paymentData.payments
-            .map(p => `${p.method}:${p.amount.toFixed(2)}`)
-            .join(', ');
-    }
-    
-    // Envía al backend con formato compatible
-    const saleDto: CreateSaleDto = {
-        // ... items, totals, etc.
-        paymentMethod: paymentMethod,
-        tendered: paymentData.totalPaid,
-        change: paymentData.change
-    };
-}
+### 2. Actualización de Código
+Traiga las últimas mejoras de red y lógica de IA.
+```bash
+git pull origin master
 ```
 
-### 3. Integración Completa
+### 3. Sincronización de Tipos de Datos
+Genere el cliente de Prisma para que el backend reconozca las nuevas tablas antes de compilar.
+```bash
+cd apps/backend
+npx prisma generate
+```
 
-**Flujo de Checkout:**
-1. Usuario presiona F9 o click en "F9 Totalizar"
-2. CheckoutModal abre mostrando total y restante
-3. Usuario ingresa monto y selecciona método de pago
-4. Pago se agrega a la tabla, restante se actualiza
-5. Repite pasos 3-4 hasta que restante = 0
-6. Botón "F9 Registrar" se activa
-7. Usuario presiona F9 o click en botón
-8. Venta se procesa, carrito se limpia, modal se cierra
-
-**Ejemplo de Transacción Multi-Pago:**
-- Total: 600 Bs
-- Pago 1: 200 Bs en Efectivo → Restante: 400 Bs
-- Pago 2: 100 Bs en T. Débito → Restante: 300 Bs
-- Pago 3: 2 USD (× 130 = 260 Bs) → Restante: 40 Bs
-- Pago 4: 40 Bs en Efectivo → Restante: 0 Bs ✓
-- Sistema registra: `paymentMethod: "CASH:200.00, DEBIT:100.00, CURRENCY_USD:260.00, CASH:40.00"`
-
----
-
-## 📁 Estructura de Archivos Modificados
+### 4. Resolución Quirúrgica de Migraciones
+Este paso es **VITAL**. Indica a Prisma que ignore las piezas ya instaladas de febrero para que pueda saltar a las nuevas de abril. Ejecute estos comandos dentro de `apps/backend`:
 
 ```bash
-# Frontend - Checkout System
-apps/frontend/src/features/pos/components/CheckoutModal.tsx    # Rediseño completo (398 líneas)
-apps/frontend/src/store/posStore.ts                            # processSale actualizado
+npx prisma migrate resolve --applied 20260210141512_add_cash_verification
+npx prisma migrate resolve --applied 20260210145750_add_cashier_assignment
+npx prisma migrate resolve --applied 20260210192824_add_session_cash_counts
+npx prisma migrate resolve --applied 20260210195837_add_exchange_rate_to_cash_movement
+npx prisma migrate resolve --applied 20260212160519_add_pos_liquidation_fields
+npx prisma migrate resolve --applied 20260212184536_add_mobile_payment_field
+npx prisma migrate resolve --applied 20260212193415_add_bank_account_to_expense
+npx prisma migrate resolve --applied 20260213153117_enhance_purchase_payment
+npx prisma migrate resolve --applied 20260218172018_add_mercadolibre_integration
+npx prisma migrate resolve --applied 20260219134653_add_multi_images
+```
 
-# Commits Realizados
-- a62c5d0: feat: Implement complete POS checkout flow with multi-currency support
-- c9cdff4: feat: Implement advanced multi-payment checkout system
-- ba58405: feat: Add suggested payment amounts in checkout buttons
-- 1dbfba7: fix: Increase checkout button height for better spacing
-- 3ddac61: fix: Correct Ctrl+F9, Ctrl+F10, etc. keyboard shortcuts for foreign currency payments
-- 1c8c0f5: feat: Enhance Ctrl+F6 to remove last payment when none selected
-- 3c3e79f: feat: Change F6 shortcut from Ctrl+F6 to just F6 for easier access
-- 1139a57: fix: Fix F6 event interception to prevent background page from capturing it
+### 5. Despliegue de Nuevas Funcionalidades
+Una vez limpio el camino, aplique las migraciones de Marketing e IA.
+```bash
+npx prisma migrate deploy
+```
+
+### 6. Construcción y Arranque
+```bash
+# Dentro de apps/backend
+npm run build
+
+# Volver a raíz y arrancar
+cd ../..
+./start-prod.sh
 ```
 
 ---
 
-## ⚠️ ESTADO ACTUAL Y PENDIENTES
-
-### 🟢 Completado
-- ✅ CheckoutModal con diseño split-screen
-- ✅ Botones de pago en Bs (5 métodos)
-- ✅ Botones de pago en divisas (dinámico según monedas activas)
-- ✅ Lógica multi-pago con actualización de restante
-- ✅ Tabla de desglose de pagos
-- ✅ Conversión automática de divisas a Bs
-- ✅ Prevención de sobrepagos
-- ✅ Atajos de teclado completos
-- ✅ Validación de pago completo antes de registrar
-- ✅ Integración con posStore y backend
-
-### 🔴 Pendientes Críticos
-1. **Testing en Navegador**: Probar flujo completo con múltiples formas de pago
-2. **Validaciones Adicionales**:
-   - Verificar que conversiones de divisas sean correctas
-   - Probar edge cases (ej: pagar exacto, pagar con vuelto)
-3. **Mejoras UX Opcionales**:
-   - Agregar sonidos de confirmación
-   - Animaciones al agregar/eliminar pagos
-   - Imprimir ticket de venta
-
-### 📋 Próximos Pasos Inmediatos
-1. **Iniciar Backend y Frontend**: `npm run dev` en ambos
-2. **Crear Datos de Prueba**:
-   - Agregar productos con diferentes precios
-   - Configurar monedas (USD, EUR) con tasas de cambio
-   - Establecer moneda secundaria preferida
-3. **Probar Flujo Completo**:
-   - Agregar productos al carrito
-   - Abrir checkout (F9)
-   - Realizar pago mixto (ej: 500 Bs efectivo + 2 USD)
-   - Verificar que venta se registre correctamente
-4. **Verificar en Base de Datos**:
-   - Revisar tabla `Sale` para confirmar registro
-   - Verificar campo `paymentMethod` contiene info de multi-pago
-
----
-
-## 🐛 Notas Técnicas / Consideraciones
-
-### Conversión de Divisas
-- **Interpretación de Tasas**: `exchangeRate` = "Bs por unidad de divisa"
-- Ejemplo: USD con rate 130 significa 130 Bs = 1 USD
-- Conversión: `amountInBs = amountInForeignCurrency × exchangeRate`
-
-### Formato de PaymentMethod en BD
-- **Un solo pago**: Guarda el método directo (ej: "CASH", "DEBIT")
-- **Múltiples pagos**: Guarda string descriptivo (ej: "CASH:200.00, DEBIT:100.00, CURRENCY_USD:260.00")
-- **Consideración**: Si se necesita análisis detallado, considerar crear tabla `SalePayments` en futuro
-
-### Limitaciones Actuales
-- No hay validación de saldo en caja para dar vuelto
-- No se registra el método de pago de cada ítem individualmente
-- No hay impresión de ticket automática
-- No hay registro de quién procesó la venta (usuario/vendedor)
-
-### Mejoras Futuras Sugeridas
-1. **Tabla SalePayments**: Normalizar pagos múltiples en tabla separada
-2. **Cash Drawer Integration**: Validar saldo disponible para vuelto
-3. **Receipt Printing**: Integrar con impresora térmica
-4. **User Tracking**: Agregar campo `userId` a ventas
-5. **Payment Audit**: Log de todos los intentos de pago (exitosos y fallidos)
-
----
-
-## 🔑 Flujos Clave Implementados
-
-### Flujo de Pago Mixto Completo
-```
-1. Usuario agrega productos al carrito
-   └─> Total: 600 Bs (equivalente a 4.62 USD @ 130 Bs/USD)
-
-2. Usuario presiona F9 (Totalizar)
-   └─> CheckoutModal abre
-   └─> Muestra: Total 600 Bs | Restante 600 Bs
-
-3. Usuario ingresa 200 y presiona F1 (Efectivo)
-   └─> Pago agregado: "F1 Efectivo - 200 Bs"
-   └─> Restante actualizado: 400 Bs
-
-4. Usuario ingresa 100 y presiona F2 (T. Débito)
-   └─> Pago agregado: "F2 T. Débito - 100 Bs"
-   └─> Restante actualizado: 300 Bs
-
-5. Usuario ingresa 2 y presiona CT+F9 (USD)
-   └─> Sistema convierte: 2 USD × 130 = 260 Bs
-   └─> Pago agregado: "CT+F9 USD - 260 Bs (2.00 USD)"
-   └─> Restante actualizado: 40 Bs
-
-6. Usuario ingresa 40 y presiona F1 (Efectivo)
-   └─> Pago agregado: "F1 Efectivo - 40 Bs"
-   └─> Restante actualizado: 0 Bs ✓
-   └─> Botón "F9 Registrar" se activa (verde)
-
-7. Usuario presiona F9 (Registrar)
-   └─> Sistema envía al backend:
-       {
-         total: 600,
-         paymentMethod: "CASH:200.00, DEBIT:100.00, CURRENCY_USD:260.00, CASH:40.00",
-         tendered: 600,
-         change: 0
-       }
-   └─> Venta se registra en BD
-   └─> Carrito se limpia
-   └─> Modal se cierra
-   └─> Mensaje: "Venta procesada exitosamente"
-```
-
-### Flujo de Corrección de Pago
-```
-1. Usuario agrega pago incorrecto
-2. Usuario selecciona el pago en la tabla (radio button)
-3. Usuario presiona Ctrl+F6
-   └─> Pago se elimina de la lista
-   └─> Restante se recalcula
-4. Usuario agrega el pago correcto
+## Plan de Emergencia (Rollback)
+Si el sistema no arranca o hay errores de venta, ejecute:
+```bash
+stopz
+git reset --hard df9a6d9379663aed04835f53db401d19c96fac06
+cd apps/backend && npx prisma generate
+cd ../..
+./start-prod.sh
 ```
 
 ---
 
-## 📊 Métricas de Implementación
-
-- **Líneas de Código Agregadas**: ~415
-- **Líneas de Código Modificadas**: ~134
-- **Componentes Actualizados**: 2 (CheckoutModal, posStore)
-- **Commits Realizados**: 8
-- **Funcionalidades Nuevas**: 12
-  1. Multi-pago en una transacción
-  2. Conversión automática de divisas
-  3. Tabla de desglose de pagos
-  4. Prevención de sobrepagos
-  5. Atajos de teclado para métodos de pago
-  6. Eliminación inteligente de pagos (F6)
-  7. Validación de pago completo
-  8. Feedback visual de estado de pago
-  9. Montos sugeridos en botones
-  10. Interfaz optimizada (altura de botones)
-  11. Event handling exclusivo del modal
-  12. Corrección de atajos Ctrl+F9-F12
-
----
-
-**Última Actualización**: 2025-12-08 16:34:00 -04:00
-**Estado**: Sistema de checkout multi-pago completamente optimizado y listo para producción. 0 errores, build limpio, testing preparado.
-**Próxima Acción**: Hacer push a GitHub y proceder con testing exhaustivo en navegador.
-
----
-
-## 🎯 Checklist de Testing
-
-Antes de considerar esta funcionalidad como "Production Ready", verificar:
-
-- [ ] Pago único en efectivo funciona correctamente
-- [ ] Pago único con tarjeta funciona correctamente
-- [ ] Pago mixto (efectivo + tarjeta) funciona correctamente
-- [ ] Pago con divisas convierte correctamente a Bs
-- [ ] Pago mixto con divisas (ej: Bs + USD) funciona correctamente
-- [ ] Restante a pagar se actualiza correctamente después de cada pago
-- [ ] No se puede agregar más pagos cuando restante = 0
-- [ ] F6 elimina el pago seleccionado correctamente
-- [ ] F6 elimina el último pago cuando ninguno está seleccionado
-- [ ] Montos sugeridos se muestran correctamente en botones
-- [ ] Atajos Ctrl+F9, Ctrl+F10, etc. funcionan para divisas
-- [ ] F6 no es capturado por la página de fondo
-- [ ] Altura de botones (80px) proporciona buen espaciado
-- [ ] F9 solo se activa cuando restante = 0
-- [ ] Venta se registra correctamente en la base de datos
-- [ ] Campo `paymentMethod` contiene información correcta de multi-pago
-- [ ] Carrito se limpia después de venta exitosa
-- [ ] Cliente se resetea a "CONTADO" después de venta
-- [ ] Mensaje de éxito se muestra correctamente
-- [ ] Errores se manejan apropiadamente (ej: fallo de conexión)
-
----
-
-## 💡 Notas para la Próxima IA
-
-1. **Contexto Completo**: Este sistema está diseñado específicamente para el mercado venezolano donde es común pagar con múltiples métodos (Bs + USD) en una sola transacción.
-
-2. **Tasas de Cambio**: Las tasas se interpretan como "Bs por unidad de divisa extranjera". Esto es crítico para las conversiones.
-
-3. **Extensibilidad**: El sistema está preparado para agregar más métodos de pago simplemente agregando botones al array `bsPaymentMethods` o configurando nuevas monedas en el sistema.
-
-4. **Performance**: Con la implementación actual, no hay límite en la cantidad de pagos que se pueden agregar. Si esto se convierte en problema, considerar agregar un límite razonable (ej: máximo 10 pagos por transacción).
-
-5. **Seguridad**: Actualmente no hay validación de permisos para procesar ventas. Considerar agregar autenticación/autorización en futuras iteraciones.
-
----
-
-**Fecha**: 2025-12-13
-**Para**: IA Desarrollador (Siguiente Sesión)
-**De**: IA Antigravity (Google Deepmind)
-**Asunto**: ACTUALIZACIÓN - Implementación Módulo de Nómina (RRHH)
-
----
-
-## 🚀 RESUMEN EJECUTIVO
-
-Se ha completado la **implementación del módulo de Recursos Humanos y Nómina**. El sistema ahora permite gestionar empleados y generar nóminas (quincenales) automáticamente, calculando montos basados en el sueldo base.
-
-### ✅ Logros de esta sesión:
-1.  **Gestión de Empleados**: CRUD completo con validaciones y soporte para múltiples monedas.
-2.  **Generador de Nómina**: Wizard paso a paso para crear periodos de pago.
-3.  **Cálculo Automático**: Proyección de pagos (50% del sueldo base) para todos los empleados activos.
-4.  **Recibos de Pago**: Visualización detallada de asignaciones, deducciones y neto a pagar.
-5.  **Estabilidad**: Corrección de errores de compilación, rutas (404) y validación de tipos (400).
-
----
-
-## 🛠️ CAMBIOS TÉCNICOS RECIENTES
-
-### 1. Base de Datos (Prisma)
-- Nuevos modelos: `Employee`, `PayrollPeriod`, `PayrollPayment`, `PayrollPaymentItem`.
-- Relación opcional `User` <-> `Employee`.
-
-### 2. Backend (NestJS)
-- **`HrModule`**: Módulo raíz para funcionalidades de RRHH.
-- **`EmployeesService`**:
-  - CRUD con `PrismaClient`.
-  - DTOs actualizados (`CreateEmployeeDto`) para incluir `currency` e `isActive`.
-- **`PayrollService`**:
-  - Lógica transaccional para generar o regenerar pagos de un periodo.
-  - Cálculo automático: `BaseSalary / 2`.
-- **Configuración Global**:
-  - Se detectó prefijo `/api` en `main.ts`, ajustando los servicios del frontend.
-
-### 3. Frontend (React + Ant Design)
-- **Nuevas Páginas**:
-  - `EmployeesPage`: Tabla con acciones de editar/desactivar.
-  - `PayrollPage`: Historial de periodos de nómina.
-  - `PayrollDetailPage`: Detalle de pagos por empleado.
-- **Componentes**:
-  - `EmployeeFormModal`: Formulario validado para datos personales y laborales.
-  - `GeneratePayrollModal`: Selector de fechas y nombre para nuevo periodo.
-- **Correcciones de Bug**:
-  - **404 Not Found**: Se actualizó `API_URL` a `http://localhost:3000/api` en los servicios de HR.
-  - **400 Bad Request**: Se agregaron campos `currency` e `isActive` al DTO del backend.
-  - **White Screen Crash**: Se agregó casteo seguro `Number(amount).toFixed(2)` para manejar serialización de Decimales de Prisma.
-
----
-
----
-
-**Fecha**: 2026-02-10
-**Para**: IA Desarrollador (Siguiente Sesión)
-**De**: IA Antigravity (Google Deepmind)
-**Asunto**: ACTUALIZACIÓN - Multi-Caja, Multi-moneda y Flujo Administrativo
-
-## 🚀 RESUMEN EJECUTIVO
-
-Se ha completado la **Fase de Robustez y Flexibilidad del POS**. El sistema ahora soporta operaciones multi-moneda precisas, permite a los administradores operar sin restricciones de sesión y ofrece un visor de precios público para clientes.
-
-### ✅ Logros de esta sesión:
-1.  **Soporte Multi-moneda (Fase 17)**: Los balances de caja ahora consideran la tasa de cambio histórica de cada movimiento. Liquidaciones a tesorería y arqueos son ahora 100% exactos en Bolívares.
-2.  **Bypass Administrativo (Fase 18)**: Los administradores ya no están bloqueados por sesiones cerradas. Pueden vender libremente y seleccionar cualquier caja manualmente.
-3.  **Sincronización de Sesiones**: Las ventas hechas por admins en cajas abiertas por otros usuarios se atribuyen automáticamente a la sesión correcta mediante `cashSessionId`.
-4.  **Visor de Precios Público (Fase 19)**: Acceso libre a `/visor` sin login. Endpoints de consulta en el backend ahora son públicos.
-
----
-
-## 🛠️ CAMBIOS TÉCNICOS DETALLADOS
-
-### 1. Base de Datos & Backend
-- **Prisma**: Añadido campo `exchangeRate` (Decimal, precision 4) al modelo `CashMovement`.
-- **`CashRegisterService`**:
-  - `calculateExpectedBalance` ahora usa la tasa guardada en cada movimiento.
-  - `transferToTreasury` modificado para restar el monto equivalente en Bs según la tasa del movimiento.
-  - **Fix Decimales**: El método `openSession` ahora recalcula el `openingBalance` sumando las denominaciones físicas recibidas (VES/USD), garantizando precisión total sin depender de la entrada manual.
-- **`SalesService`**: Acepta `cashSessionId` opcional en `CreateSaleDto` para forzar la atribución de venta a una caja específica.
-- **Controladores Públicos**: 
-  - `ProductsController`: `findAll` y `findOne` (públicos).
-  - `DepartmentsController`: `getTree` (público).
-  - `CompanySettingsController`: `getSettings` (público).
-
-### 2. Frontend (React)
-- **`apiConfig.ts`**: Interceptor de Axios actualizado para excluir la ruta `/visor` de la redirección automática al login ante errores 401.
-- **`POSPage.tsx`**: Lógica de bloqueo eliminada para `ADMIN`. Permite entrada sin sesión y selección manual de caja.
-- **`posStore.ts`**: `processSale` actualizado para enviar el `cashSessionId` actual al backend.
-- **`OpenSessionModal.tsx`**: Implementación de sistema de **Conteo Físico por Denominación**. Los usuarios deben ingresar la cantidad de billetes/monedas, y el sistema calcula el saldo inicial automáticamente, evitando errores de precisión decimal.
-- **Dashboard**: Refactorizado para mostrar únicamente las **Ventas Nominales** del mes con su porcentaje de comparación contra el mes anterior. Eliminada la métrica de "Ventas Ajustadas".
-
----
-
-## 📋 PASOS PARA SINCRONIZAR
-
-Para que la IA tome estos cambios y el sistema funcione correctamente, se recomienda:
-
-1.  **Actualizar Cliente Prisma**: 
-    ```bash
-    cd apps/backend
-    npx prisma generate
-    ```
-2.  **Actualizar Base de Datos** (Si hay cambios pendientes de migración):
-    ```bash
-    npx prisma db push
-    ```
-3.  **Actualizar Cono Monetario** (Billetes nuevos):
-    ```bash
-    npx ts-node prisma/seed-denominations.ts
-    ```
-4.  **Reconstruir Aplicaciones**:
-    ```bash
-    # En la raíz o carpetas respectivas
-    npm run build
-    ```
-4.  **Validación**:
-    - Entrar a `/visor` sin login y verificar carga de productos.
-    - Entrar como `admin` al POS con caja cerrada y verificar que permite totalizar venta.
-
----
-
----
-
-**Fecha**: 2026-02-15
-**Para**: Producción / IA Desarrollador
-**De**: IA Antigravity (Google Deepmind)
-**Asunto**: ACTUALIZACIÓN - Reportes Históricos, Precisión y Liquidación POS
-
-## 🚀 RESUMEN EJECUTIVO
-
-Se ha completado la **Fase de Integridad Financiera**. El sistema ahora garantiza que los reportes históricos sean estáticos (no cambien con la tasa del día), elimina errores de precisión decimal y automatiza correctamente las comisiones bancarias.
-
-### ✅ Logros de esta sesión:
-1.  **Reportes Históricos Inmunes**: `StatsService` refactorizado para usar tasas históricas. El balance de enero no cambia si el dólar sube en febrero.
-2.  **Captura de Tasa en Gastos**: Los gastos (manuales y automáticos de POS) ahora guardan la tasa de cambio vigente al momento del registro.
-3.  **Fix de Precisión (e-13)**: Aplicado redondeo a 2 decimales en todos los cálculos críticos del frontend (Dashboard, Cierres, Arqueos).
-4.  **Liquidación POS Completa**: Nuevo flujo para consolidar lotes de tarjetas con generación automática de gasto por comisión.
-5.  **Edición de Gastos**: El backend ahora permite corregir la tasa de cambio y moneda en gastos ya registrados.
-
----
-
-## 🛠️ CAMBIOS TÉCNICOS DETALLADOS
-
-### 1. Backend (NestJS)
-- **`StatsService`**:
-  - `getBalanceReport`, `getFinanceReport` y `getCOGSReport` ahora usan `sale.exchangeRate` o `expense.exchangeRate` para conversiones.
-  - El "Reporte de Inflación" sigue siendo el único que revalúa a tasa actual por diseño.
-- **`ExpensesService`**:
-  - `create` y `update` ahora manejan explícitamente `exchangeRate` y `currencyCode`.
-  - Los gastos en Bs ahora también guardan la tasa del dólar del momento.
-- **`BanksService`**:
-  - `liquidatePosBatch` ahora consulta `CompanySettings` para aplicar la tasa real a la comisión bancaria.
-
-### 2. Frontend (React)
-- **Rounding Helpers**: Implementados en `CashRegisterPage`, `SessionSummaryModal`, `CashCountModal` y `CloseSessionModal` para evitar números como `-2.27e-13`.
-- **Modales Actualizados**: `LiquidateBatchModal` integrado para manejar cierres de lotes bancarios.
-
----
-
-## 📋 PASOS PARA ACTUALIZAR SERVIDOR (PRODUCCIÓN)
-
-Una vez realizado el `git push` desde esta terminal, siga estos pasos en el servidor de producción:
-
-1.  **Acceder a la carpeta del proyecto**:
-    ```bash
-    cd /ruta/a/MastERP
-    ```
-2.  **Actualizar el código**:
-    ```bash
-    git pull origin develop
-    ```
-3.  **Instalar/Actualizar dependencias**:
-    ```bash
-    npm install
-    ```
-4.  **Sincronizar Base de Datos (MIGRACOINES)**:
-    > [!IMPORTANT]
-    > Hay cambios en el esquema. Es vital ejecutar:
-    ```bash
-    cd apps/backend
-    npx prisma migrate deploy
-    npx prisma generate
-    ```
-5.  **Reiniciar Servicios**:
-    > [!TIP]
-    > Si usa PM2 o similar:
-    ```bash
-    pm2 restart all
-    ```
-    O si usa npm scripts:
-    ```bash
-    npm run build
-    # Luego reiniciar el proceso de ejecución
-    ```
-
----
-
----
-
-**Fecha**: 2026-02-20
-**Para**: Producción / IA Desarrollador
-**De**: IA Antigravity (Google Deepmind)
-**Asunto**: ACTUALIZACIÓN - Integración Mercado Libre, Inteligencia de Inventario y Reportes Multi-moneda
-
-## 🚀 RESUMEN EJECUTIVO
-
-Se ha completado la **Fase de Expansión Digital e Inteligencia**. El sistema ahora permite una gestión profesional de Mercado Libre, ofrece proyecciones de stock para fin de año y garantiza reportes financieros 100% precisos en múltiples monedas.
-
-### ✅ Logros de esta sesión:
-1.  **Módulo Mercado Libre (Fase 7)**:
-    *   Publicación manual con control total (títulos, descripciones, categorías dinámicas).
-    *   Soporte para múltiples imágenes y selección inteligente de categorías.
-    *   **Sincronización de Stock**: Las ventas en la tienda física actualizan automáticamente las publicaciones en ML.
-    *   Control de pausa/reanudación desde el panel administrativo.
-2.  **Inteligencia de Inventario (Fase 8)**:
-    *   **Proyección a Fin de Año**: El sistema calcula cuánto stock "falta" para terminar el año basándose en el ritmo de venta (velocity) de los últimos 30 días.
-3.  **Integridad Financiera (Fase 9)**:
-    *   Reportes financieros corregidos para mostrar símbolos y conversiones exactas ($ / Bs).
-    *   El desglose de métodos de pago ahora suma exactamente el 100% en cualquier moneda.
-
----
-
-## 🛠️ CAMBIOS TÉCNICOS DETALLADOS
-
-### 1. Backend (NestJS)
-- **`MercadoLibreService`**: Maneja OAuth y la API oficial de ML. Implementa lógica de "upsert" para stock.
-- **`StatsService`**:
-  - Incorpora lógica predictiva `(velocity * daysUntilYearEnd)`.
-  - Fix de revalorización: `(VES / hRate) * currentRate`.
-- **Prisma**: Nuevo modelo `MercadoLibreProductMapping` para vincular IDs locales con externos.
-
-### 2. Frontend (React)
-- **`MlPublishModal`**: Interfaz avanzada con conversión de moneda en tiempo real y buscador de categorías.
-- **`FinancialReports`**: Refactorizado para usar `currencySymbol` dinámico y evitar mezclas de símbolos.
-
----
-
-## 📋 PASOS PARA ACTUALIZAR ENTORNO DE PRODUCCIÓN
-
-Siga estas instrucciones al pie de la letra para asegurar la estabilidad:
-
-1.  **Actualizar código y dependencias**:
-    ```bash
-    git pull origin develop
-    npm install
-    ```
-
-2.  **Sincronizar Esquema (PRISMA)**:
-    > [!IMPORTANT]
-    > Hay una nueva tabla para Mercado Libre. Si `migrate deploy` falla por historial vacío (Error P3005), use `db push`:
-    ```bash
-    cd apps/backend
-    
-    # Intento 1 (Recomendado):
-    npx prisma migrate deploy
-    
-    # Intento 2 (Si el anterior falla):
-    npx prisma db push
-    
-    npx prisma generate
-    ```
-
-3.  **Configuración de Variables de Entorno**:
-    Asegúrese de que el `.env` de producción tenga las credenciales de Mercado Libre:
-    ```env
-    ML_CLIENT_ID=tu_client_id
-    ML_CLIENT_SECRET=tu_client_secret
-    ML_REDIRECT_URI=https://tu-dominio.com/api/mercadolibre/callback
-    ```
-
-4.  **Reconstruir y Reiniciar**:
-    ```bash
-    # En la raíz del proyecto
-    npm run build
-    
-    # Reiniciar procesos (detener y volver a iniciar)
-    # Backend: npm run start:prod (dentro de apps/backend)
-    # Frontend: npm run preview o servir la carpeta dist/ (dentro de apps/frontend)
-    ```
-
-5.  **Validación**:
-    - Verificar que aparezca el botón "Publicar en ML" en el inventario.
-    - Confirmar que los reportes financieros en USD no muestran el símbolo "Bs" por error.
-
----
-
-## ⚠️ ESTADO ACTUAL
-- **Compilación**: Exitosa (Build verificado).
-- **Base de Datos**: Requiere `migrate deploy`.
-- **Próximos Pasos**: Monitorear las primeras publicaciones reales en Mercado Libre para verificar la carga de imágenes.
-
----
-
-**Fecha**: 2026-04-10
-**Para**: Producción / Administrador
-**De**: IA Antigravity (Google Deepmind)
-**Asunto**: ACTUALIZACIÓN - Rebranding MastERP, Pagos Inteligentes y Tesorería Dinámica
-
-## 🚀 RESUMEN EJECUTIVO
-
-Se ha completado la **Fase de Identidad y Flexibilidad de Pagos**. El sistema ha sido formalmente rebautizado como MastERP, abandonando los nombres clave "Zenith/ValeryPort". Además, se han optimizado los módulos de pagos para ofrecer cálculos automáticos y mayor control sobre las cajas.
-
-### ✅ Logros de esta sesión:
-1.  **Rebranding (MastERP)**: Identidad visual y textual actualizada en todo el monorepo. Se implementó un nuevo Favicon corporativo con la letra "M" y la paleta Azul/Verde.
-2.  **Configuración de Tesorería**: Nuevo switch "Rigurosidad Contable" en Opciones Generales. Ahora las empresas pueden decidir si registrar el Banco/Caja en los pagos es obligatorio o totalmente opcional.
-3.  **Auto-Ajustes Multimoneda en Pagos**: Al cambiar de moneda o ajustar la tasa manualmente en Cuentas por Pagar (compras), el sistema re-calcula el monto a pagar en tiempo real para cubrir el 100% de la deuda.
-4.  **Fix POS UI**: Problema de desbordamiento de pantalla (scroll) en el carrito del Punto de Venta corregido.
-
----
-
-## 🛠️ CAMBIOS TÉCNICOS DETALLADOS
-
-### 1. Base de Datos & Backend
-- **Esquema Prisma**: Nuevo campo `requireBankAccountForPayments` (Boolean) añadido a `company_settings`.
-- **Backend DTOs**: Actualizados los DTOs de `UpdateCompanySettings` y `CompanySettingsApi` para recibir esta nueva variable.
-
-### 2. Frontend (React)
-- **Modal de Pago a Proveedores (`RegisterPurchasePaymentModal.tsx`)**: Integración de recálculo en vivo reactivando dependencias en `useEffect` y enlazando `settingsApi`.
-- **Registro de Gastos (`CreateExpenseModal.tsx`)**: Reglas de validación y etiqueta de "Opcional" dinámicas.
-- **Configuración (`CompanySettingsPage.tsx`)**: Switch introducido dentro del bloque general.
-- **Carrito POS (`POSLeftPanel.tsx`)**: Inclusión de reglas CSS flex dinámicas (`minHeight: 0`, `overflowY: 'auto'`) al layout.
-- **Public**: Favicon `.svg` reemplazado.
-
----
-
-## 📋 PASOS PARA ACTUALIZAR ENTORNO DE PRODUCCIÓN
-
-En su terminal/servidor de producción, siga estos pasos estrictamente:
-
-1.  **Detener los servicios (Si están corriendo)**:
-    ```bash
-    stopz # O el comando configurado localmente para matar procesos PM2/node
-    ```
-
-2.  **Hacer Git Pull**:
-    ```bash
-    git pull origin develop
-    ```
-
-3.  **Sincronizar Esquema (PRISMA DATABASE)**:
-    > [!IMPORTANT]
-    > Se ha agregado un nuevo campo en CompanySettings. Como es un setup local sincronizado:
-    ```bash
-    cd apps/backend
-    npx prisma db push --accept-data-loss
-    npx prisma generate
-    ```
-
-4.  **Reconstruir el Frontend y Backend**:
-    El pull traerá cambios Typescript. Para evitar cualquier error visual:
-    ```bash
-    cd ../.. # Regresar a la ruta principal
-    cd apps/frontend && npm run build
-    cd ../backend && npm run build
-    ```
-
-5.  **Iniciar Servidor**:
-    ```bash
-    cd ../..
-    bash start-local.sh # O start-prod.sh
-    ```
-
-6.  **Borrar Caché del Navegador**:
-    Para ver el nuevo Favicon (La M de MastERP) presione `Ctrl + F5` en su navegador.
+## Verificación Final
+Acceda a `/marketing` en el navegador. Si el dashboard carga gráficos y no da error 404, la sincronización fue exitosa.
