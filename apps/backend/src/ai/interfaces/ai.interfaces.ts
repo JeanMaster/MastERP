@@ -58,7 +58,8 @@ export interface AIRecommendation {
 }
 
 export interface AIInsightsResponse {
-  diagnosis: AIDiagnosis;
+  diagnosis?: AIDiagnosis;
+  recommendations: AIRecommendation[];
   generatedAt: string;
   contextPeriod: string;
 }

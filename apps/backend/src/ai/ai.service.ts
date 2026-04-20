@@ -172,6 +172,7 @@ IMPORTANTE: Responde SOLO con el JSON, sin texto adicional.`;
       // 7. Creamos la respuesta final formateada
       const insights: AIInsightsResponse = {
         diagnosis: parsed.diagnosis,
+        recommendations: [], // El nuevo formato de diagnóstico no usa recomendaciones individuales
         generatedAt: new Date().toISOString(),
         contextPeriod: context.period,
       };
