@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { ContextBuilderService } from './context-builder.service';
+import { PrismaService } from '../prisma/prisma.service';
 import {
   BusinessContext,
   AIRecommendation,
@@ -12,41 +13,89 @@ import {
 @Injectable()
 export class AIService {
   private readonly logger = new Logger(AIService.name);
-  private genAI: GoogleGenerativeAI;
   private insightsCache: { data: AIInsightsResponse; expiresAt: Date } | null =
     null;
 
-  constructor(private contextBuilder: ContextBuilderService) {
-    // Al iniciar el servicio, buscamos la API KEY de Gemini en las variables de entorno (.env)
-    const apiKey = process.env.GEMINI_API_KEY;
+  constructor(
+    private contextBuilder: ContextBuilderService,
+    private prisma: PrismaService
+  ) {}
+
+  private async getGenAIClient(): Promise<GoogleGenerativeAI> {
+    const config = await this.prisma.aIConfig.findFirst({
+      where: { provider: 'gemini', isActive: true },
+    });
+    const apiKey = config?.apiKey || process.env.GEMINI_API_KEY;
+
     if (!apiKey) {
-      this.logger.warn(
-        'GEMINI_API_KEY no encontrada. Las funciones de IA estarán desactivadas.',
+      throw new Error(
+        'Gemini AI no configurada. Por favor, ingresa tu API Key en la configuración general del sistema.',
       );
-    } else {
-      // Inicializamos el cliente de Google Generative AI
-      const maskedKey = `${apiKey.substring(0, 4)}...${apiKey.substring(apiKey.length - 4)}`;
-      this.logger.log(`Gemini AI inicializada con la clave: ${maskedKey}`);
-      this.genAI = new GoogleGenerativeAI(apiKey);
     }
+
+    return new GoogleGenerativeAI(apiKey);
+  }
+
+  async getConfig() {
+    // Retornamos la configuración de Gemini por defecto
+    let config = await this.prisma.aIConfig.findFirst({
+      where: { provider: 'gemini' },
+    });
+
+    if (!config) {
+      // Si no existe, creamos una por defecto
+      config = await this.prisma.aIConfig.create({
+        data: {
+          provider: 'gemini',
+          modelName: 'gemini-1.5-flash',
+          isActive: true,
+        },
+      });
+    }
+
+    return config;
+  }
+
+  async updateConfig(data: any) {
+    const current = await this.getConfig();
+    return this.prisma.aIConfig.update({
+      where: { id: current.id },
+      data: {
+        apiKey: data.apiKey,
+        modelName: data.modelName || 'gemini-1.5-flash',
+        isActive: data.isActive !== undefined ? data.isActive : true,
+        settings: data.settings || {},
+      },
+    });
   }
 
   // El "System Prompt" define la personalidad y las reglas que debe seguir la IA
-  private readonly SYSTEM_PROMPT = `Eres un asesor financiero experto especializado en negocios retail en Venezuela.
+  private readonly SYSTEM_PROMPT = `Eres un Analista de Diagnóstico de Negocios experto en retail para el mercado venezolano.
+  
+Tu objetivo es realizar un DIAGNÓSTICO GENERAL de la situación actual de la tienda basándote en los datos proporcionados.
 
-Tu objetivo es analizar datos del negocio y generar recomendaciones ACCIONABLES y ESPECÍFICAS.
+REGLAS CRÍTICAS:
+1. NO des recomendaciones o sugerencias de acción (tu tarea es diagnosticar, no asesorar).
+2. IGNORA completamente el dato de "Caja" o "Liquidez Inmediata". El usuario no desea que este factor nuble el análisis de salud estructural.
+3. ENFÓCATE exclusivamente en:
+   - Análisis de Ventas: Comparativas, tendencias y proyecciones basadas en historial.
+   - Balance Financiero: La relación estructural entre Cuentas por Cobrar, Cuentas por Pagar, Gastos y Compras de Mercancía.
+4. LENGUAJE:
+   - Sé directo, analítico y objetivo.
+   - Usa montos en USD siempre que hables de dinero.
+   - Estructura tu diagnóstico en tres ejes: Resumen Ejecutivo, Análisis de Ventas y Situación de Balance.`;
 
-CONTEXTO VENEZOLANO Y MONEDA:
-- Los datos financieros se te proporcionan NORMALIZADOS en DÓLARES (USD) para facilitar el análisis.
-- El negocio opera en un entorno multimoneda (Bs y USD), pero tú debes reportar y recomendar basándote en los valores en USD proporcionados.
-- Tienes acceso a Ventas, Inventario, Gastos Operativos y Compras de Mercancía del mes actual.
-- Usa SIEMPRE el símbolo "$" o la palabra "USD" al mencionar montos.
+  private readonly MARKETING_PROMPT = `Eres un experto en Marketing Digital y Copywriting creativo para negocios retail.
+Tu objetivo es generar copys cautivadores, persuasivos y optimizados para redes sociales (Instagram, WhatsApp, Facebook, TikTok).
 
-CLARIDAD Y LENGUAJE:
-- NO uses acrónimos técnicos como "MTD", "YTD" o "EBITDA".
-- En su lugar, usa frases claras como "acumulado del mes", "en lo que va de mes" o "acumulado anual".
-- Estilo directo, profesional y enfocado en acciones concretas que el dueño pueda tomar HOY.
-- Prioriza rentabilidad y liquidez.`;
+REGLAS DE ESTILO:
+- Usa emojis de forma estratégica para dar personalidad al texto.
+- Estructura el copy con ganchos (hooks) al inicio y llamadas a la acción (CTA) al final.
+- Para Instagram: Usa hashtags relevantes al final.
+- Para WhatsApp: Sé más directo y personal.
+- Para TikTok: Sugiere una idea breve de video o un texto muy corto y dinámico.
+- Siempre mantén un tono humano, cercano y emocionante.
+- Si se proporciona un precio, menciónalo de forma atractiva.`;
 
   /**
    * Genera análisis diarios (recomendaciones) basados en los datos del negocio.
@@ -62,13 +111,12 @@ CLARIDAD Y LENGUAJE:
       return this.insightsCache.data;
     }
 
-    if (!this.genAI) {
-      throw new Error(
-        'Gemini AI no inicializada. Verifica la variable GEMINI_API_KEY.',
-      );
-    }
-
     this.logger.log('Generando nuevos análisis...');
+
+    const genAI = await this.getGenAIClient();
+    const model = genAI.getGenerativeModel({
+      model: 'gemini-flash-latest',
+    });
 
     // 2. Obtenemos los datos actuales del negocio (ventas, inventario, etc.) desde el ContextBuilder
     const context = await this.contextBuilder.buildContext('today');
@@ -78,35 +126,25 @@ CLARIDAD Y LENGUAJE:
     );
 
     // 3. Seleccionamos el modelo de Gemini (usamos flash-latest por ser rápido y eficiente)
-    const model = this.genAI.getGenerativeModel({
-      model: 'gemini-flash-latest',
-    });
+    // model already defined above
 
     // 4. Construimos el "prompt" final combinando las instrucciones y los datos reales
     const prompt = `${this.SYSTEM_PROMPT}
 
-DATOS DEL NEGOCIO:
+DATOS DEL NEGOCIO (Ignorar finances.cashBalance):
 ${JSON.stringify(context, null, 2)}
 
 TAREA:
-Analiza los datos y genera 3-5 recomendaciones ACCIONABLES.
-
-Prioriza:
-1. Problemas críticos (stock bajo, liquidez, deudas)
-2. Oportunidades de mejora (productos top, tendencias)
-3. Optimizaciones operativas
+Realiza un diagnóstico integral de la salud del negocio basándote en el historial de ventas y la estructura de deudas/gastos. 
 
 FORMATO DE RESPUESTA (JSON estricto):
 {
-  "recommendations": [
-    {
-      "priority": "high" | "medium" | "low",
-      "title": "Título corto y directo",
-      "description": "Explicación detallada con números del contexto",
-      "action": "Acción específica que el dueño puede tomar HOY",
-      "category": "sales" | "inventory" | "finance" | "operations"
-    }
-  ]
+  "diagnosis": {
+    "summary": "Resumen ejecutivo del estado general",
+    "salesAnalysis": "Análisis narrativo profundo de las ventas (tendencia, productos top, comparativa)",
+    "financialBalance": "Análisis estructural de la relación CxC vs CxP vs Gastos vs Compras",
+    "overallStatus": "healthy" | "warning" | "critical"
+  }
 }
 
 IMPORTANTE: Responde SOLO con el JSON, sin texto adicional.`;
@@ -133,7 +171,7 @@ IMPORTANTE: Responde SOLO con el JSON, sin texto adicional.`;
 
       // 7. Creamos la respuesta final formateada
       const insights: AIInsightsResponse = {
-        recommendations: parsed.recommendations || [],
+        diagnosis: parsed.diagnosis,
         generatedAt: new Date().toISOString(),
         contextPeriod: context.period,
       };
@@ -145,7 +183,7 @@ IMPORTANTE: Responde SOLO con el JSON, sin texto adicional.`;
       };
 
       this.logger.log(
-        `Generadas ${insights.recommendations.length} recomendaciones`,
+        `Diagnóstico generado con éxito`,
       );
       return insights;
     } catch (error) {
@@ -174,15 +212,11 @@ IMPORTANTE: Responde SOLO con el JSON, sin texto adicional.`;
    * Maneja la conversación interactiva (chat) con el usuario.
    */
   async chat(request: AIChatRequest): Promise<AIChatResponse> {
-    if (!this.genAI) {
-      throw new Error('Gemini AI no inicializada.');
-    }
-
     this.logger.log('Procesando mensaje de chat...');
 
-    // 1. Cargamos el contexto actual para que la IA sepa de qué negocio está hablando
+    const genAI = await this.getGenAIClient();
     const context = await this.contextBuilder.buildContext('today');
-    const model = this.genAI.getGenerativeModel({
+    const model = genAI.getGenerativeModel({
       model: 'gemini-flash-latest',
     });
 
@@ -250,7 +284,37 @@ INSTRUCCIONES:
    * Limpia el cache de análisis para forzar la generación de nuevos datos.
    */
   clearCache(): void {
-    this.insightsCache = null;
     this.logger.log('Cache de análisis limpiado');
+  }
+
+  /**
+   * Genera un post para redes sociales basado en datos de un producto
+   */
+  async generateSocialPost(data: {
+    product: any;
+    platform: string;
+    customInstructions?: string;
+  }): Promise<string> {
+    const genAI = await this.getGenAIClient();
+    const model = genAI.getGenerativeModel({ model: 'gemini-flash-latest' });
+
+    const prompt = `${this.MARKETING_PROMPT}
+
+DATOS DEL PRODUCTO:
+${JSON.stringify(data.product, null, 2)}
+
+PLATAFORMA: ${data.platform}
+INSTRUCCIONES ADICIONALES: ${data.customInstructions || 'Ninguna'}
+
+TAREA: Genera un post creativo para este producto optimizado para la plataforma indicada. 
+Incluye ganchos, descripción atractiva, precio (si está en los datos) y hashtags.`;
+
+    try {
+      const result = await model.generateContent(prompt);
+      return result.response.text();
+    } catch (error) {
+      this.logger.error('Error generando post social:', error);
+      throw new Error('No se pudo generar el post. Intenta de nuevo.');
+    }
   }
 }

@@ -10,6 +10,7 @@ export interface Client {
     social1?: string;
     social2?: string;
     social3?: string;
+    birthDate?: string;
     active: boolean;
     createdAt: string;
     updatedAt: string;
@@ -25,6 +26,7 @@ export interface CreateClientDto {
     social1?: string;
     social2?: string;
     social3?: string;
+    birthDate?: string;
 }
 
 export interface UpdateClientDto extends Partial<CreateClientDto> { }

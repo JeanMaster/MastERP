@@ -7,7 +7,8 @@ import {
     MobileOutlined,
     DeleteOutlined,
     CheckCircleOutlined,
-    FileTextOutlined
+    FileTextOutlined,
+    GiftOutlined
 } from '@ant-design/icons';
 import { useQuery } from '@tanstack/react-query';
 import { banksApi } from '../../../services/banksApi';
@@ -49,7 +50,10 @@ export const CheckoutModal = ({ open, onCancel, onProcess }: CheckoutModalProps)
         taxEnabled,
         taxRate,
         igtfEnabled,
-        igtfRate
+        igtfRate,
+        customerPoints,
+        customerPointsValueUsd,
+        pointsRate
     } = usePOSStore();
 
     // Ref for auto-focus on amount input
@@ -126,7 +130,7 @@ export const CheckoutModal = ({ open, onCancel, onProcess }: CheckoutModalProps)
             if (!open) return;
 
             // Modal-exclusive keys - prevent propagation to background
-            const modalKeys = ['F1', 'F2', 'F3', 'F4', 'F5', 'F6', 'F7', 'F8', 'F9', 'Escape'];
+            const modalKeys = ['F1', 'F2', 'F3', 'F4', 'F5', 'F6', 'F7', 'F8', 'F9', 'F10', 'Escape'];
 
             // Check for Ctrl+Fn combinations (excluding F6 which is now standalone)
             const isCtrlFn = e.ctrlKey && ['F9', 'F10', 'F11', 'F12'].includes(e.key);
@@ -161,6 +165,10 @@ export const CheckoutModal = ({ open, onCancel, onProcess }: CheckoutModalProps)
                     if (!customerId) return;
                     setSelectedMethod('ACCOUNT_CREDIT');
                     addPayment('ACCOUNT_CREDIT', 'F8 Crédito (Cuenta)', creditCurrencyId || undefined);
+                } else if (e.key === 'F10' && inputAmount) {
+                    if (customerPoints > 0) {
+                        handlePointsRedeem();
+                    }
                 } else if (e.key === 'F6' && payments.length > 0) {
                     if (selectedPaymentId) {
                         // Remove selected payment
@@ -320,6 +328,39 @@ export const CheckoutModal = ({ open, onCancel, onProcess }: CheckoutModalProps)
         setRetentionVoucher('');
     };
 
+    const handlePointsRedeem = () => {
+        if (!customerId || customerPoints <= 0 || !pointsRate) return;
+
+        // Points are in USD value. Convert to Bs for compatibility with pos payments
+        // We assume point value is in USD. We need to convert it to primary currency (Bs)
+        const exchangeRate = usePOSStore.getState().exchangeRate || 1;
+        const maxRedemptionPercentage = usePOSStore.getState().maxRedemptionPercentage || 100;
+        
+        const bsPerPoint = pointsRate * exchangeRate;
+        const maxPointsValueInBs = customerPoints * bsPerPoint;
+
+        // Calculate the maximum Bs allowed based on the percentage of the sale total
+        const maxAllowedByConfig = (totals.total * maxRedemptionPercentage) / 100;
+
+        // We can redeem up to the remaining balance, the max points value the customer has, or the config limit
+        const amountToPayInBs = Math.min(
+            remaining, 
+            maxPointsValueInBs, 
+            maxAllowedByConfig,
+            inputAmount || remaining
+        );
+        
+        // Calculate how many points that amount represents
+        const pointsUsed = amountToPayInBs / bsPerPoint;
+
+        addPayment(
+            `LOYALTY_POINTS:${amountToPayInBs}:${pointsUsed.toFixed(2)}`,
+            `F10 Canje Puntos (${pointsUsed.toFixed(0)} pts)`,
+            undefined,
+            amountToPayInBs
+        );
+    };
+
     const removePayment = (id: string) => {
         const newPayments = payments.filter(p => p.id !== id);
         setPayments(newPayments);
@@ -380,6 +421,7 @@ export const CheckoutModal = ({ open, onCancel, onProcess }: CheckoutModalProps)
         { key: 'TRANSFER', label: 'F5 Transferencia', icon: <BankOutlined />, shortcut: 'F5' },
         { key: 'RETENTION_IVA', label: 'F7 Retención IVA', icon: <FileTextOutlined />, shortcut: 'F7', info: '75% IVA' },
         { key: 'ACCOUNT_CREDIT', label: 'F8 Crédito (Cuenta)', icon: <CreditCardOutlined />, shortcut: 'F8', danger: true },
+        { key: 'LOYALTY_POINTS', label: 'F10 Puntos Loyalty', icon: <GiftOutlined />, shortcut: 'F10', color: '#faad14' },
     ];
 
     // Table columns for payment breakdown
@@ -575,6 +617,23 @@ export const CheckoutModal = ({ open, onCancel, onProcess }: CheckoutModalProps)
                     <Col span={10}>
                         <Title level={5}>Formas de Pago</Title>
 
+                        {customerId && customerPoints > 0 && (
+                            <Card 
+                                size="small" 
+                                style={{ marginBottom: 16, borderLeft: '4px solid #faad14', background: '#fffbe6' }}
+                            >
+                                <Space direction="vertical" size={0}>
+                                    <Text strong><GiftOutlined style={{ color: '#faad14' }} /> Puntos de Fidelidad:</Text>
+                                    <Title level={4} style={{ margin: 0, color: '#d48806' }}>
+                                        {customerPoints.toFixed(0)} <span style={{ fontSize: '0.6em' }}>puntos</span>
+                                    </Title>
+                                    <Text type="secondary" style={{ fontSize: '11px' }}>
+                                        Valor: {formatVenezuelanPrice(customerPointsValueUsd * (usePOSStore.getState().exchangeRate || 1))}
+                                    </Text>
+                                </Space>
+                            </Card>
+                        )}
+
                         {/* Amount input */}
                         <div style={{ marginBottom: 16 }}>
                             <Text strong>Cantidad:</Text>
@@ -594,37 +653,50 @@ export const CheckoutModal = ({ open, onCancel, onProcess }: CheckoutModalProps)
                         <div style={{ marginBottom: 16 }}>
                             <Text type="secondary" style={{ fontSize: '0.9em' }}>Pagos en {primaryCurrency?.name || 'Bolívares'}</Text>
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 8 }}>
-                                {bsPaymentMethods.map(method => {
-                                    const isCreditMethod = method.key === 'ACCOUNT_CREDIT';
-                                    const isRetentionMethod = method.key === 'RETENTION_IVA';
-                                    const isDisabled = isFullyPaid || !inputAmount || inputAmount <= 0 || ((isCreditMethod || isRetentionMethod) && !customerId);
+                                    {bsPaymentMethods.map(method => {
+                                        const isCreditMethod = method.key === 'ACCOUNT_CREDIT';
+                                        const isRetentionMethod = method.key === 'RETENTION_IVA';
+                                        const isLoyaltyMethod = method.key === 'LOYALTY_POINTS';
+                                        
+                                        const isDisabled = isFullyPaid || !inputAmount || inputAmount <= 0 || 
+                                            ((isCreditMethod || isRetentionMethod || isLoyaltyMethod) && !customerId) ||
+                                            (isLoyaltyMethod && customerPoints <= 0);
 
-                                    return (
-                                        <div key={method.key}>
-                                            <Button
-                                                size="large"
-                                                onClick={() => {
-                                                    if ((isCreditMethod || isRetentionMethod) && !customerId) return;
+                                        return (
+                                            <div key={method.key}>
+                                                <Button
+                                                    size="large"
+                                                    onClick={() => {
+                                                        if ((isCreditMethod || isRetentionMethod || isLoyaltyMethod) && !customerId) return;
+                                                        
+                                                        if (isLoyaltyMethod) {
+                                                            if (customerPoints > 0) {
+                                                                handlePointsRedeem();
+                                                            }
+                                                            return;
+                                                        }
 
-                                                    if (method.key === 'MOBILE' && mobilePaymentBanks.length > 0) {
-                                                        setBankSelectorOpen(true);
-                                                        return;
+                                                        if (method.key === 'MOBILE' && mobilePaymentBanks.length > 0) {
+                                                            setBankSelectorOpen(true);
+                                                            return;
+                                                        }
+
+                                                        if (method.key === 'RETENTION_IVA') {
+                                                            handleRetentionClick();
+                                                            return;
+                                                        }
+
+                                                        setSelectedMethod(method.key);
+                                                        addPayment(method.key, method.label, isCreditMethod ? creditCurrencyId || undefined : undefined);
+                                                    }}
+                                                    disabled={isDisabled}
+                                                    title={
+                                                        (isCreditMethod && !customerId) ? 'Debe seleccionar un cliente para venta a crédito' : 
+                                                        (isRetentionMethod && !customerId) ? 'Debe seleccionar un cliente para aplicar retención' : 
+                                                        (isLoyaltyMethod && !customerId) ? 'Debe seleccionar un cliente para usar puntos' :
+                                                        (isLoyaltyMethod && customerPoints <= 0) ? 'El cliente no tiene puntos suficientes' :
+                                                        ''
                                                     }
-
-                                                    if (method.key === 'RETENTION_IVA') {
-                                                        handleRetentionClick();
-                                                        return;
-                                                    }
-
-                                                    setSelectedMethod(method.key);
-                                                    addPayment(method.key, method.label, isCreditMethod ? creditCurrencyId || undefined : undefined);
-                                                }}
-                                                disabled={isDisabled}
-                                                title={
-                                                    (isCreditMethod && !customerId) ? 'Debe seleccionar un cliente para venta a crédito' : 
-                                                    (isRetentionMethod && !customerId) ? 'Debe seleccionar un cliente para aplicar retención' : 
-                                                    ''
-                                                }
                                                 style={{
                                                     height: 80,
                                                     width: '100%',

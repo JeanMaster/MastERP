@@ -146,6 +146,20 @@ export const RegisterPurchasePaymentModal = ({ open, purchase, onClose }: Regist
         return (payAmount * payRateForCalc) / invRateForCalc;
     };
 
+    // F9 Keyboard Shortcut
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (!open) return;
+            if (e.key === 'F9') {
+                e.preventDefault();
+                e.stopPropagation();
+                handleSubmit();
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown, true);
+        return () => window.removeEventListener('keydown', handleKeyDown, true);
+    }, [open]);
+
     const handleSubmit = async () => {
         if (!purchase) return;
         try {
@@ -229,7 +243,7 @@ export const RegisterPurchasePaymentModal = ({ open, purchase, onClose }: Regist
             onOk={handleSubmit}
             onCancel={onClose}
             confirmLoading={registerPaymentMutation.isPending}
-            okText="Registrar Pago"
+            okText="Registrar Pago (F9)"
             cancelText="Cancelar"
         >
             <div style={{ marginBottom: 16 }}>

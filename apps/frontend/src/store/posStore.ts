@@ -48,8 +48,14 @@ interface POSState {
     isSpecialTaxpayer: boolean;
     searchTerm: string;
     searchResults: Product[];
+    appliedCoupon: { id: string; code: string; discountAmount: number } | null;
+    customerPoints: number;
+    customerPointsValueUsd: number;
+    pointsRate: number;
+    maxRedemptionPercentage: number;
 
     // Actions
+    fetchCustomerPoints: (clientId: string) => Promise<void>;
     setSearchTerm: (term: string) => void;
     setSearchResults: (results: Product[]) => void;
     addItem: (product: Product, isSecondary: boolean) => void;
@@ -62,6 +68,8 @@ interface POSState {
     toggleSelectedItemUnit: () => void;
     clearCart: () => void;
     resetPOS: () => void;
+    applyCoupon: (coupon: { id: string; code: string; discountAmount: number }) => void;
+    removeCoupon: () => void;
     setExchangeRate: (rate: number) => void;
     setCustomer: (customer: { id: string; name: string } | string) => void;
     calculateTotals: () => void;
@@ -109,6 +117,11 @@ export const usePOSStore = create<POSState>()(
             isSpecialTaxpayer: false,
             searchTerm: '',
             searchResults: [],
+            appliedCoupon: null,
+            customerPoints: 0,
+            customerPointsValueUsd: 0,
+            pointsRate: 0,
+            maxRedemptionPercentage: 100,
             setSearchTerm: (term) => set({ searchTerm: term }),
             setSearchResults: (results) => set({ searchResults: results }),
 
@@ -260,7 +273,7 @@ export const usePOSStore = create<POSState>()(
                     newSelected = null;
                 }
 
-                set({ cart: newCart, selectedItemId: newSelected });
+                set({ cart: newCart, selectedItemId: newSelected, appliedCoupon: null }); // Remove coupon if cart changes to avoid inconsistencies
                 get().calculateTotals();
             },
 
@@ -287,7 +300,7 @@ export const usePOSStore = create<POSState>()(
                     return item;
                 });
 
-                set({ cart: newCart });
+                set({ cart: newCart, appliedCoupon: null }); // Remove coupon on quantity change
                 get().calculateTotals();
             },
 
@@ -313,7 +326,7 @@ export const usePOSStore = create<POSState>()(
                     return item;
                 });
 
-                set({ cart: newCart });
+                set({ cart: newCart, appliedCoupon: null }); // Remove global coupon if line discount changes
                 get().calculateTotals();
             },
             toggleUnit: (productId) => {
@@ -364,6 +377,7 @@ export const usePOSStore = create<POSState>()(
                 set({
                     cart: [],
                     selectedItemId: null,
+                    appliedCoupon: null,
                     totals: { subtotal: 0, discount: 0, tax: 0, total: 0, totalUsd: 0, itemsCount: 0 }
                 });
             },
@@ -407,6 +421,7 @@ export const usePOSStore = create<POSState>()(
                     cart: [],
                     selectedItemId: null,
                     activeCustomer: 'CONTADO',
+                    appliedCoupon: null,
                     totals: { subtotal: 0, discount: 0, tax: 0, total: 0, totalUsd: 0, itemsCount: 0 }
                 });
             },
@@ -418,19 +433,66 @@ export const usePOSStore = create<POSState>()(
 
             setCustomer: (customer) => {
                 if (typeof customer === 'string') {
-                    set({ activeCustomer: customer, customerId: null });
+                    set({ 
+                        activeCustomer: customer, 
+                        customerId: null, 
+                        appliedCoupon: null,
+                        customerPoints: 0,
+                        customerPointsValueUsd: 0,
+                        pointsRate: 0,
+                        maxRedemptionPercentage: 100
+                    });
                 } else {
-                    set({ activeCustomer: customer.name, customerId: customer.id });
+                    set({ 
+                        activeCustomer: customer.name, 
+                        customerId: customer.id, 
+                        appliedCoupon: null 
+                    });
+                    
+                    // Trigger points fetch (non-blocking)
+                    get().fetchCustomerPoints(customer.id);
+                }
+                get().calculateTotals(); // in case a tier coupon was removed
+            },
+
+            fetchCustomerPoints: async (clientId) => {
+                try {
+                    const { marketingApi } = await import('../services/marketingApi');
+                    const pointsData = await marketingApi.getPointsValue(clientId);
+                    set({ 
+                        customerPoints: pointsData.points, 
+                        customerPointsValueUsd: pointsData.valueUsd,
+                        pointsRate: pointsData.rate,
+                        maxRedemptionPercentage: pointsData.maxRedemptionPercentage || 100
+                    });
+                } catch (error) {
+                    console.error("Failed to fetch customer points", error);
+                    set({ customerPoints: 0, customerPointsValueUsd: 0, pointsRate: 0 });
                 }
             },
 
+            applyCoupon: (coupon) => {
+                set({ appliedCoupon: coupon });
+                get().calculateTotals();
+            },
+            
+            removeCoupon: () => {
+                set({ appliedCoupon: null });
+                get().calculateTotals();
+            },
+
             calculateTotals: () => {
-                const { cart, exchangeRate, taxEnabled, taxRate } = get();
+                const { cart, exchangeRate, taxEnabled, taxRate, appliedCoupon } = get();
 
                 const totalWithTax = cart.reduce((acc, item) => acc + (item.price * item.quantity), 0);
-                const totalDiscount = cart.reduce((acc, item) => acc + (item.discount || 0), 0);
+                let totalDiscount = cart.reduce((acc, item) => acc + (item.discount || 0), 0);
 
-                const total = totalWithTax - totalDiscount;
+                if (appliedCoupon) {
+                    totalDiscount += appliedCoupon.discountAmount;
+                }
+
+                let total = totalWithTax - totalDiscount;
+                if (total < 0) total = 0;
 
                 // Calculate the tax portion from the total
                 // Since total includes IVA, tax = Total - (Total / 1.16)
@@ -577,8 +639,9 @@ export const usePOSStore = create<POSState>()(
                     tendered = paymentData.payments[0].amount;
                 } else if (paymentData.payments && paymentData.payments.length > 1) {
                     // Multiple payments - create a description
+                    // If method already has a colon (extended method), don't append another :amount
                     paymentMethod = paymentData.payments
-                        .map((p: any) => `${p.method}:${p.amount.toFixed(2)}`)
+                        .map((p: any) => p.method.includes(':') ? p.method : `${p.method}:${p.amount.toFixed(2)}`)
                         .join(', ');
                 }
 
@@ -628,6 +691,7 @@ export const usePOSStore = create<POSState>()(
                     change: Math.round(change * 100) / 100,
                     exchangeRate: get().exchangeRate || 1,
                     cashSessionId: cashSessionId,
+                    couponId: get().appliedCoupon?.id || undefined,
                     // Invoice number will be generated by backend
                 };
 

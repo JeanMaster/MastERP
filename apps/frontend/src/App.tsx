@@ -23,6 +23,12 @@ import { CashRegisterPage } from './features/cash-register/CashRegisterPage';
 import { InventoryAdjustmentsPage } from './features/inventory-adjustments/InventoryAdjustmentsPage';
 import { AccountsReceivablePage } from './features/accounts-receivable/AccountsReceivablePage';
 import { ReportsPage } from './features/reports/ReportsPage';
+import { MarketingDashboard } from './features/marketing/MarketingDashboard';
+import { MarketingSettings } from './features/marketing/MarketingSettings';
+import { CampaignsPage } from './features/marketing/CampaignsPage';
+import { TemplatesManager } from './features/marketing/TemplatesManager';
+import CouponsManager from './features/marketing/CouponsManager';
+import { SocialAssistant } from './features/marketing/SocialAssistant';
 import { ExpensesPage } from './features/expenses/ExpensesPage';
 import { EmployeesPage } from './features/hr/pages/EmployeesPage';
 import { PayrollPage } from './features/hr/pages/PayrollPage';
@@ -31,6 +37,7 @@ import { AccountsPayablePage } from './features/purchases/AccountsPayablePage';
 import { PurchaseOrdersPage } from './features/purchases/PurchaseOrdersPage';
 import { BanksPage } from './features/banks/BanksPage'; // Importación
 import { UsersPage } from './features/users/UsersPage';
+import { AISettingsPage } from './features/configuration/AISettingsPage';
 import { RetentionsListPage } from './features/tax-retentions/pages/RetentionsListPage';
 import {
   ShoppingCartOutlined,
@@ -67,6 +74,7 @@ function App() {
           <Route path="configuration/general" element={<GeneralOptionsPage />} />
           <Route path="configuration/network" element={<NetworkSettingsPage />} />
           <Route path="configuration/users" element={<UsersPage />} />
+          <Route path="configuration/ai" element={<AISettingsPage />} />
 
           <Route path="clients" element={<ClientsPage />} />
           <Route path="inventory/products" element={<ProductsPage />} />
@@ -101,6 +109,14 @@ function App() {
           <Route path="hr" element={<ModulePage title="Nómina" icon={<TeamOutlined />} />} />
           <Route path="banks" element={<ModulePage title="Bancos" icon={<BankOutlined />} />} />
           <Route path="mercadolibre" element={<MercadoLibrePage />} />
+          {/* Marketing Routes */}
+          <Route path="marketing/dashboard" element={<MarketingDashboard />} />
+          <Route path="marketing/social" element={<SocialAssistant />} />
+          <Route path="marketing/campaigns" element={<CampaignsPage />} />
+          <Route path="marketing/templates" element={<TemplatesManager />} />
+          <Route path="marketing/coupons" element={<CouponsManager />} />
+          <Route path="marketing/settings" element={<MarketingSettings />} />
+
           <Route path="reports" element={<ReportsPage />} />
         </Route>
 

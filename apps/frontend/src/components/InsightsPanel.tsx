@@ -1,111 +1,99 @@
-import React from 'react';
-import { Card, Tag, Space, Typography, Empty } from 'antd';
+import { Card, Space, Typography, Empty, Row, Col, Divider } from 'antd';
 import {
-    FireOutlined,
-    WarningOutlined,
-    InfoCircleOutlined,
-    DollarOutlined,
-    ShoppingOutlined,
     RiseOutlined,
-    ToolOutlined,
+    PieChartOutlined,
+    CheckCircleOutlined,
+    WarningOutlined,
+    CloseCircleOutlined,
 } from '@ant-design/icons';
-import type { AIRecommendation } from '../services/aiApi';
+import type { AIDiagnosis } from '../services/aiApi';
 
 const { Title, Text, Paragraph } = Typography;
 
 interface InsightsPanelProps {
-    recommendations: AIRecommendation[];
+    diagnosis?: AIDiagnosis;
     loading?: boolean;
 }
 
-export const InsightsPanel: React.FC<InsightsPanelProps> = ({ recommendations, loading }) => {
+export const InsightsPanel: React.FC<InsightsPanelProps> = ({ diagnosis, loading }) => {
     if (loading) {
-        return <div style={{ padding: 24, textAlign: 'center' }}>Generando recomendaciones...</div>;
+        return <div style={{ padding: 48, textAlign: 'center' }}>Generando diagnóstico de salud...</div>;
     }
 
-    if (!recommendations || recommendations.length === 0) {
+    if (!diagnosis) {
         return (
             <Empty
-                description="No hay recomendaciones disponibles"
+                description="No hay diagnóstico disponible para el periodo actual"
                 style={{ padding: 40 }}
             />
         );
     }
 
-    const getPriorityConfig = (priority: 'high' | 'medium' | 'low') => {
-        switch (priority) {
-            case 'high':
-                return { color: 'red', icon: <FireOutlined />, label: 'Alta Prioridad' };
-            case 'medium':
-                return { color: 'orange', icon: <WarningOutlined />, label: 'Prioridad Media' };
-            case 'low':
-                return { color: 'blue', icon: <InfoCircleOutlined />, label: 'Prioridad Baja' };
+    const getStatusConfig = (status: 'healthy' | 'warning' | 'critical') => {
+        switch (status) {
+            case 'healthy':
+                return { color: 'green', icon: <CheckCircleOutlined />, label: 'Saludable', bgcolor: '#f6ffed', border: '#b7eb8f' };
+            case 'warning':
+                return { color: 'orange', icon: <WarningOutlined />, label: 'Precaución', bgcolor: '#fff7e6', border: '#ffe58f' };
+            case 'critical':
+                return { color: 'red', icon: <CloseCircleOutlined />, label: 'Estado Crítico', bgcolor: '#fff1f0', border: '#ffa39e' };
         }
     };
 
-    const getCategoryIcon = (category: string) => {
-        switch (category) {
-            case 'sales':
-                return <DollarOutlined />;
-            case 'inventory':
-                return <ShoppingOutlined />;
-            case 'finance':
-                return <RiseOutlined />;
-            case 'operations':
-                return <ToolOutlined />;
-            default:
-                return <InfoCircleOutlined />;
-        }
-    };
+    const statusConfig = getStatusConfig(diagnosis.overallStatus);
 
     return (
-        <div style={{ padding: 16 }}>
+        <div style={{ padding: '0 24px' }}>
+            <Card
+                style={{
+                    marginBottom: 24,
+                    background: statusConfig.bgcolor,
+                    borderColor: statusConfig.border,
+                    borderRadius: '12px',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.05)'
+                }}
+            >
+                <Row align="middle" gutter={24}>
+                    <Col>
+                        <span style={{ fontSize: 32, color: statusConfig.color === 'green' ? '#52c41a' : statusConfig.color === 'orange' ? '#faad14' : '#f5222d' }}>
+                            {statusConfig.icon}
+                        </span>
+                    </Col>
+                    <Col flex="auto">
+                        <Title level={4} style={{ margin: 0 }}>Estado del Negocio: {statusConfig.label}</Title>
+                        <Paragraph strong style={{ margin: '8px 0 0 0' }}>
+                            {diagnosis.summary}
+                        </Paragraph>
+                    </Col>
+                </Row>
+            </Card>
+
             <Space direction="vertical" size="large" style={{ width: '100%' }}>
-                {recommendations.map((rec, index) => {
-                    const priorityConfig = getPriorityConfig(rec.priority);
-                    return (
-                        <Card
-                            key={index}
-                            style={{
-                                borderLeft: `4px solid ${priorityConfig.color === 'red' ? '#ff4d4f' : priorityConfig.color === 'orange' ? '#faad14' : '#1890ff'}`,
-                                boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-                            }}
-                        >
-                            <Space direction="vertical" size="small" style={{ width: '100%' }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                    <Space>
-                                        {getCategoryIcon(rec.category)}
-                                        <Title level={5} style={{ margin: 0 }}>
-                                            {rec.title}
-                                        </Title>
-                                    </Space>
-                                    <Tag color={priorityConfig.color} icon={priorityConfig.icon}>
-                                        {priorityConfig.label}
-                                    </Tag>
-                                </div>
+                <div>
+                    <Title level={5}><RiseOutlined style={{ color: '#1890ff' }} /> Análisis de Ventas</Title>
+                    <Card bordered={false} style={{ background: '#f8f9fa', borderRadius: '8px' }}>
+                        <Paragraph style={{ margin: 0, fontSize: '15px', lineHeight: '1.6', color: '#434343' }}>
+                            {diagnosis.salesAnalysis}
+                        </Paragraph>
+                    </Card>
+                </div>
 
-                                <Paragraph style={{ margin: '8px 0', color: '#595959' }}>
-                                    {rec.description}
-                                </Paragraph>
+                <Divider style={{ margin: '12px 0' }} />
 
-                                <div
-                                    style={{
-                                        background: '#f0f5ff',
-                                        padding: '12px',
-                                        borderRadius: '6px',
-                                        borderLeft: '3px solid #1890ff',
-                                    }}
-                                >
-                                    <Text strong style={{ color: '#1890ff' }}>
-                                        💡 Acción Recomendada:
-                                    </Text>
-                                    <br />
-                                    <Text style={{ color: '#262626' }}>{rec.action}</Text>
-                                </div>
-                            </Space>
-                        </Card>
-                    );
-                })}
+                <div>
+                    <Title level={5}><PieChartOutlined style={{ color: '#722ed1' }} /> Balance Financiero Estructural</Title>
+                    <Card bordered={false} style={{ background: '#f8f9fa', borderRadius: '8px' }}>
+                        <Paragraph style={{ margin: 0, fontSize: '15px', lineHeight: '1.6', color: '#434343' }}>
+                            {diagnosis.financialBalance}
+                        </Paragraph>
+                    </Card>
+                </div>
+
+                <div style={{ marginTop: 16 }}>
+                    <Text italic type="secondary" style={{ fontSize: '12px' }}>
+                        * Este diagnóstico se centra en la estructura de ingresos vs deudas y gastos, omitiendo el flujo de caja inmediato.
+                    </Text>
+                </div>
             </Space>
         </div>
     );

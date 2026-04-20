@@ -70,11 +70,11 @@ export const AIAssistantModal: React.FC<AIAssistantModalProps> = ({ visible, onC
             children: loadingInsights ? (
                 <div style={{ textAlign: 'center', padding: 60 }}>
                     <Spin size="large" />
-                    <p style={{ marginTop: 16, color: '#8c8c8c' }}>Analizando tu negocio...</p>
+                    <p style={{ marginTop: 16, color: '#8c8c8c' }}>Diagnosticando tu negocio...</p>
                 </div>
             ) : (
                 <InsightsPanel
-                    recommendations={insights?.recommendations || []}
+                    diagnosis={insights?.diagnosis}
                     loading={loadingInsights}
                 />
             ),
@@ -95,7 +95,7 @@ export const AIAssistantModal: React.FC<AIAssistantModalProps> = ({ visible, onC
             title={
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <RobotOutlined style={{ fontSize: 24, color: '#1890ff' }} />
-                    <span style={{ fontSize: 18, fontWeight: 600 }}>Asesor Financiero IA</span>
+                    <span style={{ fontSize: 18, fontWeight: 600 }}>Asesor de Diagnóstico IA</span>
                 </div>
             }
             open={visible}
@@ -112,7 +112,7 @@ export const AIAssistantModal: React.FC<AIAssistantModalProps> = ({ visible, onC
                         loading={loadingInsights}
                         type="dashed"
                     >
-                        Regenerar Recomendaciones
+                        Regenerar Diagnóstico
                     </Button>
                 )}
                 {insights?.generatedAt && activeTab === 'insights' && (

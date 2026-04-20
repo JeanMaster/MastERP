@@ -31,6 +31,20 @@ export const CreateSupplierModal: React.FC<CreateSupplierModalProps> = ({
         }
     }, [visible, initialValues, form]);
 
+    // F9 Keyboard Shortcut
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (!visible) return;
+            if (e.key === 'F9') {
+                e.preventDefault();
+                e.stopPropagation();
+                handleOk();
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown, true);
+        return () => window.removeEventListener('keydown', handleKeyDown, true);
+    }, [visible]);
+
     const handleOk = async () => {
         try {
             const values = await form.validateFields();

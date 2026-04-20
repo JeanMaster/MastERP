@@ -80,4 +80,8 @@ export class CreateSaleDto {
   @IsString()
   @IsOptional()
   cashSessionId?: string;
+
+  @IsString()
+  @IsOptional()
+  couponId?: string;
 }

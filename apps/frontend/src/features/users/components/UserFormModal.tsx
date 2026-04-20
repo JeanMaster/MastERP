@@ -91,12 +91,27 @@ export const UserFormModal = ({ open, onCancel, user }: UserFormModalProps) => {
         mutation.mutate(values);
     };
 
+    // F9 Keyboard Shortcut
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (!open) return;
+            if (e.key === 'F9') {
+                e.preventDefault();
+                e.stopPropagation();
+                form.submit();
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown, true);
+        return () => window.removeEventListener('keydown', handleKeyDown, true);
+    }, [open, form]);
+
     return (
         <Modal
             title={isEdit ? "Editar Usuario" : "Nuevo Usuario"}
             open={open}
             onCancel={onCancel}
             onOk={() => form.submit()}
+            okText={isEdit ? "Guardar (F9)" : "Crear (F9)"}
             width={700}
             confirmLoading={mutation.isPending}
         >

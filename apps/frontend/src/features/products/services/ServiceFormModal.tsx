@@ -103,6 +103,20 @@ const ServiceFormModalContent = ({ open, service, onClose }: ServiceFormModalPro
         }
     }, [service, form, currencies]);
 
+    // F9 Keyboard Shortcut
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (!open) return;
+            if (e.key === 'F9') {
+                e.preventDefault();
+                e.stopPropagation();
+                handleSubmit();
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown, true);
+        return () => window.removeEventListener('keydown', handleKeyDown, true);
+    }, [open]);
+
     const handleSubmit = async () => {
         try {
             const values = await form.validateFields();
@@ -142,7 +156,7 @@ const ServiceFormModalContent = ({ open, service, onClose }: ServiceFormModalPro
             onOk={handleSubmit}
             onCancel={onClose}
             confirmLoading={createMutation.isPending || updateMutation.isPending}
-            okText={service ? 'Actualizar' : 'Crear'}
+            okText={service ? 'Actualizar (F9)' : 'Crear (F9)'}
             cancelText="Cancelar"
             width={700}
         >

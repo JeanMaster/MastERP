@@ -44,4 +44,8 @@ export class CreateClientDto {
   @IsString()
   @IsOptional()
   social3?: string;
+
+  @IsString()
+  @IsOptional()
+  birthDate?: string;
 }

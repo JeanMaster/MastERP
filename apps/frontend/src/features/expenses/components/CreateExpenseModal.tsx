@@ -179,6 +179,20 @@ export const CreateExpenseModal = ({ open, onCancel, expense }: CreateExpenseMod
         }
     };
 
+    // F9 Keyboard Shortcut
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (!open) return;
+            if (e.key === 'F9') {
+                e.preventDefault();
+                e.stopPropagation();
+                form.submit();
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown, true);
+        return () => window.removeEventListener('keydown', handleKeyDown, true);
+    }, [open, form]);
+
     // Calculate equivalent
     const selectedCurrencyObj = currencies.find(c => c.id === selectedCurrencyId);
     let conversionPreview = null;
@@ -218,7 +232,7 @@ export const CreateExpenseModal = ({ open, onCancel, expense }: CreateExpenseMod
             onCancel={onCancel}
             onOk={() => form.submit()}
             confirmLoading={loading}
-            okText={expense ? "Guardar Cambios" : "Registrar"}
+            okText={expense ? "Guardar Cambios (F9)" : "Registrar (F9)"}
             cancelText="Cancelar"
             width={600}
         >

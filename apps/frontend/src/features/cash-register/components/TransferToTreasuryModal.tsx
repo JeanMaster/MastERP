@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 
 import { Modal, Form, Input, InputNumber, Select, message, Alert } from 'antd';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -35,6 +36,20 @@ export const TransferToTreasuryModal = ({ open, sessionId, onClose }: TransferTo
         },
     });
 
+    // F9 Keyboard Shortcut
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (!open) return;
+            if (e.key === 'F9') {
+                e.preventDefault();
+                e.stopPropagation();
+                handleSubmit();
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown, true);
+        return () => window.removeEventListener('keydown', handleKeyDown, true);
+    }, [open]);
+
     const handleSubmit = async () => {
         try {
             const values = await form.validateFields();
@@ -51,7 +66,7 @@ export const TransferToTreasuryModal = ({ open, sessionId, onClose }: TransferTo
             onOk={handleSubmit}
             onCancel={onClose}
             confirmLoading={mutation.isPending}
-            okText="Confirmar Traslado"
+            okText="Confirmar Traslado (F9)"
             cancelText="Cancelar"
             destroyOnClose
         >

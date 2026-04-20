@@ -42,6 +42,13 @@ export interface BusinessContext {
   }>;
 }
 
+export interface AIDiagnosis {
+  summary: string;
+  salesAnalysis: string;
+  financialBalance: string;
+  overallStatus: 'healthy' | 'warning' | 'critical';
+}
+
 export interface AIRecommendation {
   priority: 'high' | 'medium' | 'low';
   title: string;
@@ -51,7 +58,7 @@ export interface AIRecommendation {
 }
 
 export interface AIInsightsResponse {
-  recommendations: AIRecommendation[];
+  diagnosis: AIDiagnosis;
   generatedAt: string;
   contextPeriod: string;
 }

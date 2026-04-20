@@ -8,6 +8,7 @@ import {
   HttpStatus,
   Logger,
   UseGuards,
+  Patch,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiQuery, ApiBody } from '@nestjs/swagger';
 import { AIService } from './ai.service';
@@ -89,6 +90,32 @@ export class AIController {
     } catch (error) {
       throw new HttpException(
         error.message || 'Failed to refresh insights',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  @Get('config')
+  @ApiOperation({ summary: 'Get current AI configuration' })
+  async getConfig() {
+    try {
+      return await this.aiService.getConfig();
+    } catch (error) {
+      throw new HttpException(
+        error.message || 'Failed to get config',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  @Patch('config')
+  @ApiOperation({ summary: 'Update AI configuration' })
+  async updateConfig(@Body() data: any) {
+    try {
+      return await this.aiService.updateConfig(data);
+    } catch (error) {
+      throw new HttpException(
+        error.message || 'Failed to update config',
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }

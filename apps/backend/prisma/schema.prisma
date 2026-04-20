@@ -25,22 +25,40 @@ model User {
 }
 
 model Client {
-  id          String    @id
-  name        String
-  address     String?
-  phone       String?
-  hasWhatsapp Boolean   @default(false)
-  email       String?
-  social1     String?
-  social2     String?
-  social3     String?
-  active      Boolean   @default(true)
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  invoices    Invoice[]
-  sales       Sale[]
+  id                 String              @id
+  name               String
+  address            String?
+  phone              String?
+  hasWhatsapp        Boolean             @default(false)
+  email              String?
+  social1            String?
+  social2            String?
+  social3            String?
+  active             Boolean             @default(true)
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  birthDate          DateTime?
+  loyaltyPoints      Decimal             @default(0) @db.Decimal(10, 2)
+  campaignRecipients CampaignRecipient[]
+  invoices           Invoice[]
+  loyaltyMovements   LoyaltyMovement[]
+  sales              Sale[]
 
   @@map("clients")
+}
+
+model MarketingConfig {
+  id                      String   @id @default(uuid())
+  tierVipThreshold        Decimal  @default(1000) @db.Decimal(10, 2)
+  tierGoldThreshold       Decimal  @default(500) @db.Decimal(10, 2)
+  tierSilverThreshold     Decimal  @default(200) @db.Decimal(10, 2)
+  churnDays               Int      @default(30)
+  updatedAt               DateTime @updatedAt
+  pointsPerUSD            Decimal  @default(1) @db.Decimal(10, 2)
+  valuePerPoint           Decimal  @default(0.01) @db.Decimal(10, 4)
+  maxRedemptionPercentage Int      @default(100)
+
+  @@map("marketing_config")
 }
 
 model Supplier {
@@ -237,14 +255,14 @@ model CompanySettings {
   updateFrequency               Int       @default(60)
   createdAt                     DateTime  @default(now())
   updatedAt                     DateTime  @updatedAt
-  taxEnabled                    Boolean   @default(false)
-  taxRate                       Decimal   @default(16.00) @db.Decimal(5, 2)
-  roundingEnabled               Boolean   @default(true)
-  roundingFactor                Int       @default(10)
   igtfEnabled                   Boolean   @default(false)
   igtfRate                      Decimal   @default(3.00) @db.Decimal(5, 2)
   isSpecialTaxpayer             Boolean   @default(false)
   requireBankAccountForPayments Boolean   @default(true)
+  roundingEnabled               Boolean   @default(true)
+  roundingFactor                Int       @default(10)
+  taxEnabled                    Boolean   @default(false)
+  taxRate                       Decimal   @default(16.00) @db.Decimal(5, 2)
   preferredSecondaryCurrency    Currency? @relation(fields: [preferredSecondaryCurrencyId], references: [id])
 
   @@map("company_settings")
@@ -299,33 +317,36 @@ model Currency {
 }
 
 model Sale {
-  id                 String         @id @default(uuid())
-  date               DateTime       @default(now())
-  invoiceNumber      String         @unique
+  id                 String            @id @default(uuid())
+  date               DateTime          @default(now())
+  invoiceNumber      String            @unique
   clientId           String?
-  subtotal           Decimal        @db.Decimal(10, 2)
-  discount           Decimal        @default(0) @db.Decimal(10, 2)
-  tax                Decimal        @default(0) @db.Decimal(10, 2)
-  total              Decimal        @db.Decimal(10, 2)
+  subtotal           Decimal           @db.Decimal(10, 2)
+  discount           Decimal           @default(0) @db.Decimal(10, 2)
+  tax                Decimal           @default(0) @db.Decimal(10, 2)
+  total              Decimal           @db.Decimal(10, 2)
   paymentMethod      String
-  tendered           Decimal?       @db.Decimal(10, 2)
-  change             Decimal?       @db.Decimal(10, 2)
-  hasReturns         Boolean        @default(false)
-  isCancelled        Boolean        @default(false)
+  tendered           Decimal?          @db.Decimal(10, 2)
+  change             Decimal?          @db.Decimal(10, 2)
+  hasReturns         Boolean           @default(false)
+  isCancelled        Boolean           @default(false)
   cashSessionId      String?
-  active             Boolean        @default(true)
-  createdAt          DateTime       @default(now())
-  updatedAt          DateTime       @updatedAt
-  exchangeRate       Decimal        @default(1.0) @db.Decimal(10, 4)
-  igtfAmount         Decimal        @default(0) @db.Decimal(10, 2)
+  active             Boolean           @default(true)
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+  exchangeRate       Decimal           @default(1.0) @db.Decimal(10, 4)
+  igtfAmount         Decimal           @default(0) @db.Decimal(10, 2)
   controlNumber      String?
+  couponId           String?
   cashMovements      CashMovement[]
   invoice            Invoice?
-  replacementReturns Return[]       @relation("ReturnNewSale")
-  returns            Return[]       @relation("OriginalSale")
+  loyaltyMovements   LoyaltyMovement[]
+  replacementReturns Return[]          @relation("ReturnNewSale")
+  returns            Return[]          @relation("OriginalSale")
   items              SaleItem[]
-  cashSession        CashSession?   @relation(fields: [cashSessionId], references: [id])
-  client             Client?        @relation(fields: [clientId], references: [id])
+  cashSession        CashSession?      @relation(fields: [cashSessionId], references: [id])
+  client             Client?           @relation(fields: [clientId], references: [id])
+  coupon             Coupon?           @relation(fields: [couponId], references: [id])
 
   @@map("sales")
 }
@@ -593,10 +614,10 @@ model Expense {
   updatedAt            DateTime      @updatedAt
   bankAccountId        String?
   bankMovementId       String?       @unique
-  isTaxable            Boolean       @default(false)
-  taxAmount            Decimal       @default(0) @db.Decimal(10, 2)
   invoiceControlNumber String?
   invoiceNumber        String?
+  isTaxable            Boolean       @default(false)
+  taxAmount            Decimal       @default(0) @db.Decimal(10, 2)
   bankAccount          BankAccount?  @relation(fields: [bankAccountId], references: [id])
   bankMovement         BankMovement? @relation(fields: [bankMovementId], references: [id])
 
@@ -759,6 +780,112 @@ model MercadoLibreProductMapping {
   @@map("mercadolibre_product_mappings")
 }
 
+model LoyaltyMovement {
+  id       String              @id @default(uuid())
+  clientId String
+  saleId   String?
+  amount   Decimal             @db.Decimal(10, 2)
+  type     LoyaltyMovementType
+  notes    String?
+  date     DateTime            @default(now())
+  client   Client              @relation(fields: [clientId], references: [id])
+  sale     Sale?               @relation(fields: [saleId], references: [id])
+
+  @@map("loyalty_movements")
+}
+
+model MessageTemplate {
+  id        String     @id @default(uuid())
+  name      String
+  content   String
+  category  String     @default("GENERAL")
+  active    Boolean    @default(true)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  campaigns Campaign[]
+
+  @@map("message_templates")
+}
+
+model Campaign {
+  id              String              @id @default(uuid())
+  name            String
+  templateId      String
+  targetSegment   String
+  status          String              @default("DRAFT")
+  sentCount       Int                 @default(0)
+  totalRecipients Int                 @default(0)
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  recipients      CampaignRecipient[]
+  template        MessageTemplate     @relation(fields: [templateId], references: [id])
+
+  @@map("campaigns")
+}
+
+model CampaignRecipient {
+  id          String    @id @default(uuid())
+  campaignId  String
+  clientId    String
+  clientName  String
+  clientPhone String?
+  message     String
+  status      String    @default("PENDING")
+  sentAt      DateTime?
+  campaign    Campaign  @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  client      Client    @relation(fields: [clientId], references: [id])
+
+  @@map("campaign_recipients")
+}
+
+model Coupon {
+  id                    String    @id @default(uuid())
+  code                  String    @unique
+  description           String?
+  discountType          String
+  discountValue         Decimal   @db.Decimal(10, 2)
+  startDate             DateTime?
+  endDate               DateTime?
+  usageLimit            Int?
+  isActive              Boolean   @default(true)
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+  applicableDepartments String[]  @default([])
+  applicableProducts    String[]  @default([])
+  isSingleUsePerClient  Boolean   @default(false)
+  minPurchaseAmount     Decimal?  @db.Decimal(10, 2)
+  targetTiers           String[]  @default([])
+  usedCount             Int       @default(0)
+  sales                 Sale[]
+
+  @@map("coupons")
+}
+
+model SocialPost {
+  id        String   @id @default(uuid())
+  platform  String
+  content   String
+  productId String?
+  status    String   @default("DRAFT")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("social_posts")
+}
+
+model AIConfig {
+  id        String   @id @default(uuid())
+  provider  String   @default("gemini")
+  apiKey    String?
+  modelName String   @default("gemini-1.5-flash")
+  isActive  Boolean  @default(true)
+  settings  Json?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("ai_config")
+}
+
 enum ProductType {
   PRODUCT
   SERVICE
@@ -769,4 +896,10 @@ enum PaymentFrequency {
   WEEKLY
   BIWEEKLY
   MONTHLY
+}
+
+enum LoyaltyMovementType {
+  EARNED
+  REDEEMED
+  ADJUSTMENT
 }

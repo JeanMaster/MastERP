@@ -1,5 +1,5 @@
 import { Modal, Form, InputNumber, Input, message, Alert, Descriptions } from 'antd';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { cashRegisterApi, type CloseSessionDto, type CashSession } from '../../../services/cashRegisterApi';
 import { formatVenezuelanPrice } from '../../../utils/formatters';
 
@@ -67,6 +67,20 @@ export const CloseSessionModal = ({ open, session, onCancel, onSuccess }: CloseS
 
     const expectedBalance = calculateExpected();
 
+    // F9 Keyboard Shortcut
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (!open) return;
+            if (e.key === 'F9') {
+                e.preventDefault();
+                e.stopPropagation();
+                handleSubmit();
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown, true);
+        return () => window.removeEventListener('keydown', handleKeyDown, true);
+    }, [open]);
+
     const handleSubmit = async () => {
         try {
             const values = await form.validateFields();
@@ -106,7 +120,7 @@ export const CloseSessionModal = ({ open, session, onCancel, onSuccess }: CloseS
             onCancel={handleCancel}
             onOk={handleSubmit}
             confirmLoading={loading}
-            okText="Cerrar Caja"
+            okText="Cerrar Caja (F9)"
             cancelText="Cancelar"
             width={600}
         >

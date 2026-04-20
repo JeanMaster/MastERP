@@ -10,6 +10,7 @@ import { POSFooter } from './components/POSFooter';
 import { CheckoutModal } from './components/CheckoutModal';
 import { ClientSelectionModal } from './components/ClientSelectionModal';
 import { InvoiceModal } from './components/InvoiceModal';
+import { CouponModal } from './components/CouponModal';
 import { usePOSStore } from '../../store/posStore';
 import { cashRegisterApi } from '../../services/cashRegisterApi';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -31,6 +32,7 @@ export const POSPage = () => {
     const [activeTab, setActiveTab] = useState('catalog');
     const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
     const [isClientModalOpen, setIsClientModalOpen] = useState(false);
+    const [isCouponModalOpen, setIsCouponModalOpen] = useState(false);
     const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
     const [completedSale, setCompletedSale] = useState<Sale | null>(null);
     const { processSale, setCustomer, refreshInvoiceNumber, initialize, resetPOS } = usePOSStore();
@@ -191,7 +193,10 @@ export const POSPage = () => {
     };
 
     const handleKeyDown = (e: KeyboardEvent) => {
-        if (e.key === 'F3') {
+        if (e.key === 'F2') {
+            e.preventDefault();
+            setIsCouponModalOpen(true);
+        } else if (e.key === 'F3') {
             e.preventDefault();
             setIsClientModalOpen(true);
         } else if (e.key === 'F9') {
@@ -339,6 +344,7 @@ export const POSPage = () => {
                         <Footer style={{ padding: 0, background: 'transparent' }}>
                             <POSFooter
                                 onClientClick={() => setIsClientModalOpen(true)}
+                                onCouponClick={() => setIsCouponModalOpen(true)}
                                 onCheckoutClick={() => setIsCheckoutOpen(true)}
                                 onCajaClick={handleCajaClick}
                             />
@@ -387,6 +393,7 @@ export const POSPage = () => {
                     <Footer style={{ padding: 0, marginTop: 'auto' }}>
                         <POSFooter
                             onClientClick={() => setIsClientModalOpen(true)}
+                            onCouponClick={() => setIsCouponModalOpen(true)}
                             onCheckoutClick={() => setIsCheckoutOpen(true)}
                             onCajaClick={handleCajaClick}
                         />
@@ -407,6 +414,12 @@ export const POSPage = () => {
                     setIsClientModalOpen(false);
                 }}
                 onCancel={() => setIsClientModalOpen(false)}
+            />
+
+            <CouponModal
+                open={isCouponModalOpen}
+                onOk={() => setIsCouponModalOpen(false)}
+                onCancel={() => setIsCouponModalOpen(false)}
             />
 
             <InvoiceModal

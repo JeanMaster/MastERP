@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 
 import { Modal, Form, InputNumber, Input, message, Alert, Descriptions } from 'antd';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -28,6 +29,20 @@ export const LiquidateBatchModal = ({ open, bankAccount, onClose }: LiquidateBat
         }
     });
 
+    // F9 Keyboard Shortcut
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (!open) return;
+            if (e.key === 'F9') {
+                e.preventDefault();
+                e.stopPropagation();
+                handleSubmit();
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown, true);
+        return () => window.removeEventListener('keydown', handleKeyDown, true);
+    }, [open]);
+
     const handleSubmit = async () => {
         try {
             const values = await form.validateFields();
@@ -50,7 +65,7 @@ export const LiquidateBatchModal = ({ open, bankAccount, onClose }: LiquidateBat
             onOk={handleSubmit}
             onCancel={onClose}
             confirmLoading={liquidateMutation.isPending}
-            okText="Procesar Liquidación"
+            okText="Procesar Liquidación (F9)"
             cancelText="Cancelar"
             width={500}
         >

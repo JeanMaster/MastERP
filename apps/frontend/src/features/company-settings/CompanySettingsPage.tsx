@@ -23,6 +23,19 @@ const CompanySettingsForm = ({ settings, onSubmit, isUpdating }: { settings: any
         }
     }, [settings, form]);
 
+    // F9 Keyboard Shortcut
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'F9') {
+                e.preventDefault();
+                e.stopPropagation();
+                form.submit();
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown, true);
+        return () => window.removeEventListener('keydown', handleKeyDown, true);
+    }, [form]);
+
     const handleLogoChange = (info: any) => {
         const file = info.file.originFileObj || info.file;
         if (file) {
@@ -128,7 +141,7 @@ const CompanySettingsForm = ({ settings, onSubmit, isUpdating }: { settings: any
                     size="large"
                     loading={isUpdating}
                 >
-                    Guardar Cambios
+                    Guardar Cambios (F9)
                 </Button>
             </Form.Item>
         </Form>

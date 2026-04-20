@@ -50,9 +50,10 @@ interface POSFooterProps {
     onClientClick?: () => void;
     onCheckoutClick?: () => void;
     onCajaClick?: () => void;
+    onCouponClick?: () => void;
 }
 
-export const POSFooter = ({ onClientClick, onCheckoutClick, onCajaClick }: POSFooterProps) => {
+export const POSFooter = ({ onClientClick, onCheckoutClick, onCajaClick, onCouponClick }: POSFooterProps) => {
     const screens = Grid.useBreakpoint();
     const isMobile = !screens.lg;
 
@@ -73,6 +74,12 @@ export const POSFooter = ({ onClientClick, onCheckoutClick, onCajaClick }: POSFo
                     label={isMobile ? "" : "Cliente"}
                     icon={<UserOutlined />}
                     onClick={onClientClick}
+                />
+                <FunctionKey
+                    fKey="F2"
+                    label={isMobile ? "" : "Cupón"}
+                    icon={<ShoppingCartOutlined />}
+                    onClick={onCouponClick}
                 />
                 {!isMobile && (
                     <>

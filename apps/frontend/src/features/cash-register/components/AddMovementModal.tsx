@@ -1,5 +1,5 @@
 import { Modal, Form, InputNumber, Input, Select, message } from 'antd';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { cashRegisterApi, type CreateMovementDto } from '../../../services/cashRegisterApi';
 
 const { TextArea } = Input;
@@ -14,6 +14,20 @@ interface AddMovementModalProps {
 export const AddMovementModal = ({ open, sessionId, onCancel, onSuccess }: AddMovementModalProps) => {
     const [form] = Form.useForm();
     const [loading, setLoading] = useState(false);
+
+    // F9 Keyboard Shortcut
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (!open) return;
+            if (e.key === 'F9') {
+                e.preventDefault();
+                e.stopPropagation();
+                handleSubmit();
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown, true);
+        return () => window.removeEventListener('keydown', handleKeyDown, true);
+    }, [open]);
 
     const handleSubmit = async () => {
         try {
@@ -54,7 +68,7 @@ export const AddMovementModal = ({ open, sessionId, onCancel, onSuccess }: AddMo
             onCancel={handleCancel}
             onOk={handleSubmit}
             confirmLoading={loading}
-            okText="Registrar"
+            okText="Registrar (F9)"
             cancelText="Cancelar"
             width={500}
         >

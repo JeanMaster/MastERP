@@ -8,8 +8,15 @@ export interface AIRecommendation {
     category: 'sales' | 'inventory' | 'finance' | 'operations';
 }
 
+export interface AIDiagnosis {
+    summary: string;
+    salesAnalysis: string;
+    financialBalance: string;
+    overallStatus: 'healthy' | 'warning' | 'critical';
+}
+
 export interface AIInsightsResponse {
-    recommendations: AIRecommendation[];
+    diagnosis: AIDiagnosis;
     generatedAt: string;
     contextPeriod: string;
 }
@@ -29,6 +36,15 @@ export interface AIChatResponse {
     timestamp: string;
 }
 
+export interface AIConfig {
+    id: string;
+    provider: string;
+    apiKey: string | null;
+    modelName: string;
+    isActive: boolean;
+    settings?: any;
+}
+
 export const aiApi = {
     getDailyInsights: async (forceRefresh = false): Promise<AIInsightsResponse> => {
         const { data } = await api.get(`/ai/daily-insights`, {
@@ -44,6 +60,16 @@ export const aiApi = {
 
     refreshInsights: async (): Promise<AIInsightsResponse> => {
         const { data } = await api.post(`/ai/refresh-insights`);
+        return data;
+    },
+
+    getConfig: async (): Promise<AIConfig> => {
+        const { data } = await api.get(`/ai/config`);
+        return data;
+    },
+
+    updateConfig: async (config: Partial<AIConfig>): Promise<AIConfig> => {
+        const { data } = await api.patch(`/ai/config`, config);
         return data;
     },
 };

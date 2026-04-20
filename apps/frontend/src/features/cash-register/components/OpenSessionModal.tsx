@@ -72,6 +72,20 @@ export const OpenSessionModal = ({ open, registerId, onCancel, onSuccess }: Open
         return { totalVES, totalUSD, totalEquivalent };
     };
 
+    // F9 Keyboard Shortcut
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (!open) return;
+            if (e.key === 'F9') {
+                e.preventDefault();
+                e.stopPropagation();
+                handleSubmit();
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown, true);
+        return () => window.removeEventListener('keydown', handleKeyDown, true);
+    }, [open]);
+
     const handleSubmit = async () => {
         try {
             const values = await form.validateFields();
@@ -151,7 +165,7 @@ export const OpenSessionModal = ({ open, registerId, onCancel, onSuccess }: Open
             onCancel={onCancel}
             onOk={handleSubmit}
             confirmLoading={loading}
-            okText="Abrir Caja"
+            okText="Abrir Caja (F9)"
             cancelText="Cancelar"
             width={850}
         >

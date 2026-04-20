@@ -61,6 +61,20 @@ export const CurrencyFormModal = ({ open, currency, onClose }: CurrencyFormModal
         }
     }, [currency, form]);
 
+    // F9 Keyboard Shortcut
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (!open) return;
+            if (e.key === 'F9') {
+                e.preventDefault();
+                e.stopPropagation();
+                handleSubmit();
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown, true);
+        return () => window.removeEventListener('keydown', handleKeyDown, true);
+    }, [open]);
+
     const handleSubmit = async () => {
         try {
             const values = await form.validateFields();
@@ -94,7 +108,7 @@ export const CurrencyFormModal = ({ open, currency, onClose }: CurrencyFormModal
             onOk={handleSubmit}
             onCancel={onClose}
             confirmLoading={createMutation.isPending || updateMutation.isPending}
-            okText={currency ? 'Actualizar' : 'Crear'}
+            okText={currency ? 'Actualizar (F9)' : 'Crear (F9)'}
             cancelText="Cancelar"
             width={600}
         >

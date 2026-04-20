@@ -1,9 +1,10 @@
 import { useEffect } from 'react';
-import { Modal, Form, Input, Select, Checkbox, message, Row, Col, Divider } from 'antd';
+import { Modal, Form, Input, Select, Checkbox, message, Row, Col, Divider, DatePicker } from 'antd';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { clientsApi } from '../../services/clientsApi';
 import type { Client, CreateClientDto } from '../../services/clientsApi';
 import { WhatsAppOutlined, InstagramOutlined, FacebookOutlined, TwitterOutlined } from '@ant-design/icons';
+import dayjs from 'dayjs';
 
 interface ClientFormModalProps {
     open: boolean;
@@ -54,6 +55,7 @@ export const ClientFormModal = ({ open, client, onClose }: ClientFormModalProps)
                     ...client,
                     idPrefix: prefix,
                     idNumber: number,
+                    birthDate: client.birthDate ? dayjs(client.birthDate) : null,
                 });
             } else {
                 form.resetFields();
@@ -66,6 +68,20 @@ export const ClientFormModal = ({ open, client, onClose }: ClientFormModalProps)
         form.resetFields();
         onClose();
     };
+
+    // F9 Keyboard Shortcut
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (!open) return;
+            if (e.key === 'F9') {
+                e.preventDefault();
+                e.stopPropagation();
+                handleSubmit();
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown, true);
+        return () => window.removeEventListener('keydown', handleKeyDown, true);
+    }, [open, form]);
 
     const handleSubmit = async () => {
         try {
@@ -84,14 +100,10 @@ export const ClientFormModal = ({ open, client, onClose }: ClientFormModalProps)
                 social1: values.social1,
                 social2: values.social2,
                 social3: values.social3,
+                birthDate: values.birthDate ? values.birthDate.toISOString() : undefined,
             };
 
             if (isEditing) {
-                // Note: ID cannot be changed in update usually if it's PK
-                // If ID is changed, it might break reference. 
-                // Currently Backend uses ID as key. If we change it, it's a new record or needs specific handling.
-                // Assuming ID not editable on Edit for safety, or we handle it in backend.
-                // For now, let's DISABLE id editing if (isEditing)
                 updateMutation.mutate({ id: client.id, data: payload });
             } else {
                 createMutation.mutate(payload);
@@ -108,7 +120,7 @@ export const ClientFormModal = ({ open, client, onClose }: ClientFormModalProps)
             onOk={handleSubmit}
             onCancel={handleClose}
             confirmLoading={createMutation.isPending || updateMutation.isPending}
-            okText={isEditing ? 'Actualizar' : 'Crear'}
+            okText={isEditing ? 'Actualizar (F9)' : 'Crear (F9)'}
             cancelText="Cancelar"
             width={700}
             centered
@@ -119,7 +131,6 @@ export const ClientFormModal = ({ open, client, onClose }: ClientFormModalProps)
                 autoComplete="off"
             >
                 <Row gutter={16} align="middle">
-                    {/* ID Selection */}
                     <Col span={6}>
                         <Form.Item
                             label="Tipo"
@@ -177,7 +188,6 @@ export const ClientFormModal = ({ open, client, onClose }: ClientFormModalProps)
                             } />
                         </Form.Item>
                         <div style={{ fontSize: 11, color: '#888', marginBottom: 15 }}>Marque si tiene Whatsapp</div>
-
                     </Col>
                     <Col span={12}>
                         <Form.Item
@@ -186,6 +196,21 @@ export const ClientFormModal = ({ open, client, onClose }: ClientFormModalProps)
                             rules={[{ type: 'email', message: 'Email inválido' }]}
                         >
                             <Input placeholder="cliente@email.com" />
+                        </Form.Item>
+                    </Col>
+                </Row>
+
+                <Row gutter={16}>
+                    <Col span={12}>
+                        <Form.Item
+                            label="Fecha de Nacimiento"
+                            name="birthDate"
+                        >
+                            <DatePicker 
+                                style={{ width: '100%' }} 
+                                placeholder="DD-MM-AAAA" 
+                                format="DD-MM-YYYY"
+                            />
                         </Form.Item>
                     </Col>
                 </Row>

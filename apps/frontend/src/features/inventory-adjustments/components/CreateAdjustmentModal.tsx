@@ -1,5 +1,5 @@
 import { Modal, Form, Radio, InputNumber, Select, Input, message, Statistic, Alert } from 'antd';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { inventoryAdjustmentsApi, type CreateAdjustmentDto } from '../../../services/inventoryAdjustmentsApi';
 import { productsApi } from '../../../services/productsApi';
@@ -60,6 +60,20 @@ export const CreateAdjustmentModal = ({ open, onCancel, onSuccess }: CreateAdjus
         }
     };
 
+    // F9 Keyboard Shortcut
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (!open) return;
+            if (e.key === 'F9') {
+                e.preventDefault();
+                e.stopPropagation();
+                handleSubmit();
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown, true);
+        return () => window.removeEventListener('keydown', handleKeyDown, true);
+    }, [open]);
+
     const handleSubmit = async () => {
         try {
             const values = await form.validateFields();
@@ -105,7 +119,7 @@ export const CreateAdjustmentModal = ({ open, onCancel, onSuccess }: CreateAdjus
             onCancel={handleCancel}
             onOk={handleSubmit}
             confirmLoading={loading}
-            okText="Confirmar Ajuste"
+            okText="Confirmar Ajuste (F9)"
             cancelText="Cancelar"
             width={600}
         >

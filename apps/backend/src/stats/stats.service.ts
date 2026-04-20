@@ -193,9 +193,27 @@ export class StatsService {
       where: { active: true },
     });
 
-    // Active cash session balance
-    const activeSession = await this.prisma.cashSession.findFirst({
-      where: { status: 'OPEN' },
+    // Real liquidity across all open sessions
+    const activeSessions = await this.prisma.cashSession.findMany({
+      where: { 
+        status: { in: ['OPEN', 'AWAITING_CLOSE'] },
+        active: true 
+      },
+      include: { movements: true }
+    });
+
+    let totalCashLiquidity = 0;
+    activeSessions.forEach(session => {
+        let sessionBalance = Number(session.openingBalance);
+        session.movements.forEach(m => {
+            const amountVES = Number(m.amount) * Number(m.exchangeRate || 1);
+            if (['SALE', 'WITHDRAWAL', 'ADJUSTMENT'].includes(m.type)) {
+                sessionBalance += amountVES;
+            } else if (['EXPENSE', 'DEPOSIT', 'CLOSING', 'CHANGE'].includes(m.type)) {
+                sessionBalance -= amountVES;
+            }
+        });
+        totalCashLiquidity += sessionBalance;
     });
 
     // Dynamic Sales Trend based on Range
@@ -318,7 +336,7 @@ export class StatsService {
       topProducts: topProductsData,
       criticalStock,
       totalProducts,
-      cashBalance: activeSession ? Number(activeSession.openingBalance) : 0,
+      cashBalance: totalCashLiquidity,
       salesTrend,
       monthReturns: {
         totalReturnsValue,

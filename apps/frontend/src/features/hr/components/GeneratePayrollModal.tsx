@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Modal, Form, Input, DatePicker, message, Select } from 'antd';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { payrollApi } from '../services/payrollApi';
@@ -40,6 +40,20 @@ export const GeneratePayrollModal: React.FC<Props> = ({ visible, onClose }) => {
             message.error('Error al generar nómina: ' + (error.response?.data?.message || 'Error desconocido'));
         }
     });
+
+    // F9 Keyboard Shortcut
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (!visible) return;
+            if (e.key === 'F9') {
+                e.preventDefault();
+                e.stopPropagation();
+                handleOk();
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown, true);
+        return () => window.removeEventListener('keydown', handleKeyDown, true);
+    }, [visible]);
 
     const handleOk = async () => {
         try {

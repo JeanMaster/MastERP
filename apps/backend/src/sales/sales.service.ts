@@ -7,6 +7,7 @@ import { MovementType } from '../cash-register/dto/create-movement.dto';
 import { StatsService } from '../stats/stats.service';
 import { MercadoLibreService } from '../mercadolibre/mercadolibre.service';
 import { TaxRetentionsService } from '../tax-retentions/tax-retentions.service';
+import { MarketingService } from '../marketing/marketing.service';
 
 @Injectable()
 export class SalesService {
@@ -17,6 +18,7 @@ export class SalesService {
     private statsService: StatsService,
     private mlService: MercadoLibreService,
     private taxRetentionsService: TaxRetentionsService,
+    private marketingService: MarketingService,
   ) {}
 
   /**
@@ -133,6 +135,7 @@ export class SalesService {
           controlNumber, // <--- Assign the control number
           igtfAmount: createSaleDto.igtfAmount || 0,
           cashSessionId: activeSession?.id,
+          couponId: createSaleDto.couponId || null,
           items: {
             create: itemsWithCost,
           },
@@ -207,8 +210,55 @@ export class SalesService {
         }
       }
 
+      // --- Loyalty Points Hook (Redemption) INSIDE Transaction ---
+      if (newSale.paymentMethod.toUpperCase().includes('LOYALTY_POINTS')) {
+        if (!newSale.clientId) {
+          throw new Error('Se requiere un cliente registrado para pagar con puntos de fidelidad. El cliente "CONTADO" no puede usar puntos.');
+        }
+
+        const methods = newSale.paymentMethod.split(', ');
+        let foundAndProcessed = false;
+
+        for (const part of methods) {
+          if (part.toUpperCase().startsWith('LOYALTY_POINTS')) {
+            const subparts = part.split(':');
+            const pointsToRedeem = subparts[2] ? parseFloat(subparts[2]) : 0;
+            
+            if (pointsToRedeem <= 0) {
+              throw new Error('Formato de puntos inválido o cantidad insuficiente para redimir.');
+            }
+
+            // This is now inside the transaction 'prisma' (tx)
+            await this.marketingService.redeemPointsWithTx(
+              prisma,
+              newSale.clientId,
+              newSale.id,
+              pointsToRedeem,
+              `Canje de puntos en Venta #${newSale.invoiceNumber}`
+            );
+            foundAndProcessed = true;
+          }
+        }
+
+        if (!foundAndProcessed) {
+          throw new Error('Error al procesar el pago con puntos: Información de puntos no encontrada en el método de pago.');
+        }
+      }
+
       return newSale;
     });
+
+    // --- Increment Coupon Usage Hook ---
+    if (createSaleDto.couponId) {
+      try {
+        await this.prisma.coupon.update({
+          where: { id: createSaleDto.couponId },
+          data: { usedCount: { increment: 1 } },
+        });
+      } catch (error) {
+        console.error('Error incrementing coupon used count:', error);
+      }
+    }
 
     // Registrar movimientos en caja (Fuera de la transacción de venta para no bloquear, si falla se puede manejar o ignorar)
     if (activeSession) {
@@ -221,6 +271,16 @@ export class SalesService {
       } catch (error) {
         console.error('Error recording cash movements for sale:', error);
         // No lanzamos error para no revertir la venta, pero logueamos el fallo
+      }
+    }
+
+    // --- Loyalty Points Hook (Earnings) ---
+    if (sale.clientId) {
+      try {
+        const saleTotalUSD = Number(sale.total) / (Number(sale.exchangeRate) || 1);
+        await this.marketingService.earnPoints(sale.clientId, sale.id, saleTotalUSD);
+      } catch (error) {
+        console.error('Error earning loyalty points:', error);
       }
     }
 

@@ -8,6 +8,7 @@ import {
     BankOutlined,
     BarChartOutlined,
     SettingOutlined,
+    NotificationOutlined,
 } from '@ant-design/icons';
 
 
@@ -102,6 +103,37 @@ export const menuItems: AppMenuItem[] = [
         ],
     },
     {
+        key: '/app/marketing',
+        icon: <NotificationOutlined />,
+        label: 'MarketingP',
+        children: [
+            {
+                key: '/app/marketing/dashboard',
+                label: 'Centro de Control',
+            },
+            {
+                key: '/app/marketing/social',
+                label: 'Social Hub (IA)',
+            },
+            {
+                key: '/app/marketing/campaigns',
+                label: 'Campañas Masivas',
+            },
+            {
+                key: '/app/marketing/templates',
+                label: 'Plantillas de Mensajes',
+            },
+            {
+                key: '/app/marketing/coupons',
+                label: 'Cupones de Descuento',
+            },
+            {
+                key: '/app/marketing/settings',
+                label: 'Configuración',
+            },
+        ],
+    },
+    {
         key: '/app/purchases',
         icon: <ShoppingOutlined />,
         label: 'Compras',
@@ -175,6 +207,11 @@ export const menuItems: AppMenuItem[] = [
             {
                 key: '/app/configuration/company',
                 label: 'Datos de Empresa',
+            },
+            {
+                key: '/app/configuration/ai',
+                label: 'Inteligencia Artificial',
+                roles: ['ADMIN'],
             },
             {
                 key: '/app/configuration/dev-tools',
