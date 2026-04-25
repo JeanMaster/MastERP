@@ -4,7 +4,7 @@ Sigue estos pasos para poner tu sistema online de forma gratuita utilizando Neon
 
 ## 1. Base de Datos (Neon) 💾
 1. Crea una cuenta en [Neon.tech](https://neon.tech/).
-2. Crea un nuevo proyecto llamado `valery-port`.
+2. Crea un nuevo proyecto llamado `masterp`.
 3. Copia el **Connection String** (ej: `postgresql://user:password@host/neondb?sslmode=require`).
 4. **IMPORTANTE:** Guarda este string, lo usaremos en el paso 2.
 
@@ -22,7 +22,7 @@ Sigue estos pasos para poner tu sistema online de forma gratuita utilizando Neon
    - `NODE_ENV`: `production`
    - `PORT`: `3000`
 7. Haz clic en **Create Web Service**.
-8. Una vez desplegado, copia la URL que te da Render (ej: `https://valery-backend.onrender.com`).
+8. Una vez desplegado, copia la URL que te da Render (ej: `https://masterp-backend.onrender.com`).
 
 ## 3. Interfaz Frontend (Vercel) 🎨
 1. Crea una cuenta en [Vercel.com](https://vercel.com/).
@@ -31,7 +31,7 @@ Sigue estos pasos para poner tu sistema online de forma gratuita utilizando Neon
 4. Selecciona la subcarpeta: `apps/frontend`.
 5. En **Framework Preset**, selecciona `Vite`.
 6. En **Environment Variables**, agrega:
-   - `VITE_API_URL`: `https://valery-backend.onrender.com/api` (La URL de tu backend de Render + `/api`)
+   - `VITE_API_URL`: `https://masterp-backend.onrender.com/api` (La URL de tu backend de Render + `/api`)
 7. Haz clic en **Deploy**.
 
 ## 4. Configuración Final 🔗

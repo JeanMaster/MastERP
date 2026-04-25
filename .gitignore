@@ -58,3 +58,6 @@ temp/
 .zenith.pids
 .masterp.pids
 start-local.sh
+
+# Local tasks
+futureTask.MD

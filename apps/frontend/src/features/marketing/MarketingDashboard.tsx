@@ -34,7 +34,7 @@ export const MarketingDashboard = () => {
     ].filter(t => t.value > 0);
 
     const handleWhatsApp = (phone: string, name: string) => {
-        const message = encodeURIComponent(`¡Hola ${name}! Te escribimos de ValeryPort para desearte un muy feliz cumpleaños. Tenemos un regalo especial para ti en tu próxima compra. 🎂🎁`);
+        const message = encodeURIComponent(`¡Hola ${name}! Te escribimos de MastERP para desearte un muy feliz cumpleaños. Tenemos un regalo especial para ti en tu próxima compra. 🎂🎁`);
         window.open(`https://wa.me/${phone.replace(/\D/g, '')}?text=${message}`, '_blank');
     };
 
