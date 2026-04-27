@@ -118,7 +118,7 @@ export const ReturnDetailsModal = ({ open, onClose, record }: ReturnDetailsModal
                 </Descriptions.Item>
             </Descriptions>
 
-            <Divider orientation="left">Returned Items</Divider>
+            <Divider orientation={"left" as any}>Returned Items</Divider>
             <Table
                 dataSource={record.items || []}
                 columns={itemsColumns}
@@ -135,7 +135,7 @@ export const ReturnDetailsModal = ({ open, onClose, record }: ReturnDetailsModal
 
             {record.replacementItems && record.replacementItems.length > 0 && (
                 <>
-                    <Divider orientation="left">Replacement Items (Exchange)</Divider>
+                    <Divider orientation={"left" as any}>Replacement Items (Exchange)</Divider>
                     <Table
                         dataSource={record.replacementItems}
                         columns={replacementColumns}

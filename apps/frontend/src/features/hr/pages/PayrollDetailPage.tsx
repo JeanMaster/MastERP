@@ -96,11 +96,11 @@ export const PayrollDetailPage = () => {
                         <Tag color={period.status === 'PAID' ? 'green' : 'blue'}>{period.status}</Tag>
                     </Descriptions.Item>
                     <Descriptions.Item label="Total Period Amount">
-                        <Text strong style={{ fontSize: 18 }}>{Number(period.totalAmount).toFixed(2)} {period.currency || 'VES'}</Text>
+                        <Text strong style={{ fontSize: 18 }}>{Number(period.totalAmount).toFixed(2)} VES</Text>
                     </Descriptions.Item>
                 </Descriptions>
 
-                <Divider orientation="left">Employee Payments Breakdown</Divider>
+                <Divider orientation={"left" as any}>Employee Payments Breakdown</Divider>
 
                 <Table
                     columns={columns}

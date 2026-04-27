@@ -6,7 +6,6 @@ import { productsApi } from '../../services/productsApi';
 import type { Product, CreateProductDto, UpdateProductDto } from '../../services/productsApi';
 import { departmentsApi } from '../../services/departmentsApi';
 import { currenciesApi } from '../../services/currenciesApi';
-import { banksApi } from '../../services/banksApi';
 import { unitsApi } from '../../services/unitsApi';
 import { PriceUpdateConfirmModal } from '../purchases/components/PriceUpdateConfirmModal';
 import { companySettingsApi } from '../../services/companySettingsApi';

@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { Card, Form, InputNumber, Button, message, Space, Divider, Alert, Row, Col, Typography } from 'antd';
+import { Card, Form, InputNumber, Button, message, Divider, Alert, Row, Col, Typography } from 'antd';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { marketingApi } from '../../services/marketingApi';
 import { SaveOutlined, TrophyOutlined, SettingOutlined } from '@ant-design/icons';
@@ -122,7 +122,7 @@ export const MarketingSettings = () => {
                         </Col>
                     </Row>
 
-                    <Divider orientation="left"><TrophyOutlined style={{ color: '#faad14' }} /> Loyalty Rewards Program (Points)</Divider>
+                    <Divider orientation={"left" as any}><TrophyOutlined style={{ color: '#faad14' }} /> Loyalty Rewards Program (Points)</Divider>
                     
                     <Row gutter={24}>
                         <Col span={8}>

@@ -186,7 +186,7 @@ export const UserFormModal = ({ open, onCancel, user }: UserFormModalProps) => {
                     </Col>
                 </Row>
 
-                <Divider orientation="left">Granular Access Permissions</Divider>
+                <Divider orientation={"left" as any}>Granular Access Permissions</Divider>
                 <Form.Item name="permissions">
                     <Checkbox.Group style={{ width: '100%' }}>
                         <Row gutter={[16, 24]}>

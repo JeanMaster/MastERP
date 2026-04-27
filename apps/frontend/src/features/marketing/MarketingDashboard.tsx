@@ -9,7 +9,7 @@ import {
 } from '@ant-design/icons';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip as RechartsTooltip } from 'recharts';
 
-const { Title, Text } = Typography;
+const { Title } = Typography;
 
 /**
  * MarketingDashboard Component

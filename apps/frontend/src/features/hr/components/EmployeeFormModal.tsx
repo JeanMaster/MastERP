@@ -82,7 +82,7 @@ export const EmployeeFormModal: React.FC<Props> = ({ visible, onClose, employee 
             width={700}
         >
             <Form form={form} layout="vertical">
-                <Divider orientation="left">Personal Information</Divider>
+                <Divider orientation={"left" as any}>Personal Information</Divider>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                     <Form.Item name="firstName" label="First Names" rules={[{ required: true, message: 'Please enter first names' }]}>
                         <Input placeholder="John" />
@@ -110,7 +110,7 @@ export const EmployeeFormModal: React.FC<Props> = ({ visible, onClose, employee 
                     </Form.Item>
                 </div>
 
-                <Divider orientation="left">Employment Details</Divider>
+                <Divider orientation={"left" as any}>Employment Details</Divider>
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                     <Form.Item name="position" label="Position / Job Title" rules={[{ required: true, message: 'Position is required' }]}>
@@ -134,7 +134,7 @@ export const EmployeeFormModal: React.FC<Props> = ({ visible, onClose, employee 
                     </Form.Item>
                 </div>
 
-                <Divider orientation="left">Compensation</Divider>
+                <Divider orientation={"left" as any}>Compensation</Divider>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '16px' }}>
                     <Form.Item name="baseSalary" label="Monthly Base Salary" rules={[{ required: true, message: 'Please enter base salary' }]}>
                         <InputNumber

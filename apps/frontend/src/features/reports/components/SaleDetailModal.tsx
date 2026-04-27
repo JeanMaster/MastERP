@@ -106,7 +106,7 @@ export const SaleDetailModal = ({ open, sale, onCancel }: SaleDetailModalProps) 
                 </Descriptions.Item>
             </Descriptions>
 
-            <Divider orientation="left">Sold Products</Divider>
+            <Divider orientation={"left" as any}>Sold Products</Divider>
 
             <Table
                 columns={itemColumns}

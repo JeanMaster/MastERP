@@ -117,7 +117,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({ visible,
                         </div>
                     </div>
 
-                    <Descriptions column={1} size="large" bordered style={{ borderRadius: '12px', overflow: 'hidden' }}>
+                    <Descriptions column={1} size="default" bordered style={{ borderRadius: '12px', overflow: 'hidden' }}>
                         <Descriptions.Item label="Category" labelStyle={{ fontWeight: 600, width: '120px' }}>
                             {product.category?.name || 'Uncategorized'}
                         </Descriptions.Item>

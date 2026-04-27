@@ -120,7 +120,7 @@ const CompanySettingsForm = ({ settings, onSubmit, isUpdating }: { settings: any
                 </Space>
             </Form.Item>
 
-            <Divider orientation="left">Accounting Control</Divider>
+            <Divider orientation={"left" as any}>Accounting Control</Divider>
 
             <Form.Item
                 label="Enforce Bank Account Selection"
