@@ -1,14 +1,18 @@
 import { useState } from 'react';
-import { Card, Table, Button, Tag, Space, Modal, message, Grid } from 'antd';
+import { Card, Table, Button, Tag, Space, Modal, message, Grid, Typography } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, UserOutlined } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import axios from 'axios';
-import { BASE_URL } from '../../services/apiConfig';
+import { usersApi } from '../../services/usersApi';
 import { UserFormModal } from './components/UserFormModal';
 
 const { useBreakpoint } = Grid;
-const API_URL = BASE_URL;
+const { Title, Text } = Typography;
 
+/**
+ * UsersPage Component
+ * Administrative dashboard for managing system access.
+ * Allows creating, editing, and deleting user accounts while protecting critical system accounts like 'admin'.
+ */
 export const UsersPage = () => {
     const screens = useBreakpoint();
     const isMobile = !screens.lg;
@@ -18,26 +22,28 @@ export const UsersPage = () => {
 
     const { data: users = [], isLoading } = useQuery({
         queryKey: ['users'],
-        queryFn: async () => {
-            const res = await axios.get(`${API_URL}/users`);
-            return res.data;
-        }
+        queryFn: () => usersApi.getAll()
     });
 
+    /**
+     * Permanent deletion of a user record.
+     */
     const deleteMutation = useMutation({
-        mutationFn: (id: string) => axios.delete(`${API_URL}/users/${id}`),
+        mutationFn: (id: string) => usersApi.remove(id),
         onSuccess: () => {
-            message.success('Usuario eliminado');
+            message.success('User account deleted successfully');
             queryClient.invalidateQueries({ queryKey: ['users'] });
-        }
+        },
+        onError: () => message.error('Failed to delete user')
     });
 
     const handleDelete = (id: string) => {
         Modal.confirm({
-            title: '¿Eliminar usuario?',
-            content: 'Esta acción no se puede deshacer.',
-            okText: 'Sí, eliminar',
-            cancelText: 'Cancelar',
+            title: 'Delete user account?',
+            content: 'This action is permanent and cannot be undone.',
+            okText: 'Yes, Delete',
+            cancelText: 'Cancel',
+            okButtonProps: { danger: true },
             onOk: () => deleteMutation.mutate(id)
         });
     };
@@ -54,51 +60,63 @@ export const UsersPage = () => {
 
     const columns = [
         {
-            title: 'Usuario',
+            title: 'Username',
             dataIndex: 'username',
             key: 'username',
-            render: (text: string) => <Space><UserOutlined />{text}</Space>,
+            render: (text: string) => (
+                <Space>
+                    <UserOutlined style={{ color: '#1890ff' }} />
+                    <Text strong>{text}</Text>
+                </Space>
+            ),
         },
         {
-            title: 'Nombre',
+            title: 'Full Name',
             dataIndex: 'name',
             key: 'name',
         },
         {
-            title: 'Rol',
+            title: 'Security Role',
             dataIndex: 'role',
             key: 'role',
             render: (role: string) => {
-                let color = 'blue';
-                if (role === 'ADMIN') color = 'red';
-                if (role === 'SUPERVISOR') color = 'gold';
-                return <Tag color={color}>{role}</Tag>;
+                const colors: Record<string, string> = {
+                    ADMIN: 'red',
+                    SUPERVISOR: 'gold',
+                    CASHIER: 'green',
+                    USER: 'blue'
+                };
+                return <Tag color={colors[role] || 'blue'}>{role}</Tag>;
             }
         },
         {
-            title: 'Estado',
+            title: 'Account Status',
             dataIndex: 'isActive',
             key: 'isActive',
+            align: 'center' as const,
             render: (isActive: boolean) => (
                 <Tag color={isActive ? 'success' : 'default'}>
-                    {isActive ? 'Activo' : 'Inactivo'}
+                    {isActive ? 'Active' : 'Inactive'}
                 </Tag>
             )
         },
         {
-            title: 'Acciones',
+            title: 'Actions',
             key: 'actions',
+            width: 120,
             render: (_: any, record: any) => (
                 <Space>
                     <Button
                         icon={<EditOutlined />}
                         onClick={() => handleEdit(record)}
+                        title="Edit User"
                     />
                     <Button
                         danger
                         icon={<DeleteOutlined />}
                         onClick={() => handleDelete(record.id)}
-                        disabled={record.username === 'admin'} // Protect admin
+                        disabled={record.username === 'admin'} // Protect system administrator
+                        title={record.username === 'admin' ? "System Admin cannot be deleted" : "Delete User"}
                     />
                 </Space>
             )
@@ -107,20 +125,26 @@ export const UsersPage = () => {
 
     return (
         <div style={{ padding: isMobile ? 8 : 24 }}>
-            <Card
-                title="Gestión de Usuarios"
-                extra={
-                    <Button type="primary" icon={<PlusOutlined />} onClick={handleCreate}>
-                        {isMobile ? 'Nuevo' : 'Nuevo Usuario'}
-                    </Button>
-                }
-            >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+                <div>
+                    <Title level={2} style={{ margin: 0 }}>👤 User Management</Title>
+                    <Text type="secondary">Control system access levels and security permissions.</Text>
+                </div>
+                <Button type="primary" icon={<PlusOutlined />} onClick={handleCreate} size="large">
+                    {isMobile ? 'Add' : 'Register New User'}
+                </Button>
+            </div>
+
+            <Card bordered={false} style={{ boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
                 <Table
                     columns={columns}
                     dataSource={users}
                     rowKey="id"
                     loading={isLoading}
                     scroll={{ x: 'max-content' }}
+                    pagination={{
+                        showTotal: (total) => `Total: ${total} users`
+                    }}
                 />
             </Card>
 

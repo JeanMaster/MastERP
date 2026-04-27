@@ -1,9 +1,16 @@
 import { useEffect } from 'react';
-import { Card, Form, InputNumber, Button, message, Space, Divider, Alert, Row, Col } from 'antd';
+import { Card, Form, InputNumber, Button, message, Space, Divider, Alert, Row, Col, Typography } from 'antd';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { marketingApi } from '../../services/marketingApi';
-import { SaveOutlined, TrophyOutlined } from '@ant-design/icons';
+import { SaveOutlined, TrophyOutlined, SettingOutlined } from '@ant-design/icons';
 
+const { Title, Text } = Typography;
+
+/**
+ * MarketingSettings Component
+ * Configuration interface for customer segmentation logic and loyalty program mechanics.
+ * Defines spending thresholds for VIP/Gold/Silver tiers and point-to-currency conversion rates.
+ */
 export const MarketingSettings = () => {
     const [form] = Form.useForm();
     const queryClient = useQueryClient();
@@ -13,15 +20,18 @@ export const MarketingSettings = () => {
         queryFn: marketingApi.getConfig,
     });
 
+    /**
+     * Updates the global marketing and loyalty parameters.
+     */
     const mutation = useMutation({
         mutationFn: marketingApi.updateConfig,
         onSuccess: () => {
-            message.success('Configuración de Marketing actualizada');
+            message.success('Marketing and Loyalty configuration updated');
             queryClient.invalidateQueries({ queryKey: ['marketing-config'] });
             queryClient.invalidateQueries({ queryKey: ['marketing-stats'] });
         },
         onError: () => {
-            message.error('Error al actualizar la configuración');
+            message.error('Failed to update configuration');
         }
     });
 
@@ -34,7 +44,7 @@ export const MarketingSettings = () => {
         }
     };
 
-    // F9 Keyboard Shortcut
+    // F9 Keyboard Shortcut for quick save
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
             if (isLoading) return;
@@ -48,122 +58,128 @@ export const MarketingSettings = () => {
         return () => window.removeEventListener('keydown', handleKeyDown, true);
     }, [isLoading, form]);
 
-    if (isLoading) return <Card loading />;
+    if (isLoading) return <Card loading style={{ margin: 24 }} />;
 
     return (
         <div style={{ padding: '24px' }}>
-            <h2>Configuración de MarketingP</h2>
+            <div style={{ marginBottom: 24 }}>
+                <Title level={2} style={{ margin: 0 }}><SettingOutlined /> Marketing & Loyalty Configuration</Title>
+                <Text type="secondary">Define how the system segments your audience and rewards customer loyalty.</Text>
+            </div>
+
             <Alert 
-                message="Umbrales de Segmentación" 
-                description="Define el gasto total acumulado (en USD) requerido para que un cliente pertenezca a cada nivel. Esto afecta automáticamente los gráficos del Panel de Control."
+                message="Customer Segmentation Thresholds" 
+                description="Set the minimum cumulative spend (in USD equivalent) required for each loyalty tier. These values dynamically update the Marketing Dashboard analytics."
                 type="info"
                 showIcon
-                style={{ marginBottom: '20px' }}
+                style={{ marginBottom: '24px', borderRadius: '8px' }}
             />
             
-            <Card bordered={false}>
+            <Card bordered={false} style={{ boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
                 <Form
                     form={form}
                     layout="vertical"
                     initialValues={config}
                     onFinish={handleSubmit}
                 >
-                    <Row gutter={16}>
+                    <Row gutter={24}>
                         <Col span={12}>
                             <Form.Item 
-                                label="Umbral VIP (Diamante) - USD" 
+                                label="VIP (Diamond) Threshold - USD" 
                                 name="tierVipThreshold"
-                                tooltip="Gasto mínimo acumulado para ser VIP"
+                                tooltip="Minimum lifetime spend to reach Diamond status"
                             >
-                                <InputNumber style={{ width: '100%' }} prefix="$" min={0} />
+                                <InputNumber style={{ width: '100%' }} prefix="$" min={0} size="large" />
                             </Form.Item>
                         </Col>
                         <Col span={12}>
                             <Form.Item 
-                                label="Umbral Gold (Oro) - USD" 
+                                label="Gold Tier Threshold - USD" 
                                 name="tierGoldThreshold"
                             >
-                                <InputNumber style={{ width: '100%' }} prefix="$" min={0} />
+                                <InputNumber style={{ width: '100%' }} prefix="$" min={0} size="large" />
                             </Form.Item>
                         </Col>
                     </Row>
 
-                    <Row gutter={16}>
+                    <Row gutter={24}>
                         <Col span={12}>
                             <Form.Item 
-                                label="Umbral Silver (Plata) - USD" 
+                                label="Silver Tier Threshold - USD" 
                                 name="tierSilverThreshold"
                             >
-                                <InputNumber style={{ width: '100%' }} prefix="$" min={0} />
+                                <InputNumber style={{ width: '100%' }} prefix="$" min={0} size="large" />
                             </Form.Item>
                         </Col>
                         <Col span={12}>
                             <Form.Item 
-                                label="Días para Inactividad (Churn)" 
+                                label="Inactivity Period (Churn) - Days" 
                                 name="churnDays"
-                                tooltip="Días transcurridos desde la última compra para considerar al cliente 'Inactivo'"
+                                tooltip="Days without a purchase before a customer is flagged as 'Inactive' or at risk of churn."
                             >
-                                <InputNumber style={{ width: '100%' }} suffix="días" min={1} />
+                                <InputNumber style={{ width: '100%' }} suffix="days" min={1} size="large" />
                             </Form.Item>
                         </Col>
                     </Row>
 
-                    <Divider><TrophyOutlined /> Programa de Fidelidad (Puntos)</Divider>
+                    <Divider orientation="left"><TrophyOutlined style={{ color: '#faad14' }} /> Loyalty Rewards Program (Points)</Divider>
                     
-
-                    <Row gutter={16}>
+                    <Row gutter={24}>
                         <Col span={8}>
                             <Form.Item 
-                                label="Puntos por cada $1 gastado" 
+                                label="Earning Rate (Points per $1)" 
                                 name="pointsPerUSD"
-                                tooltip="Ganas puntos al comprar. Ej: 1 = Ganas 1 punto por cada $1 gastado"
+                                tooltip="The amount of points a customer earns for every $1 spent (or local currency equivalent)."
                             >
-                                <InputNumber style={{ width: '100%' }} min={0} step={0.5} />
+                                <InputNumber style={{ width: '100%' }} min={0} step={0.1} size="large" />
                             </Form.Item>
                         </Col>
                         <Col span={8}>
                             <Form.Item 
-                                label="Valor de punto (en USD)" 
+                                label="Point Value (in USD)" 
                                 name="valuePerPoint"
-                                tooltip="Cuánto vale cada punto al canjear"
+                                tooltip="The monetary value of a single point when redeemed at checkout."
                             >
-                                <InputNumber style={{ width: '100%' }} min={0} step={0.001} precision={4} />
+                                <InputNumber style={{ width: '100%' }} min={0} step={0.001} precision={4} size="large" />
                             </Form.Item>
                         </Col>
                         <Col span={8}>
                             <Form.Item 
-                                label="Máx. Canje por Venta (%)" 
+                                label="Max Redemption Limit (%)" 
                                 name="maxRedemptionPercentage"
-                                tooltip="Porcentaje máximo del total de la venta que se puede pagar con puntos"
+                                tooltip="Maximum percentage of the transaction total that can be paid using points."
                             >
-                                <InputNumber style={{ width: '100%' }} min={1} max={100} suffix="%" />
+                                <InputNumber style={{ width: '100%' }} min={1} max={100} suffix="%" size="large" />
                             </Form.Item>
                         </Col>
                     </Row>
 
-                    <Row gutter={16} style={{ marginTop: 8 }}>
+                    <Row gutter={24} style={{ marginTop: 16 }}>
                         <Col span={24}>
                             <Alert
-                                message="Dinámica del Programa"
-                                description="Los puntos se acumulan automáticamente en cada venta. Al cobrar, el cajero puede canjearlos usando el valor configurado aquí."
+                                message="Loyalty Program Mechanics"
+                                description="Points are calculated automatically during each checkout session. Cashiers can apply accumulated points as a payment method based on the conversion values defined above."
                                 type="success"
                                 showIcon
+                                style={{ borderRadius: '8px' }}
                             />
                         </Col>
                     </Row>
 
                     <Divider />
                     
-                    <Space>
+                    <div style={{ textAlign: 'right' }}>
                         <Button 
                             type="primary" 
+                            size="large"
                             icon={<SaveOutlined />} 
                             loading={mutation.isPending}
                             onClick={handleSubmit}
+                            style={{ height: 50, padding: '0 40px', borderRadius: '8px' }}
                         >
-                            Guardar Cambios (F9)
+                            Save Marketing Options (F9)
                         </Button>
-                    </Space>
+                    </div>
                 </Form>
             </Card>
         </div>

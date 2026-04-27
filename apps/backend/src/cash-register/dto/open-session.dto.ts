@@ -1,44 +1,55 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString, IsNumber, IsOptional, Min } from 'class-validator';
+import {
+  IsArray,
+  IsNumber,
+  IsOptional,
+  IsString,
+  ValidateNested,
+} from 'class-validator';
+import { Type } from 'class-transformer';
+
+export class CashCountItemDto {
+  @ApiProperty({ description: 'ID of the currency denomination' })
+  @IsString()
+  denominationId: string;
+
+  @ApiProperty({ description: 'Quantity of banknotes/coins' })
+  @IsNumber()
+  quantity: number;
+}
 
 export class OpenSessionDto {
-  @ApiProperty({ description: 'ID del registro de caja' })
+  @ApiProperty({ description: 'ID of the cash register' })
   @IsString()
   registerId: string;
 
-  @ApiProperty({
-    description: 'Saldo inicial (opcional, se calcula si hay items)',
-    required: false,
-  })
+  @ApiProperty({ required: false, description: 'Initial balance in base currency' })
   @IsOptional()
   @IsNumber()
-  @Min(0)
   openingBalance?: number;
 
-  @ApiProperty({ description: 'Desglose de efectivo', required: false })
+  @ApiProperty({ type: [CashCountItemDto], required: false, description: 'Initial cash breakdown' })
   @IsOptional()
-  items?: { denominationId: string; quantity: number }[];
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => CashCountItemDto)
+  items?: CashCountItemDto[];
 
-  @ApiProperty({ description: 'Tasa de cambio aplicada', required: false })
+  @ApiProperty({ required: false, description: 'Exchange rate used for opening' })
   @IsOptional()
   @IsNumber()
   exchangeRate?: number;
 
-  @ApiProperty({
-    description: 'Usuario que abre (Admin/Supervisor)',
-    required: false,
-  })
+  @ApiProperty({ required: false, description: 'Notes about the opening' })
+  @IsOptional()
+  @IsString()
+  openingNotes?: string;
+
   @IsOptional()
   @IsString()
   openedBy?: string;
 
-  @ApiProperty({ description: 'Cajero asignado', required: false })
   @IsOptional()
   @IsString()
   cashierId?: string;
-
-  @ApiProperty({ description: 'Notas de apertura', required: false })
-  @IsOptional()
-  @IsString()
-  openingNotes?: string;
 }

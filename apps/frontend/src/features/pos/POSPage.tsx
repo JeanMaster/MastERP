@@ -1,7 +1,5 @@
-
 import { useState, useEffect, useRef } from 'react';
 import { Layout, Typography, Spin, message, Alert, Tabs, Grid, Card, Space, Button, Empty } from 'antd';
-const { Text, Title } = Typography;
 import { ShoppingCartOutlined, AppstoreOutlined, ShopOutlined } from '@ant-design/icons';
 import { POSHeader } from './components/POSHeader';
 import { POSLeftPanel } from './components/POSLeftPanel';
@@ -20,9 +18,15 @@ import type { Sale } from '../../services/salesApi';
 import { SessionSummaryModal } from './components/SessionSummaryModal';
 import { CashCountModal } from '../cash-register/components/CashCountModal';
 
+const { Text, Title } = Typography;
 const { Content, Sider, Footer } = Layout;
 const { useBreakpoint } = Grid;
 
+/**
+ * POSPage Component
+ * Main Point of Sale interface.
+ * Orchestrates product selection, cart management, checkout, and cash register session lifecycle.
+ */
 export const POSPage = () => {
     const screens = useBreakpoint();
     const isMobile = !screens.lg;
@@ -42,22 +46,20 @@ export const POSPage = () => {
     const [isOpeningArqueoOpen, setIsOpeningArqueoOpen] = useState(false);
     const [isClosingArqueoOpen, setIsClosingArqueoOpen] = useState(false);
 
-    // Fetch available registers
+    // Fetch available cash registers for selection (Admin only or if none selected)
     const { data: registers = [] } = useQuery({
         queryKey: ['cashRegisters'],
         queryFn: () => cashRegisterApi.listRegisters(),
         enabled: user?.role === 'ADMIN' || !registerId
     });
 
-    // Fetch active session based on selected register OR cashier detection
+    // Fetch active session (shifts) for the selected register or current cashier
     const { data: activeSession, isLoading: isSessionLoading, isFetching, refetch: refetchSession } = useQuery({
         queryKey: ['activeSession', registerId, user?.username],
         queryFn: () => {
-            // If user is a cashier, always prioritize finding THEIR active session
             if (user?.role === 'CASHIER') {
                 return cashRegisterApi.getActiveSession(undefined, user.username);
             }
-            // Admin or specific register selected manually:
             return cashRegisterApi.getActiveSession(registerId);
         },
         enabled: !!registerId || user?.role === 'CASHIER'
@@ -65,72 +67,69 @@ export const POSPage = () => {
 
     const redirectedRef = useRef(false);
 
-    // Auto-sync registerId for cashiers based on server-side assignment
+    // Synchronize register selection for cashiers based on server-side assignment
     useEffect(() => {
         if (user?.role === 'CASHIER' && !isSessionLoading && !isFetching) {
             if (activeSession) {
-                // Force sync even if registerId was already set (e.g. from stale localStorage)
                 if (registerId !== activeSession.registerId) {
                     setRegisterId(activeSession.registerId);
                     localStorage.setItem('pos_register_id', activeSession.registerId);
                 }
-            } else {
-                // If no session from server, clear registerId to show "No box assigned"
-                if (registerId) {
-                    setRegisterId('');
-                    localStorage.removeItem('pos_register_id');
-                }
+            } else if (registerId) {
+                setRegisterId('');
+                localStorage.removeItem('pos_register_id');
             }
         }
     }, [activeSession, user, registerId, isSessionLoading, isFetching]);
 
-    // Bloquear si no hay sesión activa o no está verificada para el cajero (Opcional: solo advertir ahora)
+    // Session validation and alerts
     useEffect(() => {
-        // Solo actuar si NO estamos cargando ni haciendo refetching de la sesión
         if (!isSessionLoading && !isFetching && !redirectedRef.current) {
             if (!activeSession) {
-                // Si ya intentamos detectar y no hay nada
                 if (user?.role === 'CASHIER') {
-                    message.error('NO TIENE UNA CAJA ASIGNADA. SOLICITE APERTURA AL ADMINISTRADOR.', 0);
+                    message.error('NO CASH REGISTER ASSIGNED. PLEASE CONTACT THE ADMINISTRATOR.', 0);
                 } else {
-                    // Para ADMIN, solo es un aviso informativo
-                    message.info('Operando en modo Administrador (Sin sesión de caja activa).', 5);
+                    message.info('Operating in Admin Mode (No active cash session).', 5);
                 }
             } else {
-                // Si el usuario actual es el cajero asignado y no ha verificado
                 const isAssignedCashier = activeSession.cashierId === user?.username;
                 if (isAssignedCashier && !activeSession.verifiedAt) {
-                    message.warning(`Hola ${user?.name}, debe realizar el Arqueo de Apertura en Caja antes de procesar ventas.`, 10);
+                    message.warning(`Hello ${user?.name}, you must perform the Opening Cash Count before processing sales.`, 10);
                 }
             }
         }
     }, [activeSession, isSessionLoading, isFetching, navigate, user, registerId]);
 
+    /**
+     * Handles cash register management logic (Opening/Closing counts).
+     */
     const handleCajaClick = async () => {
-        const hide = message.loading('Sincronizando estado de caja...', 0);
+        const hide = message.loading('Syncing cash register state...', 0);
         try {
             const { data: freshSession } = await refetchSession();
 
             if (!freshSession) {
-                message.error('CAJA NO APERTURADA');
+                message.error('REGISTER NOT OPEN');
                 return;
             }
 
             if (!freshSession.verifiedAt && freshSession.cashierId === user?.username) {
-                // Caso: Aperturada pero no verificada por el cajero actual
+                // Perform opening verification
                 setIsOpeningArqueoOpen(true);
             } else {
-                // Caso: Verificada o abierta por otro (o simplemente queremos ver el resumen)
+                // View session summary
                 setIsSummaryOpen(true);
             }
         } catch (error) {
-            message.error('Error al sincronizar datos de caja');
+            message.error('Error syncing cash register data');
         } finally {
             hide();
         }
     };
 
-    // Helper para calcular el saldo esperado dinámicamente
+    /**
+     * Calculates the dynamically expected balance based on shifts and movements.
+     */
     const calculateExpectedBalance = () => {
         if (!activeSession) return 0;
 
@@ -140,37 +139,22 @@ export const POSPage = () => {
         let withdrawals = 0;
 
         activeSession.movements?.forEach((movement: any) => {
-            // Robust parsing of amount and rate
             const rawAmount = Number(movement.amount || 0);
             const rawRate = Number(movement.exchangeRate);
-
-            // If rate is valid (>0), use it. otherwise default to 1.
             const rate = (!isNaN(rawRate) && rawRate > 0) ? rawRate : 1;
             const amountInBs = rawAmount * rate;
-
             const type = String(movement.type).trim();
 
             switch (type) {
-                case 'SALE':
-                    sales += amountInBs;
-                    break;
-                case 'EXPENSE':
-                    expenses += amountInBs;
-                    break;
-                case 'DEPOSIT':
-                    deposits += amountInBs;
-                    break;
-                case 'WITHDRAWAL':
-                    withdrawals += amountInBs;
-                    break;
-                case 'CHANGE':
-                    sales -= amountInBs;
-                    break;
+                case 'SALE': sales += amountInBs; break;
+                case 'EXPENSE': expenses += amountInBs; break;
+                case 'DEPOSIT': deposits += amountInBs; break;
+                case 'WITHDRAWAL': withdrawals += amountInBs; break;
+                case 'CHANGE': sales -= amountInBs; break;
                 case 'ADJUSTMENT':
                     if (amountInBs > 0) withdrawals += amountInBs;
                     else deposits += Math.abs(amountInBs);
                     break;
-                // OPENING is ignored
             }
         });
 
@@ -181,17 +165,18 @@ export const POSPage = () => {
     const handleCheckoutProcess = async (paymentData: any) => {
         try {
             const sale = await processSale(paymentData, activeSession?.id);
-            message.success(`Venta procesada exitosamente. Factura: ${sale.invoiceNumber}`);
+            message.success(`Sale processed successfully. Invoice: ${sale.invoiceNumber}`);
             setIsCheckoutOpen(false);
             setCompletedSale(sale);
             setIsInvoiceModalOpen(true);
             await refreshInvoiceNumber();
         } catch (error) {
-            message.error('Error al procesar la venta');
+            message.error('Error processing sale');
             console.error('Sale processing error:', error);
         }
     };
 
+    // Keyboard shortcuts (F2: Coupons, F3: Customer, F9: Checkout, F10: Cash Register, Del: Clear POS)
     const handleKeyDown = (e: KeyboardEvent) => {
         if (e.key === 'F2') {
             e.preventDefault();
@@ -212,9 +197,9 @@ export const POSPage = () => {
 
     useEffect(() => {
         if (activeSession?.status === 'AWAITING_CLOSE') {
-            setIsCheckoutOpen(false); // Close checkout if it was open
+            setIsCheckoutOpen(false);
         }
-        initialize(); // Sincronizar tasas y datos iniciales al entrar al POS
+        initialize();
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, [activeSession?.status]);
@@ -224,14 +209,14 @@ export const POSPage = () => {
         localStorage.setItem('pos_register_id', id);
     };
 
+    // Initial state rendering (Register selection or loading)
     if (!registerId) {
-        // If it's a cashier and we are still loading or no session found, show loading/empty
         if (user?.role === 'CASHIER') {
             if (isSessionLoading) {
                 return (
                     <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', background: '#f0f2f5' }}>
                         <Spin size="large" />
-                        <Title level={3} style={{ marginTop: 20 }}>Buscando su Caja...</Title>
+                        <Title level={3} style={{ marginTop: 20 }}>Finding your Register...</Title>
                     </div>
                 );
             }
@@ -241,13 +226,13 @@ export const POSPage = () => {
                     <Card style={{ width: '100%', maxWidth: 500, textAlign: 'center' }}>
                         <Empty
                             description={
-                                <Title level={4}>No tiene una Caja asignada</Title>
+                                <Title level={4}>No Cash Register Assigned</Title>
                             }
                         >
-                            <Text type="secondary">Consulte con su administrador para que realice la apertura y asignación de su turno.</Text>
+                            <Text type="secondary">Please ask your administrator to open a shift and assign you to a register.</Text>
                             <div style={{ marginTop: 24 }}>
                                 <Button type="primary" onClick={() => queryClient.invalidateQueries({ queryKey: ['activeSession'] })}>
-                                    Reintentar Conexión
+                                    Retry Connection
                                 </Button>
                             </div>
                         </Empty>
@@ -258,9 +243,9 @@ export const POSPage = () => {
 
         return (
             <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', background: '#f0f2f5', padding: 20 }}>
-                <Card title={<Title level={3} style={{ margin: 0 }}>📍 Seleccionar Caja para Operar</Title>} style={{ width: '100%', maxWidth: 500, textAlign: 'center' }}>
+                <Card title={<Title level={3} style={{ margin: 0 }}>📍 Select Cash Register</Title>} style={{ width: '100%', maxWidth: 500, textAlign: 'center' }}>
                     <Space direction="vertical" style={{ width: '100%' }} size="large">
-                        <Text type="secondary">Elija la caja registradora en la que trabajará hoy.</Text>
+                        <Text type="secondary">Choose the register you will be operating today.</Text>
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
                             {registers.map(r => (
                                 <Button
@@ -284,8 +269,8 @@ export const POSPage = () => {
         return (
             <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', background: '#f0f2f5' }}>
                 <Spin size="large" />
-                <Title level={3} style={{ marginTop: 20 }}>Cargando POS...</Title>
-                <Button type="link" onClick={() => setRegisterId('')}>Cambiar Caja</Button>
+                <Title level={3} style={{ marginTop: 20 }}>Loading POS...</Title>
+                <Button type="link" onClick={() => setRegisterId('')}>Change Register</Button>
             </div>
         );
     }
@@ -297,8 +282,8 @@ export const POSPage = () => {
             {activeSession?.status === 'AWAITING_CLOSE' && (
                 <div style={{ padding: '0 20px', marginTop: 10 }}>
                     <Alert
-                        message="CIERRE EN PROCESO"
-                        description="Ha solicitado el cierre de caja. Por favor, espere a que el administrador autorice su arqueo para poder salir o continuar."
+                        message="CLOSURE IN PROGRESS"
+                        description="A shift closure has been requested. Please wait for the administrator to authorize your cash count to continue or exit."
                         type="warning"
                         showIcon
                     />
@@ -365,7 +350,7 @@ export const POSPage = () => {
                                 label: (
                                     <span>
                                         <AppstoreOutlined />
-                                        Catálogo
+                                        Catalog
                                     </span>
                                 ),
                                 children: (
@@ -379,7 +364,7 @@ export const POSPage = () => {
                                 label: (
                                     <span>
                                         <ShoppingCartOutlined />
-                                        Carrito
+                                        Cart
                                     </span>
                                 ),
                                 children: (

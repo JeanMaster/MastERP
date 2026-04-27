@@ -9,10 +9,16 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { mercadolibreApi } from '../../services/mercadolibreApi';
 import type { MlProductMapping } from '../../services/mercadolibreApi';
 import { useSearchParams } from 'react-router-dom';
+import dayjs from 'dayjs';
 
 const { Title, Text } = Typography;
 const { useBreakpoint } = Grid;
 
+/**
+ * MercadoLibrePage Component
+ * Management interface for Mercado Libre (ML) integration.
+ * Allows linking accounts, managing active listings, and synchronizing inventory/pricing in real-time.
+ */
 export const MercadoLibrePage = () => {
     const screens = useBreakpoint();
     const isMobile = !screens.lg;
@@ -23,11 +29,11 @@ export const MercadoLibrePage = () => {
     useEffect(() => {
         const status = searchParams.get('status');
         if (status === 'success') {
-            message.success('¡Cuenta de Mercado Libre vinculada exitosamente!');
+            message.success('Mercado Libre account linked successfully!');
             queryClient.invalidateQueries({ queryKey: ['ml-accounts'] });
             setSearchParams({});
         } else if (status === 'error') {
-            message.error('Error al vincular la cuenta de Mercado Libre');
+            message.error('Error linking Mercado Libre account');
             setSearchParams({});
         }
     }, [searchParams]);
@@ -49,52 +55,52 @@ export const MercadoLibrePage = () => {
     const deleteAccountMutation = useMutation({
         mutationFn: mercadolibreApi.deleteAccount,
         onSuccess: () => {
-            message.success('Cuenta desvinculada');
+            message.success('Account unlinked');
             queryClient.invalidateQueries({ queryKey: ['ml-accounts'] });
             queryClient.invalidateQueries({ queryKey: ['ml-mappings'] });
         },
-        onError: () => message.error('Error al desvincular la cuenta'),
+        onError: () => message.error('Error unlinking account'),
     });
 
     const syncMutation = useMutation({
         mutationFn: mercadolibreApi.syncProduct,
         onSuccess: () => {
-            message.success('Producto sincronizado con Mercado Libre');
+            message.success('Product synchronized with Mercado Libre');
             queryClient.invalidateQueries({ queryKey: ['ml-mappings'] });
         },
         onError: (error: any) => {
-            message.error(error.response?.data?.message || 'Error al sincronizar');
+            message.error(error.response?.data?.message || 'Error synchronizing');
         },
     });
 
     const unpublishMutation = useMutation({
         mutationFn: mercadolibreApi.unpublishProduct,
         onSuccess: () => {
-            message.success('Publicación eliminada de Mercado Libre');
+            message.success('Listing removed from Mercado Libre');
             queryClient.invalidateQueries({ queryKey: ['ml-mappings'] });
             queryClient.invalidateQueries({ queryKey: ['ml-accounts'] });
         },
-        onError: () => message.error('Error al despublicar'),
+        onError: () => message.error('Error unpublishing'),
     });
 
     const pauseMutation = useMutation({
         mutationFn: mercadolibreApi.pauseProduct,
         onSuccess: () => {
-            message.success('Publicación pausada exitosamente');
+            message.success('Listing paused successfully');
             queryClient.invalidateQueries({ queryKey: ['ml-mappings'] });
         },
         onError: (error: any) => {
-            message.error(error.response?.data?.message || 'Error al pausar la publicación');
+            message.error(error.response?.data?.message || 'Error pausing listing');
         },
     });
 
     const mockAccountMutation = useMutation({
         mutationFn: mercadolibreApi.createMockAccount,
         onSuccess: () => {
-            message.success('¡Cuenta de prueba vinculada exitosamente!');
+            message.success('Test account linked successfully!');
             queryClient.invalidateQueries({ queryKey: ['ml-accounts'] });
         },
-        onError: () => message.error('Error al crear cuenta de prueba'),
+        onError: () => message.error('Error creating test account'),
     });
 
     // ─── Handlers ─────────────────────────────────────────
@@ -108,7 +114,7 @@ export const MercadoLibrePage = () => {
 
     const columns = [
         {
-            title: 'Producto',
+            title: 'Product',
             key: 'product',
             render: (_: any, record: MlProductMapping) => (
                 <Space>
@@ -127,7 +133,7 @@ export const MercadoLibrePage = () => {
             ),
         },
         {
-            title: 'ID en ML',
+            title: 'ML ID',
             dataIndex: 'mlItemId',
             key: 'mlItemId',
             render: (mlItemId: string, record: MlProductMapping) => (
@@ -142,7 +148,7 @@ export const MercadoLibrePage = () => {
             ),
         },
         {
-            title: 'Precio',
+            title: 'Price',
             key: 'price',
             align: 'right' as const,
             render: (_: any, record: MlProductMapping) => (
@@ -158,11 +164,11 @@ export const MercadoLibrePage = () => {
             ),
         },
         {
-            title: 'Estado Sync',
+            title: 'Sync Status',
             key: 'syncStatus',
             render: (_: any, record: MlProductMapping) => {
                 if (record.syncStatus === 'SUCCESS') {
-                    return <Tag icon={<CheckCircleOutlined />} color="success">Sincronizado</Tag>;
+                    return <Tag icon={<CheckCircleOutlined />} color="success">Synced</Tag>;
                 }
                 if (record.syncStatus === 'FAILED') {
                     return (
@@ -172,19 +178,19 @@ export const MercadoLibrePage = () => {
                         </Space>
                     );
                 }
-                return <Tag color="default">Pendiente</Tag>;
+                return <Tag color="default">Pending</Tag>;
             },
         },
         {
-            title: 'Última Sync',
+            title: 'Last Sync',
             key: 'lastSync',
             render: (_: any, record: MlProductMapping) =>
                 record.lastSync
-                    ? new Date(record.lastSync).toLocaleString('es-VE', { dateStyle: 'short', timeStyle: 'short' })
+                    ? dayjs(record.lastSync).format('MM/DD/YYYY HH:mm')
                     : '-',
         },
         {
-            title: 'Acciones',
+            title: 'Actions',
             key: 'actions',
             align: 'center' as const,
             render: (_: any, record: MlProductMapping) => (
@@ -192,26 +198,26 @@ export const MercadoLibrePage = () => {
                     <Button
                         type="text"
                         icon={<SyncOutlined />}
-                        title="Sincronizar precio y stock"
+                        title="Sync price and stock"
                         loading={syncMutation.isPending}
                         onClick={() => syncMutation.mutate(record.productId)}
                     />
                     <Button
                         type="text"
                         icon={<PauseOutlined />}
-                        title="Pausar publicación"
+                        title="Pause listing"
                         loading={pauseMutation.isPending}
                         onClick={() => pauseMutation.mutate(record.productId)}
                         style={{ color: '#faad14' }}
                     />
                     <Popconfirm
-                        title="¿Eliminar publicación?"
-                        description="Se cerrará la publicación en Mercado Libre."
+                        title="Delete listing?"
+                        description="This listing will be closed on Mercado Libre."
                         onConfirm={() => unpublishMutation.mutate(record.productId)}
-                        okText="Sí"
+                        okText="Yes"
                         cancelText="No"
                     >
-                        <Button type="text" danger icon={<DeleteOutlined />} title="Despublicar" />
+                        <Button type="text" danger icon={<DeleteOutlined />} title="Unpublish" />
                     </Popconfirm>
                 </Space>
             ),
@@ -247,14 +253,14 @@ export const MercadoLibrePage = () => {
                         onClick={handleConnect}
                         style={{ background: '#faad14', borderColor: '#faad14' }}
                     >
-                        Vincular Cuenta
+                        Link Account
                     </Button>
                     <Button
                         icon={<SyncOutlined />}
                         loading={mockAccountMutation.isPending}
                         onClick={() => mockAccountMutation.mutate()}
                     >
-                        Vincular Prueba
+                        Link Test Account
                     </Button>
                 </Space>
             </div>
@@ -262,8 +268,8 @@ export const MercadoLibrePage = () => {
             {/* Info Alert */}
             {accounts.length === 0 && !loadingAccounts && (
                 <Alert
-                    message="Sin cuentas vinculadas"
-                    description="Para publicar productos en Mercado Libre, primero necesitas vincular tu cuenta. Haz clic en el botón 'Vincular Cuenta' para comenzar."
+                    message="No linked accounts"
+                    description="To publish products on Mercado Libre, you first need to link your account. Click 'Link Account' to begin."
                     type="info"
                     showIcon
                     style={{ marginBottom: 16 }}
@@ -275,7 +281,7 @@ export const MercadoLibrePage = () => {
                 <Col xs={24} sm={8}>
                     <Card style={{ backgroundColor: '#fffbe6' }}>
                         <Statistic
-                            title="Cuentas Vinculadas"
+                            title="Linked Accounts"
                             value={accounts.length}
                             prefix={<ShopOutlined />}
                             valueStyle={{ color: '#d48806' }}
@@ -285,7 +291,7 @@ export const MercadoLibrePage = () => {
                 <Col xs={24} sm={8}>
                     <Card style={{ backgroundColor: '#f6ffed' }}>
                         <Statistic
-                            title="Productos Publicados"
+                            title="Published Products"
                             value={mappings.length}
                             prefix={<CloudUploadOutlined />}
                             valueStyle={{ color: '#52c41a' }}
@@ -295,7 +301,7 @@ export const MercadoLibrePage = () => {
                 <Col xs={24} sm={8}>
                     <Card style={{ backgroundColor: '#fff1f0' }}>
                         <Statistic
-                            title="Con Errores"
+                            title="With Errors"
                             value={mappings.filter(m => m.syncStatus === 'FAILED').length}
                             prefix={<CloseCircleOutlined />}
                             valueStyle={{ color: '#ff4d4f' }}
@@ -307,7 +313,7 @@ export const MercadoLibrePage = () => {
             {/* Linked Accounts */}
             {accounts.length > 0 && (
                 <Card
-                    title="Cuentas Vinculadas"
+                    title="Linked Accounts"
                     style={{ marginBottom: 24 }}
                     size="small"
                 >
@@ -325,22 +331,22 @@ export const MercadoLibrePage = () => {
                             <Space>
                                 <ShopOutlined style={{ color: '#faad14', fontSize: 20 }} />
                                 <Space direction="vertical" size={0}>
-                                    <Text strong>{acc.username || `Usuario ML #${acc.mlUserId}`}</Text>
+                                    <Text strong>{acc.username || `ML User #${acc.mlUserId}`}</Text>
                                     <Text type="secondary" style={{ fontSize: 12 }}>
-                                        {acc._count.productMappings} productos publicados ·
-                                        Última act: {new Date(acc.updatedAt).toLocaleDateString('es-VE')}
+                                        {acc._count.productMappings} published products ·
+                                        Last act: {dayjs(acc.updatedAt).format('MM/DD/YYYY')}
                                     </Text>
                                 </Space>
                             </Space>
                             <Popconfirm
-                                title="¿Desvincular cuenta?"
-                                description="Se eliminarán todos los mapeos de productos asociados."
+                                title="Unlink account?"
+                                description="All associated product mappings will be removed."
                                 onConfirm={() => deleteAccountMutation.mutate(acc.id)}
-                                okText="Sí"
+                                okText="Yes"
                                 cancelText="No"
                             >
                                 <Button size="small" danger icon={<DisconnectOutlined />}>
-                                    Desvincular
+                                    Unlink
                                 </Button>
                             </Popconfirm>
                         </div>
@@ -350,16 +356,16 @@ export const MercadoLibrePage = () => {
 
             {/* Product Mappings Table */}
             <Card
-                title="Productos Publicados"
+                title="Published Products"
                 styles={{ body: { padding: 0 } }}
             >
                 {mappings.length === 0 && !loadingMappings ? (
                     <Empty
-                        description="No hay productos publicados en Mercado Libre"
+                        description="No products published on Mercado Libre"
                         style={{ padding: 40 }}
                     >
                         <Text type="secondary">
-                            Publica productos desde el módulo de Inventario
+                            Publish products from the Inventory module
                         </Text>
                     </Empty>
                 ) : (

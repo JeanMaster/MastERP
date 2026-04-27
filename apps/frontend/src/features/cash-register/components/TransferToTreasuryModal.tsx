@@ -1,5 +1,4 @@
 import { useEffect } from 'react';
-
 import { Modal, Form, Input, InputNumber, Select, message, Alert } from 'antd';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { cashRegisterApi } from '../../../services/cashRegisterApi';
@@ -11,6 +10,10 @@ interface TransferToTreasuryModalProps {
     onClose: () => void;
 }
 
+/**
+ * TransferToTreasuryModal Component
+ * Modal to transfer funds from a cash session to a treasury (bank) account.
+ */
 export const TransferToTreasuryModal = ({ open, sessionId, onClose }: TransferToTreasuryModalProps) => {
     const [form] = Form.useForm();
     const queryClient = useQueryClient();
@@ -25,18 +28,18 @@ export const TransferToTreasuryModal = ({ open, sessionId, onClose }: TransferTo
     const mutation = useMutation({
         mutationFn: (values: any) => cashRegisterApi.transferToTreasury(sessionId, values),
         onSuccess: () => {
-            message.success('Traslado realizado exitosamente');
+            message.success('Transfer completed successfully');
             queryClient.invalidateQueries({ queryKey: ['active-session'] });
             queryClient.invalidateQueries({ queryKey: ['banks'] });
             onClose();
             form.resetFields();
         },
         onError: (error: any) => {
-            message.error(error.response?.data?.message || 'Error al realizar traslado');
+            message.error(error.response?.data?.message || 'Error performing transfer');
         },
     });
 
-    // F9 Keyboard Shortcut
+    // F9 Keyboard Shortcut for quick transfer confirmation
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
             if (!open) return;
@@ -61,18 +64,18 @@ export const TransferToTreasuryModal = ({ open, sessionId, onClose }: TransferTo
 
     return (
         <Modal
-            title="Trasladar Fondos a Tesorería"
+            title="Transfer Funds to Treasury"
             open={open}
             onOk={handleSubmit}
             onCancel={onClose}
             confirmLoading={mutation.isPending}
-            okText="Confirmar Traslado (F9)"
-            cancelText="Cancelar"
+            okText="Confirm Transfer (F9)"
+            cancelText="Cancel"
             destroyOnClose
         >
             <Alert
-                message="Atención"
-                description="Esta acción restará el monto del balance actual de tu caja y lo sumará a la cuenta de tesorería seleccionada."
+                message="Attention"
+                description="This action will subtract the amount from your current cash balance and add it to the selected treasury account."
                 type="info"
                 showIcon
                 style={{ marginBottom: 20 }}
@@ -80,13 +83,13 @@ export const TransferToTreasuryModal = ({ open, sessionId, onClose }: TransferTo
 
             <Form form={form} layout="vertical">
                 <Form.Item
-                    label="Cuenta / Bóveda de Destino"
+                    label="Destination Account / Vault"
                     name="bankAccountId"
-                    rules={[{ required: true, message: 'Selecciona una cuenta' }]}
+                    rules={[{ required: true, message: 'Please select an account' }]}
                 >
                     <Select
                         loading={loadingBanks}
-                        placeholder="Selecciona cuenta de destino"
+                        placeholder="Select destination account"
                         options={banks.map(b => ({
                             value: b.id,
                             label: `${b.bankName} - ${b.accountNumber} (${b.currency.symbol})`
@@ -95,7 +98,7 @@ export const TransferToTreasuryModal = ({ open, sessionId, onClose }: TransferTo
                 </Form.Item>
 
                 <Form.Item
-                    label="Monto a Trasladar"
+                    label="Amount to Transfer"
                     name="amount"
                     rules={[{ required: true, type: 'number', min: 0.01 }]}
                 >
@@ -107,11 +110,11 @@ export const TransferToTreasuryModal = ({ open, sessionId, onClose }: TransferTo
                 </Form.Item>
 
                 <Form.Item
-                    label="Descripción / Motivo"
+                    label="Description / Reason"
                     name="description"
-                    rules={[{ required: true, message: 'Requerido' }]}
+                    rules={[{ required: true, message: 'Description is required' }]}
                 >
-                    <Input placeholder="Ej: Retiro parcial de ventas del día" />
+                    <Input placeholder="e.g., Partial daily sales withdrawal" />
                 </Form.Item>
             </Form>
         </Modal>

@@ -13,18 +13,22 @@ interface CouponModalProps {
     onCancel: () => void;
 }
 
+/**
+ * CouponModal Component
+ * Allows users to apply or remove discount coupons during the POS session.
+ * Communicates with the marketing API to validate coupon eligibility based on the current cart and customer.
+ */
 export const CouponModal = ({ open, onOk, onCancel }: CouponModalProps) => {
     const [code, setCode] = useState('');
     const [verifying, setVerifying] = useState(false);
     
-    // Store data
     const { cart, customerId, getNormalizedQuantity, appliedCoupon, applyCoupon, removeCoupon, calculateCostInPrimary } = usePOSStore();
 
     useEffect(() => {
         if (open) setCode('');
     }, [open]);
 
-    // Handle F9 Keyboard Shortcut within Modal
+    // Handle F9 Keyboard Shortcut for applying the coupon
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
             if (open && e.key === 'F9') {
@@ -33,7 +37,7 @@ export const CouponModal = ({ open, onOk, onCancel }: CouponModalProps) => {
                 if (code.trim()) {
                     handleApply();
                 } else {
-                    onCancel(); // Or just ignore
+                    onCancel();
                 }
             }
         };
@@ -41,12 +45,15 @@ export const CouponModal = ({ open, onOk, onCancel }: CouponModalProps) => {
         return () => window.removeEventListener('keydown', handleKeyDown, true);
     }, [open, code]);
 
+    /**
+     * Validates and applies the coupon code.
+     */
     const handleApply = async () => {
         if (!code.trim()) return;
 
         setVerifying(true);
         try {
-            // Transform cart to expected format for validation
+            // Prepare cart items for the marketing API validation
             const cartItems = cart.map(item => {
                 const qty = getNormalizedQuantity(item.quantity, item.product, item.isSecondaryUnit);
                 let price = item.price;
@@ -78,7 +85,7 @@ export const CouponModal = ({ open, onOk, onCancel }: CouponModalProps) => {
                 cartItems
             });
 
-            message.success(res.message || 'Cupón aplicado con éxito');
+            message.success(res.message || 'Coupon applied successfully');
             applyCoupon({
                 id: res.couponId,
                 code: res.code,
@@ -87,22 +94,25 @@ export const CouponModal = ({ open, onOk, onCancel }: CouponModalProps) => {
             onOk();
         } catch (error: any) {
             console.error(error);
-            const msg = error.response?.data?.message || 'Error al validar cupón';
+            const msg = error.response?.data?.message || 'Error validating coupon';
             message.error(msg);
         } finally {
             setVerifying(false);
         }
     };
 
+    /**
+     * Removes the currently active coupon from the POS store.
+     */
     const handleRemove = () => {
         removeCoupon();
-        message.info('Cupón removido');
+        message.info('Coupon removed');
         onCancel();
     };
 
     return (
         <Modal
-            title={<Title level={4} style={{ margin: 0 }}><TagOutlined /> Código de Descuento</Title>}
+            title={<Title level={4} style={{ margin: 0 }}><TagOutlined /> Discount Coupon</Title>}
             open={open}
             onCancel={onCancel}
             footer={null}
@@ -113,12 +123,12 @@ export const CouponModal = ({ open, onOk, onCancel }: CouponModalProps) => {
                 {appliedCoupon ? (
                     <div style={{ background: '#f6ffed', padding: 20, borderRadius: 8, border: '1px solid #b7eb8f', textAlign: 'center' }}>
                         <CheckCircleOutlined style={{ fontSize: 32, color: '#52c41a', marginBottom: 10 }} />
-                        <Title level={5}>Cupón Activado: <Tag color="green">{appliedCoupon.code}</Tag></Title>
-                        <Text style={{ fontSize: 16 }}>Descuento Total: -{formatVenezuelanPriceOnly(appliedCoupon.discountAmount, 2, false)}</Text>
+                        <Title level={5}>Coupon Active: <Tag color="green">{appliedCoupon.code}</Tag></Title>
+                        <Text style={{ fontSize: 16 }}>Total Discount: -{formatVenezuelanPriceOnly(appliedCoupon.discountAmount, 2, false)}</Text>
                         
                         <div style={{ marginTop: 20 }}>
                             <Button danger icon={<DeleteOutlined />} onClick={handleRemove} block>
-                                Quitar Cupón
+                                Remove Coupon
                             </Button>
                         </div>
                     </div>
@@ -126,7 +136,7 @@ export const CouponModal = ({ open, onOk, onCancel }: CouponModalProps) => {
                     <>
                         <Input
                             size="large"
-                            placeholder="Ingrese código del cupón"
+                            placeholder="Enter coupon code"
                             value={code}
                             onChange={(e) => setCode(e.target.value.toUpperCase())}
                             onPressEnter={handleApply}
@@ -134,7 +144,7 @@ export const CouponModal = ({ open, onOk, onCancel }: CouponModalProps) => {
                             autoFocus
                         />
                         <div style={{ marginTop: 20, display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-                            <Button onClick={onCancel} size="large">Cancelar</Button>
+                            <Button onClick={onCancel} size="large">Cancel</Button>
                             <Button 
                                 type="primary" 
                                 size="large" 
@@ -142,7 +152,7 @@ export const CouponModal = ({ open, onOk, onCancel }: CouponModalProps) => {
                                 loading={verifying}
                                 disabled={!code.trim()}
                             >
-                                Aplicar Cupón (F9)
+                                Apply Coupon (F9)
                             </Button>
                         </div>
                     </>

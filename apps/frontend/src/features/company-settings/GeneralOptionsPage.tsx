@@ -1,11 +1,16 @@
 import { useEffect } from 'react';
-import { Card, Form, Button, Select, Skeleton, message, Alert, Switch, InputNumber } from 'antd';
+import { Card, Form, Button, Select, Skeleton, message, Alert, Switch, InputNumber, Typography } from 'antd';
 import { SaveOutlined } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { companySettingsApi } from '../../services/companySettingsApi';
 import { currenciesApi } from '../../services/currenciesApi';
 
-// Sub-componente del formulario
+const { Title, Text } = Typography;
+
+/**
+ * GeneralOptionsForm Sub-component
+ * Manages core business logic toggles: secondary currency, tax rates (VAT/IGTF), price rounding, and fiscal status.
+ */
 const GeneralOptionsForm = ({ settings, onSubmit, isUpdating }: { settings: any, onSubmit: (values: any) => void, isUpdating: boolean }) => {
     const [form] = Form.useForm();
 
@@ -16,7 +21,6 @@ const GeneralOptionsForm = ({ settings, onSubmit, isUpdating }: { settings: any,
 
     useEffect(() => {
         if (settings) {
-            console.log('Settings loaded:', settings);
             form.setFieldsValue({
                 preferredSecondaryCurrencyId: settings.preferredSecondaryCurrencyId,
                 autoUpdateRates: settings.autoUpdateRates,
@@ -42,42 +46,42 @@ const GeneralOptionsForm = ({ settings, onSubmit, isUpdating }: { settings: any,
             style={{ maxWidth: 600 }}
         >
             <Alert
-                message="Configuración de Moneda Secundaria"
-                description="Seleccione la moneda secundaria que se utilizará por defecto en el Punto de Venta (POS) para mostrar precios referenciales."
+                message="Secondary Currency Display"
+                description="Select the default secondary currency to be displayed in the Point of Sale (POS) for reference pricing."
                 type="info"
                 showIcon
                 style={{ marginBottom: 24 }}
             />
 
             <Form.Item
-                label="Moneda Secundaria Preferida (POS)"
+                label="Preferred Secondary Currency (POS)"
                 name="preferredSecondaryCurrencyId"
-                extra="Esta moneda se mostrará junto a la moneda principal en el grid de productos y carrito del POS."
+                extra="This currency will be shown alongside the primary currency in the product grid and POS cart."
             >
                 <Select
-                    placeholder="Seleccione una moneda"
+                    placeholder="Select a currency"
                     size="large"
                     loading={isLoadingCurrencies}
                     allowClear
                 >
                     {secondaryCurrencies.map(currency => (
                         <Select.Option key={currency.id} value={currency.id}>
-                            {currency.name} ({currency.symbol}) - Tasa: {currency.exchangeRate}
+                            {currency.name} ({currency.symbol}) - Rate: {currency.exchangeRate}
                         </Select.Option>
                     ))}
                 </Select>
             </Form.Item>
 
             <Alert
-                message="Automatización de Tasas"
-                description="Active esta opción para actualizar automáticamente las tasas de cambio de las monedas configuradas (ej. USDT desde Binance P2P)."
+                message="Exchange Rate Automation"
+                description="Enable this to automatically update exchange rates from external providers (e.g., Binance P2P for USDT)."
                 type="warning"
                 showIcon
                 style={{ marginBottom: 24, marginTop: 24 }}
             />
 
             <Form.Item
-                label="Activar Actualización Automática"
+                label="Enable Automatic Rate Updates"
                 name="autoUpdateRates"
                 valuePropName="checked"
                 style={{ marginBottom: 12 }}
@@ -86,23 +90,23 @@ const GeneralOptionsForm = ({ settings, onSubmit, isUpdating }: { settings: any,
             </Form.Item>
 
             <Form.Item
-                label="Frecuencia de Actualización (Minutos)"
+                label="Update Frequency (Minutes)"
                 name="updateFrequency"
-                rules={[{ required: true, message: 'Ingrese la frecuencia' }]}
+                rules={[{ required: true, message: 'Frequency is required' }]}
             >
                 <InputNumber min={5} max={1440} style={{ width: '100%' }} />
             </Form.Item>
 
             <Alert
-                message="Configuración de Impuestos (IVA)"
-                description="Active esta opción para habilitar el cálculo de IVA en el Punto de Venta (POS) y Visor de Precios."
+                message="Tax Configuration (VAT / IVA)"
+                description="Enable this to calculate value-added tax in the Point of Sale (POS) and Price Checker."
                 type="success"
                 showIcon
                 style={{ marginBottom: 24, marginTop: 24 }}
             />
 
             <Form.Item
-                label="Activar Cobro de IVA"
+                label="Enable Tax Calculation (VAT)"
                 name="taxEnabled"
                 valuePropName="checked"
                 style={{ marginBottom: 12 }}
@@ -117,9 +121,9 @@ const GeneralOptionsForm = ({ settings, onSubmit, isUpdating }: { settings: any,
                 {({ getFieldValue }) =>
                     getFieldValue('taxEnabled') ? (
                         <Form.Item
-                            label="Tasa de IVA (%)"
+                            label="Tax Rate (%)"
                             name="taxRate"
-                            rules={[{ required: true, message: 'Ingrese la tasa de IVA' }]}
+                            rules={[{ required: true, message: 'VAT rate is required' }]}
                         >
                             <InputNumber min={0} max={100} step={0.01} style={{ width: '100%' }} />
                         </Form.Item>
@@ -128,15 +132,15 @@ const GeneralOptionsForm = ({ settings, onSubmit, isUpdating }: { settings: any,
             </Form.Item>
 
             <Alert
-                message="Configuración de Redondeo de Precios"
-                description="Determine si los precios en el POS deben redondearse y por qué factor (ej. redondear a la decena o centena más cercana)."
+                message="Price Rounding Configuration"
+                description="Determine if POS prices should be rounded and by what factor (e.g., round to the nearest ten or hundred)."
                 type="info"
                 showIcon
                 style={{ marginBottom: 24, marginTop: 24 }}
             />
 
             <Form.Item
-                label="Activar Redondeo de Precios"
+                label="Enable Price Rounding"
                 name="roundingEnabled"
                 valuePropName="checked"
                 style={{ marginBottom: 12 }}
@@ -151,19 +155,19 @@ const GeneralOptionsForm = ({ settings, onSubmit, isUpdating }: { settings: any,
                 {({ getFieldValue }) =>
                     getFieldValue('roundingEnabled') ? (
                         <Form.Item
-                            label="Factor de Redondeo (Múltiplo de)"
+                            label="Rounding Factor (Multiple of)"
                             name="roundingFactor"
-                            rules={[{ required: true, message: 'Elija el factor de redondeo' }]}
-                            extra="El precio final con IVA se redondeará al múltiplo más cercano de este valor (hacia arriba)."
+                            rules={[{ required: true, message: 'Choose rounding factor' }]}
+                            extra="Final prices will be rounded UP to the nearest multiple of this value."
                         >
                             <Select size="large">
-                                <Select.Option value={1}>Sin Redondeo (1)</Select.Option>
-                                <Select.Option value={5}>Redondeo al 5</Select.Option>
-                                <Select.Option value={10}>Redondeo al 10 (Decena)</Select.Option>
-                                <Select.Option value={50}>Redondeo al 50</Select.Option>
-                                <Select.Option value={100}>Redondeo al 100 (Centena)</Select.Option>
-                                <Select.Option value={500}>Redondeo al 500</Select.Option>
-                                <Select.Option value={1000}>Redondeo al 1000</Select.Option>
+                                <Select.Option value={1}>No Rounding (1)</Select.Option>
+                                <Select.Option value={5}>Round to 5</Select.Option>
+                                <Select.Option value={10}>Round to 10 (Tens)</Select.Option>
+                                <Select.Option value={50}>Round to 50</Select.Option>
+                                <Select.Option value={100}>Round to 100 (Hundreds)</Select.Option>
+                                <Select.Option value={500}>Round to 500</Select.Option>
+                                <Select.Option value={1000}>Round to 1000</Select.Option>
                             </Select>
                         </Form.Item>
                     ) : null
@@ -171,15 +175,15 @@ const GeneralOptionsForm = ({ settings, onSubmit, isUpdating }: { settings: any,
             </Form.Item>
 
             <Alert
-                message="Configuración de IGTF (3%)"
-                description="Active esta opción si su empresa es Contribuyente Especial y debe cobrar el 3% por pagos recibidos en divisas (USD/EUR)."
+                message="IGTF (Foreign Currency Tax) - 3%"
+                description="Enable this if your business is a Special Taxpayer and must collect the 3% tax for payments in foreign currencies (USD/EUR)."
                 type="error"
                 showIcon
                 style={{ marginBottom: 24, marginTop: 24 }}
             />
 
             <Form.Item
-                label="Habilitar Cobro de IGTF en POS"
+                label="Enable IGTF Calculation in POS"
                 name="igtfEnabled"
                 valuePropName="checked"
                 style={{ marginBottom: 12 }}
@@ -194,9 +198,9 @@ const GeneralOptionsForm = ({ settings, onSubmit, isUpdating }: { settings: any,
                 {({ getFieldValue }) =>
                     getFieldValue('igtfEnabled') ? (
                         <Form.Item
-                            label="Tasa de IGTF (%)"
+                            label="IGTF Rate (%)"
                             name="igtfRate"
-                            rules={[{ required: true, message: 'Ingrese la tasa de IGTF' }]}
+                            rules={[{ required: true, message: 'IGTF rate is required' }]}
                         >
                             <InputNumber min={0} max={100} step={0.01} style={{ width: '100%' }} />
                         </Form.Item>
@@ -205,18 +209,18 @@ const GeneralOptionsForm = ({ settings, onSubmit, isUpdating }: { settings: any,
             </Form.Item>
 
             <Alert
-                message="Estatus Fiscal (SENIAT)"
-                description="Active esta opción si su empresa ha sido designada como Contribuyente Especial por el SENIAT. Esto habilitará la emisión de comprobantes de retención de IVA/ISLR a proveedores."
+                message="Fiscal Status (SENIAT)"
+                description="Enable this if your company has been designated as a 'Special Taxpayer' by SENIAT. This enables VAT/Income Tax retention workflows for supplier purchases."
                 type="warning"
                 showIcon
                 style={{ marginBottom: 24, marginTop: 24 }}
             />
 
             <Form.Item
-                label="¿Es Contribuyente Especial?"
+                label="Is Special Taxpayer?"
                 name="isSpecialTaxpayer"
                 valuePropName="checked"
-                extra="Al activar esta opción, el sistema permitirá generar comprobantes de retención para sus compras."
+                extra="When enabled, the system will allow generating tax retention certificates for your inbound invoices."
             >
                 <Switch />
             </Form.Item>
@@ -228,38 +232,40 @@ const GeneralOptionsForm = ({ settings, onSubmit, isUpdating }: { settings: any,
                     size="large"
                     icon={<SaveOutlined />}
                     loading={isUpdating}
+                    block
+                    style={{ height: 50, borderRadius: 8 }}
                 >
-                    Guardar Configuración
+                    Save System Options
                 </Button>
             </Form.Item>
         </Form>
     );
 };
 
+/**
+ * GeneralOptionsPage Component
+ * Main page for system-wide behavioral settings and fiscal compliance options.
+ */
 export const GeneralOptionsPage = () => {
     const queryClient = useQueryClient();
 
-    // Fetch settings
     const { data: settings, isLoading } = useQuery({
         queryKey: ['company-settings'],
         queryFn: companySettingsApi.getSettings,
     });
 
-    // Update mutation
     const updateMutation = useMutation({
         mutationFn: companySettingsApi.updateSettings,
         onSuccess: () => {
-            message.success('Opciones generales actualizadas exitosamente');
+            message.success('General options updated successfully');
             queryClient.invalidateQueries({ queryKey: ['company-settings'] });
-            // También invalidar POS store si es necesario (se hará via fetch al montar POS)
         },
         onError: (error: any) => {
-            message.error(error.response?.data?.message || 'Error al actualizar opciones');
+            message.error(error.response?.data?.message || 'Error updating general options');
         },
     });
 
     const handleSubmit = (values: any) => {
-        // Mantenemos los valores existentes y solo actualizamos lo nuevo
         if (!settings) return;
 
         updateMutation.mutate({
@@ -272,9 +278,13 @@ export const GeneralOptionsPage = () => {
 
     return (
         <div style={{ padding: 24 }}>
-            <Card title="Opciones Generales del Sistema">
+            <div style={{ marginBottom: 24 }}>
+                <Title level={2} style={{ margin: 0 }}>⚙️ System General Options</Title>
+                <Text type="secondary">Fine-tune POS behavior, tax calculations, and exchange rate automation.</Text>
+            </div>
+            <Card bordered={false} style={{ boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
                 {isLoading ? (
-                    <Skeleton active paragraph={{ rows: 6 }} />
+                    <Skeleton active paragraph={{ rows: 10 }} />
                 ) : (
                     <GeneralOptionsForm
                         settings={settings}

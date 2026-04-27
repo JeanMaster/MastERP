@@ -11,6 +11,11 @@ interface ClientSelectionModalProps {
     onCancel: () => void;
 }
 
+/**
+ * ClientSelectionModal Component
+ * Search and select interface for customers within the POS workflow.
+ * Allows quick creation of new clients without leaving the checkout flow.
+ */
 export const ClientSelectionModal = ({ open, onSelect, onCancel }: ClientSelectionModalProps) => {
     const [searchTerm, setSearchTerm] = useState('');
     const [clients, setClients] = useState<Client[]>([]);
@@ -32,12 +37,12 @@ export const ClientSelectionModal = ({ open, onSelect, onCancel }: ClientSelecti
         }
     };
 
-    // Debounced search
+    // Debounced search to prevent excessive API calls
     const debouncedSearch = debounce(searchClients, 500);
 
     useEffect(() => {
         if (open) {
-            searchClients(''); // Load initial recent/all
+            searchClients(''); // Load initial recent/all clients
             setTimeout(() => {
                 searchInputRef.current?.focus();
             }, 100);
@@ -52,15 +57,15 @@ export const ClientSelectionModal = ({ open, onSelect, onCancel }: ClientSelecti
 
     return (
         <Modal
-            title="Seleccionar Cliente"
+            title="Select Customer"
             open={open}
             onCancel={onCancel}
             footer={[
                 <Button key="new" type="primary" icon={<UserAddOutlined />} onClick={() => setIsCreateModalOpen(true)}>
-                    Nuevo Cliente (F2)
+                    New Customer (F2)
                 </Button>,
                 <Button key="close" onClick={onCancel}>
-                    Cerrar
+                    Close
                 </Button>
             ]}
             width={600}
@@ -68,7 +73,7 @@ export const ClientSelectionModal = ({ open, onSelect, onCancel }: ClientSelecti
             <Input
                 ref={searchInputRef}
                 prefix={<SearchOutlined />}
-                placeholder="Buscar por Nombre, RIF o Email..."
+                placeholder="Search by Name, ID (RIF) or Email..."
                 value={searchTerm}
                 onChange={handleSearchChange}
                 style={{ marginBottom: 15 }}
@@ -88,7 +93,7 @@ export const ClientSelectionModal = ({ open, onSelect, onCancel }: ClientSelecti
                 style={{ maxHeight: 400, overflowY: 'auto' }}
                 renderItem={(item) => (
                     <List.Item
-                        actions={[<Button type="link" onClick={() => onSelect(item)}>Seleccionar</Button>]}
+                        actions={[<Button type="link" onClick={() => onSelect(item)}>Select</Button>]}
                         style={{ cursor: 'pointer' }}
                         onClick={() => onSelect(item)}
                     >
@@ -116,7 +121,7 @@ export const ClientSelectionModal = ({ open, onSelect, onCancel }: ClientSelecti
                 client={null}
                 onClose={() => {
                     setIsCreateModalOpen(false);
-                    searchClients(searchTerm); // Refresh list after create
+                    searchClients(searchTerm); // Refresh list after creation
                 }}
             />
         </Modal>

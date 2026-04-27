@@ -11,6 +11,11 @@ import { DiscountModal } from './DiscountModal';
 import { PriceModal } from './PriceModal';
 import { DeleteOutlined, PercentageOutlined, NumberOutlined, DollarOutlined, ExclamationCircleOutlined, WarningOutlined, SyncOutlined } from '@ant-design/icons';
 
+/**
+ * POSLeftPanel Component
+ * Manages the shopping cart list, search bar, and item-specific actions (Quantity, Price, Discount).
+ * Includes complex stock validation and multi-currency price calculations.
+ */
 export const POSLeftPanel = () => {
     const screens = Grid.useBreakpoint();
     const isMobile = !screens.lg;
@@ -38,14 +43,12 @@ export const POSLeftPanel = () => {
         searchResults
     } = usePOSStore();
 
-    // Removed local state: const [searchResults, setSearchResults] = useState<Product[]>([]);
-
     // Modal States
     const [isQuantityModalOpen, setIsQuantityModalOpen] = useState(false);
     const [isDiscountModalOpen, setIsDiscountModalOpen] = useState(false);
     const [isPriceModalOpen, setIsPriceModalOpen] = useState(false);
 
-    // Debounced API call for search
+    // Debounced search to find products by name, SKU or barcode
     const debouncedSearch = useMemo(
         () =>
             debounce((value: string) => {
@@ -63,31 +66,31 @@ export const POSLeftPanel = () => {
         debouncedSearch(value);
     };
 
+    /**
+     * Handles adding a product to the cart with stock validation.
+     */
     const handleSelectProduct = (_productId: string, option: any) => {
         if (option.product) {
             const product = option.product;
 
-            // Check if product has no stock (Skip for Services)
             if (product.type !== 'SERVICE' && product.stock === 0) {
                 Modal.warning({
-                    title: 'Producto sin stock',
+                    title: 'Out of Stock',
                     icon: <WarningOutlined style={{ color: '#ff4d4f' }} />,
-                    content: `${product.name} no tiene inventario disponible.`,
+                    content: `${product.name} has no available inventory.`,
                 });
                 return;
             }
 
-            // Check if adding would exceed available stock
             const existingItemsForThisProduct = cart.filter(item => item.product.id === product.id);
             const currentNormalizedQuantity = existingItemsForThisProduct.reduce((acc, item) =>
                 acc + getNormalizedQuantity(item.quantity, item.product, item.isSecondaryUnit), 0
             );
 
-            // Quantity being added (1 unit of primary unit)
             const addedNormalizedQuantity = getNormalizedQuantity(1, product, false);
 
             if (product.type !== 'SERVICE' && (currentNormalizedQuantity + addedNormalizedQuantity) > product.stock) {
-                // Fallback: Try adding secondary unit if available
+                // Try secondary unit fallback
                 if (product.secondaryUnitId) {
                     const addedSecondaryNormalizedQuantity = getNormalizedQuantity(1, product, true);
                     if ((currentNormalizedQuantity + addedSecondaryNormalizedQuantity) <= product.stock) {
@@ -97,29 +100,22 @@ export const POSLeftPanel = () => {
                 }
 
                 Modal.warning({
-                    title: 'Stock insuficiente',
+                    title: 'Insufficient Stock',
                     icon: <WarningOutlined style={{ color: '#faad14' }} />,
-                    content: `Incapaz de añadir 1 unidad completa. Ya tienes el equivalente a ${currentNormalizedQuantity.toFixed(3)} uds en el carrito. Stock disponible: ${product.stock}`,
+                    content: `Unable to add another full unit. You already have ${currentNormalizedQuantity.toFixed(3)} units in cart. Available stock: ${product.stock}`,
                 });
                 return;
             }
 
-            addItem(product, false); // Default to primary unit
+            addItem(product, false);
         }
     };
 
 
-    // Keyboard Shortcuts
+    // Keyboard Shortcuts (F4: Qty, F5: Price, F6: Remove, F7: Discount, F8: Toggle Unit)
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
-            if (!selectedItemId) {
-                // Even if no item selected, F3 (Client) should work? 
-                // The previous logic had `if (!selectedItemId) return;` at top, blocking F3 if cart empty.
-                // Better to allow F3 always.
-            }
-
-
-            if (!selectedItemId) return; // Block item actions if no item selected
+            if (!selectedItemId) return;
 
             switch (e.key) {
                 case 'F4':
@@ -133,8 +129,8 @@ export const POSLeftPanel = () => {
                 case 'F6':
                     e.preventDefault();
                     Modal.confirm({
-                        title: '¿Eliminar item?',
-                        content: 'Se eliminará el producto del carrito',
+                        title: 'Remove item?',
+                        content: 'The product will be removed from the cart.',
                         onOk: () => removeItem(selectedItemId),
                     });
                     break;
@@ -157,7 +153,7 @@ export const POSLeftPanel = () => {
 
     const columns = [
         {
-            title: 'Cant.',
+            title: 'Qty',
             dataIndex: 'quantity',
             key: 'quantity',
             width: 70,
@@ -169,7 +165,7 @@ export const POSLeftPanel = () => {
             )
         },
         {
-            title: 'Descripción',
+            title: 'Description',
             dataIndex: 'product',
             key: 'product',
             render: (product: any, record: CartItem) => (
@@ -177,10 +173,10 @@ export const POSLeftPanel = () => {
                     <span style={{ fontWeight: 'bold' }}>{product.name}</span>
                     {record.isSecondaryUnit && <div style={{ fontSize: 10, color: '#888' }}>({product.secondaryUnit?.name || 'Sec.'})</div>}
                     <div style={{ display: 'flex', gap: 4, marginTop: 2 }}>
-                        {product.isTaxExempt && <Tag color="default" style={{ fontSize: 9, margin: 0 }}>EXENTO</Tag>}
+                        {product.isTaxExempt && <Tag color="default" style={{ fontSize: 9, margin: 0 }}>EXEMPT</Tag>}
                         {record.discount > 0 && (
                             <span style={{ fontSize: 11, color: 'green' }}>
-                                Desc: {record.discountPercent}% (-{formatVenezuelanPriceOnly(record.discount, 2, false)})
+                                Disc: {record.discountPercent}% (-{formatVenezuelanPriceOnly(record.discount, 2, false)})
                             </span>
                         )}
                     </div>
@@ -210,7 +206,7 @@ export const POSLeftPanel = () => {
                         {hasStockIssue && (
                             <ExclamationCircleOutlined
                                 style={{ color: 'red', fontSize: 14 }}
-                                title="Cantidad excede stock disponible"
+                                title="Quantity exceeds available stock"
                             />
                         )}
                     </div>
@@ -263,12 +259,12 @@ export const POSLeftPanel = () => {
     return (
         <div style={{ height: '100%', minHeight: 0, display: 'flex', flexDirection: 'column', gap: 10 }}>
 
-            {/* Buscador */}
+            {/* Search Select */}
             <Select
                 showSearch
                 searchValue={searchTerm}
                 value={null}
-                placeholder="Escanee código o busque producto"
+                placeholder="Scan barcode or search product..."
                 defaultActiveFirstOption={false}
                 suffixIcon={null}
                 filterOption={false}
@@ -278,27 +274,22 @@ export const POSLeftPanel = () => {
                 style={{ width: '100%' }}
                 size="large"
                 options={(searchResults || []).map((d: Product) => {
-                    // Calculate Prices for Display
                     const priceInPrimary = calculatePriceInPrimary(d, false);
                     const priceInSecondary = preferredSecondaryCurrency
                         ? calculatePriceInCurrency(priceInPrimary, preferredSecondaryCurrency.id)
                         : 0;
-
                     const originalSymbol = d.currency?.symbol || '$';
                     const originalPrice = d.salePrice;
-
                     const secondarySymbol = preferredSecondaryCurrency?.symbol || '$';
 
                     let priceString = `${originalSymbol}${formatVenezuelanPriceOnly(Number(originalPrice), 2, false)}`;
-
                     if (preferredSecondaryCurrency && priceInSecondary > 0 && d.currency?.name !== preferredSecondaryCurrency.code) {
                         priceString += ` | ${formatVenezuelanPrice(priceInSecondary, secondarySymbol, 2, false)}`;
                     }
 
-                    // Stock indicator
                     const isService = d.type === 'SERVICE';
                     const stockIndicator = isService ? '🔵' : d.stock === 0 ? '🔴' : d.stock <= 10 ? '🟡' : '🟢';
-                    const stockText = isService ? 'Servicio' : `Stock: ${d.stock}`;
+                    const stockText = isService ? 'Service' : `Stock: ${d.stock}`;
 
                     return {
                         value: d.id,
@@ -308,7 +299,7 @@ export const POSLeftPanel = () => {
                 })}
             />
 
-            {/* Grid del Carrito */}
+            {/* Cart Table */}
             <div style={{ flex: 1, minHeight: 0, border: '1px solid #d9d9d9', background: 'white', borderRadius: 4, overflowY: 'auto' }}>
                 <Table
                     dataSource={cart}
@@ -317,7 +308,7 @@ export const POSLeftPanel = () => {
                     size="small"
                     scroll={{ y: isMobile ? 'calc(100vh - 430px)' : 'calc(100vh - 300px)' }}
                     rowKey={(record) => record.product.id}
-                    locale={{ emptyText: 'No hay items' }}
+                    locale={{ emptyText: 'Cart is empty' }}
                     rowClassName={(record) => record.product.id === selectedItemId ? 'pos-row-selected' : 'pos-row'}
                     onRow={(record) => ({
                         onClick: () => selectItem(record.product.id),
@@ -325,7 +316,7 @@ export const POSLeftPanel = () => {
                 />
             </div>
 
-            {/* Botones de Acción Rápida (Visual Keys) */}
+            {/* Quick Action Buttons */}
             <div style={{ display: 'flex', gap: 5, overflowX: 'auto', paddingBottom: 5, marginTop: isMobile ? 0 : 5 }}>
                 <Button
                     size={isMobile ? "middle" : "small"}
@@ -333,7 +324,7 @@ export const POSLeftPanel = () => {
                     disabled={!selectedItemId}
                     onClick={() => setIsQuantityModalOpen(true)}
                 >
-                    {isMobile ? "Cant." : "F4 Cant."}
+                    {isMobile ? "Qty" : "F4 Qty"}
                 </Button>
                 <Button
                     size={isMobile ? "middle" : "small"}
@@ -341,7 +332,7 @@ export const POSLeftPanel = () => {
                     disabled={!selectedItemId}
                     onClick={() => setIsPriceModalOpen(true)}
                 >
-                    {isMobile ? "Precio" : "F5 Precio"}
+                    {isMobile ? "Price" : "F5 Price"}
                 </Button>
                 <Button
                     size={isMobile ? "middle" : "small"}
@@ -350,13 +341,13 @@ export const POSLeftPanel = () => {
                     disabled={!selectedItemId}
                     onClick={() => {
                         Modal.confirm({
-                            title: '¿Eliminar item?',
-                            content: 'Se eliminará el producto del carrito',
+                            title: 'Remove item?',
+                            content: 'The product will be removed from the cart.',
                             onOk: () => removeItem(selectedItemId!),
                         });
                     }}
                 >
-                    {isMobile ? "Borrar" : "F6 Borrar"}
+                    {isMobile ? "Delete" : "F6 Delete"}
                 </Button>
                 <Button
                     size={isMobile ? "middle" : "small"}
@@ -364,7 +355,7 @@ export const POSLeftPanel = () => {
                     disabled={!selectedItemId}
                     onClick={() => setIsDiscountModalOpen(true)}
                 >
-                    {isMobile ? "Dcto" : "F7 Dcto"}
+                    {isMobile ? "Disc" : "F7 Disc"}
                 </Button>
                 <Button
                     size={isMobile ? "middle" : "small"}
@@ -372,16 +363,16 @@ export const POSLeftPanel = () => {
                     disabled={!selectedItemId}
                     onClick={toggleSelectedItemUnit}
                 >
-                    {isMobile ? "Alt" : "F8 Alt"}
+                    {isMobile ? "Alt" : "F8 Alt Unit"}
                 </Button>
             </div>
 
-            {/* Mini Totales Inferiores */}
+            {/* Cart Totals Summary */}
             <Card size="small" style={{ background: '#333', color: 'white', border: 0 }}>
                 {taxEnabled && (
                     <>
                         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 2 }}>
-                            <span style={{ color: '#aaa', fontSize: 13 }}>Base Imponible</span>
+                            <span style={{ color: '#aaa', fontSize: 13 }}>Taxable Base</span>
                             <span
                                 style={{ fontSize: 14, color: '#fff' }}
                                 title={formatVenezuelanPriceOnly(totals.subtotal || 0, 2, false)}
@@ -390,7 +381,7 @@ export const POSLeftPanel = () => {
                             </span>
                         </div>
                         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5 }}>
-                            <span style={{ color: '#aaa', fontSize: 13 }}>IVA ({taxRate}%)</span>
+                            <span style={{ color: '#aaa', fontSize: 13 }}>VAT ({taxRate}%)</span>
                             <span
                                 style={{ fontSize: 14, color: '#fff' }}
                                 title={formatVenezuelanPriceOnly(totals.tax || 0, 2, false)}
@@ -414,7 +405,7 @@ export const POSLeftPanel = () => {
                 )}
 
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5 }}>
-                    <span style={{ color: 'white' }}>Descuento</span>
+                    <span style={{ color: 'white' }}>Discount</span>
                     <strong style={{ fontSize: 16, color: 'orange' }}>
                         {(totals.discount || 0).toFixed(2)}
                     </strong>
@@ -443,11 +434,11 @@ export const POSLeftPanel = () => {
                 </div>
 
                 <div style={{ fontSize: 11, color: '#aaa', marginTop: 5, textAlign: 'right' }}>
-                    Items: {totals.itemsCount}
+                    Items Count: {totals.itemsCount}
                 </div>
             </Card>
 
-            {/* Modals */}
+            {/* Management Modals */}
             {selectedCartItem && (
                 <>
                     <QuantityModal
@@ -455,9 +446,7 @@ export const POSLeftPanel = () => {
                         currentQuantity={selectedCartItem.quantity}
                         productName={selectedCartItem.product.name}
                         onOk={(qty) => {
-                            // Stock Validation
                             const normalizedQty = getNormalizedQuantity(qty, selectedCartItem.product, selectedCartItem.isSecondaryUnit);
-                            // Important: Calculate total normalized quantity of OTHER items of same product
                             const otherItems = cart.filter(item => item.product.id === selectedCartItem.product.id && item !== selectedCartItem);
                             const otherNormalizedQty = otherItems.reduce((acc, item) =>
                                 acc + getNormalizedQuantity(item.quantity, item.product, item.isSecondaryUnit), 0
@@ -465,8 +454,8 @@ export const POSLeftPanel = () => {
 
                             if (selectedCartItem.product.type !== 'SERVICE' && (normalizedQty + otherNormalizedQty) > selectedCartItem.product.stock) {
                                 Modal.warning({
-                                    title: 'Stock insuficiente',
-                                    content: `La cantidad solicitada excede el stock disponible (${selectedCartItem.product.stock}).`
+                                    title: 'Insufficient Stock',
+                                    content: `The requested quantity exceeds available stock (${selectedCartItem.product.stock}).`
                                 });
                                 return;
                             }
@@ -483,26 +472,23 @@ export const POSLeftPanel = () => {
                         currentPrice={selectedCartItem.price}
                         isSecondaryUnit={selectedCartItem.isSecondaryUnit}
                         onOk={(percent) => {
-                            // Validation 1: Max 30%
                             if (percent > 30) {
                                 Modal.error({
-                                    title: 'Descuento Excesivo',
-                                    content: 'El descuento máximo permitido es del 30%.'
+                                    title: 'Excessive Discount',
+                                    content: 'Maximum allowed discount is 30%.'
                                 });
                                 return;
                             }
 
-                            // Validation 2: Price below Cost
                             const currentPrice = selectedCartItem.price;
                             const discountAmount = currentPrice * (percent / 100);
                             const finalPrice = currentPrice - discountAmount;
-
                             const costInPrimary = calculateCostInPrimary(selectedCartItem.product, selectedCartItem.isSecondaryUnit);
 
                             if (finalPrice < costInPrimary) {
                                 Modal.error({
-                                    title: 'Precio por debajo del costo',
-                                    content: `El descuento del ${percent}% resulta en un precio (${finalPrice.toFixed(2)}) menor al costo del producto (${costInPrimary.toFixed(2)}). Operación no permitida.`
+                                    title: 'Price Below Cost',
+                                    content: `A ${percent}% discount results in a price (${finalPrice.toFixed(2)}) lower than product cost (${costInPrimary.toFixed(2)}). Operation not permitted.`
                                 });
                                 return;
                             }

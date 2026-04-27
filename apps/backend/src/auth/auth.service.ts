@@ -10,6 +10,12 @@ export class AuthService {
     private jwtService: JwtService,
   ) {}
 
+  /**
+   * Validates a user's credentials.
+   * @param username The username of the user.
+   * @param pass The plain text password.
+   * @returns The user record (excluding password) if valid, null otherwise.
+   */
   async validateUser(username: string, pass: string): Promise<any> {
     const user = await this.usersService.findByUsername(username);
     // Add safe check if user is not found or inactive
@@ -23,6 +29,11 @@ export class AuthService {
     return null;
   }
 
+  /**
+   * Generates a JWT token for a validated user.
+   * @param user The validated user object.
+   * @returns The access token and user basic info.
+   */
   async login(user: any) {
     const payload = {
       username: user.username,
@@ -42,3 +53,4 @@ export class AuthService {
     };
   }
 }
+

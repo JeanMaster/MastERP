@@ -229,7 +229,7 @@ export class ContextBuilderService {
     if (criticalStockProducts.length > 0) {
       alerts.push({
         type: 'stock',
-        message: `${criticalStockProducts.length} productos con stock crítico`,
+        message: `${criticalStockProducts.length} product(s) with critical stock levels`,
         severity: 'high',
       });
     }
@@ -237,7 +237,7 @@ export class ContextBuilderService {
     if (payableUSD > cashBalanceUSD + receivableUSD) {
       alerts.push({
         type: 'payment',
-        message: 'Cuentas por pagar exceden liquidez disponible (USD)',
+        message: 'Accounts payable exceed available liquidity (USD)',
         severity: 'high',
       });
     }
@@ -245,7 +245,7 @@ export class ContextBuilderService {
     if (trend === 'down') {
       alerts.push({
         type: 'sales',
-        message: 'Ventas en tendencia bajista',
+        message: 'Sales are on a downward trend',
         severity: 'medium',
       });
     }

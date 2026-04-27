@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Card, Table, Button, Space, Input, Tag, Tabs, Tooltip } from 'antd';
 import { SearchOutlined, ReloadOutlined, DollarOutlined } from '@ant-design/icons';
@@ -8,12 +7,18 @@ import type { Purchase } from '../../services/purchasesApi';
 import { formatVenezuelanNumber, formatDate } from '../../utils/formatters';
 import { RegisterPurchasePaymentModal } from './components/RegisterPurchasePaymentModal';
 
+/**
+ * AccountsPayablePage Component
+ * Management interface for supplier debts (Accounts Payable).
+ * Tracks invoice balances, due dates, and allows registering payments.
+ */
 export const AccountsPayablePage = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [paymentModalOpen, setPaymentModalOpen] = useState(false);
     const [selectedPurchase, setSelectedPurchase] = useState<Purchase | null>(null);
     const queryClient = useQueryClient();
 
+    // Fetch all purchases (as they contain payment status)
     const { data: purchases = [], isLoading } = useQuery({
         queryKey: ['purchases'],
         queryFn: purchasesApi.getAll,
@@ -24,30 +29,31 @@ export const AccountsPayablePage = () => {
         setPaymentModalOpen(true);
     };
 
-    // Filter logic
+    // Filtering logic
     const filteredPurchases = purchases.filter(p =>
     (p.supplier.comercialName.toLowerCase().includes(searchTerm.toLowerCase()) ||
         p.invoiceNumber?.toLowerCase().includes(searchTerm.toLowerCase()))
     );
 
+    // Grouping by status
     const pendingInvoices = filteredPurchases.filter(p => p.paymentStatus !== 'PAID');
     const historyInvoices = filteredPurchases.filter(p => p.paymentStatus === 'PAID' || p.paidAmount > 0);
 
     const columns = [
         {
-            title: 'Fecha',
+            title: 'Date',
             dataIndex: 'invoiceDate',
             key: 'invoiceDate',
             render: (date: string) => formatDate(date),
             width: 100,
         },
         {
-            title: 'Proveedor',
+            title: 'Supplier',
             dataIndex: ['supplier', 'comercialName'],
             key: 'supplier',
         },
         {
-            title: 'N° Factura',
+            title: 'Invoice #',
             dataIndex: 'invoiceNumber',
             key: 'invoiceNumber',
             render: (text: string) => text || <span style={{ color: '#ccc' }}>N/A</span>
@@ -63,7 +69,7 @@ export const AccountsPayablePage = () => {
             }
         },
         {
-            title: 'Pagado',
+            title: 'Paid',
             dataIndex: 'paidAmount',
             key: 'paidAmount',
             align: 'right' as const,
@@ -77,7 +83,7 @@ export const AccountsPayablePage = () => {
             }
         },
         {
-            title: 'Saldo',
+            title: 'Balance',
             dataIndex: 'balance',
             key: 'balance',
             align: 'right' as const,
@@ -91,34 +97,34 @@ export const AccountsPayablePage = () => {
             }
         },
         {
-            title: 'Vencimiento',
+            title: 'Due Date',
             dataIndex: 'dueDate',
             key: 'dueDate',
             render: (date: string) => date ? formatDate(date) : '-',
         },
         {
-            title: 'Estado',
+            title: 'Status',
             dataIndex: 'paymentStatus',
             key: 'paymentStatus',
             render: (status: string) => {
                 let color = 'default';
-                let text = 'Desconocido';
+                let text = 'Unknown';
                 switch (status) {
-                    case 'PAID': color = 'success'; text = 'Pagada'; break;
-                    case 'PARTIAL': color = 'warning'; text = 'Parcial'; break;
-                    case 'UNPAID': color = 'error'; text = 'Pendiente'; break;
+                    case 'PAID': color = 'success'; text = 'Paid'; break;
+                    case 'PARTIAL': color = 'warning'; text = 'Partial'; break;
+                    case 'UNPAID': color = 'error'; text = 'Pending'; break;
                 }
                 return <Tag color={color}>{text}</Tag>;
             }
         },
         {
-            title: 'Acciones',
+            title: 'Actions',
             key: 'actions',
             align: 'center' as const,
             render: (_: any, record: Purchase) => (
                 <Space>
                     {record.paymentStatus !== 'PAID' && (
-                        <Tooltip title="Registrar Pago">
+                        <Tooltip title="Register Payment">
                             <Button
                                 type="primary"
                                 size="small"
@@ -132,10 +138,10 @@ export const AccountsPayablePage = () => {
         }
     ];
 
-    const items = [
+    const tabItems = [
         {
             key: '1',
-            label: 'Facturas Pendientes',
+            label: 'Pending Invoices',
             children: (
                 <Table
                     columns={columns}
@@ -148,7 +154,7 @@ export const AccountsPayablePage = () => {
         },
         {
             key: '2',
-            label: 'Historial de Pagos',
+            label: 'Payment History',
             children: (
                 <Table
                     columns={columns}
@@ -164,10 +170,10 @@ export const AccountsPayablePage = () => {
     return (
         <div className="fade-in">
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
-                <h1>Cuentas por Pagar</h1>
+                <h1>Accounts Payable</h1>
                 <Space>
                     <Input
-                        placeholder="Buscar proveedor, factura..."
+                        placeholder="Search supplier, invoice..."
                         prefix={<SearchOutlined />}
                         value={searchTerm}
                         onChange={e => setSearchTerm(e.target.value)}
@@ -181,7 +187,7 @@ export const AccountsPayablePage = () => {
             </div>
 
             <Card styles={{ body: { padding: 10 } }}>
-                <Tabs defaultActiveKey="1" items={items} />
+                <Tabs defaultActiveKey="1" items={tabItems} />
             </Card>
 
             <RegisterPurchasePaymentModal

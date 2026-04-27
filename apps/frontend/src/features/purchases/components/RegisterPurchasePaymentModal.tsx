@@ -1,4 +1,3 @@
-
 import { Modal, Form, Input, InputNumber, Select, message, Divider, Alert, Button } from 'antd';
 import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { useState, useEffect } from 'react';
@@ -15,12 +14,18 @@ interface RegisterPurchasePaymentModalProps {
     onClose: () => void;
 }
 
+/**
+ * RegisterPurchasePaymentModal Component
+ * Handles the registration of payments to suppliers for specific purchase invoices.
+ * Supports multi-currency payments with automatic exchange rate conversion logic.
+ */
 export const RegisterPurchasePaymentModal = ({ open, purchase, onClose }: RegisterPurchasePaymentModalProps) => {
     const [form] = Form.useForm();
     const queryClient = useQueryClient();
     const [paymentCurrency, setPaymentCurrency] = useState<string>('');
     const [equivalentAmount, setEquivalentAmount] = useState<number>(0);
 
+    // Fetch data for payment context
     const { data: currencies = [] } = useQuery({
         queryKey: ['currencies'],
         queryFn: currenciesApi.getAll,
@@ -39,6 +44,7 @@ export const RegisterPurchasePaymentModal = ({ open, purchase, onClose }: Regist
         enabled: open
     });
 
+    // Watchers for reactive UI feedback
     const watchBankId = Form.useWatch('bankAccountId', form);
     const watchAmount = Form.useWatch('paymentAmount', form);
     const watchRate = Form.useWatch('exchangeRate', form);
@@ -50,9 +56,8 @@ export const RegisterPurchasePaymentModal = ({ open, purchase, onClose }: Regist
     useEffect(() => {
         if (open && purchase) {
             form.resetFields();
-            // Default payment currency to match invoice currency initially
             setPaymentCurrency(purchase.currencyCode);
-            setEquivalentAmount(purchase.balance); // Initial assumption
+            setEquivalentAmount(purchase.balance);
             form.setFieldsValue({
                 paymentAmount: purchase.balance,
                 exchangeRate: purchase.exchangeRate || 1
@@ -60,11 +65,12 @@ export const RegisterPurchasePaymentModal = ({ open, purchase, onClose }: Regist
         }
     }, [open, purchase, form]);
 
-    // Update exchange rate and auto-fill paymentAmount when currency changes
+    /**
+     * Updates exchange rate and suggests payment amount when currency changes.
+     */
     useEffect(() => {
         if (!purchase || !paymentCurrency || currencies.length === 0) return;
 
-        // 1. Identify Currencies and Primary Currency
         const targetCurrency = currencies.find(c => c.code === paymentCurrency);
         const invoiceCurrencyObj = currencies.find(c => c.code === purchase.currencyCode);
         const primaryCurrency = currencies.find(c => c.isPrimary);
@@ -75,19 +81,13 @@ export const RegisterPurchasePaymentModal = ({ open, purchase, onClose }: Regist
         const targetRate = Number(targetCurrency?.exchangeRate || 1);
         const invoiceRate = Number(invoiceCurrencyObj?.exchangeRate || purchase.exchangeRate || 1);
 
-        // Always use Target/Primary rate as the reference for the form
-        // (Unless it's the primary itself, then it's 1)
         const newRate = targetRate;
         let newAmount = purchase.balance;
 
-        // If currencies are different, calculate the suggested amount
+        // Suggested amount formula: (Amount_Invoice * Rate_Invoice) / Rate_Target (relative to Primary)
         if (paymentCurrency !== purchase.currencyCode) {
-            // Formula: Amount_Target = (Amount_Invoice * Rate_Invoice) / Rate_Target
-            // Both rates are relative to Primary.
-            // If invoice is Primary, its rate is 1. If payment is Primary, its rate is 1.
             const invRateForCalc = purchase.currencyCode === primaryCode ? 1 : invoiceRate;
             const payRateForCalc = paymentCurrency === primaryCode ? 1 : targetRate;
-
             newAmount = payRateForCalc > 0 ? (purchase.balance * invRateForCalc) / payRateForCalc : 0;
         }
 
@@ -103,33 +103,32 @@ export const RegisterPurchasePaymentModal = ({ open, purchase, onClose }: Regist
         const primaryCurrency = currencies.find(c => c.isPrimary);
         const primaryCode = primaryCurrency?.code || 'VES';
 
-        // Recalculate equivalent payment amount
         const invoiceCurrencyObj = currencies.find(c => c.code === purchase.currencyCode);
         const invoiceRate = Number(invoiceCurrencyObj?.exchangeRate || purchase.exchangeRate || 1);
         const invRateForCalc = purchase.currencyCode === primaryCode ? 1 : invoiceRate;
 
-        // The 'rate' is always Payment/Primary.
-        // Amount_Pay = (Balance_Inv * Rate_Inv) / rate
+        // Recalculate amount based on custom rate: (Balance_Inv * Rate_Inv) / rate
         const newAmount = rate > 0 ? (purchase.balance * invRateForCalc) / rate : 0;
-
         form.setFieldsValue({ paymentAmount: newAmount });
         setEquivalentAmount(purchase.balance);
     };
 
-
     const registerPaymentMutation = useMutation({
         mutationFn: purchasesApi.registerPayment,
         onSuccess: () => {
-            message.success('Pago registrado exitosamente');
+            message.success('Payment registered successfully');
             queryClient.invalidateQueries({ queryKey: ['purchases'] });
             onClose();
             form.resetFields();
         },
         onError: (error: any) => {
-            message.error(error.response?.data?.message || 'Error al registrar pago');
+            message.error(error.response?.data?.message || 'Error registering payment');
         },
     });
 
+    /**
+     * Calculates the value of a payment amount in the invoice's original currency.
+     */
     const calculateEquivalent = (payAmount: number, rate: number, payCurr: string, invCurr: string): number => {
         if (payCurr === invCurr) return payAmount;
         if (!rate || currencies.length === 0) return 0;
@@ -158,16 +157,14 @@ export const RegisterPurchasePaymentModal = ({ open, purchase, onClose }: Regist
         };
         window.addEventListener('keydown', handleKeyDown, true);
         return () => window.removeEventListener('keydown', handleKeyDown, true);
-    }, [open]);
+    }, [open, form]);
 
     const handleSubmit = async () => {
         if (!purchase) return;
         try {
             const values = await form.validateFields();
 
-            // If paying in same currency, strict equality
             let finalAmountInPurchaseCurrency = values.paymentAmount;
-
             if (paymentCurrency !== purchase?.currencyCode) {
                 finalAmountInPurchaseCurrency = calculateEquivalent(
                     values.paymentAmount,
@@ -177,12 +174,12 @@ export const RegisterPurchasePaymentModal = ({ open, purchase, onClose }: Regist
                 );
 
                 if (finalAmountInPurchaseCurrency === 0) {
-                    message.error('Error calculando la conversión. Verifique la tasa.');
+                    message.error('Error calculating conversion. Please check the exchange rate.');
                     return;
                 }
             }
 
-            // Calculate bank deduction for validation
+            // Validate bank balance
             let amountToDeductFromBank = values.paymentAmount;
             if (values.bankAccountId) {
                 const bank = banks.find(b => b.id === values.bankAccountId);
@@ -190,19 +187,15 @@ export const RegisterPurchasePaymentModal = ({ open, purchase, onClose }: Regist
                     const primaryCurrency = currencies.find(c => c.isPrimary);
                     const primaryCode = primaryCurrency?.code || 'VES';
 
-                    // Standard conversion rates relative to Primary
                     const payRateForCalc = paymentCurrency === primaryCode ? 1 : (values.exchangeRate || 1);
                     const bankRateForCalc = bank.currency.code === primaryCode ? 1 : Number(bank.currency.exchangeRate || 1);
 
-                    // Multi-currency rule: (Amount_Pay * Rate_Pay) / Rate_Bank
+                    // Cross-currency deduction: (Amount_Pay * Rate_Pay) / Rate_Bank
                     amountToDeductFromBank = (values.paymentAmount * payRateForCalc) / bankRateForCalc;
-                } else if (bank && paymentCurrency === bank.currency.code) {
-                    // DIRECT DEDUCTION RULE: 1:1 if currencies match
-                    amountToDeductFromBank = values.paymentAmount;
                 }
 
                 if (bank && bank.balance < amountToDeductFromBank) {
-                    message.error(`Saldo insuficiente en ${bank.bankName}. Disponible: ${formatVenezuelanPrice(bank.balance, bank.currency.symbol)}`);
+                    message.error(`Insufficient funds in ${bank.bankName}. Available: ${formatVenezuelanPrice(bank.balance, bank.currency.symbol)}`);
                     return;
                 }
             }
@@ -223,11 +216,9 @@ export const RegisterPurchasePaymentModal = ({ open, purchase, onClose }: Regist
         }
     };
 
-    // Triggered when Amount or Rate changes
     const updateEquivalent = () => {
         const amount = form.getFieldValue('paymentAmount') || 0;
         const rate = form.getFieldValue('exchangeRate') || 0;
-
         if (purchase) {
             const equiv = calculateEquivalent(amount, rate, paymentCurrency, purchase.currencyCode);
             setEquivalentAmount(equiv);
@@ -238,19 +229,19 @@ export const RegisterPurchasePaymentModal = ({ open, purchase, onClose }: Regist
 
     return (
         <Modal
-            title="Registrar Pago a Proveedor"
+            title="Register Supplier Payment"
             open={open}
             onOk={handleSubmit}
             onCancel={onClose}
             confirmLoading={registerPaymentMutation.isPending}
-            okText="Registrar Pago (F9)"
-            cancelText="Cancelar"
+            okText="Register Payment (F9)"
+            cancelText="Cancel"
         >
             <div style={{ marginBottom: 16 }}>
-                <p><strong>Proveedor:</strong> {purchase.supplier.comercialName}</p>
-                <p><strong>Factura:</strong> {purchase.invoiceNumber || 'N/A'}</p>
+                <p><strong>Supplier:</strong> {purchase.supplier.comercialName}</p>
+                <p><strong>Invoice:</strong> {purchase.invoiceNumber || 'N/A'}</p>
                 <p>
-                    <strong>Saldo Pendiente:</strong>
+                    <strong>Outstanding Balance:</strong>
                     <span style={{ color: 'red', marginLeft: 8, fontSize: '16px', fontWeight: 'bold' }}>
                         {currencies.find(c => c.code === purchase.currencyCode)?.symbol || ''} {formatVenezuelanNumber(purchase.balance)}
                     </span>
@@ -271,10 +262,8 @@ export const RegisterPurchasePaymentModal = ({ open, purchase, onClose }: Regist
                         if (paymentCurrency !== purchase.currencyCode) {
                             const invoiceCurrencyObj = currencies.find(c => c.code === purchase.currencyCode);
                             const invoiceRate = Number(invoiceCurrencyObj?.exchangeRate || purchase.exchangeRate || 1);
-                            
                             const invRateForCalc = purchase.currencyCode === primaryCode ? 1 : invoiceRate;
                             const payRateForCalc = paymentCurrency === primaryCode ? 1 : (form.getFieldValue('exchangeRate') || 1);
-
                             amount = (purchase.balance * invRateForCalc) / payRateForCalc;
                         }
 
@@ -282,12 +271,12 @@ export const RegisterPurchasePaymentModal = ({ open, purchase, onClose }: Regist
                         updateEquivalent();
                     }}
                 >
-                    Pagar Total: {purchase.currencyCode === primaryCode ? 'Bs.' : (currencies.find(c => c.code === purchase.currencyCode)?.symbol || '')} {formatVenezuelanNumber(purchase.balance)}
+                    Pay Full: {purchase.currencyCode === primaryCode ? 'Bs.' : (currencies.find(c => c.code === purchase.currencyCode)?.symbol || '')} {formatVenezuelanNumber(purchase.balance)}
                 </Button>
             </div>
 
             <Form form={form} layout="vertical">
-                <Form.Item label="Moneda de Pago">
+                <Form.Item label="Payment Currency">
                     <Select
                         value={paymentCurrency}
                         onChange={setPaymentCurrency}
@@ -300,10 +289,10 @@ export const RegisterPurchasePaymentModal = ({ open, purchase, onClose }: Regist
 
                 {paymentCurrency !== (currencies.find(c => c.isPrimary)?.code || 'VES') && (
                     <Form.Item
-                        label={`Tasa Pactada (BS / ${paymentCurrency})`}
+                        label={`Agreed Rate (BS / ${paymentCurrency})`}
                         name="exchangeRate"
-                        rules={[{ required: true, message: 'Requerido' }]}
-                        help={`Valor de 1 ${paymentCurrency} acordado para este pago`}
+                        rules={[{ required: true, message: 'Required' }]}
+                        help={`Value of 1 ${paymentCurrency} agreed for this payment`}
                     >
                         <InputNumber
                             style={{ width: '100%' }}
@@ -314,11 +303,11 @@ export const RegisterPurchasePaymentModal = ({ open, purchase, onClose }: Regist
                 )}
 
                 <Form.Item
-                    label={`Monto a Pagar (${paymentCurrency})`}
+                    label={`Payment Amount (${paymentCurrency})`}
                     name="paymentAmount"
                     rules={[
-                        { required: true, message: 'Requerido' },
-                        { type: 'number', min: 0.01, message: 'Debe ser mayor a 0' },
+                        { required: true, message: 'Required' },
+                        { type: 'number', min: 0.01, message: 'Must be greater than 0' },
                     ]}
                 >
                     <InputNumber
@@ -333,7 +322,7 @@ export const RegisterPurchasePaymentModal = ({ open, purchase, onClose }: Regist
                     <Alert
                         message={
                             <div style={{ display: 'flex', flexDirection: 'column' }}>
-                                <span>Equivalente en factura:</span>
+                                <span>Invoice equivalent:</span>
                                 <span style={{ fontWeight: 'bold', fontSize: '16px' }}>
                                     {currencies.find(c => c.code === purchase.currencyCode)?.symbol || ''} {formatVenezuelanNumber(equivalentAmount)}
                                 </span>
@@ -346,17 +335,17 @@ export const RegisterPurchasePaymentModal = ({ open, purchase, onClose }: Regist
                 )}
 
                 <Form.Item
-                    label="Método de Pago"
+                    label="Payment Method"
                     name="paymentMethod"
-                    rules={[{ required: true, message: 'Requerido' }]}
+                    rules={[{ required: true, message: 'Required' }]}
                     initialValue="TRANSFER"
                 >
                     <Select
                         onChange={() => form.setFieldValue('bankAccountId', undefined)}
                         options={[
-                            { value: 'CASH', label: 'Efectivo' },
-                            { value: 'TRANSFER', label: 'Transferencia' },
-                            { value: 'PAGO_MOVIL', label: 'Pago Móvil' },
+                            { value: 'CASH', label: 'Cash' },
+                            { value: 'TRANSFER', label: 'Transfer' },
+                            { value: 'PAGO_MOVIL', label: 'Mobile Payment (Pago Móvil)' },
                             { value: 'ZELLE', label: 'Zelle' },
                             { value: 'USDT', label: 'USDT (Binance)' },
                         ]}
@@ -365,15 +354,15 @@ export const RegisterPurchasePaymentModal = ({ open, purchase, onClose }: Regist
 
                 {['TRANSFER', 'PAGO_MOVIL', 'ZELLE', 'USDT'].includes(watchPaymentMethod) && (
                     <Form.Item
-                        label="Cuenta Bancaria / Tesorería"
+                        label="Bank Account / Treasury"
                         name="bankAccountId"
-                        rules={[{ required: settings?.requireBankAccountForPayments !== false, message: 'Seleccione una cuenta' }]}
+                        rules={[{ required: settings?.requireBankAccountForPayments !== false, message: 'Select an account' }]}
                     >
                         <Select
-                            placeholder="Seleccione cuenta"
+                            placeholder="Select account"
                             options={banks.map((b: any) => ({
                                 value: b.id,
-                                label: `${b.bankName} (${b.currency.code}) - Saldo: ${formatVenezuelanPrice(b.balance, b.currency.symbol)}`
+                                label: `${b.bankName} (${b.currency.code}) - Balance: ${formatVenezuelanPrice(b.balance, b.currency.symbol)}`
                             }))}
                         />
                     </Form.Item>
@@ -385,19 +374,13 @@ export const RegisterPurchasePaymentModal = ({ open, purchase, onClose }: Regist
                         type={(() => {
                             const bank = banks.find((b: any) => b.id === watchBankId);
                             if (!bank) return 'info';
-
                             let deduction = watchAmount || 0;
-                            const isDirectDeduction = bank.currency.code === paymentCurrency;
-
-                            if (!isDirectDeduction) {
+                            if (bank.currency.code !== paymentCurrency) {
                                 const primaryCurrency = currencies.find(c => c.isPrimary);
                                 const primaryCode = primaryCurrency?.code || 'VES';
                                 const bankRate = Number(bank.currency.exchangeRate || 1); 
-
                                 const payRateForCalc = paymentCurrency === primaryCode ? 1 : (watchRate || 1);
                                 const bankRateForCalc = bank.currency.code === primaryCode ? 1 : bankRate;
-
-                                // Deduct = (Amount * Rate_Pay) / Rate_Bank
                                 deduction = (deduction * payRateForCalc) / bankRateForCalc;
                             }
                             return bank.balance < deduction ? 'error' : 'success';
@@ -407,23 +390,19 @@ export const RegisterPurchasePaymentModal = ({ open, purchase, onClose }: Regist
                             if (!bank) return '';
                             let deduction = watchAmount || 0;
                             let currencyMsg = '';
-                            const isDirectDeduction = bank.currency.code === paymentCurrency;
-
-                            if (!isDirectDeduction) {
+                            if (bank.currency.code !== paymentCurrency) {
                                 const primaryCurrency = currencies.find(c => c.isPrimary);
                                 const primaryCode = primaryCurrency?.code || 'VES';
                                 const bankRate = Number(bank.currency.exchangeRate || 1);
-
                                 const payRateForCalc = paymentCurrency === primaryCode ? 1 : (watchRate || 1);
                                 const bankRateForCalc = bank.currency.code === primaryCode ? 1 : bankRate;
-
                                 deduction = (deduction * payRateForCalc) / bankRateForCalc;
-                                currencyMsg = ` (Conv. a ${bank.currency.code})`;
+                                currencyMsg = ` (Conv. to ${bank.currency.code})`;
                             }
                             return (
                                 <div>
-                                    <div>Saldo en cuenta: <strong>{formatVenezuelanPrice(bank.balance, bank.currency.symbol)}</strong></div>
-                                    <div>A descontar: <strong>{formatVenezuelanPrice(deduction, bank.currency.symbol)}</strong>{currencyMsg}</div>
+                                    <div>Account Balance: <strong>{formatVenezuelanPrice(bank.balance, bank.currency.symbol)}</strong></div>
+                                    <div>To Deduct: <strong>{formatVenezuelanPrice(deduction, bank.currency.symbol)}</strong>{currencyMsg}</div>
                                 </div>
                             );
                         })()}
@@ -431,11 +410,11 @@ export const RegisterPurchasePaymentModal = ({ open, purchase, onClose }: Regist
                     />
                 )}
 
-                <Form.Item label="Referencia / Comprobante" name="reference">
-                    <Input placeholder="Ej: 123456" />
+                <Form.Item label="Reference / Voucher" name="reference">
+                    <Input placeholder="e.g., 123456" />
                 </Form.Item>
 
-                <Form.Item label="Notas" name="notes">
+                <Form.Item label="Notes" name="notes">
                     <Input.TextArea rows={2} />
                 </Form.Item>
             </Form>

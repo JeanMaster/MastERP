@@ -10,6 +10,10 @@ interface CurrencyFormModalProps {
     onClose: () => void;
 }
 
+/**
+ * CurrencyFormModal Component
+ * Modal to create or edit a currency. Handles primary currency logic and exchange rates.
+ */
 export const CurrencyFormModal = ({ open, currency, onClose }: CurrencyFormModalProps) => {
     const [form] = Form.useForm();
     const queryClient = useQueryClient();
@@ -18,13 +22,13 @@ export const CurrencyFormModal = ({ open, currency, onClose }: CurrencyFormModal
     const createMutation = useMutation({
         mutationFn: currenciesApi.create,
         onSuccess: () => {
-            message.success('Moneda creada exitosamente');
+            message.success('Currency created successfully');
             queryClient.invalidateQueries({ queryKey: ['currencies'] });
             onClose();
             form.resetFields();
         },
         onError: (error: any) => {
-            message.error(error.response?.data?.message || 'Error al crear moneda');
+            message.error(error.response?.data?.message || 'Error creating currency');
         },
     });
 
@@ -33,13 +37,13 @@ export const CurrencyFormModal = ({ open, currency, onClose }: CurrencyFormModal
         mutationFn: ({ id, dto }: { id: string; dto: UpdateCurrencyDto }) =>
             currenciesApi.update(id, dto),
         onSuccess: () => {
-            message.success('Moneda actualizada exitosamente');
+            message.success('Currency updated successfully');
             queryClient.invalidateQueries({ queryKey: ['currencies'] });
             onClose();
             form.resetFields();
         },
         onError: (error: any) => {
-            message.error(error.response?.data?.message || 'Error al actualizar moneda');
+            message.error(error.response?.data?.message || 'Error updating currency');
         },
     });
 
@@ -103,53 +107,53 @@ export const CurrencyFormModal = ({ open, currency, onClose }: CurrencyFormModal
 
     return (
         <Modal
-            title={currency ? 'Editar Moneda' : 'Nueva Moneda'}
+            title={currency ? 'Edit Currency' : 'New Currency'}
             open={open}
             onOk={handleSubmit}
             onCancel={onClose}
             confirmLoading={createMutation.isPending || updateMutation.isPending}
-            okText={currency ? 'Actualizar (F9)' : 'Crear (F9)'}
-            cancelText="Cancelar"
+            okText={currency ? 'Update (F9)' : 'Create (F9)'}
+            cancelText="Cancel"
             width={600}
         >
             <Form form={form} layout="vertical" style={{ marginTop: 20 }}>
                 <Form.Item
-                    label="Nombre"
+                    label="Name"
                     name="name"
-                    rules={[{ required: true, message: 'El nombre es requerido' }]}
+                    rules={[{ required: true, message: 'Name is required' }]}
                 >
-                    <Input placeholder="Ej: Dólar Americano, Bolívar" />
+                    <Input placeholder="e.g., US Dollar, Euro, Bolívar" />
                 </Form.Item>
 
                 <Form.Item
-                    label="Código (ISO 4217)"
+                    label="Code (ISO 4217)"
                     name="code"
-                    rules={[{ required: true, message: 'El código es requerido' }]}
+                    rules={[{ required: true, message: 'Code is required' }]}
                 >
-                    <Input placeholder="Ej: USD, VES, EUR" maxLength={3} style={{ textTransform: 'uppercase' }} />
+                    <Input placeholder="e.g., USD, VES, EUR" maxLength={3} style={{ textTransform: 'uppercase' }} />
                 </Form.Item>
 
                 <Form.Item
-                    label="Símbolo"
+                    label="Symbol"
                     name="symbol"
-                    rules={[{ required: true, message: 'El símbolo es requerido' }]}
+                    rules={[{ required: true, message: 'Symbol is required' }]}
                 >
-                    <Input placeholder="Ej: $, Bs, €" maxLength={5} />
+                    <Input placeholder="e.g., $, Bs, €" maxLength={5} />
                 </Form.Item>
 
                 <Form.Item name="isPrimary" valuePropName="checked">
                     <Checkbox>
-                        <strong>Es la moneda principal</strong>
+                        <strong>Is Primary Currency</strong>
                         <div style={{ fontSize: 12, color: '#888' }}>
-                            La moneda principal es la base para las tasas de cambio
+                            The primary currency serves as the base for all exchange rates
                         </div>
                     </Checkbox>
                 </Form.Item>
 
                 {isPrimary && (
                     <Alert
-                        message="Esta moneda será marcada como principal"
-                        description="Si ya existe otra moneda principal, será desmarcada automáticamente."
+                        message="This currency will be marked as primary"
+                        description="If another primary currency exists, it will be automatically unmasked."
                         type="info"
                         showIcon
                         style={{ marginBottom: 16 }}
@@ -160,7 +164,7 @@ export const CurrencyFormModal = ({ open, currency, onClose }: CurrencyFormModal
                     <>
                         <Form.Item name="isAutomatic" valuePropName="checked">
                             <Checkbox>
-                                <strong>Actualización Automática</strong>
+                                <strong>Automatic Update</strong>
                             </Checkbox>
                         </Form.Item>
 
@@ -171,32 +175,33 @@ export const CurrencyFormModal = ({ open, currency, onClose }: CurrencyFormModal
                             {({ getFieldValue }) =>
                                 getFieldValue('isAutomatic') ? (
                                     <Form.Item
-                                        label="Fuente de Datos"
+                                        label="Data Source"
                                         name="apiSymbol"
-                                        rules={[{ required: true, message: 'Seleccione una fuente' }]}
+                                        rules={[{ required: true, message: 'Please select a source' }]}
                                     >
-                                        <Select placeholder="Seleccione fuente externa">
+                                        <Select placeholder="Select external source">
                                             <Select.Option value="binance_p2p">Binance P2P (USDT)</Select.Option>
-                                            <Select.Option value="bcv">Banco Central de Venezuela (BCV)</Select.Option>
+                                            <Select.Option value="bcv">Central Bank of Venezuela (BCV)</Select.Option>
                                             <Select.Option value="enparalelo">EnParaleloVzla</Select.Option>
                                         </Select>
                                     </Form.Item>
                                 ) : (
                                     <Form.Item
-                                        label="Tasa de Cambio"
+                                        label="Exchange Rate"
                                         name="exchangeRate"
                                         rules={[
-                                            { required: !isPrimary, message: 'La tasa de cambio es requerida para monedas secundarias' },
-                                            { type: 'number', min: 0.0001, message: 'La tasa debe ser mayor a 0' },
+                                            { required: !isPrimary, message: 'Exchange rate is required for secondary currencies' },
+                                            { type: 'number', min: 0.0001, message: 'Rate must be greater than 0' },
                                         ]}
-                                        help="¿Cuántas unidades de la moneda principal equivalen a 1 unidad de esta moneda? Ej: 1 USD = 100 Bs"
+                                        help="How many units of the primary currency equal 1 unit of this currency? e.g., 1 USD = 100 Bs"
                                     >
                                         <InputNumber
-                                            placeholder="Ej: 100.00"
+                                            placeholder="e.g., 100.00"
                                             style={{ width: '100%' }}
                                             precision={4}
                                             min={0.0001}
                                             onKeyDown={(e) => {
+                                                // Support both dot and comma for decimals
                                                 if (e.key === ',') {
                                                     e.preventDefault();
                                                     const input = e.target as HTMLInputElement;

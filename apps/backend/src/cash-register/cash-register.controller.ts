@@ -4,12 +4,13 @@ import {
   Post,
   Body,
   Param,
-  Query,
   Patch,
-  UseGuards,
   Delete,
+  Query,
+  UseGuards,
+  Request,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiQuery } from '@nestjs/swagger';
 import { CashRegisterService } from './cash-register.service';
 import { OpenSessionDto } from './dto/open-session.dto';
 import { CloseSessionDto } from './dto/close-session.dto';
@@ -22,122 +23,38 @@ import { AuthGuard } from '@nestjs/passport';
 export class CashRegisterController {
   constructor(private readonly cashRegisterService: CashRegisterService) {}
 
-  @Get('registers/main')
-  @ApiOperation({ summary: 'Obtener o crear caja principal' })
+  /**
+   * Retrieves the main cash register.
+   */
+  @Get('main')
+  @ApiOperation({ summary: 'Get the main cash register' })
   getMainRegister() {
     return this.cashRegisterService.getOrCreateMainRegister();
   }
 
-  @Post('sessions/open')
-  @ApiOperation({ summary: 'Abrir sesión de caja' })
-  @ApiResponse({ status: 201, description: 'Sesión abierta exitosamente' })
-  @ApiResponse({ status: 400, description: 'Ya existe una sesión abierta' })
-  openSession(@Body() openSessionDto: OpenSessionDto) {
-    return this.cashRegisterService.openSession(openSessionDto);
-  }
-
-  @Post('sessions/:id/close')
-  @ApiOperation({ summary: 'Cerrar sesión de caja' })
-  @ApiResponse({ status: 200, description: 'Sesión cerrada exitosamente' })
-  closeSession(
-    @Param('id') id: string,
-    @Body() closeSessionDto: CloseSessionDto,
-  ) {
-    return this.cashRegisterService.closeSession(id, closeSessionDto);
-  }
-
-  @Get('sessions/active')
-  @ApiOperation({ summary: 'Obtener sesión activa' })
-  getActiveSession(
-    @Query('registerId') registerId?: string,
-    @Query('cashierId') cashierId?: string,
-  ) {
-    return this.cashRegisterService.getActiveSession(registerId, cashierId);
-  }
-
-  @Get('sessions/:id')
-  @ApiOperation({ summary: 'Obtener detalles de sesión' })
-  getSession(@Param('id') id: string) {
-    return this.cashRegisterService.getSession(id);
-  }
-
-  @Get('sessions')
-  @ApiOperation({ summary: 'Listar sesiones' })
-  listSessions(
-    @Query('registerId') registerId?: string,
-    @Query('status') status?: string,
-    @Query('startDate') startDate?: string,
-    @Query('endDate') endDate?: string,
-  ) {
-    const filters: any = {};
-    if (registerId) filters.registerId = registerId;
-    if (status) filters.status = status;
-    if (startDate) filters.startDate = startDate;
-    if (endDate) filters.endDate = endDate;
-
-    return this.cashRegisterService.listSessions(filters);
-  }
-
-  @Post('movements')
-  @ApiOperation({ summary: 'Crear movimiento de caja' })
-  @ApiResponse({ status: 201, description: 'Movimiento creado' })
-  @ApiResponse({ status: 400, description: 'Sesión cerrada o no encontrada' })
-  createMovement(@Body() createMovementDto: CreateMovementDto) {
-    return this.cashRegisterService.createMovement(createMovementDto);
-  }
-
-  @Post('sessions/:id/transfer-to-treasury')
-  @ApiOperation({
-    summary: 'Trasladar fondos de Caja a Tesorería (Banco/Bóveda)',
-  })
-  transferToTreasury(@Param('id') id: string, @Body() dto: any) {
-    return this.cashRegisterService.transferToTreasury(
-      id,
-      dto.bankAccountId,
-      dto.amount,
-      dto.description,
-      dto.performedBy || 'Sistema',
-    );
-  }
-
-  @Post('sessions/:id/verify')
-  @ApiOperation({ summary: 'Verificar sesión (Arqueo inicial)' })
-  async verifySession(@Param('id') id: string, @Body() verifyDto: any) {
-    return this.cashRegisterService.verifySession(id, verifyDto, 'Cajero');
-  }
-
-  @Post('sessions/:id/request-close')
-  @ApiOperation({ summary: 'Solicitar cierre de caja (Arqueo de cierre)' })
-  requestClose(@Param('id') id: string, @Body() closeDto: CloseSessionDto) {
-    return this.cashRegisterService.requestCloseSession(id, closeDto);
-  }
-
-  @Post('sessions/:id/approve-close')
-  @ApiOperation({ summary: 'Aprobar cierre de caja (Administrador)' })
-  approveClose(@Param('id') id: string, @Body() body: { adminUser: string }) {
-    return this.cashRegisterService.approveCloseSession(id, body.adminUser);
-  }
-
-  @Get('denominations')
-  @ApiOperation({ summary: 'Obtener denominaciones de moneda' })
-  getDenominations() {
-    return this.cashRegisterService.getDenominations();
-  }
-
+  /**
+   * Retrieves all cash registers.
+   */
   @Get('registers')
-  @ApiOperation({ summary: 'Listar todas las cajas activas' })
-  listRegisters() {
+  @ApiOperation({ summary: 'List all cash registers' })
+  findAllRegisters() {
     return this.cashRegisterService.listRegisters();
   }
 
+  /**
+   * Creates a new cash register.
+   */
   @Post('registers')
-  @ApiOperation({ summary: 'Crear una nueva caja' })
+  @ApiOperation({ summary: 'Create a new cash register' })
   createRegister(@Body() data: { name: string; location?: string }) {
     return this.cashRegisterService.createRegister(data);
   }
 
+  /**
+   * Updates a cash register.
+   */
   @Patch('registers/:id')
-  @ApiOperation({ summary: 'Actualizar una caja' })
+  @ApiOperation({ summary: 'Update a cash register' })
   updateRegister(
     @Param('id') id: string,
     @Body() data: { name?: string; location?: string; isActive?: boolean },
@@ -145,9 +62,151 @@ export class CashRegisterController {
     return this.cashRegisterService.updateRegister(id, data);
   }
 
+  /**
+   * Deletes a cash register.
+   */
   @Delete('registers/:id')
-  @ApiOperation({ summary: 'Eliminar una caja' })
+  @ApiOperation({ summary: 'Delete a cash register' })
   deleteRegister(@Param('id') id: string) {
     return this.cashRegisterService.deleteRegister(id);
   }
+
+  /**
+   * Retrieves active denominations.
+   */
+  @Get('denominations')
+  @ApiOperation({ summary: 'Get active currency denominations' })
+  getDenominations() {
+    return this.cashRegisterService.getDenominations();
+  }
+
+  /**
+   * Retrieves the active session.
+   */
+  @Get('sessions/active')
+  @ApiOperation({ summary: 'Get the active cash session' })
+  @ApiQuery({ name: 'registerId', required: false })
+  getActiveSession(
+    @Query('registerId') registerId?: string,
+    @Request() req?: any,
+  ) {
+    return this.cashRegisterService.getActiveSession(
+      registerId,
+      req.user.role !== 'ADMIN' ? req.user.id : undefined,
+    );
+  }
+
+  /**
+   * Opens a new cash session.
+   */
+  @Post('sessions/open')
+  @ApiOperation({ summary: 'Open a new cash session' })
+  openSession(@Body() openSessionDto: OpenSessionDto, @Request() req) {
+    return this.cashRegisterService.openSession({
+      ...openSessionDto,
+      openedBy: req.user.username,
+      cashierId: req.user.id,
+    });
+  }
+
+  /**
+   * Verifies an open session.
+   */
+  @Post('sessions/:id/verify')
+  @ApiOperation({ summary: 'Verify an open session (Opening audit)' })
+  verifySession(@Param('id') id: string, @Body() verifyDto: any, @Request() req) {
+    return this.cashRegisterService.verifySession(id, verifyDto, req.user.username);
+  }
+
+  /**
+   * Directly closes a cash session.
+   */
+  @Post('sessions/:id/close')
+  @ApiOperation({ summary: 'Directly close a cash session' })
+  closeSession(@Param('id') id: string, @Body() closeDto: CloseSessionDto) {
+    return this.cashRegisterService.closeSession(id, closeDto);
+  }
+
+  /**
+   * Requests a session closure.
+   */
+  @Post('sessions/:id/request-close')
+
+  @ApiOperation({ summary: 'Request a session closure' })
+  requestClose(@Param('id') id: string, @Body() closeDto: CloseSessionDto) {
+    return this.cashRegisterService.requestCloseSession(id, closeDto);
+  }
+
+  /**
+   * Approves a session closure.
+   */
+  @Post('sessions/:id/approve-close')
+  @ApiOperation({ summary: 'Approve a session closure (Admin)' })
+  approveClose(@Param('id') id: string, @Request() req) {
+    return this.cashRegisterService.approveCloseSession(id, req.user.username);
+  }
+
+  /**
+   * Registers a manual cash movement.
+   */
+  @Post('movement')
+  @ApiOperation({ summary: 'Record a manual cash movement' })
+  createMovement(@Body() createMovementDto: CreateMovementDto, @Request() req) {
+    return this.cashRegisterService.createMovement({
+      ...createMovementDto,
+      performedBy: req.user.username,
+    });
+  }
+
+  /**
+   * Transfers funds to treasury.
+   */
+  @Post('sessions/:id/transfer-treasury')
+  @ApiOperation({ summary: 'Transfer funds from cash to treasury' })
+  transferToTreasury(
+    @Param('id') id: string,
+    @Body() dto: { bankAccountId: string; amount: number; description: string },
+    @Request() req,
+  ) {
+    return this.cashRegisterService.transferToTreasury(
+      id,
+      dto.bankAccountId,
+      dto.amount,
+      dto.description,
+      req.user.username,
+    );
+  }
+
+  /**
+   * Lists all sessions.
+   */
+  @Get('sessions')
+  @ApiOperation({ summary: 'List all cash sessions' })
+  @ApiQuery({ name: 'status', required: false })
+  @ApiQuery({ name: 'registerId', required: false })
+  @ApiQuery({ name: 'startDate', required: false })
+  @ApiQuery({ name: 'endDate', required: false })
+  listSessions(
+    @Query('status') status?: string,
+    @Query('registerId') registerId?: string,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+  ) {
+    return this.cashRegisterService.listSessions({
+      status,
+      registerId,
+      startDate,
+      endDate,
+    });
+  }
+
+  /**
+   * Retrieves a single session by ID.
+   */
+  @Get('sessions/:id')
+  @ApiOperation({ summary: 'Get a session by ID' })
+  getSession(@Param('id') id: string) {
+    return this.cashRegisterService.getSession(id);
+  }
+
 }

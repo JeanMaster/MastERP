@@ -5,7 +5,6 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreatePaymentDto } from './dto/create-payment.dto';
-import { Prisma } from '@prisma/client';
 import { CashRegisterService } from '../cash-register/cash-register.service';
 import { MovementType } from '../cash-register/dto/create-movement.dto';
 
@@ -16,79 +15,77 @@ export class PaymentsService {
     private cashRegisterService: CashRegisterService,
   ) {}
 
+  /**
+   * Records a new payment for an invoice.
+   * Handles currency conversion if the payment currency differs from the invoice debt currency.
+   * Updates invoice status and records a cash movement if a session is active.
+   * @param createPaymentDto The payment data.
+   * @returns The created payment and the updated invoice record.
+   */
   async createPayment(createPaymentDto: CreatePaymentDto) {
-    // Verificar que la factura existe
+    // Verify invoice existence
     const invoice = await this.prisma.invoice.findUnique({
       where: { id: createPaymentDto.invoiceId },
     });
 
     if (!invoice) {
-      throw new NotFoundException('Factura no encontrada');
+      throw new NotFoundException('Invoice not found');
     }
 
-    // Verificar que la factura no esté completamente pagada
+    // Verify invoice is not already fully paid
     if (invoice.status === 'PAID') {
-      throw new BadRequestException('La factura ya está completamente pagada');
+      throw new BadRequestException('Invoice is already fully paid');
     }
 
-    // Verificar que el monto de pago no exceda el balance pendiente
+    // Verify payment amount doesn't exceed pending balance
     const balance = Number(invoice.balance);
     if (createPaymentDto.amount > balance) {
       throw new BadRequestException(
-        `El monto del pago (${createPaymentDto.amount}) excede el balance pendiente (${balance})`,
+        `Payment amount (${createPaymentDto.amount}) exceeds pending balance (${balance})`,
       );
     }
 
-    // Crear el pago y actualizar la factura en una transacción
-    const result = await this.prisma.$transaction(async (tx) => {
+    // Process payment and update invoice in a transaction
+    return this.prisma.$transaction(async (tx) => {
       let amountAppliedToInvoice = createPaymentDto.amount;
 
-      // CASO: La factura está en USD pero se intenta pagar en Bs
-      // O viceversa. Necesitamos normalizar el pago a la moneda de la factura.
-      // Por ahora, asumimos que createPaymentDto.amount es lo que el usuario ingresó.
-      // Pero si el método indica otra moneda, debemos convertir.
+      // Handle currency normalization if payment method indicates a specific currency
       if (createPaymentDto.paymentMethod.startsWith('CURRENCY_')) {
         const currencyCode = createPaymentDto.paymentMethod.replace(
           'CURRENCY_',
           '',
         );
 
-        // Si la moneda del pago es DISTINTA a la moneda de la deuda de la factura
+        // If payment currency is DIFFERENT from the invoice debt currency
         if (currencyCode !== invoice.currencyCode) {
-          // Si la deuda es en USD y se paga en VES
+          // Debt is USD, payment is VES
           if (invoice.currencyCode !== 'VES' && currencyCode === 'VES') {
-            // Convertir Bs a USD usando la tasa de la factura (tasa congelada al momento de la venta)
+            // Convert VES to USD using the invoice historical exchange rate
             amountAppliedToInvoice =
               createPaymentDto.amount / Number(invoice.exchangeRate);
           }
-          // Si la deuda es en VES y se paga en USD
-          else if (invoice.currencyCode === 'VES' && currencyCode !== 'VES') {
-            // Obtenemos la tasa actual (en este punto simplificamos y usamos la del pago si estuviera)
-            // Para este ajuste, asumiremos que el frontend mandó el monto YA CONVERTIDO si es necesario,
-            // o manejaremos la conversión aquí si tenemos la tasa.
-            // El usuario quiere evitar la inflación, así que la deuda en USD es lo principal.
-          }
+          // Debt is VES, payment is USD: Assumes frontend handled the conversion or rate is 1
         }
       }
 
-      // Crear el pago
+      // Create payment record
       const payment = await tx.payment.create({
         data: {
           invoiceId: createPaymentDto.invoiceId,
-          amount: createPaymentDto.amount, // Monto nominal recibido
+          amount: createPaymentDto.amount, // Nominal amount received
           paymentMethod: createPaymentDto.paymentMethod,
           reference: createPaymentDto.reference,
           notes: createPaymentDto.notes
-            ? `${createPaymentDto.notes} (Aplicado: ${amountAppliedToInvoice.toFixed(2)} ${invoice.currencyCode})`
-            : `Aplicado: ${amountAppliedToInvoice.toFixed(2)} ${invoice.currencyCode}`,
+            ? `${createPaymentDto.notes} (Applied: ${amountAppliedToInvoice.toFixed(2)} ${invoice.currencyCode})`
+            : `Applied: ${amountAppliedToInvoice.toFixed(2)} ${invoice.currencyCode}`,
         },
       });
 
-      // Actualizar montos de la factura
+      // Update invoice amounts
       const newPaidAmount = Number(invoice.paidAmount) + amountAppliedToInvoice;
       const newBalance = Number(invoice.total) - newPaidAmount;
 
-      // Determinar nuevo estado (usando pequeña tolerancia para decimales)
+      // Determine new status
       let newStatus = invoice.status;
       if (Math.abs(newBalance) < 0.01) {
         newStatus = 'PAID';
@@ -101,11 +98,11 @@ export class PaymentsService {
         data: {
           paidAmount: newPaidAmount,
           balance: Math.max(0, newBalance),
-          status: newStatus,
+          status: newStatus as any,
         },
       });
 
-      // Registrar movimiento de caja (si hay sesión activa)
+      // Record cash movement if a session is active
       try {
         const activeSession = await this.cashRegisterService.getActiveSession();
         if (activeSession) {
@@ -119,37 +116,42 @@ export class PaymentsService {
               )
                 ? createPaymentDto.paymentMethod.replace('CURRENCY_', '')
                 : 'VES',
-              description: `Pago Factura ${invoice.number}`,
+              description: `Payment for Invoice ${invoice.number}`,
               notes: `PaymentID: ${payment.id}`,
-              performedBy: 'Sistema',
+              performedBy: 'System',
               saleId: invoice.saleId,
             },
           });
         }
       } catch (cashError) {
         console.error(
-          'Error al registrar movimiento de caja para el pago:',
+          'Error recording cash movement for payment:',
           cashError,
         );
       }
 
       return { payment, invoice: updatedInvoice };
     });
-
-    return result;
   }
 
+  /**
+   * Retrieves all payments for a specific invoice.
+   * @param invoiceId The ID of the invoice.
+   * @returns A list of payments.
+   */
   async getPaymentsByInvoice(invoiceId: string) {
-    const payments = await this.prisma.payment.findMany({
+    return this.prisma.payment.findMany({
       where: { invoiceId },
       orderBy: { paymentDate: 'desc' },
     });
-
-    return payments;
   }
 
+  /**
+   * Retrieves all payment records in the system.
+   * @returns A list of payments with invoice and client details.
+   */
   async getAllPayments() {
-    const payments = await this.prisma.payment.findMany({
+    return this.prisma.payment.findMany({
       include: {
         invoice: {
           include: {
@@ -159,26 +161,27 @@ export class PaymentsService {
       },
       orderBy: { paymentDate: 'desc' },
     });
-
-    return payments;
   }
 
+  /**
+   * Deletes a payment record and reverts its impact on the invoice.
+   * @param id The ID of the payment to delete.
+   * @returns The deleted payment record.
+   */
   async removePayment(id: string) {
-    // Encontrar el pago y la factura asociada
     const payment = await this.prisma.payment.findUnique({
       where: { id },
       include: { invoice: true },
     });
 
     if (!payment) {
-      throw new NotFoundException('Pago no encontrado');
+      throw new NotFoundException('Payment not found');
     }
 
     const invoice = payment.invoice;
 
-    return await this.prisma.$transaction(async (tx) => {
-      // Re-calcular cuánto se aplicó realmente a la factura
-      // (Usamos la misma lógica que createPayment para ser consistentes)
+    return this.prisma.$transaction(async (tx) => {
+      // Recalculate applied amount for reversal
       let appliedAmount = Number(payment.amount);
 
       if (payment.paymentMethod.startsWith('CURRENCY_')) {
@@ -191,14 +194,14 @@ export class PaymentsService {
         }
       }
 
-      // Actualizar montos de la factura
+      // Revert invoice amounts
       const newPaidAmount = Math.max(
         0,
         Number(invoice.paidAmount) - appliedAmount,
       );
       const newBalance = Number(invoice.total) - newPaidAmount;
 
-      // Determinar nuevo estado
+      // Determine new status
       let newStatus = 'PARTIAL';
       if (newPaidAmount <= 0) {
         newStatus = 'PENDING';
@@ -211,19 +214,19 @@ export class PaymentsService {
         data: {
           paidAmount: newPaidAmount,
           balance: newBalance,
-          status: newStatus,
+          status: newStatus as any,
         },
       });
 
-      // Eliminar movimientos de caja asociados
+      // Delete associated cash movements
       await tx.cashMovement.deleteMany({
         where: {
           notes: { contains: `PaymentID: ${payment.id}` },
         },
       });
 
-      // Finalmente eliminar el pago
-      return await tx.payment.delete({
+      // Delete the payment record
+      return tx.payment.delete({
         where: { id },
       });
     });

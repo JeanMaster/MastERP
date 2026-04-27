@@ -11,25 +11,25 @@ import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 
 export class CreateCurrencyDto {
-  @ApiProperty({ example: 'Bolívar', description: 'Nombre de la moneda' })
-  @IsNotEmpty({ message: 'El nombre es requerido' })
+  @ApiProperty({ example: 'Bolívar', description: 'Name of the currency' })
+  @IsNotEmpty({ message: 'Name is required' })
   @IsString()
   name: string;
 
   @ApiProperty({
     example: 'VES',
-    description: 'Código de la moneda (ISO 4217)',
+    description: 'Currency code (ISO 4217)',
   })
-  @IsNotEmpty({ message: 'El código es requerido' })
+  @IsNotEmpty({ message: 'Code is required' })
   @IsString()
   code: string;
 
-  @ApiProperty({ example: 'Bs', description: 'Símbolo de la moneda' })
-  @IsNotEmpty({ message: 'El símbolo es requerido' })
+  @ApiProperty({ example: 'Bs', description: 'Currency symbol' })
+  @IsNotEmpty({ message: 'Symbol is required' })
   @IsString()
   symbol: string;
 
-  @ApiProperty({ example: false, description: '¿Es la moneda principal?' })
+  @ApiProperty({ example: false, description: 'Whether this is the primary currency' })
   @IsBoolean()
   isPrimary: boolean;
 
@@ -37,21 +37,21 @@ export class CreateCurrencyDto {
     example: 100.0,
     required: false,
     description:
-      'Tasa de cambio respecto a la moneda principal (solo para monedas secundarias)',
+      'Exchange rate relative to the primary currency (only for secondary currencies)',
   })
   @ValidateIf((o) => !o.isPrimary && !o.isAutomatic)
   @IsNotEmpty({
-    message: 'La tasa de cambio es requerida para monedas no automáticas',
+    message: 'Exchange rate is required for manual secondary currencies',
   })
   @Type(() => Number)
   @IsNumber()
-  @Min(0.0001, { message: 'La tasa de cambio debe ser mayor a 0' })
+  @Min(0.0001, { message: 'Exchange rate must be greater than 0' })
   @IsOptional()
   exchangeRate?: number;
 
   @ApiProperty({
     example: true,
-    description: '¿Se actualiza automáticamente?',
+    description: 'Whether the exchange rate updates automatically via API',
     required: false,
   })
   @IsBoolean()
@@ -60,13 +60,13 @@ export class CreateCurrencyDto {
 
   @ApiProperty({
     example: 'binance_p2p',
-    description: 'Identificador para API externa',
+    description: 'Identifier for the external API provider',
     required: false,
   })
   @ValidateIf((o) => o.isAutomatic)
   @IsNotEmpty({
     message:
-      'Debe seleccionar una fuente de datos para actualización automática',
+      'A data source must be selected for automatic updates',
   })
   @IsString()
   apiSymbol?: string;

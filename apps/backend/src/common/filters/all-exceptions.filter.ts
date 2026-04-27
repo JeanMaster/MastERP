@@ -28,7 +28,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
       timestamp: new Date().toISOString(),
       path: httpAdapter.getRequestUrl(ctx.getRequest()),
       message: exception.message || 'Internal server error',
-      // En producción, si queremos ver el detalle para debuguear este problema específico
+      // In production, include the stack trace to help debug specific issues
       stack:
         process.env.NODE_ENV === 'production' ? exception.stack : undefined,
     };

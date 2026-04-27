@@ -8,28 +8,28 @@ import {
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreatePaymentDto {
-  @ApiProperty({ description: 'ID de la factura a pagar' })
+  @ApiProperty({ description: 'ID of the invoice to pay' })
   @IsNotEmpty()
   @IsString()
   invoiceId: string;
 
-  @ApiProperty({ description: 'Monto del pago', example: 500.0 })
+  @ApiProperty({ description: 'Payment amount', example: 500.0 })
   @IsNotEmpty()
   @IsNumber()
   @IsPositive()
   amount: number;
 
-  @ApiProperty({ description: 'Método de pago', example: 'CASH' })
+  @ApiProperty({ description: 'Payment method', example: 'CASH' })
   @IsNotEmpty()
   @IsString()
   paymentMethod: string;
 
-  @ApiPropertyOptional({ description: 'Número de referencia bancaria' })
+  @ApiPropertyOptional({ description: 'Bank reference number' })
   @IsOptional()
   @IsString()
   reference?: string;
 
-  @ApiPropertyOptional({ description: 'Notas adicionales' })
+  @ApiPropertyOptional({ description: 'Additional notes' })
   @IsOptional()
   @IsString()
   notes?: string;

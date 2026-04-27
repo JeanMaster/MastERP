@@ -8,6 +8,11 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 const { Title, Text } = Typography;
 
+/**
+ * RetentionsListPage Component
+ * Page to list and manage tax retention vouchers (IVA, ISLR).
+ * Allows exporting data for SENIAT (Venezuelan tax authority).
+ */
 export const RetentionsListPage = () => {
     const { message, modal } = App.useApp();
     const queryClient = useQueryClient();
@@ -18,33 +23,36 @@ export const RetentionsListPage = () => {
         queryFn: taxRetentionsApi.findAll,
     });
 
+    /**
+     * Exports selected date range retentions to a TXT file compliant with SENIAT standards.
+     */
     const handleExportTxt = async () => {
         try {
-            message.loading({ content: 'Generando archivo TXT...', key: 'exporting' });
+            message.loading({ content: 'Generating TXT file...', key: 'exporting' });
             
             const startDate = dateRange?.[0]?.format('YYYY-MM-DD');
             const endDate = dateRange?.[1]?.format('YYYY-MM-DD');
             
             const txtContent = await taxRetentionsApi.exportTxt(startDate, endDate);
             
-            // Crear el blob y descargar el archivo
+            // Create blob and download file
             const blob = new Blob([txtContent], { type: 'text/plain;charset=utf-8' });
             const url = window.URL.createObjectURL(blob);
             const link = document.createElement('a');
             const timestamp = dayjs().format('YYYYMMDD_HHmm');
             
             link.href = url;
-            link.setAttribute('download', `retenciones_iva_${timestamp}.txt`);
+            link.setAttribute('download', `vat_retentions_${timestamp}.txt`);
             document.body.appendChild(link);
             link.click();
             link.remove();
             window.URL.revokeObjectURL(url);
 
-            message.success({ content: 'Archivo generado exitosamente', key: 'exporting' });
+            message.success({ content: 'File generated successfully', key: 'exporting' });
         } catch (error: any) {
             console.error('Export error:', error);
             message.error({ 
-                content: error.response?.data?.message || 'Error al generar el archivo TXT', 
+                content: error.response?.data?.message || 'Error generating TXT file', 
                 key: 'exporting' 
             });
         }
@@ -53,20 +61,24 @@ export const RetentionsListPage = () => {
     const deleteMutation = useMutation({
         mutationFn: taxRetentionsApi.remove,
         onSuccess: () => {
-            message.success('Retención eliminada y saldo revertido');
+            message.success('Retention deleted and balance reverted');
             queryClient.invalidateQueries({ queryKey: ['tax-retentions'] });
             queryClient.invalidateQueries({ queryKey: ['pending-invoices'] });
         },
         onError: (error: any) => {
-            message.error(error.response?.data?.message || 'Error al eliminar retención');
+            message.error(error.response?.data?.message || 'Error deleting retention');
         }
     });
 
+    /**
+     * Handles voucher deletion confirmation.
+     * @param id The retention voucher ID.
+     */
     const handleDelete = (id: string) => {
         modal.confirm({
-            title: '¿Eliminar Comprobante?',
-            content: 'Se revertirá el pago asociado a la factura y se restaurará el saldo pendiente.',
-            okText: 'Sí, eliminar',
+            title: 'Delete Voucher?',
+            content: 'The associated invoice payment will be reverted and the pending balance will be restored.',
+            okText: 'Yes, Delete',
             okType: 'danger',
             onOk: () => deleteMutation.mutate(id)
         });
@@ -74,19 +86,19 @@ export const RetentionsListPage = () => {
 
     const columns = [
         {
-            title: 'Comprobante',
+            title: 'Voucher #',
             dataIndex: 'voucherNumber',
             key: 'voucherNumber',
             render: (text: string) => <Text strong>{text}</Text>
         },
         {
-            title: 'Fecha',
+            title: 'Date',
             dataIndex: 'voucherDate',
             key: 'voucherDate',
             render: (date: string) => dayjs(date).format('DD/MM/YYYY')
         },
         {
-            title: 'Tipo',
+            title: 'Type',
             dataIndex: 'type',
             key: 'type',
             render: (type: string) => {
@@ -95,22 +107,22 @@ export const RetentionsListPage = () => {
             }
         },
         {
-            title: 'Referencia (Factura/Compra)',
+            title: 'Reference (Invoice/Purchase)',
             key: 'source',
             render: (_: any, record: TaxRetention) => {
                 if (record.invoice) {
                     return (
                         <Space direction="vertical" size={0}>
-                            <Text style={{ fontSize: '12px' }}>Factura: {record.invoice.number}</Text>
-                            <Text type="secondary" style={{ fontSize: '12px' }}>Cliente: {record.invoice.client?.name}</Text>
+                            <Text style={{ fontSize: '12px' }}>Invoice: {record.invoice.number}</Text>
+                            <Text type="secondary" style={{ fontSize: '12px' }}>Client: {record.invoice.client?.name}</Text>
                         </Space>
                     );
                 }
                 if (record.purchase) {
                     return (
                         <Space direction="vertical" size={0}>
-                            <Text style={{ fontSize: '12px' }}>Compra: {record.purchase.invoiceNumber}</Text>
-                            <Text type="secondary" style={{ fontSize: '12px' }}>Proveedor: {record.purchase.supplier?.name}</Text>
+                            <Text style={{ fontSize: '12px' }}>Purchase: {record.purchase.invoiceNumber}</Text>
+                            <Text type="secondary" style={{ fontSize: '12px' }}>Supplier: {record.purchase.supplier?.name}</Text>
                         </Space>
                     );
                 }
@@ -118,7 +130,7 @@ export const RetentionsListPage = () => {
             }
         },
         {
-            title: 'Base Imponible',
+            title: 'Taxable Base',
             dataIndex: 'baseAmount',
             key: 'baseAmount',
             align: 'right' as const,
@@ -131,7 +143,7 @@ export const RetentionsListPage = () => {
             render: (p: number) => `${p}%`
         },
         {
-            title: 'Monto Retenido',
+            title: 'Retained Amount',
             dataIndex: 'amount',
             key: 'amount',
             align: 'right' as const,
@@ -142,7 +154,7 @@ export const RetentionsListPage = () => {
             )
         },
         {
-            title: 'Acciones',
+            title: 'Actions',
             key: 'actions',
             render: (_: any, record: TaxRetention) => (
                 <Space>
@@ -160,7 +172,7 @@ export const RetentionsListPage = () => {
     return (
         <div style={{ padding: 24 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-                <Title level={2}>Control de Retenciones Fiscales</Title>
+                <Title level={2}>Tax Retentions Control</Title>
                 <Space>
                     <DatePicker.RangePicker onChange={setDateRange} />
                     <Button 
@@ -168,9 +180,9 @@ export const RetentionsListPage = () => {
                         onClick={handleExportTxt}
                         disabled={isLoading}
                     >
-                        TXT SENIAT
+                        SENIAT TXT
                     </Button>
-                    <Button type="primary" icon={<ReloadOutlined />} onClick={() => refetch()}>Actualizar</Button>
+                    <Button type="primary" icon={<ReloadOutlined />} onClick={() => refetch()}>Refresh</Button>
                 </Space>
             </div>
 

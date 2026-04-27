@@ -1,14 +1,18 @@
-
 import { useState } from 'react';
 import { formatVenezuelanPrice } from '../../utils/formatters';
 import { Card, Table, Button, Space, Input, message, Popconfirm, Grid, Tooltip } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined, ReloadOutlined } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { productsApi } from '../../services/productsApi';
-import { currenciesApi } from '../../services/currenciesApi'; // Import currenciesApi
+import { currenciesApi } from '../../services/currenciesApi';
 import type { Product } from '../../services/productsApi';
 import { ServiceFormModal } from './services/ServiceFormModal';
 
+/**
+ * ServicesPage Component
+ * Management interface for professional services (intangible products).
+ * Lists services with multi-currency price conversion tooltips.
+ */
 export const ServicesPage = () => {
     const screens = Grid.useBreakpoint();
     const isMobile = !screens.lg;
@@ -23,7 +27,7 @@ export const ServicesPage = () => {
         queryFn: () => productsApi.getAll({ type: 'SERVICE' }),
     });
 
-    // Fetch currencies for conversion
+    // Fetch currencies for price conversion display
     const { data: currencies = [] } = useQuery({
         queryKey: ['currencies'],
         queryFn: () => currenciesApi.getAll(),
@@ -33,11 +37,11 @@ export const ServicesPage = () => {
     const deleteMutation = useMutation({
         mutationFn: productsApi.delete,
         onSuccess: () => {
-            message.success('Servicio eliminado');
+            message.success('Service deleted successfully');
             queryClient.invalidateQueries({ queryKey: ['services'] });
         },
         onError: () => {
-            message.error('Error al eliminar servicio');
+            message.error('Error deleting service');
         },
     });
 
@@ -55,7 +59,7 @@ export const ServicesPage = () => {
         setEditingService(null);
     };
 
-    // Filter
+    // Client-side filtering
     const filteredServices = services.filter(service =>
         service.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         service.sku.toLowerCase().includes(searchTerm.toLowerCase())
@@ -63,13 +67,13 @@ export const ServicesPage = () => {
 
     const columns = [
         {
-            title: 'Código',
+            title: 'Code',
             dataIndex: 'sku',
             key: 'sku',
             width: 120,
         },
         {
-            title: 'Nombre',
+            title: 'Name',
             dataIndex: 'name',
             key: 'name',
             render: (text: string, record: Product) => (
@@ -79,9 +83,8 @@ export const ServicesPage = () => {
                 </Space>
             ),
         },
-
         {
-            title: 'Costo',
+            title: 'Cost',
             key: 'cost',
             width: 120,
             render: (_: any, record: Product) => (
@@ -92,18 +95,14 @@ export const ServicesPage = () => {
             align: 'right' as const,
         },
         {
-            title: 'Precio Venta',
+            title: 'Sale Price',
             key: 'price',
             width: 140,
             render: (_: any, record: Product) => {
-                // Calculate prices in other currencies
+                // Calculate prices in other active currencies for the tooltip
                 const pricesInOtherCurrencies = currencies
-                    .filter(c => c.active && c.id !== record.currencyId) // Filter active and different from product currency
+                    .filter(c => c.active && c.id !== record.currencyId)
                     .map(targetCurrency => {
-                        // 1. Calculate price in Primary Currency (Bs usually)
-                        // If product is in Primary, price is raw. If not, multiply by its rate.
-                        // Assuming rates are stored as "Bs per CurrencyUnit"
-
                         let priceInPrimary = record.salePrice;
                         const productCurrency = currencies.find(c => c.id === record.currencyId);
 
@@ -111,11 +110,7 @@ export const ServicesPage = () => {
                             priceInPrimary = record.salePrice * Number(productCurrency.exchangeRate);
                         }
 
-                        // 2. Convert to Target Currency
-                        // If target is Primary, price is priceInPrimary.
-                        // If target is Secondary, divide by its rate.
                         let convertedPrice = priceInPrimary;
-
                         if (!targetCurrency.isPrimary && targetCurrency.exchangeRate) {
                             convertedPrice = priceInPrimary / Number(targetCurrency.exchangeRate);
                         }
@@ -140,7 +135,6 @@ export const ServicesPage = () => {
                     <Space direction="vertical" size={0} style={{ textAlign: 'right', width: '100%' }}>
                         <Tooltip title={tooltipContent} placement="top">
                             <span style={{ fontWeight: 'bold', color: '#2ecc71', cursor: tooltipContent ? 'help' : 'default' }}>
-                                {/* Fix: Pass currency symbol explicitly to avoid double suffix */}
                                 {formatVenezuelanPrice(record.salePrice, record.currency.symbol)}
                             </span>
                         </Tooltip>
@@ -150,7 +144,7 @@ export const ServicesPage = () => {
             align: 'right' as const,
         },
         {
-            title: 'Acciones',
+            title: 'Actions',
             key: 'actions',
             align: 'center' as const,
             width: 100,
@@ -162,10 +156,10 @@ export const ServicesPage = () => {
                         onClick={() => handleEdit(record)}
                     />
                     <Popconfirm
-                        title="¿Eliminar servicio?"
-                        description="Esta acción no se puede deshacer."
+                        title="Delete service?"
+                        description="This action cannot be undone."
                         onConfirm={() => handleDelete(record.id)}
-                        okText="Sí"
+                        okText="Yes"
                         cancelText="No"
                     >
                         <Button type="text" danger icon={<DeleteOutlined />} />
@@ -185,10 +179,10 @@ export const ServicesPage = () => {
                 marginBottom: 16,
                 gap: isMobile ? 12 : 0
             }}>
-                <h1 style={{ margin: 0, fontSize: isMobile ? '1.5rem' : '2rem' }}>Servicios</h1>
+                <h1 style={{ margin: 0, fontSize: isMobile ? '1.5rem' : '2rem' }}>Services</h1>
                 <Space direction={isMobile ? 'vertical' : 'horizontal'} style={{ width: isMobile ? '100%' : 'auto' }} align={isMobile ? 'end' : 'center'}>
                     <Input
-                        placeholder="Buscar servicio..."
+                        placeholder="Search service..."
                         prefix={<SearchOutlined />}
                         value={searchTerm}
                         onChange={e => setSearchTerm(e.target.value)}
@@ -200,7 +194,7 @@ export const ServicesPage = () => {
                             onClick={() => queryClient.invalidateQueries({ queryKey: ['services'] })}
                         />
                         <Button type="primary" icon={<PlusOutlined />} onClick={() => setIsModalOpen(true)}>
-                            {isMobile ? 'Nuevo' : 'Nuevo Servicio'}
+                            {isMobile ? 'New' : 'New Service'}
                         </Button>
                     </Space>
                 </Space>

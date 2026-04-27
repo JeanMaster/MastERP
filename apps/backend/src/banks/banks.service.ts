@@ -12,6 +12,11 @@ import { LiquidatePosBatchDto } from './dto/liquidate-pos-batch.dto';
 export class BanksService {
   constructor(private prisma: PrismaService) {}
 
+  /**
+   * Creates a new bank account.
+   * @param createBankDto The data for the new bank account.
+   * @returns The created bank account including currency data.
+   */
   async create(createBankDto: CreateBankAccountDto) {
     const { initialBalance, ...data } = createBankDto;
 
@@ -26,8 +31,13 @@ export class BanksService {
     });
   }
 
+  /**
+   * Retrieves all active bank accounts with an optional search term.
+   * @param search Search term (bank name, holder name, or account number).
+   * @returns A list of bank accounts including currency data.
+   */
   findAll(search?: string) {
-    const where: any = { active: true };
+    const where: { active: boolean; OR?: any[] } = { active: true };
 
     if (search) {
       where.OR = [
@@ -46,6 +56,12 @@ export class BanksService {
     });
   }
 
+  /**
+   * Retrieves a single bank account by its ID.
+   * @param id The ID of the bank account.
+   * @returns The bank account record including currency data.
+   * @throws NotFoundException if the account is not found.
+   */
   async findOne(id: string) {
     const bank = await this.prisma.bankAccount.findUnique({
       where: { id },
@@ -53,12 +69,18 @@ export class BanksService {
     });
 
     if (!bank) {
-      throw new NotFoundException(`Cuenta bancaria con ID ${id} no encontrada`);
+      throw new NotFoundException(`Bank account with ID ${id} not found`);
     }
 
     return bank;
   }
 
+  /**
+   * Updates an existing bank account's information.
+   * @param id The ID of the bank account to update.
+   * @param updateBankDto The updated data.
+   * @returns The updated bank account record.
+   */
   async update(id: string, updateBankDto: UpdateBankAccountDto) {
     await this.findOne(id);
 
@@ -69,7 +91,21 @@ export class BanksService {
     });
   }
 
-  async addMovement(dto: any) {
+  /**
+   * Records a new bank movement and updates the account balance.
+   * Uses a transaction to ensure data integrity.
+   * @param dto The data for the movement.
+   * @returns The created bank movement.
+   */
+  async addMovement(dto: {
+    bankAccountId: string;
+    type: 'IN' | 'OUT';
+    amount: number;
+    category: string;
+    description: string;
+    reference?: string;
+    cashSessionId?: string;
+  }) {
     const {
       bankAccountId,
       type,
@@ -108,6 +144,13 @@ export class BanksService {
     });
   }
 
+  /**
+   * Liquidates a POS batch, transferring pending funds to the bank account net of commissions.
+   * Records a commission expense if applicable.
+   * @param dto The liquidation data.
+   * @param userId The ID of the user performing the liquidation.
+   * @returns The result of the liquidation.
+   */
   async liquidatePosBatch(dto: LiquidatePosBatchDto, userId: string) {
     return this.prisma.$transaction(async (tx) => {
       const account = await tx.bankAccount.findUnique({
@@ -115,19 +158,19 @@ export class BanksService {
         include: { currency: true },
       });
 
-      if (!account) throw new NotFoundException('Cuenta no encontrada');
+      if (!account) throw new NotFoundException('Account not found');
 
       const pendingAmount = Number(account.pendingLiquidation);
       if (pendingAmount <= 0)
-        throw new BadRequestException('No hay fondos pendientes para liquidar');
+        throw new BadRequestException('No pending funds to liquidate');
 
       const settlementAmount = pendingAmount - dto.commissionAmount;
       if (settlementAmount < 0)
         throw new BadRequestException(
-          'La comisión no puede ser mayor al monto pendiente',
+          'Commission cannot be greater than the pending amount',
         );
 
-      // 0. Obtener tasa actual del dólar para el registro estático
+      // 0. Get current exchange rate for static record
       const companySettings = await tx.companySettings.findFirst({
         include: { preferredSecondaryCurrency: true },
       });
@@ -135,11 +178,11 @@ export class BanksService {
         companySettings?.preferredSecondaryCurrency?.exchangeRate || 1,
       );
 
-      // 1. Crear el gasto por comisión (si la hay)
+      // 1. Create banking commission expense if applicable
       if (dto.commissionAmount > 0) {
         await (tx as any).expense.create({
           data: {
-            description: `Comisión Bancaria - Liquidación POS`,
+            description: `Bank Commission - POS Liquidation`,
             amount: dto.commissionAmount,
             currencyCode: account.currency.code,
             exchangeRate: currentExchangeRate,
@@ -151,19 +194,19 @@ export class BanksService {
         });
       }
 
-      // 2. Crear el movimiento bancario por el monto NETO
+      // 2. Create bank movement for NET amount
       await tx.bankMovement.create({
         data: {
           bankAccountId: account.id,
           type: 'IN',
           amount: settlementAmount,
           category: 'SALE_TRANSFER',
-          description: `Liquidación de Lote POS (Neto)`,
+          description: `POS Batch Liquidation (Net)`,
           reference: 'AUTO-POS',
         },
       });
 
-      // 3. Actualizar balance de la cuenta
+      // 3. Update the bank account balance
       await tx.bankAccount.update({
         where: { id: account.id },
         data: {
@@ -180,6 +223,12 @@ export class BanksService {
     });
   }
 
+  /**
+   * Retrieves the movement history for a specific bank account.
+   * @param bankAccountId The ID of the bank account.
+   * @param limit Maximum number of movements to retrieve.
+   * @returns A list of bank movements.
+   */
   async getHistory(bankAccountId: string, limit: number = 50) {
     return this.prisma.bankMovement.findMany({
       where: { bankAccountId },
@@ -188,6 +237,11 @@ export class BanksService {
     });
   }
 
+  /**
+   * Performs a soft delete by marking the bank account as inactive.
+   * @param id The ID of the bank account to deactivate.
+   * @returns The updated bank account record.
+   */
   async remove(id: string) {
     await this.findOne(id);
 

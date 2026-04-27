@@ -7,6 +7,11 @@ import dayjs from 'dayjs';
 
 const { Text, Title } = Typography;
 
+/**
+ * CampaignsPage Component
+ * Management and execution center for mass marketing campaigns (Bulk WhatsApp messaging).
+ * Allows creating segmented campaigns, tracking delivery progress, and providing manual execution shortcuts via WhatsApp Web.
+ */
 export const CampaignsPage = () => {
     const [isCreateModalVisible, setIsCreateModalVisible] = useState(false);
     const [viewCampaignId, setViewCampaignId] = useState<string | null>(null);
@@ -29,29 +34,35 @@ export const CampaignsPage = () => {
         enabled: !!viewCampaignId,
     });
 
+    /**
+     * Initializes a new campaign and generates the target recipient list based on segments.
+     */
     const createMutation = useMutation({
         mutationFn: marketingApi.createCampaign,
         onSuccess: () => {
-            message.success('Campaña creada. Lista de destinatarios generada.');
+            message.success('Campaign created. Recipient list generated.');
             queryClient.invalidateQueries({ queryKey: ['marketing-campaigns'] });
             setIsCreateModalVisible(false);
             form.resetFields();
         },
         onError: (err: any) => {
-            message.error(err?.response?.data?.message || 'Error al crear la campaña');
+            message.error(err?.response?.data?.message || 'Error creating campaign');
         }
     });
 
+    /**
+     * Updates the status of a specific recipient within a campaign.
+     */
     const markSentMutation = useMutation({
         mutationFn: marketingApi.markRecipientSent,
         onSuccess: () => {
-            message.success('Destinatario marcado como enviado');
+            message.success('Recipient marked as sent');
             queryClient.invalidateQueries({ queryKey: ['marketing-campaign-details', viewCampaignId] });
             queryClient.invalidateQueries({ queryKey: ['marketing-campaigns'] });
         }
     });
 
-    // F9 Keyboard Shortcut
+    // F9 Keyboard Shortcut for quick campaign launch
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
             if (!isCreateModalVisible) return;
@@ -74,8 +85,10 @@ export const CampaignsPage = () => {
         }
     };
 
+    /**
+     * Formats phone number and opens WhatsApp Web with the pre-filled campaign message.
+     */
     const handleWhatsAppClick = (phone: string, text: string) => {
-        // Same phone formatting as InvoiceModal (POS)
         let cleanPhone = phone.replace(/\D/g, '');
         if (cleanPhone.startsWith('04')) {
             cleanPhone = '58' + cleanPhone.substring(1);
@@ -89,41 +102,43 @@ export const CampaignsPage = () => {
 
     const columns = [
         { 
-            title: 'Nombre de Campaña', 
+            title: 'Campaign Name', 
             dataIndex: 'name', 
             key: 'name',
             render: (text: string) => <strong>{text}</strong>
         },
         { 
-            title: 'Segmento', 
+            title: 'Target Segment', 
             dataIndex: 'targetSegment', 
             key: 'targetSegment',
             render: (seg: string) => <Tag color="blue">{seg}</Tag>
         },
         { 
-            title: 'Plantilla', 
+            title: 'Template', 
             key: 'template',
             render: (_: any, record: any) => record.template?.name || 'N/A'
         },
         {
-            title: 'Progreso de Envío',
+            title: 'Delivery Progress',
             key: 'progress',
+            width: 200,
             render: (_: any, record: any) => {
                 const percent = record.totalRecipients > 0 ? Math.round((record.sentCount / record.totalRecipients) * 100) : 0;
                 return (
-                    <div style={{ width: 150 }}>
+                    <div>
                         <Progress percent={percent} size="small" status={percent === 100 ? 'success' : 'active'} />
-                        <div style={{ fontSize: '11px', textAlign: 'center' }}>
-                            {record.sentCount} / {record.totalRecipients} enviados
+                        <div style={{ fontSize: '11px', textAlign: 'center', marginTop: 4 }}>
+                            {record.sentCount} / {record.totalRecipients} sent
                         </div>
                     </div>
                 );
             }
         },
         { 
-            title: 'Estado', 
+            title: 'Status', 
             dataIndex: 'status', 
             key: 'status',
+            align: 'center' as const,
             render: (status: string) => (
                 <Tag color={status === 'COMPLETED' ? 'success' : status === 'PENDING' ? 'processing' : 'default'}>
                     {status}
@@ -131,13 +146,13 @@ export const CampaignsPage = () => {
             )
         },
         { 
-            title: 'Fecha', 
+            title: 'Date Created', 
             dataIndex: 'createdAt', 
             key: 'createdAt',
-            render: (date: string) => dayjs(date).format('DD/MM/YYYY HH:mm')
+            render: (date: string) => dayjs(date).format('MM/DD/YYYY HH:mm')
         },
         {
-            title: 'Acciones',
+            title: 'Actions',
             key: 'actions',
             render: (_: any, record: any) => (
                 <Button 
@@ -146,33 +161,33 @@ export const CampaignsPage = () => {
                     size="small"
                     onClick={() => setViewCampaignId(record.id)}
                 >
-                    Ver / Enviar
+                    Monitor / Execute
                 </Button>
             )
         }
     ];
 
     const recipientColumns = [
-        { title: 'Cliente', dataIndex: 'clientName', key: 'clientName' },
-        { title: 'Teléfono', dataIndex: 'clientPhone', key: 'clientPhone' },
+        { title: 'Customer', dataIndex: 'clientName', key: 'clientName' },
+        { title: 'Phone', dataIndex: 'clientPhone', key: 'clientPhone' },
         { 
-            title: 'Estado', 
+            title: 'Delivery Status', 
             dataIndex: 'status', 
             key: 'status',
-            render: (s: string) => s === 'SENT' ? <Tag color="green">Enviado</Tag> : <Tag color="orange">Pendiente</Tag>
+            render: (s: string) => s === 'SENT' ? <Tag color="green">Sent</Tag> : <Tag color="orange">Pending</Tag>
         },
         {
-            title: 'Acción de Envío',
+            title: 'Execution Actions',
             key: 'action',
             render: (_: any, record: any) => (
                 <Space>
                     <Button 
                         type="primary" 
-                        style={{ backgroundColor: '#25D366' }} 
+                        style={{ backgroundColor: '#25D366', borderColor: '#25D366' }} 
                         icon={<WhatsAppOutlined />}
                         onClick={() => handleWhatsAppClick(record.clientPhone, record.message)}
                     >
-                        Abrir WS Web
+                        Open WhatsApp
                     </Button>
                     <Button 
                         type={record.status === 'SENT' ? 'default' : 'primary'}
@@ -180,7 +195,7 @@ export const CampaignsPage = () => {
                         disabled={record.status === 'SENT' || markSentMutation.isPending}
                         onClick={() => markSentMutation.mutate(record.id)}
                     >
-                        {record.status === 'SENT' ? 'Enviado' : 'Marcar Listo'}
+                        {record.status === 'SENT' ? 'Done' : 'Mark as Sent'}
                     </Button>
                 </Space>
             )
@@ -190,13 +205,17 @@ export const CampaignsPage = () => {
     return (
         <div style={{ padding: '24px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-                <h2><RocketOutlined /> Campañas Masivas</h2>
+                <div>
+                    <Title level={2} style={{ margin: 0 }}><RocketOutlined /> Mass Marketing Campaigns</Title>
+                    <Text type="secondary">Reach your customers directly through personalized messaging.</Text>
+                </div>
                 <Button 
                     type="primary" 
                     icon={<PlusOutlined />}
                     onClick={() => setIsCreateModalVisible(true)}
+                    size="large"
                 >
-                    Nueva Campaña
+                    Launch New Campaign
                 </Button>
             </div>
 
@@ -206,33 +225,35 @@ export const CampaignsPage = () => {
                     dataSource={campaigns} 
                     loading={loadingCampaigns}
                     rowKey="id"
+                    pagination={{
+                        showTotal: (total) => `Total: ${total} campaigns`
+                    }}
                 />
             </Card>
 
-            {/* CREATE CAMPAIGN WIZARD/MODAL */}
             <Modal
-                title="Lanzar Nueva Campaña"
+                title="Launch New Campaign"
                 open={isCreateModalVisible}
                 onOk={handleCreate}
                 onCancel={() => setIsCreateModalVisible(false)}
                 confirmLoading={createMutation.isPending}
-                okText="Lanzar Campaña (F9)"
+                okText="Initialize Campaign (F9)"
             >
-                <Form form={form} layout="vertical">
+                <Form form={form} layout="vertical" style={{ marginTop: 20 }}>
                     <Form.Item 
                         name="name" 
-                        label="Nombre Interno de la Campaña"
-                        rules={[{ required: true }]}
+                        label="Internal Campaign Name"
+                        rules={[{ required: true, message: 'Please enter a name' }]}
                     >
-                        <Input placeholder="Ej: Black Friday 2026 VIP" />
+                        <Input placeholder="e.g., Black Friday 2025 VIP Preview" />
                     </Form.Item>
 
                     <Form.Item 
                         name="templateId" 
-                        label="Plantilla de Mensaje a Utilizar"
-                        rules={[{ required: true }]}
+                        label="Message Template"
+                        rules={[{ required: true, message: 'Please select a template' }]}
                     >
-                        <Select placeholder="Seleccione una plantilla">
+                        <Select placeholder="Select a pre-defined template">
                             {templates?.map((t: any) => (
                                 <Select.Option key={t.id} value={t.id}>{t.name}</Select.Option>
                             ))}
@@ -241,54 +262,58 @@ export const CampaignsPage = () => {
 
                     <Form.Item 
                         name="targetSegment" 
-                        label="Segmento Destino"
-                        rules={[{ required: true }]}
-                        extra="El sistema automáticamente reemplazará las variables de la plantilla para estos clientes."
+                        label="Target Segment"
+                        rules={[{ required: true, message: 'Please select a segment' }]}
+                        extra="The system will automatically replace template variables (e.g., {{name}}) for each customer in this segment."
                     >
-                        <Select>
-                            <Select.Option value="ALL">Todos los clientes registrados</Select.Option>
-                            <Select.Option value="VIP">Solo clientes VIP (Diamante)</Select.Option>
-                            <Select.Option value="GOLD">Solo clientes Oro</Select.Option>
-                            <Select.Option value="CHURN">Clientes en Riesgo (Inactivos/Churn)</Select.Option>
-                            <Select.Option value="BIRTHDAY">Cumpleañeros del mes actual</Select.Option>
+                        <Select placeholder="Choose target audience">
+                            <Select.Option value="ALL">All Registered Customers</Select.Option>
+                            <Select.Option value="VIP">VIP (Diamond) Customers Only</Select.Option>
+                            <Select.Option value="GOLD">Gold Tier Customers Only</Select.Option>
+                            <Select.Option value="CHURN">Risk of Churn (Inactive Customers)</Select.Option>
+                            <Select.Option value="BIRTHDAY">Current Month Birthdays</Select.Option>
                         </Select>
                     </Form.Item>
                 </Form>
             </Modal>
 
-            {/* CAMPAIGN DETAILS / EXECUTION MODAL */}
             <Modal
-                title={`Ejecución de Campaña: ${campaignDetails?.name || ''}`}
+                title={`Campaign Monitor: ${campaignDetails?.name || ''}`}
                 open={!!viewCampaignId}
                 onCancel={() => setViewCampaignId(null)}
                 footer={[
                     <Button key="close" onClick={() => setViewCampaignId(null)}>
-                        Cerrar Monitor
+                        Close Monitor
                     </Button>
                 ]}
-                width={800}
+                width={900}
             >
                 {loadingDetails ? (
-                    <Card loading />
+                    <div style={{ textAlign: 'center', padding: 50 }}><Spin size="large" /></div>
                 ) : campaignDetails ? (
                     <div>
-                        <div style={{ marginBottom: 16 }}>
-                            <Text strong>Mensaje Original:</Text>
-                            <div style={{ padding: '10px', background: '#f5f5f5', borderRadius: '4px', whiteSpace: 'pre-wrap', marginTop: 8 }}>
+                        <div style={{ marginBottom: 24 }}>
+                            <Text strong>Original Message Template:</Text>
+                            <div style={{ padding: '12px', background: '#f9f9f9', border: '1px solid #eee', borderRadius: '8px', whiteSpace: 'pre-wrap', marginTop: 8 }}>
                                 {campaignDetails.template?.content}
                             </div>
                         </div>
                         <Divider />
-                        <Title level={5}>Lista de Destinatarios ({campaignDetails.totalRecipients})</Title>
-                        <Text type="secondary" style={{ display: 'block', marginBottom: 16 }}>
-                            Instrucciones: Haz clic en "Abrir WS Web" para abrir el chat con el mensaje pre-cargado. Luego de enviar, haz clic en "Marcar Listo" para llevar el control.
-                        </Text>
+                        <Title level={5}>Recipient List ({campaignDetails.totalRecipients})</Title>
+                        <Alert 
+                            message="Campaign Execution Instructions"
+                            description='Click "Open WhatsApp" to launch the chat with the personalized message. After sending, click "Mark as Sent" to update the progress tracker.'
+                            type="info"
+                            showIcon
+                            style={{ marginBottom: 16 }}
+                        />
                         <Table 
                             columns={recipientColumns} 
                             dataSource={campaignDetails.recipients}
                             rowKey="id"
                             size="small"
                             pagination={{ pageSize: 10 }}
+                            bordered
                         />
                     </div>
                 ) : null}
@@ -297,3 +322,20 @@ export const CampaignsPage = () => {
     );
 };
 
+const Alert = ({ message, description, type, showIcon, style }: any) => (
+    <div style={{ 
+        padding: '12px 16px', 
+        background: type === 'info' ? '#e6f7ff' : '#fff', 
+        border: `1px solid ${type === 'info' ? '#91d5ff' : '#eee'}`,
+        borderRadius: '8px',
+        display: 'flex',
+        gap: '12px',
+        ...style 
+    }}>
+        {showIcon && <CheckCircleOutlined style={{ color: '#1890ff', marginTop: 4 }} />}
+        <div>
+            <div style={{ fontWeight: 'bold', color: 'rgba(0,0,0,0.85)' }}>{message}</div>
+            <div style={{ fontSize: '13px', color: 'rgba(0,0,0,0.65)' }}>{description}</div>
+        </div>
+    </div>
+);

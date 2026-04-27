@@ -20,13 +20,18 @@ interface CreatePurchaseModalProps {
     onSuccess: () => void;
 }
 
+/**
+ * CreatePurchaseModal Component
+ * Workflow for registering new purchases and inventory reception.
+ * Allows loading data from existing Purchase Orders and updating product costs in batch.
+ */
 export const CreatePurchaseModal: React.FC<CreatePurchaseModalProps> = ({ visible, onCancel, onSuccess }) => {
     const [form] = Form.useForm();
     const [suppliers, setSuppliers] = useState<Supplier[]>([]);
     const [currencies, setCurrencies] = useState<Currency[]>([]);
     const [selectedCurrency, setSelectedCurrency] = useState<Currency | null>(null);
     const [exchangeRate, setExchangeRate] = useState<number>(1);
-    const [products, setProducts] = useState<Product[]>([]); // For search
+    const [products, setProducts] = useState<Product[]>([]);
     const [selectedItems, setSelectedItems] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
     const [searchText, setSearchText] = useState('');
@@ -37,7 +42,7 @@ export const CreatePurchaseModal: React.FC<CreatePurchaseModalProps> = ({ visibl
     const [orderSelectionVisible, setOrderSelectionVisible] = useState(false);
     const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
 
-    // Load initial data
+    // Initial load
     useEffect(() => {
         if (visible) {
             loadSuppliers();
@@ -57,50 +62,47 @@ export const CreatePurchaseModal: React.FC<CreatePurchaseModalProps> = ({ visibl
             const data = await purchaseOrdersApi.getAll();
             setPendingOrders(data.filter((o: PurchaseOrder) => o.status === 'PENDING'));
         } catch (error) {
-            console.error('Error loading orders', error);
+            console.error('Error loading pending orders', error);
         }
     };
 
+    /**
+     * Fills the form using data from a selected Purchase Order.
+     */
     const handleSelectOrder = (orderId: string) => {
         const order = pendingOrders.find(o => o.id === orderId);
         if (!order) return;
 
         setSelectedOrderId(order.id);
-
-        // Populating the form
         form.setFieldsValue({
             supplierId: order.supplierId,
             currencyCode: order.currencyCode,
-            // invoiceNumber: order.id.slice(0, 8), // Optional: default to order ID?
         });
 
-        // Set currency and rate
         const curr = currencies.find(c => c.code === order.currencyCode);
         if (curr) {
             setSelectedCurrency(curr);
             setExchangeRate(Number(order.exchangeRate) || 1);
         }
 
-        // Populating items
         const newItems = order.items.map(item => ({
             productId: item.productId,
-            productName: item.product?.name || 'Producto Desconocido',
+            productName: item.product?.name || 'Unknown Product',
             sku: item.product?.sku || 'N/A',
             quantity: Number(item.quantity),
             cost: Number(item.cost),
             subtotal: Number(item.total),
-            currentCost: 0 // We don't have current cost here easily unless we fetch products, but it's okay for now
+            currentCost: 0
         }));
 
         setSelectedItems(newItems);
         setOrderSelectionVisible(false);
-        message.success('Pedido cargado correctamente. Verifique artículos y cantidades.');
+        message.success('Order loaded successfully. Please verify items and quantities.');
     };
 
     const loadCurrencies = async () => {
         const data = await currenciesApi.getAll();
         setCurrencies(data);
-        // Default to primary? Or let user select.
         const primary = data.find(c => c.isPrimary);
         if (primary) {
             setSelectedCurrency(primary);
@@ -108,7 +110,7 @@ export const CreatePurchaseModal: React.FC<CreatePurchaseModalProps> = ({ visibl
         }
     };
 
-    // Simple product search effect
+    // Debounced product search
     useEffect(() => {
         const timer = setTimeout(() => {
             if (searchText) searchProducts(searchText);
@@ -133,7 +135,7 @@ export const CreatePurchaseModal: React.FC<CreatePurchaseModalProps> = ({ visibl
 
     const handleAddItem = (product: Product) => {
         if (selectedItems.find(item => item.productId === product.id)) {
-            message.warning('El producto ya está en la lista');
+            message.warning('Product already in list');
             return;
         }
 
@@ -142,12 +144,12 @@ export const CreatePurchaseModal: React.FC<CreatePurchaseModalProps> = ({ visibl
             productName: product.name,
             sku: product.sku,
             quantity: 1,
-            cost: product.costPrice, // Default to current cost
+            cost: product.costPrice,
             subtotal: product.costPrice,
             currentCost: product.costPrice
         };
         setSelectedItems([...selectedItems, newItem]);
-        message.success('Producto agregado');
+        message.success('Product added');
     };
 
     const updateItem = (productId: string, field: string, value: number) => {
@@ -172,10 +174,10 @@ export const CreatePurchaseModal: React.FC<CreatePurchaseModalProps> = ({ visibl
 
     const handleSubmit = async () => {
         try {
-            const values = await form.validateFields(); // Supplier, Date, Invoice #
+            const values = await form.validateFields();
 
             if (selectedItems.length === 0) {
-                message.error('Debe agregar al menos un producto');
+                message.error('At least one product must be added');
                 return;
             }
 
@@ -197,9 +199,9 @@ export const CreatePurchaseModal: React.FC<CreatePurchaseModalProps> = ({ visibl
             };
 
             const result: any = await purchasesApi.create(purchaseData);
-            message.success('Compra registrada exitosamente');
+            message.success('Purchase registered successfully');
 
-            // Check if there are products with cost changes
+            // Handle cost changes if any
             if (result.productsWithCostChange && result.productsWithCostChange.length > 0) {
                 setProductsWithCostChange(result.productsWithCostChange);
                 setPriceUpdateModalVisible(true);
@@ -208,7 +210,7 @@ export const CreatePurchaseModal: React.FC<CreatePurchaseModalProps> = ({ visibl
             }
         } catch (error) {
             console.error(error);
-            message.error('Error al registrar la compra');
+            message.error('Error registering purchase');
         } finally {
             setLoading(false);
         }
@@ -227,19 +229,17 @@ export const CreatePurchaseModal: React.FC<CreatePurchaseModalProps> = ({ visibl
             }));
 
             await productsApi.batchUpdatePrices(updates);
-            message.success('Precios actualizados exitosamente');
+            message.success('Prices updated successfully');
 
-            // Reset loading and close sub-modal first
             setPriceUpdateLoading(false);
             setPriceUpdateModalVisible(false);
 
-            // Small delay to ensure state updates propagate before closing parent
             setTimeout(() => {
                 onSuccess();
             }, 300);
         } catch (error) {
             console.error(error);
-            message.error('Error al actualizar precios');
+            message.error('Error updating prices');
             setPriceUpdateLoading(false);
         }
     };
@@ -252,9 +252,9 @@ export const CreatePurchaseModal: React.FC<CreatePurchaseModalProps> = ({ visibl
     };
 
     const columns = [
-        { title: 'Producto', dataIndex: 'productName', key: 'name' },
+        { title: 'Product', dataIndex: 'productName', key: 'name' },
         {
-            title: 'Cantidad',
+            title: 'Quantity',
             key: 'quantity',
             render: (_: any, record: any) => (
                 <InputNumber
@@ -266,7 +266,7 @@ export const CreatePurchaseModal: React.FC<CreatePurchaseModalProps> = ({ visibl
             )
         },
         {
-            title: `Costo Unit. (${selectedCurrency?.symbol || '$'})`,
+            title: `Unit Cost (${selectedCurrency?.symbol || '$'})`,
             key: 'cost',
             render: (_: any, record: any) => (
                 <InputNumber
@@ -300,7 +300,7 @@ export const CreatePurchaseModal: React.FC<CreatePurchaseModalProps> = ({ visibl
         <Modal
             title={
                 <Row align="middle" justify="space-between" style={{ marginRight: 32 }}>
-                    <Col>Registrar Compra / Recepción</Col>
+                    <Col>Register Purchase / Reception</Col>
                     <Col>
                         {pendingOrders.length > 0 && (
                             <Button
@@ -309,7 +309,7 @@ export const CreatePurchaseModal: React.FC<CreatePurchaseModalProps> = ({ visibl
                                 onClick={() => setOrderSelectionVisible(true)}
                                 type="dashed"
                             >
-                                Cargar desde Pedido ({pendingOrders.length})
+                                Load from Order ({pendingOrders.length})
                             </Button>
                         )}
                     </Col>
@@ -319,19 +319,19 @@ export const CreatePurchaseModal: React.FC<CreatePurchaseModalProps> = ({ visibl
             onCancel={onCancel}
             width={900}
             footer={[
-                <Button key="back" onClick={onCancel}>Cancelar</Button>,
+                <Button key="back" onClick={onCancel}>Cancel</Button>,
                 <Button key="submit" type="primary" loading={loading} onClick={handleSubmit}>
-                    Procesar Compra
+                    Process Purchase
                 </Button>
             ]}
         >
             <Form form={form} layout="vertical">
                 <Row gutter={16}>
                     <Col span={8}>
-                        <Form.Item name="supplierId" label="Proveedor" rules={[{ required: true }]}>
+                        <Form.Item name="supplierId" label="Supplier" rules={[{ required: true }]}>
                             <Select
                                 showSearch
-                                placeholder="Seleccionar proveedor"
+                                placeholder="Select supplier"
                                 optionFilterProp="children"
                             >
                                 {suppliers.map(s => (
@@ -341,12 +341,12 @@ export const CreatePurchaseModal: React.FC<CreatePurchaseModalProps> = ({ visibl
                         </Form.Item>
                     </Col>
                     <Col span={8}>
-                        <Form.Item name="invoiceDate" label="Fecha Factura" rules={[{ required: true }]}>
+                        <Form.Item name="invoiceDate" label="Invoice Date" rules={[{ required: true }]}>
                             <DatePicker style={{ width: '100%' }} />
                         </Form.Item>
                     </Col>
                     <Col span={8}>
-                        <Form.Item name="invoiceNumber" label="N° Control / Factura">
+                        <Form.Item name="invoiceNumber" label="Control / Invoice #">
                             <Input placeholder="00-000000" />
                         </Form.Item>
                     </Col>
@@ -354,14 +354,13 @@ export const CreatePurchaseModal: React.FC<CreatePurchaseModalProps> = ({ visibl
 
                 <Row gutter={16}>
                     <Col span={8}>
-                        <Form.Item name="currencyCode" label="Moneda de Pago" rules={[{ required: true }]}>
+                        <Form.Item name="currencyCode" label="Payment Currency" rules={[{ required: true }]}>
                             <Select
-                                placeholder="Moneda"
+                                placeholder="Currency"
                                 onChange={(val) => {
                                     const curr = currencies.find(c => c.code === val);
                                     if (curr) {
                                         setSelectedCurrency(curr);
-                                        // Set exchange rate default
                                         const rate = Number(curr.exchangeRate) || 1;
                                         setExchangeRate(rate);
                                     }
@@ -375,7 +374,7 @@ export const CreatePurchaseModal: React.FC<CreatePurchaseModalProps> = ({ visibl
                     </Col>
                     {selectedCurrency && !selectedCurrency.isPrimary && (
                         <Col span={8}>
-                            <Form.Item label={`Tasa de Cambio (${selectedCurrency.code})`}>
+                            <Form.Item label={`Exchange Rate (${selectedCurrency.code})`}>
                                 <InputNumber
                                     min={0.0001}
                                     step={0.01}
@@ -389,23 +388,22 @@ export const CreatePurchaseModal: React.FC<CreatePurchaseModalProps> = ({ visibl
                 </Row>
             </Form>
 
-            <Divider>Productos</Divider>
+            <Divider>Products</Divider>
 
             <div style={{ marginBottom: 16 }}>
                 <Select
                     showSearch
-                    placeholder="Buscar producto para agregar..."
+                    placeholder="Search product to add..."
                     style={{ width: '100%' }}
                     defaultActiveFirstOption={false}
                     showArrow={false}
                     filterOption={false}
                     onSearch={setSearchText}
                     onChange={(val) => {
-                        // Find product in results
                         const prod = products.find(p => p.id === val);
                         if (prod) {
                             handleAddItem(prod);
-                            setSearchText(''); // Clear search
+                            setSearchText('');
                         }
                     }}
                     notFoundContent={null}
@@ -443,7 +441,7 @@ export const CreatePurchaseModal: React.FC<CreatePurchaseModalProps> = ({ visibl
                             <Table.Summary.Row>
                                 <Table.Summary.Cell index={0} colSpan={3} align="right">
                                     <Space>
-                                        <Typography.Text type="secondary">Incluye IVA (Crédito Fiscal)</Typography.Text>
+                                        <Typography.Text type="secondary">Tax Deductible (VAT)</Typography.Text>
                                         <Form.Item name="isTaxable" valuePropName="checked" noStyle>
                                             <Select
                                                 size="small"
@@ -453,12 +451,12 @@ export const CreatePurchaseModal: React.FC<CreatePurchaseModalProps> = ({ visibl
                                                     else form.setFieldValue('taxAmount', subtotal * 0.16);
                                                 }}
                                                 options={[
-                                                    { value: true, label: 'SÍ' },
+                                                    { value: true, label: 'YES' },
                                                     { value: false, label: 'NO' }
                                                 ]}
                                             />
                                         </Form.Item>
-                                        <Typography.Text strong>IVA</Typography.Text>
+                                        <Typography.Text strong>VAT (16%)</Typography.Text>
                                     </Space>
                                 </Table.Summary.Cell>
                                 <Table.Summary.Cell index={1}>
@@ -499,7 +497,7 @@ export const CreatePurchaseModal: React.FC<CreatePurchaseModalProps> = ({ visibl
 
             {/* Order Selection Modal */}
             <Modal
-                title="Seleccionar Pedido Pendiente"
+                title="Select Pending Order"
                 open={orderSelectionVisible}
                 onCancel={() => setOrderSelectionVisible(false)}
                 footer={null}
@@ -510,15 +508,15 @@ export const CreatePurchaseModal: React.FC<CreatePurchaseModalProps> = ({ visibl
                     rowKey="id"
                     size="small"
                     columns={[
-                        { title: 'Pedido #', dataIndex: 'id', render: (id) => id.slice(0, 8) },
-                        { title: 'Proveedor', dataIndex: ['supplier', 'comercialName'] },
-                        { title: 'Fecha', dataIndex: 'orderDate', render: (d) => dayjs(d).format('DD/MM/YYYY') },
+                        { title: 'Order #', dataIndex: 'id', render: (id) => id.slice(0, 8) },
+                        { title: 'Supplier', dataIndex: ['supplier', 'comercialName'] },
+                        { title: 'Date', dataIndex: 'orderDate', render: (d) => dayjs(d).format('DD/MM/YYYY') },
                         { title: 'Total', dataIndex: 'total', render: (t, r) => `${r.currencyCode} ${t}` },
                         {
-                            title: 'Acción',
+                            title: 'Action',
                             render: (_, record) => (
                                 <Button type="primary" size="small" onClick={() => handleSelectOrder(record.id)}>
-                                    Seleccionar
+                                    Select
                                 </Button>
                             )
                         }

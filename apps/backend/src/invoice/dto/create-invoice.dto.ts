@@ -9,46 +9,46 @@ import {
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreateInvoiceDto {
-  @ApiProperty({ description: 'ID del cliente' })
+  @ApiProperty({ description: 'ID of the client' })
   @IsNotEmpty()
   @IsString()
   clientId: string;
 
   @ApiPropertyOptional({
-    description: 'ID de la venta relacionada (si viene de POS)',
+    description: 'ID of the related sale (if coming from POS)',
   })
   @IsOptional()
   @IsString()
   saleId?: string;
 
-  @ApiProperty({ description: 'Subtotal de la factura' })
+  @ApiProperty({ description: 'Invoice subtotal' })
   @IsNotEmpty()
   @IsNumber()
   @IsPositive()
   subtotal: number;
 
-  @ApiProperty({ description: 'Descuento aplicado', default: 0 })
+  @ApiProperty({ description: 'Discount applied', default: 0 })
   @IsOptional()
   @IsNumber()
   discount?: number;
 
-  @ApiProperty({ description: 'IVA aplicado', default: 0 })
+  @ApiProperty({ description: 'Tax (VAT) applied', default: 0 })
   @IsOptional()
   @IsNumber()
   tax?: number;
 
-  @ApiProperty({ description: 'Total de la factura' })
+  @ApiProperty({ description: 'Invoice total' })
   @IsNotEmpty()
   @IsNumber()
   @IsPositive()
   total: number;
 
-  @ApiPropertyOptional({ description: 'Fecha de vencimiento (para crédito)' })
+  @ApiPropertyOptional({ description: 'Due date for credit invoices (ISO date)' })
   @IsOptional()
   @IsDateString()
   dueDate?: string;
 
-  @ApiPropertyOptional({ description: 'Notas adicionales' })
+  @ApiPropertyOptional({ description: 'Additional notes' })
   @IsOptional()
   @IsString()
   notes?: string;

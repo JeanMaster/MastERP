@@ -1,12 +1,17 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { payrollApi } from '../services/payrollApi';
-import { Typography, Card, Table, Button, Descriptions, Divider, Spin } from 'antd';
+import { Typography, Card, Table, Button, Descriptions, Divider, Spin, Space, Tag } from 'antd';
 import { ArrowLeftOutlined, PrinterOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 
 const { Title, Text } = Typography;
 
+/**
+ * PayrollDetailPage Component
+ * Detailed view of a specific payroll period and its individual employee payments.
+ * Displays aggregate period information and a breakdown of base salary, allowances (income), and deductions for each staff member.
+ */
 export const PayrollDetailPage = () => {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
@@ -18,43 +23,47 @@ export const PayrollDetailPage = () => {
     });
 
     if (isLoading) return <div style={{ padding: 50, textAlign: 'center' }}><Spin size="large" /></div>;
-    if (!period) return <div>Periodo no encontrado</div>;
+    if (!period) return <div style={{ padding: 50, textAlign: 'center' }}><Text type="danger">Payroll period not found</Text></div>;
 
     const columns = [
         {
-            title: 'Empleado',
+            title: 'Employee',
             key: 'employee',
             render: (_: any, record: any) => (
                 <Text strong>{record.employee.firstName} {record.employee.lastName}</Text>
             )
         },
         {
-            title: 'Cargo',
+            title: 'Position',
             key: 'position',
             render: (_: any, record: any) => record.employee.position
         },
         {
-            title: 'Sueldo Base',
+            title: 'Base Salary',
             dataIndex: 'baseSalary',
             key: 'baseSalary',
+            align: 'right' as const,
             render: (val: any) => <span>{Number(val).toFixed(2)}</span>
         },
         {
-            title: 'Asignaciones',
+            title: 'Allowances',
             dataIndex: 'totalIncome',
             key: 'totalIncome',
-            render: (val: any) => <span style={{ color: 'green' }}>{Number(val).toFixed(2)}</span>
+            align: 'right' as const,
+            render: (val: any) => <span style={{ color: '#52c41a' }}>{Number(val).toFixed(2)}</span>
         },
         {
-            title: 'Deducciones',
+            title: 'Deductions',
             dataIndex: 'totalDeductions',
             key: 'totalDeductions',
-            render: (val: any) => <span style={{ color: 'red' }}>{Number(val).toFixed(2)}</span>
+            align: 'right' as const,
+            render: (val: any) => <span style={{ color: '#f5222d' }}>{Number(val).toFixed(2)}</span>
         },
         {
-            title: 'Neto a Pagar',
+            title: 'Net Pay',
             dataIndex: 'netAmount',
             key: 'netAmount',
+            align: 'right' as const,
             render: (val: any) => <Text strong>{Number(val).toFixed(2)}</Text>
         }
     ];
@@ -64,37 +73,41 @@ export const PayrollDetailPage = () => {
             <Button
                 icon={<ArrowLeftOutlined />}
                 onClick={() => navigate('/app/hr/payroll')}
-                style={{ marginBottom: 16 }}
+                style={{ marginBottom: 24 }}
             >
-                Volver
+                Back to Payroll List
             </Button>
 
             <Card>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24 }}>
                     <div>
-                        <Title level={3}>{period.name}</Title>
-                        <Descriptions size="small" column={2}>
-                            <Descriptions.Item label="Desde">{dayjs(period.startDate).format('DD/MM/YYYY')}</Descriptions.Item>
-                            <Descriptions.Item label="Hasta">{dayjs(period.endDate).format('DD/MM/YYYY')}</Descriptions.Item>
-                            <Descriptions.Item label="Estado">
-                                <span style={{ fontWeight: 'bold' }}>{period.status}</span>
-                            </Descriptions.Item>
-                            <Descriptions.Item label="Total Nómina">
-                                <span style={{ fontSize: 18, fontWeight: 'bold' }}>{Number(period.totalAmount).toFixed(2)}</span>
-                            </Descriptions.Item>
-                        </Descriptions>
+                        <Title level={3} style={{ margin: 0 }}>{period.name}</Title>
+                        <Text type="secondary">Payroll detail for the selected period</Text>
                     </div>
-                    <Button icon={<PrinterOutlined />}>Imprimir Recibos</Button>
+                    <Space>
+                        <Button icon={<PrinterOutlined />}>Print All Payslips</Button>
+                    </Space>
                 </div>
 
-                <Divider />
+                <Descriptions bordered size="small" column={2}>
+                    <Descriptions.Item label="Start Date">{dayjs(period.startDate).format('MM/DD/YYYY')}</Descriptions.Item>
+                    <Descriptions.Item label="End Date">{dayjs(period.endDate).format('MM/DD/YYYY')}</Descriptions.Item>
+                    <Descriptions.Item label="Status">
+                        <Tag color={period.status === 'PAID' ? 'green' : 'blue'}>{period.status}</Tag>
+                    </Descriptions.Item>
+                    <Descriptions.Item label="Total Period Amount">
+                        <Text strong style={{ fontSize: 18 }}>{Number(period.totalAmount).toFixed(2)} {period.currency || 'VES'}</Text>
+                    </Descriptions.Item>
+                </Descriptions>
 
-                <Title level={5}>Listado de Pagos</Title>
+                <Divider orientation="left">Employee Payments Breakdown</Divider>
+
                 <Table
                     columns={columns}
                     dataSource={period.payments || []}
                     rowKey="id"
                     pagination={false}
+                    size="middle"
                 />
             </Card>
         </div>

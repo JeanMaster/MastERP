@@ -10,21 +10,21 @@ import { ApiProperty } from '@nestjs/swagger';
 export class UpdateCompanySettingsDto {
   @ApiProperty({
     example: 'MastERP',
-    description: 'Nombre de la empresa',
+    description: 'Company name',
   })
-  @IsNotEmpty({ message: 'El nombre es requerido' })
+  @IsNotEmpty({ message: 'Company name is required' })
   @IsString()
   name: string;
 
-  @ApiProperty({ example: 'J-12345678-9', description: 'RIF de la empresa' })
-  @IsNotEmpty({ message: 'El RIF es requerido' })
+  @ApiProperty({ example: 'J-12345678-9', description: 'Company RIF (tax ID)' })
+  @IsNotEmpty({ message: 'RIF is required' })
   @IsString()
   rif: string;
 
   @ApiProperty({
     example: '/uploads/logo.png',
     required: false,
-    description: 'URL del logo',
+    description: 'Logo URL',
   })
   @IsOptional()
   @IsString()
@@ -33,7 +33,7 @@ export class UpdateCompanySettingsDto {
   @ApiProperty({
     example: 'uuid-123',
     required: false,
-    description: 'ID de la moneda secundaria preferida',
+    description: 'ID of the preferred secondary currency',
   })
   @IsOptional()
   @IsString()
@@ -42,7 +42,7 @@ export class UpdateCompanySettingsDto {
   @ApiProperty({
     example: true,
     required: false,
-    description: 'Activar actualización automática de tasas',
+    description: 'Enable automatic exchange rate updates',
   })
   @IsOptional()
   @IsBoolean()
@@ -51,7 +51,7 @@ export class UpdateCompanySettingsDto {
   @ApiProperty({
     example: 60,
     required: false,
-    description: 'Frecuencia de actualización en minutos',
+    description: 'Rate update frequency in minutes',
   })
   @IsOptional()
   @IsNumber()
@@ -60,7 +60,7 @@ export class UpdateCompanySettingsDto {
   @ApiProperty({
     example: true,
     required: false,
-    description: 'Activar cobro de IVA',
+    description: 'Enable VAT (IVA) collection',
   })
   @IsOptional()
   @IsBoolean()
@@ -69,7 +69,7 @@ export class UpdateCompanySettingsDto {
   @ApiProperty({
     example: 16.0,
     required: false,
-    description: 'Tasa de IVA (%)',
+    description: 'VAT rate (%)',
   })
   @IsOptional()
   @IsNumber()
@@ -78,7 +78,7 @@ export class UpdateCompanySettingsDto {
   @ApiProperty({
     example: true,
     required: false,
-    description: 'Activar redondeo de precios',
+    description: 'Enable price rounding',
   })
   @IsOptional()
   @IsBoolean()
@@ -87,7 +87,7 @@ export class UpdateCompanySettingsDto {
   @ApiProperty({
     example: 10,
     required: false,
-    description: 'Factor de redondeo (ej. 10, 100)',
+    description: 'Rounding factor (e.g., 10, 100)',
   })
   @IsOptional()
   @IsNumber()
@@ -96,7 +96,7 @@ export class UpdateCompanySettingsDto {
   @ApiProperty({
     example: false,
     required: false,
-    description: 'Activar cobro de IGTF (3%)',
+    description: 'Enable IGTF collection (3% foreign currency tax)',
   })
   @IsOptional()
   @IsBoolean()
@@ -105,7 +105,7 @@ export class UpdateCompanySettingsDto {
   @ApiProperty({
     example: 3.0,
     required: false,
-    description: 'Tasa de IGTF (%)',
+    description: 'IGTF rate (%)',
   })
   @IsOptional()
   @IsNumber()
@@ -114,7 +114,7 @@ export class UpdateCompanySettingsDto {
   @ApiProperty({
     example: false,
     required: false,
-    description: 'Estatus de Contribuyente Especial',
+    description: 'Special Taxpayer (Contribuyente Especial) status',
   })
   @IsOptional()
   @IsBoolean()
@@ -123,7 +123,7 @@ export class UpdateCompanySettingsDto {
   @ApiProperty({
     example: true,
     required: false,
-    description: 'Obligar a asignar cuenta bancaria en gastos y pagos',
+    description: 'Require bank account assignment for expenses and payments',
   })
   @IsOptional()
   @IsBoolean()

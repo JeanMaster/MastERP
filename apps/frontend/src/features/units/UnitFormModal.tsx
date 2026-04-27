@@ -10,6 +10,10 @@ interface UnitFormModalProps {
     onClose: () => void;
 }
 
+/**
+ * UnitFormModal Component
+ * Modal form for creating or editing measurement units.
+ */
 export const UnitFormModal = ({ open, unit, onClose }: UnitFormModalProps) => {
     const [form] = Form.useForm();
     const queryClient = useQueryClient();
@@ -18,13 +22,13 @@ export const UnitFormModal = ({ open, unit, onClose }: UnitFormModalProps) => {
     const createMutation = useMutation({
         mutationFn: unitsApi.create,
         onSuccess: () => {
-            message.success('Unidad creada exitosamente');
+            message.success('Unit created successfully');
             queryClient.invalidateQueries({ queryKey: ['units'] });
             onClose();
             form.resetFields();
         },
         onError: (error: any) => {
-            message.error(error.response?.data?.message || 'Error al crear unidad');
+            message.error(error.response?.data?.message || 'Error creating unit');
         },
     });
 
@@ -33,13 +37,13 @@ export const UnitFormModal = ({ open, unit, onClose }: UnitFormModalProps) => {
         mutationFn: ({ id, dto }: { id: string; dto: UpdateUnitDto }) =>
             unitsApi.update(id, dto),
         onSuccess: () => {
-            message.success('Unidad actualizada exitosamente');
+            message.success('Unit updated successfully');
             queryClient.invalidateQueries({ queryKey: ['units'] });
             onClose();
             form.resetFields();
         },
         onError: (error: any) => {
-            message.error(error.response?.data?.message || 'Error al actualizar unidad');
+            message.error(error.response?.data?.message || 'Error updating unit');
         },
     });
 
@@ -53,7 +57,7 @@ export const UnitFormModal = ({ open, unit, onClose }: UnitFormModalProps) => {
         } else {
             form.resetFields();
         }
-    }, [unit, form]);
+    }, [unit, form, open]);
 
     // F9 Keyboard Shortcut
     useEffect(() => {
@@ -67,7 +71,7 @@ export const UnitFormModal = ({ open, unit, onClose }: UnitFormModalProps) => {
         };
         window.addEventListener('keydown', handleKeyDown, true);
         return () => window.removeEventListener('keydown', handleKeyDown, true);
-    }, [open]);
+    }, [open, form]);
 
     const handleSubmit = async () => {
         try {
@@ -89,29 +93,29 @@ export const UnitFormModal = ({ open, unit, onClose }: UnitFormModalProps) => {
 
     return (
         <Modal
-            title={unit ? 'Editar Unidad' : 'Nueva Unidad'}
+            title={unit ? 'Edit Unit' : 'New Unit'}
             open={open}
             onOk={handleSubmit}
             onCancel={onClose}
             confirmLoading={createMutation.isPending || updateMutation.isPending}
-            okText={unit ? 'Actualizar (F9)' : 'Crear (F9)'}
-            cancelText="Cancelar"
+            okText={unit ? 'Update (F9)' : 'Create (F9)'}
+            cancelText="Cancel"
         >
             <Form form={form} layout="vertical" style={{ marginTop: 20 }}>
                 <Form.Item
-                    label="Nombre"
+                    label="Name"
                     name="name"
-                    rules={[{ required: true, message: 'El nombre es requerido' }]}
+                    rules={[{ required: true, message: 'Name is required' }]}
                 >
-                    <Input placeholder="Ej: Caja, Rollo, Kilogramo" />
+                    <Input placeholder="e.g., Box, Roll, Kilogram" />
                 </Form.Item>
 
                 <Form.Item
-                    label="Abreviación"
+                    label="Abbreviation"
                     name="abbreviation"
-                    rules={[{ required: true, message: 'La abreviación es requerida' }]}
+                    rules={[{ required: true, message: 'Abbreviation is required' }]}
                 >
-                    <Input placeholder="Ej: CJA, RLL, KG" maxLength={10} />
+                    <Input placeholder="e.g., BOX, RLL, KG" maxLength={10} />
                 </Form.Item>
             </Form>
         </Modal>

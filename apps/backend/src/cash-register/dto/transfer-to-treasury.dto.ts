@@ -1,21 +1,21 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString, IsNumber, Min } from 'class-validator';
+import { IsNumber, IsString, Min } from 'class-validator';
 
 export class TransferToTreasuryDto {
-  @ApiProperty({ description: 'ID de la cuenta bancaria o bóveda de destino' })
+  @ApiProperty({ description: 'Destination bank account ID' })
   @IsString()
   bankAccountId: string;
 
-  @ApiProperty({ description: 'Monto a trasladar' })
+  @ApiProperty({ description: 'Amount to transfer' })
   @IsNumber()
   @Min(0.01)
   amount: number;
 
-  @ApiProperty({ description: 'Descripción o motivo del traslado' })
+  @ApiProperty({ description: 'Reason for the transfer' })
   @IsString()
   description: string;
 
-  @ApiProperty({ description: 'Usuario que realiza el traslado (opcional)' })
+  @ApiProperty({ required: false, description: 'Username of the person performing the transfer' })
   @IsString()
   performedBy?: string;
 }

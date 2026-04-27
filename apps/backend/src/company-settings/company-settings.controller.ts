@@ -11,17 +11,23 @@ export class CompanySettingsController {
     private readonly companySettingsService: CompanySettingsService,
   ) {}
 
+  /**
+   * Retrieves the company settings.
+   */
   @Get()
-  @ApiOperation({ summary: 'Obtener configuración de la empresa' })
-  @ApiResponse({ status: 200, description: 'Configuración obtenida' })
+  @ApiOperation({ summary: 'Get company settings' })
+  @ApiResponse({ status: 200, description: 'Settings retrieved successfully' })
   getSettings() {
     return this.companySettingsService.getSettings();
   }
 
+  /**
+   * Updates the company settings.
+   */
   @UseGuards(AuthGuard('jwt'))
   @Put()
-  @ApiOperation({ summary: 'Actualizar configuración de la empresa' })
-  @ApiResponse({ status: 200, description: 'Configuración actualizada' })
+  @ApiOperation({ summary: 'Update company settings' })
+  @ApiResponse({ status: 200, description: 'Settings updated successfully' })
   updateSettings(@Body() updateDto: UpdateCompanySettingsDto) {
     return this.companySettingsService.updateSettings(updateDto);
   }

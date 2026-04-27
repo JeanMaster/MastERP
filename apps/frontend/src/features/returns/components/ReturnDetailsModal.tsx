@@ -10,14 +10,19 @@ interface ReturnDetailsModalProps {
     record: any;
 }
 
+/**
+ * ReturnDetailsModal Component
+ * Displays the full details of a specific return or exchange request.
+ * Shows the original invoice reference, returned items, and if applicable, the replacement items and financial balance.
+ */
 export const ReturnDetailsModal = ({ open, onClose, record }: ReturnDetailsModalProps) => {
     if (!record) return null;
 
     const getTypeTag = (type: string) => {
         const labels: Record<string, string> = {
-            REFUND: 'Reembolso',
-            EXCHANGE_SAME: 'Cambio Mismo Producto',
-            EXCHANGE_DIFFERENT: 'Cambio Producto Diferente'
+            REFUND: 'Refund',
+            EXCHANGE_SAME: 'Direct Exchange',
+            EXCHANGE_DIFFERENT: 'Product Swap'
         };
         const colors: Record<string, string> = {
             REFUND: 'purple',
@@ -29,10 +34,10 @@ export const ReturnDetailsModal = ({ open, onClose, record }: ReturnDetailsModal
 
     const getStatusTag = (status: string) => {
         const labels: Record<string, string> = {
-            PENDING: 'Pendiente',
-            APPROVED: 'Aprobada',
-            REJECTED: 'Rechazada',
-            COMPLETED: 'Completada'
+            PENDING: 'Pending',
+            APPROVED: 'Approved',
+            REJECTED: 'Rejected',
+            COMPLETED: 'Completed'
         };
         const colors: Record<string, string> = {
             PENDING: 'orange',
@@ -45,7 +50,7 @@ export const ReturnDetailsModal = ({ open, onClose, record }: ReturnDetailsModal
 
     const itemsColumns = [
         {
-            title: 'Producto',
+            title: 'Product',
             key: 'product',
             render: (_: any, r: any) => (
                 <div>
@@ -56,14 +61,14 @@ export const ReturnDetailsModal = ({ open, onClose, record }: ReturnDetailsModal
             )
         },
         {
-            title: 'Cant.',
+            title: 'Qty',
             dataIndex: 'quantity',
             key: 'quantity',
             width: 80,
             render: (qty: any) => Number(qty)
         },
         {
-            title: 'Precio Unit.',
+            title: 'Unit Price',
             dataIndex: 'unitPrice',
             key: 'unitPrice',
             align: 'right' as const,
@@ -79,35 +84,11 @@ export const ReturnDetailsModal = ({ open, onClose, record }: ReturnDetailsModal
     ];
 
     const replacementColumns = [
+        ...itemsColumns.filter(col => col.key !== 'unitPrice'),
         {
-            title: 'Producto',
-            key: 'product',
-            render: (_: any, r: any) => (
-                <div>
-                    <Text strong>{r.product?.name}</Text>
-                    <br />
-                    <Text type="secondary" style={{ fontSize: 12 }}>{r.product?.sku}</Text>
-                </div>
-            )
-        },
-        {
-            title: 'Cant.',
-            dataIndex: 'quantity',
-            key: 'quantity',
-            width: 80,
-            render: (qty: any) => Number(qty)
-        },
-        {
-            title: 'Precio (Bs)',
-            dataIndex: 'unitPrice', // This is the converted price
+            title: 'Replacement Price',
+            dataIndex: 'unitPrice',
             key: 'unitPrice',
-            align: 'right' as const,
-            render: (val: any) => formatVenezuelanPrice(Number(val))
-        },
-        {
-            title: 'Total',
-            dataIndex: 'total',
-            key: 'total',
             align: 'right' as const,
             render: (val: any) => formatVenezuelanPrice(Number(val))
         }
@@ -119,25 +100,25 @@ export const ReturnDetailsModal = ({ open, onClose, record }: ReturnDetailsModal
 
     return (
         <Modal
-            title={`Detalle de Devolución: ${record.creditNoteNumber}`}
+            title={`Return Details: ${record.creditNoteNumber}`}
             open={open}
             onCancel={onClose}
             footer={null}
             width={800}
         >
             <Descriptions bordered size="small" column={2}>
-                <Descriptions.Item label="Factura Original">{record.originalSale?.invoiceNumber}</Descriptions.Item>
-                <Descriptions.Item label="Fecha">{dayjs(record.createdAt).format('DD/MM/YYYY HH:mm')}</Descriptions.Item>
-                <Descriptions.Item label="Cliente">{record.originalSale?.client?.name || 'General'}</Descriptions.Item>
-                <Descriptions.Item label="Tipo">{getTypeTag(record.returnType)}</Descriptions.Item>
-                <Descriptions.Item label="Estado">{getStatusTag(record.status)}</Descriptions.Item>
-                <Descriptions.Item label="Creado por">{record.requestedBy || '-'}</Descriptions.Item>
-                <Descriptions.Item label="Razón" span={2}>
-                    {record.reason} - {record.notes || 'Sin notas adicionales'}
+                <Descriptions.Item label="Original Invoice">{record.originalSale?.invoiceNumber}</Descriptions.Item>
+                <Descriptions.Item label="Date Created">{dayjs(record.createdAt).format('MM/DD/YYYY HH:mm')}</Descriptions.Item>
+                <Descriptions.Item label="Customer">{record.originalSale?.client?.name || 'Walk-in'}</Descriptions.Item>
+                <Descriptions.Item label="Type">{getTypeTag(record.returnType)}</Descriptions.Item>
+                <Descriptions.Item label="Status">{getStatusTag(record.status)}</Descriptions.Item>
+                <Descriptions.Item label="Requested By">{record.requestedBy || '-'}</Descriptions.Item>
+                <Descriptions.Item label="Reason & Notes" span={2}>
+                    <Tag>{record.reason}</Tag> {record.notes || 'No additional notes provided'}
                 </Descriptions.Item>
             </Descriptions>
 
-            <Divider>Items Devueltos</Divider>
+            <Divider orientation="left">Returned Items</Divider>
             <Table
                 dataSource={record.items || []}
                 columns={itemsColumns}
@@ -146,7 +127,7 @@ export const ReturnDetailsModal = ({ open, onClose, record }: ReturnDetailsModal
                 size="small"
                 summary={() => (
                     <Table.Summary.Row>
-                        <Table.Summary.Cell index={0} colSpan={3} align="right"><strong>Total Devuelto:</strong></Table.Summary.Cell>
+                        <Table.Summary.Cell index={0} colSpan={3} align="right"><strong>Returned Total:</strong></Table.Summary.Cell>
                         <Table.Summary.Cell index={1} align="right"><strong>{formatVenezuelanPrice(totalDevuelto)}</strong></Table.Summary.Cell>
                     </Table.Summary.Row>
                 )}
@@ -154,7 +135,7 @@ export const ReturnDetailsModal = ({ open, onClose, record }: ReturnDetailsModal
 
             {record.replacementItems && record.replacementItems.length > 0 && (
                 <>
-                    <Divider>Items de Reemplazo (Cambio)</Divider>
+                    <Divider orientation="left">Replacement Items (Exchange)</Divider>
                     <Table
                         dataSource={record.replacementItems}
                         columns={replacementColumns}
@@ -163,7 +144,7 @@ export const ReturnDetailsModal = ({ open, onClose, record }: ReturnDetailsModal
                         size="small"
                         summary={() => (
                             <Table.Summary.Row>
-                                <Table.Summary.Cell index={0} colSpan={3} align="right"><strong>Total Cambio:</strong></Table.Summary.Cell>
+                                <Table.Summary.Cell index={0} colSpan={3} align="right"><strong>Replacement Total:</strong></Table.Summary.Cell>
                                 <Table.Summary.Cell index={1} align="right"><strong>{formatVenezuelanPrice(totalCambio)}</strong></Table.Summary.Cell>
                             </Table.Summary.Row>
                         )}
@@ -172,14 +153,14 @@ export const ReturnDetailsModal = ({ open, onClose, record }: ReturnDetailsModal
                     <div style={{ marginTop: 16, textAlign: 'right', padding: '12px', background: '#f5f5f5', borderRadius: 6 }}>
                         {difference > 0 ? (
                             <Text type="success" strong style={{ fontSize: 16 }}>
-                                A favor del cliente: {formatVenezuelanPrice(difference)}
+                                Balance in favor of Customer: {formatVenezuelanPrice(difference)}
                             </Text>
                         ) : difference < 0 ? (
                             <Text type="danger" strong style={{ fontSize: 16 }}>
-                                Cliente paga diferencia: {formatVenezuelanPrice(Math.abs(difference))}
+                                Customer pays difference: {formatVenezuelanPrice(Math.abs(difference))}
                             </Text>
                         ) : (
-                            <Text type="secondary" strong style={{ fontSize: 16 }}>Cambio sin diferencia (0.00 Bs)</Text>
+                            <Text type="secondary" strong style={{ fontSize: 16 }}>Even exchange (0.00 difference)</Text>
                         )}
                     </div>
                 </>
@@ -187,9 +168,9 @@ export const ReturnDetailsModal = ({ open, onClose, record }: ReturnDetailsModal
 
             {record.returnType === 'REFUND' && (
                 <div style={{ marginTop: 16, textAlign: 'right', padding: '12px', background: '#f5f5f5', borderRadius: 6 }}>
-                    <Text strong>Monto Reembolsado: {formatVenezuelanPrice(Number(record.refundAmount))}</Text>
+                    <Text strong>Refunded Amount: {formatVenezuelanPrice(Number(record.refundAmount))}</Text>
                     <br />
-                    <Text type="secondary">Método: {record.refundMethod}</Text>
+                    <Text type="secondary">Method: {record.refundMethod}</Text>
                 </div>
             )}
         </Modal>

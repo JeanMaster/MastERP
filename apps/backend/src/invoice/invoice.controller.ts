@@ -10,7 +10,7 @@ export class InvoiceController {
   constructor(private readonly invoiceService: InvoiceService) {}
 
   /**
-   * Get the next invoice number (for display purposes, doesn't increment)
+   * Retrieves the next invoice number for display purposes (without incrementing).
    */
   @Get('next')
   async getNextInvoiceNumber() {
@@ -19,7 +19,7 @@ export class InvoiceController {
   }
 
   @Post()
-  @ApiOperation({ summary: 'Crear factura a crédito' })
+  @ApiOperation({ summary: 'Create a credit invoice' })
   async createCreditInvoice(@Body() createInvoiceDto: CreateInvoiceDto) {
     return this.invoiceService.createCreditInvoice({
       clientId: createInvoiceDto.clientId,
@@ -36,31 +36,31 @@ export class InvoiceController {
   }
 
   @Get('client/:clientId')
-  @ApiOperation({ summary: 'Obtener facturas de un cliente' })
+  @ApiOperation({ summary: 'Retrieve invoices for a specific client' })
   getClientInvoices(@Param('clientId') clientId: string) {
     return this.invoiceService.getClientInvoices(clientId);
   }
 
   @Get('pending')
-  @ApiOperation({ summary: 'Obtener facturas pendientes' })
+  @ApiOperation({ summary: 'Retrieve all pending invoices' })
   getPendingInvoices() {
     return this.invoiceService.getPendingInvoices();
   }
 
   @Get('overdue')
-  @ApiOperation({ summary: 'Obtener facturas vencidas' })
+  @ApiOperation({ summary: 'Retrieve all overdue invoices' })
   getOverdueInvoices() {
     return this.invoiceService.getOverdueInvoices();
   }
 
   @Get(':id')
-  @ApiOperation({ summary: 'Obtener factura por ID' })
+  @ApiOperation({ summary: 'Retrieve an invoice by ID' })
   getInvoiceById(@Param('id') id: string) {
     return this.invoiceService.getInvoiceById(id);
   }
 
   /**
-   * Get current counter status
+   * Retrieves the current status of the invoice counter.
    */
   @Get('counter')
   async getCurrentCounter() {

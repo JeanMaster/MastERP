@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Card, Radio, Input, Button, Space, Divider, Typography, Alert, message, Tag } from 'antd';
 import { GlobalOutlined, LaptopOutlined, ShareAltOutlined, SaveOutlined, ReloadOutlined, CopyOutlined } from '@ant-design/icons';
@@ -8,12 +7,23 @@ import type { NetworkInfo } from '../../services/systemApi';
 
 const { Title, Text, Paragraph } = Typography;
 
+/**
+ * NetworkSettingsPage Component
+ * Critical configuration utility for managing the application's connection to the NestJS backend.
+ * Supports three modes:
+ * 1. Local: Backend is running on the same machine (localhost).
+ * 2. LAN: Backend is reachable via local IP (useful for mobile POS testing).
+ * 3. Remote: Backend is hosted on a public URL (Cloud).
+ */
 export const NetworkSettingsPage = () => {
     const [mode, setMode] = useState<'local' | 'lan' | 'remote'>(getConnectionMode());
     const [customUrl, setCustomUrl] = useState(localStorage.getItem('CUSTOM_API_URL') || '');
     const [networkInfo, setNetworkInfo] = useState<NetworkInfo | null>(null);
     const [isLoading, setIsLoading] = useState(false);
 
+    /**
+     * Retrieves the server's local IP and port information to assist in LAN configuration.
+     */
     const loadNetworkInfo = async () => {
         setIsLoading(true);
         try {
@@ -21,7 +31,7 @@ export const NetworkSettingsPage = () => {
             setNetworkInfo(data);
         } catch (error) {
             console.error('Error loading static network info:', error);
-            // Don't show error message here as it might be expected if offline
+            // Non-critical error if the server is currently unreachable
         } finally {
             setIsLoading(false);
         }
@@ -31,29 +41,32 @@ export const NetworkSettingsPage = () => {
         loadNetworkInfo();
     }, []);
 
+    /**
+     * Persists the connection mode and triggers a hard reload to re-initialize the API services with the new BASE_URL.
+     */
     const handleSave = () => {
         if (mode === 'local') {
             setCustomApiUrl(null);
-            message.success('Modo cambiado a Computadora Local. La aplicación se reiniciará.');
+            message.success('Mode switched to Local Host. The application will restart.');
         } else if (mode === 'lan') {
             if (networkInfo?.localIp) {
                 const lanUrl = `http://${networkInfo.localIp}:${networkInfo.port}/api`;
                 setCustomApiUrl(lanUrl);
-                message.success('Modo cambiado a Red Local (LAN). La aplicación se reiniciará.');
+                message.success('Mode switched to Local Network (LAN). The application will restart.');
             } else {
-                message.error('No se pudo detectar la IP local automáticamente.');
+                message.error('Could not automatically detect the server\'s local IP.');
                 return;
             }
         } else {
             if (!customUrl) {
-                message.error('Debe ingresar una URL para el modo remoto.');
+                message.error('Please enter a valid URL for Remote mode.');
                 return;
             }
             setCustomApiUrl(customUrl);
-            message.success('Modo cambiado a Remoto. La aplicación se reiniciará.');
+            message.success('Mode switched to Remote/Cloud. The application will restart.');
         }
 
-        // Restart app to apply new BASE_URL
+        // Restart app to apply new BASE_URL environment
         setTimeout(() => {
             window.location.reload();
         }, 1500);
@@ -61,53 +74,56 @@ export const NetworkSettingsPage = () => {
 
     const copyToClipboard = (text: string) => {
         navigator.clipboard.writeText(text);
-        message.success('Copiado al portapapeles');
+        message.success('Copied to clipboard');
     };
 
     const lanAppUrl = networkInfo ? `${window.location.protocol}//${networkInfo.localIp}:${window.location.port}` : '';
 
     return (
         <div style={{ padding: 24, maxWidth: 900, margin: '0 auto' }}>
-            <Title level={2}>Configuración de Red y Conexión</Title>
-            <Paragraph>
-                Configure cómo esta aplicación se comunica con el servidor central de MastERP.
-            </Paragraph>
+            <div style={{ marginBottom: 32 }}>
+                <Title level={2} style={{ margin: 0 }}>🌐 Network & Connectivity Settings</Title>
+                <Paragraph type="secondary">
+                    Configure how this frontend application communicates with the central MastERP core server.
+                </Paragraph>
+            </div>
 
-            <Card style={{ marginBottom: 24 }}>
-                <Title level={4}>Detección del Servidor</Title>
+            <Card bordered={false} style={{ marginBottom: 24, boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
+                <Title level={4}>Server Discovery</Title>
                 <Space direction="vertical" style={{ width: '100%' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                        <Text strong>Estado de la Conexión:</Text>
-                        <Tag color="blue">{BASE_URL}</Tag>
+                        <Text strong>Current Connection Endpoint:</Text>
+                        <Tag color="blue" style={{ fontSize: '14px', padding: '4px 12px' }}>{BASE_URL}</Tag>
                         <Button
                             icon={<ReloadOutlined />}
-                            size="small"
+                            size="middle"
                             onClick={loadNetworkInfo}
                             loading={isLoading}
                         >
-                            Refrescar Info
+                            Refresh Info
                         </Button>
                     </div>
                 </Space>
             </Card>
 
-            <Card>
-                <Title level={4}>Modo de Conexión</Title>
+            <Card bordered={false} style={{ boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
+                <Title level={4}>Connection Environment</Title>
                 <Radio.Group
                     value={mode}
                     onChange={(e) => setMode(e.target.value)}
                     optionType="button"
                     buttonStyle="solid"
                     style={{ marginBottom: 24 }}
+                    size="large"
                 >
                     <Radio.Button value="local">
-                        <Space><LaptopOutlined /> Computadora Local</Space>
+                        <Space><LaptopOutlined /> Localhost (Single PC)</Space>
                     </Radio.Button>
                     <Radio.Button value="lan">
-                        <Space><ShareAltOutlined /> Red Local (LAN)</Space>
+                        <Space><ShareAltOutlined /> Local Network (LAN)</Space>
                     </Radio.Button>
                     <Radio.Button value="remote">
-                        <Space><GlobalOutlined /> Remoto / Nube</Space>
+                        <Space><GlobalOutlined /> Remote / Cloud</Space>
                     </Radio.Button>
                 </Radio.Group>
 
@@ -115,8 +131,8 @@ export const NetworkSettingsPage = () => {
                     {mode === 'local' && (
                         <Alert
                             type="info"
-                            message="Uso en la misma computadora"
-                            description="Seleccione esto si está ejecutando el sistema y el servidor en la misma PC físicamente. No requiere configuración adicional."
+                            message="Direct Connection"
+                            description="Use this if you are running both the database/server and this interface on the same physical computer. This is the fastest and most stable configuration."
                             showIcon
                         />
                     )}
@@ -125,18 +141,18 @@ export const NetworkSettingsPage = () => {
                         <div>
                             <Alert
                                 type="warning"
-                                message="Conexión en Red Local"
-                                description="Utilice este modo para permitir que otros dispositivos (celulares, laptops) en su misma red Wi-Fi se conecten al servidor de esta computadora."
+                                message="Intranet Deployment"
+                                description="Enable this mode to allow other devices (smartphones, tablets, auxiliary laptops) on your same Wi-Fi network to connect to this server."
                                 showIcon
                                 style={{ marginBottom: 16 }}
                             />
                             {networkInfo && (
-                                <Card size="small" style={{ background: '#f5f5f5' }}>
-                                    <Text strong>IP detectada del servidor:</Text>
-                                    <Paragraph copyable={{ text: networkInfo.localIp }}>
+                                <Card size="small" style={{ background: '#fafafa', border: '1px dashed #d9d9d9' }}>
+                                    <Text strong>Detected Server IP:</Text>
+                                    <Paragraph copyable={{ text: networkInfo.localIp }} style={{ fontSize: '18px', marginTop: 8 }}>
                                         {networkInfo.localIp}
                                     </Paragraph>
-                                    <Text type="secondary">Esta dirección será usada para apuntar al backend.</Text>
+                                    <Text type="secondary">The application will attempt to reach the backend at this internal address.</Text>
                                 </Card>
                             )}
                         </div>
@@ -146,13 +162,13 @@ export const NetworkSettingsPage = () => {
                         <div>
                             <Alert
                                 type="success"
-                                message="Conexión Remota (Cloud)"
-                                description="Ingrese la dirección de su servidor en la nube (ej. Railway, Render, VPS)."
+                                message="Distributed / Cloud Connection"
+                                description="Enter the full URL of your publicly hosted API (e.g., https://api.yourdomain.com/api)."
                                 showIcon
                                 style={{ marginBottom: 16 }}
                             />
                             <Input
-                                placeholder="http://mi-servidor.com/api"
+                                placeholder="https://api.your-cloud-server.com/api"
                                 value={customUrl}
                                 onChange={(e) => setCustomUrl(e.target.value)}
                                 style={{ marginBottom: 12 }}
@@ -170,26 +186,28 @@ export const NetworkSettingsPage = () => {
                         size="large"
                         icon={<SaveOutlined />}
                         onClick={handleSave}
+                        style={{ height: 50, borderRadius: 8, padding: '0 40px' }}
                     >
-                        Guardar y Reiniciar Aplicación
+                        Apply Settings & Restart App
                     </Button>
                 </div>
             </Card >
 
             {mode === 'lan' && networkInfo && (
-                <Card title="Guía de Conexión para Otros Dispositivos" style={{ marginTop: 24 }}>
+                <Card title="External Device Connection Guide" style={{ marginTop: 32, borderRadius: 12 }}>
                     <Paragraph>
-                        Para que otro dispositivo entre a MastERP, abra el navegador en ese dispositivo e ingrese:
+                        To access MastERP from another device in the same building, open the browser on that device and enter:
                     </Paragraph>
-                    <Title level={3} style={{ textAlign: 'center', color: '#1890ff' }}>
+                    <Title level={2} style={{ textAlign: 'center', color: '#1890ff', margin: '24px 0' }}>
                         {lanAppUrl}
                     </Title>
                     <div style={{ textAlign: 'center' }}>
                         <Button
+                            size="large"
                             icon={<CopyOutlined />}
                             onClick={() => copyToClipboard(lanAppUrl)}
                         >
-                            Copiar Enlace de Invitación
+                            Copy Invitation Link
                         </Button>
                     </div>
                 </Card>

@@ -7,6 +7,11 @@ import dayjs from 'dayjs';
 const { Title, Text } = Typography;
 const { Option } = Select;
 
+/**
+ * CouponsManager Component
+ * Management interface for promotional discount codes.
+ * Allows defining global usage limits, expiration dates, minimum purchase requirements, and tier-based restrictions.
+ */
 export default function CouponsManager() {
   const [coupons, setCoupons] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -15,7 +20,7 @@ export default function CouponsManager() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form] = Form.useForm();
   
-  // F9 Keyboard Shortcut
+  // F9 Keyboard Shortcut for quick actions
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
         if (e.key === 'F9') {
@@ -39,7 +44,7 @@ export default function CouponsManager() {
       setCoupons(data);
     } catch (error) {
       console.error(error);
-      message.error('Error al cargar cupones');
+      message.error('Error loading coupon codes');
     } finally {
       setLoading(false);
     }
@@ -79,10 +84,10 @@ export default function CouponsManager() {
   const handleDelete = async (id: string) => {
     try {
       await marketingApi.deleteCoupon(id);
-      message.success('Cupón eliminado con éxito');
+      message.success('Coupon deleted successfully');
       fetchCoupons();
     } catch (error) {
-       message.error('Error al eliminar cupón. Es posible que ya tenga uso histórico.');
+       message.error('Error deleting coupon. It may have historical usage data.');
     }
   };
 
@@ -97,28 +102,28 @@ export default function CouponsManager() {
 
       if (isEditing && editingId) {
         await marketingApi.updateCoupon(editingId, payload);
-        message.success('Cupón actualizado');
+        message.success('Coupon updated successfully');
       } else {
         await marketingApi.createCoupon(payload);
-        message.success('Cupón creado');
+        message.success('Coupon created successfully');
       }
       setIsModalVisible(false);
       fetchCoupons();
     } catch (error) {
       console.error(error);
-      message.error('Error al guardar el cupón');
+      message.error('Error saving the coupon code');
     }
   };
 
   const columns = [
     {
-      title: 'Código',
+      title: 'Code',
       dataIndex: 'code',
       key: 'code',
-      render: (text: string) => <Text strong>{text}</Text>
+      render: (text: string) => <Text strong style={{ letterSpacing: '1px' }}>{text}</Text>
     },
     {
-      title: 'Tipo',
+      title: 'Discount Type',
       dataIndex: 'discountType',
       key: 'discountType',
       render: (type: string, record: any) => (
@@ -128,48 +133,53 @@ export default function CouponsManager() {
       )
     },
     {
-      title: 'Uso',
+      title: 'Usage',
       key: 'usage',
       render: (_: any, record: any) => (
         <Text>
-          {record.usedCount} {record.usageLimit ? `/ ${record.usageLimit}` : ''} usos
+          {record.usedCount} {record.usageLimit ? `/ ${record.usageLimit}` : ''} redemptions
         </Text>
       )
     },
     {
-      title: 'Tiers',
+      title: 'Applicable Tiers',
       dataIndex: 'targetTiers',
       key: 'targetTiers',
       render: (tiers: string[]) => (
-        tiers && tiers.length > 0 ? tiers.map(t => <Tag key={t}>{t}</Tag>) : <Tag>Todos</Tag>
+        tiers && tiers.length > 0 ? tiers.map(t => <Tag key={t}>{t}</Tag>) : <Tag color="default">All Customers</Tag>
       )
     },
     {
-      title: 'Estado',
+      title: 'Status',
       dataIndex: 'isActive',
       key: 'isActive',
+      align: 'center' as const,
       render: (active: boolean) => (
-        <Tag color={active ? 'success' : 'default'}>{active ? 'Activo' : 'Inactivo'}</Tag>
+        <Tag color={active ? 'success' : 'default'}>{active ? 'Active' : 'Inactive'}</Tag>
       )
     },
     {
-      title: 'Acciones',
+      title: 'Actions',
       key: 'actions',
+      width: 100,
       render: (_: any, record: any) => (
         <Space>
-          <Button icon={<EditOutlined />} onClick={() => handleEdit(record)} />
-          <Button danger icon={<DeleteOutlined />} onClick={() => handleDelete(record.id)} />
+          <Button icon={<EditOutlined />} onClick={() => handleEdit(record)} title="Edit coupon" />
+          <Button danger icon={<DeleteOutlined />} onClick={() => handleDelete(record.id)} title="Delete coupon" />
         </Space>
       )
     }
   ];
 
   return (
-    <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-        <Title level={4} style={{ margin: 0 }}>Códigos de Cupones</Title>
-        <Button type="primary" icon={<PlusOutlined />} onClick={handleAddNew}>
-          Nuevo Cupón (F9)
+    <div style={{ padding: '4px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+        <div>
+          <Title level={3} style={{ margin: 0 }}>🎟️ Promotional Coupon Codes</Title>
+          <Text type="secondary">Manage marketing campaigns and discount codes.</Text>
+        </div>
+        <Button type="primary" icon={<PlusOutlined />} onClick={handleAddNew} size="large">
+          Create New Coupon (F9)
         </Button>
       </div>
 
@@ -178,85 +188,87 @@ export default function CouponsManager() {
         dataSource={coupons} 
         rowKey="id" 
         loading={loading}
-        pagination={{ pageSize: 10 }}
+        pagination={{ 
+            pageSize: 10,
+            showTotal: (total) => `Total: ${total} coupons`
+        }}
+        bordered
       />
 
       <Modal
-        title={isEditing ? 'Editar Cupón' : 'Nuevo Cupón'}
+        title={isEditing ? 'Edit Coupon Code' : 'Generate New Coupon Code'}
         open={isModalVisible}
         onCancel={() => setIsModalVisible(false)}
         onOk={() => form.submit()}
-        okText="Guardar (F9)"
-        width={700}
+        okText="Save Coupon (F9)"
+        width={750}
       >
-        <Form form={form} layout="vertical" onFinish={handleSave}>
+        <Form form={form} layout="vertical" onFinish={handleSave} style={{ marginTop: 20 }}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-            <Form.Item label="Código Promocional" name="code" rules={[{ required: true, message: 'Requerido' }]}>
-              <Input placeholder="Ej: XMAS20" style={{ textTransform: 'uppercase' }} />
+            <Form.Item label="Promotional Code" name="code" rules={[{ required: true, message: 'Please enter a code' }]}>
+              <Input placeholder="e.g., XMAS2025" style={{ textTransform: 'uppercase', fontWeight: 'bold' }} />
             </Form.Item>
 
-            <Form.Item label="Estado" name="isActive" valuePropName="checked">
-               <Switch checkedChildren="Activo" unCheckedChildren="Inactivo" />
+            <Form.Item label="Status" name="isActive" valuePropName="checked">
+               <Switch checkedChildren="Active" unCheckedChildren="Inactive" />
             </Form.Item>
           </div>
 
-          <Form.Item label="Descripción" name="description">
-            <Input.TextArea rows={2} placeholder="Opcional. Ej: Promoción navideña." />
+          <Form.Item label="Campaign Description (Optional)" name="description">
+            <Input.TextArea rows={2} placeholder="Example: Holiday season flash sale promotion." />
           </Form.Item>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-            <Form.Item label="Tipo de Descuento" name="discountType" rules={[{ required: true, message: 'Requerido' }]}>
+            <Form.Item label="Discount Calculation" name="discountType" rules={[{ required: true, message: 'Required' }]}>
               <Select>
-                <Option value="PERCENTAGE">Porcentaje (%)</Option>
-                <Option value="FIXED_AMOUNT">Monto Fijo ($)</Option>
+                <Option value="PERCENTAGE">Percentage (%)</Option>
+                <Option value="FIXED_AMOUNT">Fixed Dollar Amount ($)</Option>
               </Select>
             </Form.Item>
 
-            <Form.Item label="Valor del Descuento" name="discountValue" rules={[{ required: true, message: 'Requerido' }]}>
-              <InputNumber style={{ width: '100%' }} min={0.01} step={0.01} />
+            <Form.Item label="Discount Value" name="discountValue" rules={[{ required: true, message: 'Required' }]}>
+              <InputNumber style={{ width: '100%' }} min={0.01} step={0.01} placeholder="0.00" />
             </Form.Item>
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-             <Form.Item label="Límite Global de Usos" name="usageLimit" tooltip="Dejar en blanco para ilimitado">
-               <InputNumber style={{ width: '100%' }} min={1} placeholder="Ilimitado" />
+             <Form.Item label="Global Usage Limit" name="usageLimit" tooltip="Leave empty for unlimited redemptions">
+               <InputNumber style={{ width: '100%' }} min={1} placeholder="Unlimited" />
              </Form.Item>
-             <Form.Item label="Compra Mínima Requerida ($)" name="minPurchaseAmount">
-               <InputNumber style={{ width: '100%' }} min={0.01} step={1} placeholder="Monto mínimo" />
+             <Form.Item label="Minimum Purchase Required ($)" name="minPurchaseAmount">
+               <InputNumber style={{ width: '100%' }} min={0.01} step={1} placeholder="0.00" />
              </Form.Item>
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-             <Form.Item label="Fecha de Inicio" name="startDate">
-               <DatePicker style={{ width: '100%' }} showTime format="YYYY-MM-DD HH:mm:ss" />
+             <Form.Item label="Valid From (Start Date)" name="startDate">
+               <DatePicker style={{ width: '100%' }} showTime format="MM/DD/YYYY HH:mm:ss" />
              </Form.Item>
-             <Form.Item label="Fecha Fin" name="endDate">
-               <DatePicker style={{ width: '100%' }} showTime format="YYYY-MM-DD HH:mm:ss" />
+             <Form.Item label="Expires On (End Date)" name="endDate">
+               <DatePicker style={{ width: '100%' }} showTime format="MM/DD/YYYY HH:mm:ss" />
              </Form.Item>
           </div>
 
-          <Title level={5} style={{ marginTop: 16 }}>Restricciones de Uso</Title>
+          <Title level={5} style={{ marginTop: 24, marginBottom: 16 }}>Usage Constraints</Title>
 
-          <div style={{ border: '1px solid #f0f0f0', padding: 16, borderRadius: 8, background: '#fafafa' }}>
-            <Form.Item label="Single Use (1 por cliente)" name="isSingleUsePerClient" valuePropName="checked" tooltip="Evita que un mismo cliente use este código más de 1 vez.">
+          <div style={{ border: '1px solid #f0f0f0', padding: 20, borderRadius: 12, background: '#fafafa' }}>
+            <Form.Item label="Limit to 1 usage per Customer" name="isSingleUsePerClient" valuePropName="checked" tooltip="Prevents a single customer from using this code multiple times.">
               <Switch />
             </Form.Item>
 
-            <Form.Item label="Exclusivo para Tiers" name="targetTiers" tooltip="Si se deja vacío, aplica para cualquier cliente local">
-               <Select mode="multiple" placeholder="Seleccione Tiers">
+            <Form.Item label="Target Customer Tiers" name="targetTiers" tooltip="If empty, the coupon applies to all customer tiers.">
+               <Select mode="multiple" placeholder="Select applicable tiers">
                  <Option value="VIP">VIP</Option>
-                 <Option value="GOLD">Oro</Option>
-                 <Option value="SILVER">Plata</Option>
-                 <Option value="BRONZE">Bronce</Option>
+                 <Option value="GOLD">Gold</Option>
+                 <Option value="SILVER">Silver</Option>
+                 <Option value="BRONZE">Bronze</Option>
                </Select>
             </Form.Item>
 
-            {/* In a fuller implementation, applicableDepartments and Products could be populated remotely */}
-            <Form.Item label="Restringir por Departamentos (Opcional)" name="applicableDepartments" tooltip="Pronto disponible. Si está vacío aplica a toda la tienda.">
-                <Select mode="tags" disabled placeholder="Dejar vacío (Aplica a todo)" />
+            <Form.Item label="Restrict by Department (Optional)" name="applicableDepartments" tooltip="If empty, it applies to the entire store inventory.">
+                <Select mode="tags" placeholder="Apply to all departments" disabled />
             </Form.Item>
           </div>
-
         </Form>
       </Modal>
     </div>

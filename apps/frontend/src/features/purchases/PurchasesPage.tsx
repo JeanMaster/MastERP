@@ -6,12 +6,12 @@ import { purchasesApi } from '../../services/purchasesApi';
 import type { Purchase } from '../../services/purchasesApi';
 import { CreatePurchaseModal } from './components/CreatePurchaseModal';
 import { PurchaseDetailsModal } from './components/PurchaseDetailsModal';
-// No, previously we removed it because App component wraps routes.
-// But some pages use it?
-// Let's check SuppliersPage. It returns <div>.
-// App.tsx wraps routes in MainLayout. So pages should NOT use MainLayout wrapper, just content.
-// Confirmed.
 
+/**
+ * PurchasesPage Component
+ * Management interface for inventory reception and purchase history.
+ * Lists all registered purchase invoices from suppliers.
+ */
 export const PurchasesPage: React.FC = () => {
     const screens = Grid.useBreakpoint();
     const isMobile = !screens.lg;
@@ -32,7 +32,7 @@ export const PurchasesPage: React.FC = () => {
             const data = await purchasesApi.getAll();
             setPurchases(data);
         } catch (error) {
-            message.error('Error al cargar historial de compras');
+            message.error('Error loading purchase history');
         } finally {
             setLoading(false);
         }
@@ -45,19 +45,19 @@ export const PurchasesPage: React.FC = () => {
 
     const columns = [
         {
-            title: 'Fecha',
+            title: 'Date',
             dataIndex: 'invoiceDate',
             key: 'date',
             render: (date: string) => dayjs(date).format('DD/MM/YYYY'),
             sorter: (a: Purchase, b: Purchase) => dayjs(a.invoiceDate).unix() - dayjs(b.invoiceDate).unix(),
         },
         {
-            title: 'Proveedor',
+            title: 'Supplier',
             dataIndex: ['supplier', 'comercialName'],
             key: 'supplier',
         },
         {
-            title: '# Factura',
+            title: 'Invoice #',
             dataIndex: 'invoiceNumber',
             key: 'invoiceNumber',
             render: (text: string) => text || 'N/A',
@@ -77,17 +77,17 @@ export const PurchasesPage: React.FC = () => {
             ),
         },
         {
-            title: 'Estado',
+            title: 'Status',
             dataIndex: 'status',
             key: 'status',
             render: (status: string) => (
                 <Tag color={status === 'COMPLETED' ? 'green' : 'orange'}>
-                    {status === 'COMPLETED' ? 'Completado' : status}
+                    {status === 'COMPLETED' ? 'Completed' : status}
                 </Tag>
             ),
         },
         {
-            title: 'Acciones',
+            title: 'Actions',
             key: 'actions',
             width: 80,
             fixed: isMobile ? false : ('right' as const),
@@ -106,7 +106,7 @@ export const PurchasesPage: React.FC = () => {
             <Card>
                 <Row justify="space-between" align="middle" gutter={[16, 16]} style={{ marginBottom: 24 }}>
                     <Col xs={24} md={12}>
-                        <Typography.Title level={isMobile ? 3 : 2} style={{ margin: 0 }}>📦 Recepción de Compras</Typography.Title>
+                        <Typography.Title level={isMobile ? 3 : 2} style={{ margin: 0 }}>📦 Purchase Reception</Typography.Title>
                     </Col>
                     <Col xs={24} md={12} style={{ textAlign: isMobile ? 'left' : 'right' }}>
                         <Space wrap={isMobile}>
@@ -117,7 +117,7 @@ export const PurchasesPage: React.FC = () => {
                                 onClick={() => setModalVisible(true)}
                                 block={isMobile}
                             >
-                                Registrar Compra
+                                Register Purchase
                             </Button>
                         </Space>
                     </Col>

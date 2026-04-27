@@ -6,6 +6,7 @@ import { productsApi } from '../../services/productsApi';
 import type { Product, CreateProductDto, UpdateProductDto } from '../../services/productsApi';
 import { departmentsApi } from '../../services/departmentsApi';
 import { currenciesApi } from '../../services/currenciesApi';
+import { banksApi } from '../../services/banksApi';
 import { unitsApi } from '../../services/unitsApi';
 import { PriceUpdateConfirmModal } from '../purchases/components/PriceUpdateConfirmModal';
 import { companySettingsApi } from '../../services/companySettingsApi';
@@ -17,6 +18,11 @@ interface ProductFormModalProps {
     defaultType?: 'PRODUCT' | 'SERVICE' | 'COMPOSED';
 }
 
+/**
+ * ProductFormModal Component
+ * Comprehensive form for managing products, services, and composed products (recipes).
+ * Handles multi-currency pricing, unit conversions (primary/secondary), and inventory tracking.
+ */
 export const ProductFormModal = ({ open, product, onClose, defaultType }: ProductFormModalProps) => {
     const [form] = Form.useForm();
     const queryClient = useQueryClient();
@@ -36,28 +42,28 @@ export const ProductFormModal = ({ open, product, onClose, defaultType }: Produc
     const [availableIngredients, setAvailableIngredients] = useState<Product[]>([]);
     const [, setIsSearchingIngredients] = useState(false);
 
-    // Fetch departments
+    // Fetch departments for categorization
     const { data: departments = [] } = useQuery({
         queryKey: ['departments'],
         queryFn: departmentsApi.getAll,
         enabled: open,
     });
 
-    // Fetch currencies
+    // Fetch currencies for pricing
     const { data: currencies = [] } = useQuery({
         queryKey: ['currencies'],
         queryFn: currenciesApi.getAll,
         enabled: open,
     });
 
-    // Fetch units
+    // Fetch measurement units
     const { data: units = [] } = useQuery({
         queryKey: ['units'],
         queryFn: unitsApi.getAll,
         enabled: open,
     });
 
-    // Fetch company settings for tax config
+    // Fetch company settings for tax configuration
     const { data: settings } = useQuery({
         queryKey: ['company-settings'],
         queryFn: companySettingsApi.getSettings,
@@ -71,42 +77,43 @@ export const ProductFormModal = ({ open, product, onClose, defaultType }: Produc
     const createMutation = useMutation({
         mutationFn: productsApi.create,
         onSuccess: () => {
-            message.success('Producto creado exitosamente');
+            message.success('Product created successfully');
             queryClient.invalidateQueries({ queryKey: ['products'] });
             onClose();
             form.resetFields();
         },
         onError: (error: any) => {
-            message.error(error.response?.data?.message || 'Error al crear producto');
+            message.error(error.response?.data?.message || 'Error creating product');
         },
     });
 
-    // Update mutation
+    // Update mutation with cost change detection logic
     const updateMutation = useMutation({
         mutationFn: ({ id, dto }: { id: string; dto: UpdateProductDto }) =>
             productsApi.update(id, dto),
         onSuccess: (data: any) => {
-            // Check if cost change was detected
+            // If backend detects a cost change that impacts margins, show a secondary confirmation modal
             if (data.costChangeDetected && data.costChangeInfo) {
                 setCostChangeInfo(data.costChangeInfo);
                 setPriceUpdateModalVisible(true);
             } else {
-                message.success('Producto actualizado exitosamente');
+                message.success('Product updated successfully');
                 queryClient.invalidateQueries({ queryKey: ['products'] });
                 onClose();
                 form.resetFields();
             }
         },
         onError: (error: any) => {
-            message.error(error.response?.data?.message || 'Error al actualizar producto');
+            message.error(error.response?.data?.message || 'Error updating product');
         },
     });
 
+    // Initialize or reset form data
     useEffect(() => {
         if (product) {
             setSelectedCategory(product.categoryId);
 
-            // Calcular porcentajes iniciales
+            // Calculate initial profit margins
             const costPrice = product.costPrice;
             const saleProfitPercent = costPrice > 0 ? ((product.salePrice - costPrice) / costPrice) * 100 : 0;
             const offerProfitPercent = product.offerPrice && costPrice > 0
@@ -116,7 +123,7 @@ export const ProductFormModal = ({ open, product, onClose, defaultType }: Produc
                 ? ((product.wholesalePrice - costPrice) / costPrice) * 100
                 : 0;
 
-            // Calcular % de ganancia para unidad secundaria
+            // Secondary unit margins
             const secondaryCost = product.secondaryCostPrice || 0;
             const secondarySaleProfitPercent = product.secondarySalePrice && secondaryCost > 0
                 ? ((product.secondarySalePrice - secondaryCost) / secondaryCost) * 100
@@ -150,7 +157,7 @@ export const ProductFormModal = ({ open, product, onClose, defaultType }: Produc
                 offerPrice: product.offerPrice,
                 offerProfitPercent: Number(offerProfitPercent.toFixed(2)),
                 wholesalePrice: product.wholesalePrice,
-                wholesaleWholesaleProfitPercent: Number(wholesaleProfitPercent.toFixed(2)),
+                wholesaleProfitPercent: Number(wholesaleProfitPercent.toFixed(2)),
                 secondaryCostPrice: product.secondaryCostPrice,
                 secondarySalePrice: product.secondarySalePrice,
                 secondarySaleProfitPercent: Number(secondarySaleProfitPercent.toFixed(2)),
@@ -193,18 +200,16 @@ export const ProductFormModal = ({ open, product, onClose, defaultType }: Produc
         }
     }, [product, form, open, defaultType]);
 
-    // Keyboard Shortcuts
+    // Keyboard Shortcuts (F9 to Submit)
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
             if (!open) return;
-
             if (e.key === 'F9') {
                 e.preventDefault();
                 e.stopPropagation();
                 handleSubmit();
             }
         };
-
         window.addEventListener('keydown', handleKeyDown, true);
         return () => window.removeEventListener('keydown', handleKeyDown, true);
     }, [open, form]);
@@ -251,6 +256,9 @@ export const ProductFormModal = ({ open, product, onClose, defaultType }: Produc
         }
     };
 
+    /**
+     * Handles batch price updates if cost changes were confirmed by the user.
+     */
     const handlePriceUpdateConfirm = async () => {
         try {
             setPriceUpdateLoading(true);
@@ -264,31 +272,27 @@ export const ProductFormModal = ({ open, product, onClose, defaultType }: Produc
                 }];
 
                 await productsApi.batchUpdatePrices(updates);
-                message.success('Precios actualizados exitosamente');
+                message.success('Prices updated successfully');
 
                 setPriceUpdateModalVisible(false);
                 await queryClient.invalidateQueries({ queryKey: ['products'] });
 
                 form.resetFields();
-                // Usar setTimeout para asegurar que el modal interno se cierre antes de cerrar el principal
                 setTimeout(() => {
                     onClose();
                 }, 100);
             }
         } catch (error) {
             console.error(error);
-            message.error('Error al actualizar precios');
+            message.error('Error updating prices');
         } finally {
-            // Check if component is still mounted logic handled by React, but we can skip this if we closed
-            // setPriceUpdateLoading(false); // Can cause warning if unmounted, but harmless.
-            // Better to leave it or check a ref. For now standard practice.
             if (open) setPriceUpdateLoading(false);
         }
     };
 
     const handlePriceUpdateCancel = () => {
         setPriceUpdateModalVisible(false);
-        message.success('Producto actualizado (precios sin cambios)');
+        message.success('Product updated (prices unchanged)');
         queryClient.invalidateQueries({ queryKey: ['products'] });
         form.resetFields();
         setTimeout(() => {
@@ -306,7 +310,6 @@ export const ProductFormModal = ({ open, product, onClose, defaultType }: Produc
         if (value.length > 2) {
             setIsSearchingSimilar(true);
             productsApi.getAll({ search: value, limit: 10 }).then(data => {
-                // Filter out current product if editing
                 const filtered = data.filter((p: Product) => p.id !== product?.id);
                 setSimilarProducts(filtered);
                 setIsSearchingSimilar(false);
@@ -318,13 +321,16 @@ export const ProductFormModal = ({ open, product, onClose, defaultType }: Produc
         }
     };
 
+    /**
+     * Clones pricing configuration from another product.
+     */
     const handleImportFromProduct = (productId: string) => {
         const found = similarProducts.find(p => p.id === productId);
         if (!found) return;
 
         Modal.confirm({
-            title: '¿Importar configuración de precios?',
-            content: `Se copiará la moneda, costo y precios de venta de "${found.name}". Los valores actuales se sobrescribirán.`,
+            title: 'Import price configuration?',
+            content: `The currency, cost, and sales prices from "${found.name}" will be copied. Current values will be overwritten.`,
             onOk: () => {
                 const costPrice = found.costPrice;
                 const saleProfitPercent = costPrice > 0 ? ((found.salePrice - costPrice) / costPrice) * 100 : 0;
@@ -344,7 +350,6 @@ export const ProductFormModal = ({ open, product, onClose, defaultType }: Produc
                     offerProfitPercent: Number(offerProfitPercent.toFixed(2)),
                     wholesalePrice: found.wholesalePrice,
                     wholesaleProfitPercent: Number(wholesaleProfitPercent.toFixed(2)),
-                    // Also secondary if available
                     secondaryCostPrice: found.secondaryCostPrice,
                     secondarySalePrice: found.secondarySalePrice,
                     secondaryOfferPrice: found.secondaryOfferPrice,
@@ -355,25 +360,24 @@ export const ProductFormModal = ({ open, product, onClose, defaultType }: Produc
                     setSelectedCurrency(found.currency);
                 }
 
-                message.success('Información de precios importada');
+                message.success('Price information imported');
                 setSimilarProducts([]);
                 setSimilarProductSearch('');
             }
         });
     };
 
-    // Calcular precio desde porcentaje
+    // Helper functions for margin calculations
     const calculatePriceFromPercent = (costPrice: number, percent: number): number => {
         return costPrice + (costPrice * percent / 100);
     };
 
-    // Calcular porcentaje desde precio
     const calculatePercentFromPrice = (costPrice: number, salePrice: number): number => {
         if (costPrice === 0) return 0;
         return ((salePrice - costPrice) / costPrice) * 100;
     };
 
-    // Handlers para precio de venta normal
+    // Price change handlers
     const handleSalePriceChange = (value: number | null) => {
         if (value !== null) {
             const costPrice = form.getFieldValue('costPrice') || 0;
@@ -390,7 +394,6 @@ export const ProductFormModal = ({ open, product, onClose, defaultType }: Produc
         }
     };
 
-    // Handlers para precio de oferta
     const handleOfferPriceChange = (value: number | null) => {
         if (value !== null) {
             const costPrice = form.getFieldValue('costPrice') || 0;
@@ -407,7 +410,6 @@ export const ProductFormModal = ({ open, product, onClose, defaultType }: Produc
         }
     };
 
-    // Handlers para precio al mayor
     const handleWholesalePriceChange = (value: number | null) => {
         if (value !== null) {
             const costPrice = form.getFieldValue('costPrice') || 0;
@@ -424,14 +426,12 @@ export const ProductFormModal = ({ open, product, onClose, defaultType }: Produc
         }
     };
 
-    // Handler para unidad secundaria
+    // Unit conversion handlers
     const handleSecondaryUnitChange = (value: string | undefined) => {
         setHasSecondaryUnit(!!value);
         if (value) {
-            // Auto-calcular precios secundarios cuando se selecciona unidad
             calculateSecondaryPrices();
         } else {
-            // Limpiar campos si se quita la unidad secundaria
             form.setFieldsValue({
                 unitsPerSecondaryUnit: undefined,
                 conversionDirection: 'primary_to_secondary',
@@ -443,12 +443,13 @@ export const ProductFormModal = ({ open, product, onClose, defaultType }: Produc
         }
     };
 
-    // Handler para cantidad por unidad secundaria o costo
     const handleUnitsPerSecondaryChange = () => {
         calculateSecondaryPrices();
     };
 
-    // Calcular precios secundarios automáticamente desde unitarios
+    /**
+     * Automatically calculates secondary unit prices based on primary unit prices and conversion rate.
+     */
     const calculateSecondaryPrices = () => {
         const unitsPerSecondary = form.getFieldValue('unitsPerSecondaryUnit');
         const direction = form.getFieldValue('conversionDirection');
@@ -460,7 +461,6 @@ export const ProductFormModal = ({ open, product, onClose, defaultType }: Produc
         const offerPrice = form.getFieldValue('offerPrice');
         const wholesalePrice = form.getFieldValue('wholesalePrice');
 
-        // Función helper para calcular según dirección
         const calculateVal = (val: number) => {
             if (direction === 'secondary_to_primary') {
                 return Number((val / unitsPerSecondary).toFixed(2));
@@ -468,11 +468,9 @@ export const ProductFormModal = ({ open, product, onClose, defaultType }: Produc
             return Number((val * unitsPerSecondary).toFixed(2));
         };
 
-        // Costo secundario
         const secondaryCost = calculateVal(costPrice);
         form.setFieldValue('secondaryCostPrice', secondaryCost);
 
-        // Calcular precios y % de ganancia
         if (salePrice) {
             const secondarySale = calculateVal(salePrice);
             const secondarySalePercent = secondaryCost > 0
@@ -499,7 +497,7 @@ export const ProductFormModal = ({ open, product, onClose, defaultType }: Produc
         }
     };
 
-    // Handlers para precios secundarios - Precio de Venta
+    // Secondary unit price change handlers
     const handleSecondarySalePriceChange = (value: number | null) => {
         if (value !== null) {
             const secondaryCost = form.getFieldValue('secondaryCostPrice') || 0;
@@ -516,7 +514,6 @@ export const ProductFormModal = ({ open, product, onClose, defaultType }: Produc
         }
     };
 
-    // Handlers para precios secundarios - Precio en Oferta
     const handleSecondaryOfferPriceChange = (value: number | null) => {
         if (value !== null) {
             const secondaryCost = form.getFieldValue('secondaryCostPrice') || 0;
@@ -533,7 +530,6 @@ export const ProductFormModal = ({ open, product, onClose, defaultType }: Produc
         }
     };
 
-    // Handlers para precios secundarios - Precio al Mayor
     const handleSecondaryWholesalePriceChange = (value: number | null) => {
         if (value !== null) {
             const secondaryCost = form.getFieldValue('secondaryCostPrice') || 0;
@@ -563,6 +559,9 @@ export const ProductFormModal = ({ open, product, onClose, defaultType }: Produc
         }
     };
 
+    /**
+     * Recalculates total cost and overall availability for composed products (recipes).
+     */
     const updateComposedFields = () => {
         const components = form.getFieldValue('components') || [];
         let totalCostInBase = 0;
@@ -591,20 +590,19 @@ export const ProductFormModal = ({ open, product, onClose, defaultType }: Produc
             form.setFieldValue('stock', 0);
         }
 
-        // Trigger margins update
         handleSalePriceChange(form.getFieldValue('salePrice'));
     };
 
     return (
         <>
             <Modal
-                title={product ? 'Editar Producto' : 'Nuevo Producto'}
+                title={product ? 'Edit Product' : 'New Product'}
                 open={open}
                 onOk={handleSubmit}
                 onCancel={onClose}
                 confirmLoading={createMutation.isPending || updateMutation.isPending}
-                okText={product ? 'Actualizar (F9)' : 'Crear (F9)'}
-                cancelText="Cancelar"
+                okText={product ? 'Update (F9)' : 'Create (F9)'}
+                cancelText="Cancel"
                 width={900}
             >
                 <Form
@@ -618,64 +616,61 @@ export const ProductFormModal = ({ open, product, onClose, defaultType }: Produc
                         }
                     }}
                 >
-                    {/* Tipo de Producto */}
                     <Row gutter={16}>
                         <Col span={24}>
                             <Form.Item
-                                label="Tipo de Producto"
+                                label="Product Type"
                                 name="type"
                                 rules={[{ required: true }]}
                             >
                                 <Select
                                     onChange={(val) => setProductType(val)}
                                     options={[
-                                        { value: 'PRODUCT', label: 'Producto Terminado' },
-                                        { value: 'SERVICE', label: 'Servicio' },
-                                        { value: 'COMPOSED', label: 'Producto Compuesto (Receta)' },
+                                        { value: 'PRODUCT', label: 'Finished Product' },
+                                        { value: 'SERVICE', label: 'Service' },
+                                        { value: 'COMPOSED', label: 'Composed Product (Recipe)' },
                                     ]}
                                 />
                             </Form.Item>
                         </Col>
                     </Row>
 
-                    {/* Información básica */}
                     <Row gutter={16}>
                         <Col span={12}>
                             <Form.Item
                                 label="SKU"
                                 name="sku"
-                                rules={[{ required: true, message: 'El SKU es requerido' }]}
+                                rules={[{ required: true, message: 'SKU is required' }]}
                             >
-                                <Input placeholder="Ej: PROD-001" />
+                                <Input placeholder="e.g., PROD-001" />
                             </Form.Item>
                         </Col>
                         <Col span={12}>
                             <Form.Item
-                                label="Nombre"
+                                label="Name"
                                 name="name"
-                                rules={[{ required: true, message: 'El nombre es requerido' }]}
+                                rules={[{ required: true, message: 'Name is required' }]}
                             >
-                                <Input placeholder="Ej: Martillo 16oz" />
+                                <Input placeholder="e.g., Hammer 16oz" />
                             </Form.Item>
                         </Col>
                     </Row>
 
-                    <Form.Item label="Descripción" name="description">
-                        <Input.TextArea rows={2} placeholder="Descripción del producto..." />
+                    <Form.Item label="Description" name="description">
+                        <Input.TextArea rows={2} placeholder="Product description..." />
                     </Form.Item>
 
                     {settings?.taxEnabled && (
                         <Form.Item name="isTaxExempt" valuePropName="checked">
-                            <Switch checkedChildren="Producto EXENTO de IVA" unCheckedChildren="Producto GRAVA IVA" />
+                            <Switch checkedChildren="Tax EXEMPT Product" unCheckedChildren="Taxable Product" />
                         </Form.Item>
                     )}
 
-                    {/* Imágenes del producto */}
-                    <Form.Item label="Imágenes del producto (Máximo 12)">
+                    <Form.Item label="Product Images (Max 12)">
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                             {images.map((url, index) => (
                                 <div key={index} style={{ position: 'relative', width: 100, height: 100, border: '1px solid #d9d9d9', borderRadius: 8, overflow: 'hidden' }}>
-                                    <img src={url} alt={`Imagen ${index}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                    <img src={url} alt={`Image ${index}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                                     <div
                                         style={{ position: 'absolute', top: 0, right: 0, background: 'rgba(255, 77, 79, 0.8)', color: 'white', padding: '2px 6px', cursor: 'pointer', borderRadius: '0 0 0 8px' }}
                                         onClick={() => setImages(prev => prev.filter((_, i) => i !== index))}
@@ -691,7 +686,7 @@ export const ProductFormModal = ({ open, product, onClose, defaultType }: Produc
                                     showUploadList={false}
                                     beforeUpload={async (file) => {
                                         if (images.length >= 12) {
-                                            message.warning('Máximo 12 imágenes permitidas');
+                                            message.warning('Maximum 12 images allowed');
                                             return false;
                                         }
                                         try {
@@ -733,12 +728,12 @@ export const ProductFormModal = ({ open, product, onClose, defaultType }: Produc
                                                 });
                                             };
 
-                                            message.loading({ content: 'Procesando imagen...', key: 'img-proc' });
+                                            message.loading({ content: 'Processing image...', key: 'img-proc' });
                                             const compressed = await compressImage(file);
                                             setImages(prev => [...prev, compressed]);
-                                            message.success({ content: 'Imagen añadida', key: 'img-proc' });
+                                            message.success({ content: 'Image added', key: 'img-proc' });
                                         } catch (error) {
-                                            message.error('Error al procesar imagen');
+                                            message.error('Error processing image');
                                         }
                                         return false;
                                     }}
@@ -746,23 +741,22 @@ export const ProductFormModal = ({ open, product, onClose, defaultType }: Produc
                                 >
                                     <div>
                                         <PlusOutlined />
-                                        <div style={{ marginTop: 8 }}>Añadir</div>
+                                        <div style={{ marginTop: 8 }}>Add</div>
                                     </div>
                                 </Upload>
                             )}
                         </div>
                     </Form.Item>
 
-                    {/* Categorización */}
                     <Row gutter={16}>
                         <Col span={12}>
                             <Form.Item
-                                label="Categoría"
+                                label="Category"
                                 name="categoryId"
-                                rules={[{ required: true, message: 'La categoría es requerida' }]}
+                                rules={[{ required: true, message: 'Category is required' }]}
                             >
                                 <Select
-                                    placeholder="Seleccionar categoría"
+                                    placeholder="Select category"
                                     onChange={handleCategoryChange}
                                     showSearch
                                     filterOption={(input, option) =>
@@ -776,9 +770,9 @@ export const ProductFormModal = ({ open, product, onClose, defaultType }: Produc
                             </Form.Item>
                         </Col>
                         <Col span={12}>
-                            <Form.Item label="Subcategoría (Opcional)" name="subcategoryId">
+                            <Form.Item label="Subcategory (Optional)" name="subcategoryId">
                                 <Select
-                                    placeholder="Seleccionar subcategoría"
+                                    placeholder="Select subcategory"
                                     allowClear
                                     disabled={!selectedCategory}
                                     showSearch
@@ -794,15 +788,14 @@ export const ProductFormModal = ({ open, product, onClose, defaultType }: Produc
                         </Col>
                     </Row>
 
-                    {/* Sección de Receta para Productos Compuestos */}
                     {productType === 'COMPOSED' && (
                         <Card
-                            title={<span style={{ color: '#722ed1' }}><NodeIndexOutlined /> Receta de Producto Compuesto</span>}
+                            title={<span style={{ color: '#722ed1' }}><NodeIndexOutlined /> Composed Product Recipe</span>}
                             size="small"
                             style={{ marginBottom: 24, borderColor: '#d3adf7', background: '#f9f0ff' }}
                         >
                             <Alert
-                                message="El costo y stock se calcularán automáticamente según los items agregados."
+                                message="Cost and stock will be automatically calculated based on the added components."
                                 type="info"
                                 showIcon
                                 style={{ marginBottom: 16 }}
@@ -817,12 +810,12 @@ export const ProductFormModal = ({ open, product, onClose, defaultType }: Produc
                                                     <Form.Item
                                                         {...restField}
                                                         name={[name, 'componentProductId']}
-                                                        rules={[{ required: true, message: 'Requerido' }]}
+                                                        rules={[{ required: true, message: 'Required' }]}
                                                         style={{ marginBottom: 0 }}
                                                     >
                                                         <Select
                                                             showSearch
-                                                            placeholder="Buscar item..."
+                                                            placeholder="Search item..."
                                                             onSearch={handleIngredientSearch}
                                                             filterOption={false}
                                                             onSelect={(val, _option: any) => {
@@ -847,11 +840,11 @@ export const ProductFormModal = ({ open, product, onClose, defaultType }: Produc
                                                     <Form.Item
                                                         {...restField}
                                                         name={[name, 'quantity']}
-                                                        rules={[{ required: true, message: 'Cant' }]}
+                                                        rules={[{ required: true, message: 'Qty' }]}
                                                         style={{ marginBottom: 0 }}
                                                     >
                                                         <InputNumber
-                                                            placeholder="Cant"
+                                                            placeholder="Qty"
                                                             style={{ width: '100%' }}
                                                             min={0.001}
                                                             onChange={updateComposedFields}
@@ -873,7 +866,7 @@ export const ProductFormModal = ({ open, product, onClose, defaultType }: Produc
                                             icon={<PlusOutlined />}
                                             style={{ marginTop: 8 }}
                                         >
-                                            Agregar item
+                                            Add item
                                         </Button>
                                     </>
                                 )}
@@ -882,26 +875,25 @@ export const ProductFormModal = ({ open, product, onClose, defaultType }: Produc
                     )}
 
                     <Divider orientation={"left" as any} style={{ margin: '12px 0' }}>
-                        <span style={{ fontSize: '14px', color: '#666' }}>Precios e Inventario</span>
+                        <span style={{ fontSize: '14px', color: '#666' }}>Pricing and Inventory</span>
                     </Divider>
 
-                    {/* Buscador de Producto Similar */}
                     <Card size="small" style={{ marginBottom: 16, background: '#f9f9f9', border: '1px dashed #d9d9d9' }}>
                         <Form.Item
-                            label={<span style={{ fontWeight: 500 }}>Importar precios de producto similar</span>}
-                            tooltip="Busca un producto existente para copiar su configuración de precios y moneda"
+                            label={<span style={{ fontWeight: 500 }}>Import prices from similar product</span>}
+                            tooltip="Search an existing product to copy its price and currency configuration"
                             style={{ marginBottom: 0 }}
                         >
                             <Select
                                 showSearch
                                 value={similarProductSearch || undefined}
-                                placeholder="Escribe SKU o nombre del producto..."
+                                placeholder="Type SKU or product name..."
                                 defaultActiveFirstOption={false}
                                 suffixIcon={null}
                                 filterOption={false}
                                 onSearch={handleSearchSimilar}
                                 onChange={handleImportFromProduct}
-                                notFoundContent={isSearchingSimilar ? 'Buscando...' : null}
+                                notFoundContent={isSearchingSimilar ? 'Searching...' : null}
                                 options={similarProducts.map(p => ({
                                     value: p.id,
                                     label: `${p.sku} - ${p.name} (${p.currency?.symbol}${p.salePrice})`,
@@ -911,17 +903,15 @@ export const ProductFormModal = ({ open, product, onClose, defaultType }: Produc
                         </Form.Item>
                     </Card>
 
-                    {/* Layout en 2 columnas */}
                     <Row gutter={16}>
-                        {/* Columna Izquierda */}
                         <Col span={12}>
                             <Form.Item
-                                label="Moneda"
+                                label="Currency"
                                 name="currencyId"
-                                rules={[{ required: true, message: 'La moneda es requerida' }]}
+                                rules={[{ required: true, message: 'Currency is required' }]}
                             >
                                 <Select
-                                    placeholder="Seleccionar moneda"
+                                    placeholder="Select currency"
                                     showSearch
                                     filterOption={(input, option) =>
                                         (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
@@ -934,15 +924,15 @@ export const ProductFormModal = ({ open, product, onClose, defaultType }: Produc
                             </Form.Item>
 
                             <Form.Item
-                                label="Precio de Costo"
+                                label="Cost Price"
                                 name="costPrice"
                                 rules={[
-                                    { required: true, message: 'El precio de costo es requerido' },
-                                    { type: 'number', min: 0, message: 'Debe ser mayor o igual a 0' },
+                                    { required: true, message: 'Cost price is required' },
+                                    { type: 'number', min: 0, message: 'Must be greater than or equal to 0' },
                                 ]}
                             >
                                 <InputNumber
-                                    placeholder={productType === 'COMPOSED' ? "Auto-calculado" : "0.00"}
+                                    placeholder={productType === 'COMPOSED' ? "Auto-calculated" : "0.00"}
                                     style={{ width: '100%' }}
                                     precision={2}
                                     min={0}
@@ -951,12 +941,12 @@ export const ProductFormModal = ({ open, product, onClose, defaultType }: Produc
                             </Form.Item>
 
                             <Form.Item
-                                label={productType === 'COMPOSED' ? "Disponibilidad (Auto)" : "Stock Inicial"}
+                                label={productType === 'COMPOSED' ? "Availability (Auto)" : "Initial Stock"}
                                 name="stock"
-                                rules={[{ type: 'number', min: 0, message: 'Debe ser mayor o igual a 0' }]}
+                                rules={[{ type: 'number', min: 0, message: 'Must be greater than or equal to 0' }]}
                             >
                                 <InputNumber
-                                    placeholder={productType === 'COMPOSED' ? "Auto-calculado" : "0.000"}
+                                    placeholder={productType === 'COMPOSED' ? "Auto-calculated" : "0.000"}
                                     style={{ width: '100%' }}
                                     precision={3}
                                     min={0}
@@ -967,12 +957,12 @@ export const ProductFormModal = ({ open, product, onClose, defaultType }: Produc
                             <Row gutter={8}>
                                 <Col span={12}>
                                     <Form.Item
-                                        label="Unidad Principal"
+                                        label="Primary Unit"
                                         name="unitId"
-                                        rules={[{ required: true, message: 'La unidad es requerida' }]}
+                                        rules={[{ required: true, message: 'Unit is required' }]}
                                     >
                                         <Select
-                                            placeholder="Seleccionar unidad"
+                                            placeholder="Select unit"
                                             showSearch
                                             filterOption={(input, option) =>
                                                 (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
@@ -985,9 +975,9 @@ export const ProductFormModal = ({ open, product, onClose, defaultType }: Produc
                                     </Form.Item>
                                 </Col>
                                 <Col span={12}>
-                                    <Form.Item label="Unidad Secundaria (Opcional)" name="secondaryUnitId">
+                                    <Form.Item label="Secondary Unit (Optional)" name="secondaryUnitId">
                                         <Select
-                                            placeholder="Ej: Caja, Paquete"
+                                            placeholder="e.g., Box, Pack"
                                             allowClear
                                             showSearch
                                             onChange={handleSecondaryUnitChange}
@@ -1004,31 +994,29 @@ export const ProductFormModal = ({ open, product, onClose, defaultType }: Produc
                             </Row>
                         </Col>
 
-                        {/* Columna Derecha */}
                         <Col span={12}>
-                            {/* Precio de Venta Normal */}
-                            <Form.Item label="Precio de Venta (Normal)" style={{ marginBottom: 8 }}>
+                            <Form.Item label="Sales Price (Normal)" style={{ marginBottom: 8 }}>
                                 <Row gutter={8}>
                                     <Col span={12}>
                                         <Form.Item
                                             name="salePrice"
                                             noStyle
                                             rules={[
-                                                { required: true, message: 'Requerido' },
-                                                { type: 'number', min: 0, message: 'Debe ser >= 0' },
+                                                { required: true, message: 'Required' },
+                                                { type: 'number', min: 0, message: 'Must be >= 0' },
                                                 ({ getFieldValue }) => ({
                                                     validator(_, value) {
                                                         const costPrice = getFieldValue('costPrice');
                                                         if (!value || value >= costPrice) {
                                                             return Promise.resolve();
                                                         }
-                                                        return Promise.reject(new Error('Debe ser >= costo'));
+                                                        return Promise.reject(new Error('Must be >= cost'));
                                                     },
                                                 }),
                                             ]}
                                         >
                                             <InputNumber
-                                                placeholder="Precio"
+                                                placeholder="Price"
                                                 style={{ width: '100%' }}
                                                 precision={2}
                                                 min={0}
@@ -1039,7 +1027,7 @@ export const ProductFormModal = ({ open, product, onClose, defaultType }: Produc
                                     <Col span={12}>
                                         <Form.Item name="saleProfitPercent" noStyle>
                                             <InputNumber
-                                                placeholder="% Ganancia"
+                                                placeholder="Profit %"
                                                 style={{ width: '100%' }}
                                                 precision={2}
                                                 min={-100}
@@ -1052,15 +1040,14 @@ export const ProductFormModal = ({ open, product, onClose, defaultType }: Produc
                                 </Row>
                             </Form.Item>
 
-                            {/* Precio de Oferta */}
-                            <Form.Item label="Precio en Oferta (Opcional)" style={{ marginBottom: 8 }}>
+                            <Form.Item label="Offer Price (Optional)" style={{ marginBottom: 8 }}>
                                 <Row gutter={8}>
                                     <Col span={12}>
                                         <Form.Item
                                             name="offerPrice"
                                             noStyle
                                             rules={[
-                                                { type: 'number', min: 0, message: 'Debe ser >= 0' },
+                                                { type: 'number', min: 0, message: 'Must be >= 0' },
                                                 ({ getFieldValue }) => ({
                                                     validator(_, value) {
                                                         if (!value) return Promise.resolve();
@@ -1068,13 +1055,13 @@ export const ProductFormModal = ({ open, product, onClose, defaultType }: Produc
                                                         if (value >= costPrice) {
                                                             return Promise.resolve();
                                                         }
-                                                        return Promise.reject(new Error('Debe ser >= costo'));
+                                                        return Promise.reject(new Error('Must be >= cost'));
                                                     },
                                                 }),
                                             ]}
                                         >
                                             <InputNumber
-                                                placeholder="Precio"
+                                                placeholder="Price"
                                                 style={{ width: '100%' }}
                                                 precision={2}
                                                 min={0}
@@ -1085,7 +1072,7 @@ export const ProductFormModal = ({ open, product, onClose, defaultType }: Produc
                                     <Col span={12}>
                                         <Form.Item name="offerProfitPercent" noStyle>
                                             <InputNumber
-                                                placeholder="% Ganancia"
+                                                placeholder="Profit %"
                                                 style={{ width: '100%' }}
                                                 precision={2}
                                                 min={-100}
@@ -1098,15 +1085,14 @@ export const ProductFormModal = ({ open, product, onClose, defaultType }: Produc
                                 </Row>
                             </Form.Item>
 
-                            {/* Precio al Mayor */}
-                            <Form.Item label="Precio al Mayor (Opcional)" style={{ marginBottom: 8 }}>
+                            <Form.Item label="Wholesale Price (Optional)" style={{ marginBottom: 8 }}>
                                 <Row gutter={8}>
                                     <Col span={12}>
                                         <Form.Item
                                             name="wholesalePrice"
                                             noStyle
                                             rules={[
-                                                { type: 'number', min: 0, message: 'Debe ser >= 0' },
+                                                { type: 'number', min: 0, message: 'Must be >= 0' },
                                                 ({ getFieldValue }) => ({
                                                     validator(_, value) {
                                                         if (!value) return Promise.resolve();
@@ -1114,13 +1100,13 @@ export const ProductFormModal = ({ open, product, onClose, defaultType }: Produc
                                                         if (value >= costPrice) {
                                                             return Promise.resolve();
                                                         }
-                                                        return Promise.reject(new Error('Debe ser >= costo'));
+                                                        return Promise.reject(new Error('Must be >= cost'));
                                                     },
                                                 }),
                                             ]}
                                         >
                                             <InputNumber
-                                                placeholder="Precio"
+                                                placeholder="Price"
                                                 style={{ width: '100%' }}
                                                 precision={2}
                                                 min={0}
@@ -1131,7 +1117,7 @@ export const ProductFormModal = ({ open, product, onClose, defaultType }: Produc
                                     <Col span={12}>
                                         <Form.Item name="wholesaleProfitPercent" noStyle>
                                             <InputNumber
-                                                placeholder="% Ganancia"
+                                                placeholder="Profit %"
                                                 style={{ width: '100%' }}
                                                 precision={2}
                                                 min={-100}
@@ -1146,16 +1132,15 @@ export const ProductFormModal = ({ open, product, onClose, defaultType }: Produc
                         </Col>
                     </Row>
 
-                    {/* Unidad Secundaria */}
                     {hasSecondaryUnit && (
                         <>
-                            <Divider>Unidad Secundaria</Divider>
+                            <Divider>Secondary Unit</Divider>
                             <Alert
-                                message="Configuración de Conversión"
+                                message="Conversion Configuration"
                                 description={
                                     conversionDirection === 'primary_to_secondary'
-                                        ? `La Unidad Secundaria (ej: Caja) contiene varias Unidades Principales.`
-                                        : `La Unidad Principal (ej: Rollo) contiene varias Unidades Secundarias.`
+                                        ? `The Secondary Unit (e.g., Box) contains multiple Primary Units.`
+                                        : `The Primary Unit (e.g., Roll) contains multiple Secondary Units.`
                                 }
                                 type="info"
                                 showIcon
@@ -1164,7 +1149,7 @@ export const ProductFormModal = ({ open, product, onClose, defaultType }: Produc
                             <Row gutter={16}>
                                 <Col span={12}>
                                     <Form.Item
-                                        label="Tipo de Conversión"
+                                        label="Conversion Type"
                                         name="conversionDirection"
                                         initialValue="primary_to_secondary"
                                     >
@@ -1174,25 +1159,25 @@ export const ProductFormModal = ({ open, product, onClose, defaultType }: Produc
                                                 calculateSecondaryPrices();
                                             }}
                                             options={[
-                                                { value: 'primary_to_secondary', label: 'Principal → Secundaria (Multiplicar)' },
-                                                { value: 'secondary_to_primary', label: 'Secundaria → Principal (Dividir)' },
+                                                { value: 'primary_to_secondary', label: 'Primary → Secondary (Multiply)' },
+                                                { value: 'secondary_to_primary', label: 'Secondary → Primary (Divide)' },
                                             ]}
                                         />
                                     </Form.Item>
                                 </Col>
                                 <Col span={12}>
                                     <Form.Item
-                                        label="Cantidad en la Conversión"
+                                        label="Conversion Quantity"
                                         name="unitsPerSecondaryUnit"
                                         help={
                                             conversionDirection === 'primary_to_secondary'
-                                                ? 'Ej: 1 Caja = 12 Unidades'
-                                                : 'Ej: 1 Rollo = 50 Metros'
+                                                ? 'e.g., 1 Box = 12 Units'
+                                                : 'e.g., 1 Roll = 50 Meters'
                                         }
-                                        rules={[{ required: hasSecondaryUnit, message: 'Requerido' }]}
+                                        rules={[{ required: hasSecondaryUnit, message: 'Required' }]}
                                     >
                                         <InputNumber
-                                            placeholder="Cantidad"
+                                            placeholder="Quantity"
                                             style={{ width: '100%' }}
                                             precision={0}
                                             min={1}
@@ -1202,15 +1187,14 @@ export const ProductFormModal = ({ open, product, onClose, defaultType }: Produc
                                 </Col>
                             </Row>
 
-                            <Card title="Precios para Unidad Secundaria" size="small">
-                                {/* Precio de Costo Secundario */}
+                            <Card title="Pricing for Secondary Unit" size="small">
                                 <Form.Item
-                                    label="Precio de Costo (Empaque)"
+                                    label="Secondary Cost Price"
                                     name="secondaryCostPrice"
-                                    rules={[{ type: 'number', min: 0, message: 'Debe ser >= 0' }]}
+                                    rules={[{ type: 'number', min: 0, message: 'Must be >= 0' }]}
                                 >
                                     <InputNumber
-                                        placeholder="Auto-calculado"
+                                        placeholder="Auto-calculated"
                                         style={{ width: '100%' }}
                                         precision={2}
                                         min={0}
@@ -1218,15 +1202,14 @@ export const ProductFormModal = ({ open, product, onClose, defaultType }: Produc
                                     />
                                 </Form.Item>
 
-                                {/* Precio de Venta Secundario */}
-                                <Form.Item label="Precio de Venta" style={{ marginBottom: 8 }}>
+                                <Form.Item label="Secondary Sale Price" style={{ marginBottom: 8 }}>
                                     <Row gutter={8}>
                                         <Col span={12}>
                                             <Form.Item
                                                 name="secondarySalePrice"
                                                 noStyle
                                                 rules={[
-                                                    { type: 'number', min: 0, message: 'Debe ser >= 0' },
+                                                    { type: 'number', min: 0, message: 'Must be >= 0' },
                                                     ({ getFieldValue }) => ({
                                                         validator(_, value) {
                                                             if (!value) return Promise.resolve();
@@ -1234,13 +1217,13 @@ export const ProductFormModal = ({ open, product, onClose, defaultType }: Produc
                                                             if (!secondaryCost || value >= secondaryCost) {
                                                                 return Promise.resolve();
                                                             }
-                                                            return Promise.reject(new Error('Debe ser >= costo empaque'));
+                                                            return Promise.reject(new Error('Must be >= packaging cost'));
                                                         },
                                                     }),
                                                 ]}
                                             >
                                                 <InputNumber
-                                                    placeholder="Auto-calculado"
+                                                    placeholder="Auto-calculated"
                                                     style={{ width: '100%' }}
                                                     precision={2}
                                                     min={0}
@@ -1251,7 +1234,7 @@ export const ProductFormModal = ({ open, product, onClose, defaultType }: Produc
                                         <Col span={12}>
                                             <Form.Item name="secondarySaleProfitPercent" noStyle>
                                                 <InputNumber
-                                                    placeholder="% Ganancia"
+                                                    placeholder="Profit %"
                                                     style={{ width: '100%' }}
                                                     precision={2}
                                                     min={-100}
@@ -1264,15 +1247,14 @@ export const ProductFormModal = ({ open, product, onClose, defaultType }: Produc
                                     </Row>
                                 </Form.Item>
 
-                                {/* Precio en Oferta Secundario */}
-                                <Form.Item label="Precio en Oferta" style={{ marginBottom: 8 }}>
+                                <Form.Item label="Secondary Offer Price" style={{ marginBottom: 8 }}>
                                     <Row gutter={8}>
                                         <Col span={12}>
                                             <Form.Item
                                                 name="secondaryOfferPrice"
                                                 noStyle
                                                 rules={[
-                                                    { type: 'number', min: 0, message: 'Debe ser >= 0' },
+                                                    { type: 'number', min: 0, message: 'Must be >= 0' },
                                                     ({ getFieldValue }) => ({
                                                         validator(_, value) {
                                                             if (!value) return Promise.resolve();
@@ -1280,13 +1262,13 @@ export const ProductFormModal = ({ open, product, onClose, defaultType }: Produc
                                                             if (!secondaryCost || value >= secondaryCost) {
                                                                 return Promise.resolve();
                                                             }
-                                                            return Promise.reject(new Error('Debe ser >= costo empaque'));
+                                                            return Promise.reject(new Error('Must be >= packaging cost'));
                                                         },
                                                     }),
                                                 ]}
                                             >
                                                 <InputNumber
-                                                    placeholder="Auto-calculado"
+                                                    placeholder="Auto-calculated"
                                                     style={{ width: '100%' }}
                                                     precision={2}
                                                     min={0}
@@ -1297,7 +1279,7 @@ export const ProductFormModal = ({ open, product, onClose, defaultType }: Produc
                                         <Col span={12}>
                                             <Form.Item name="secondaryOfferProfitPercent" noStyle>
                                                 <InputNumber
-                                                    placeholder="% Ganancia"
+                                                    placeholder="Profit %"
                                                     style={{ width: '100%' }}
                                                     precision={2}
                                                     min={-100}
@@ -1310,15 +1292,14 @@ export const ProductFormModal = ({ open, product, onClose, defaultType }: Produc
                                     </Row>
                                 </Form.Item>
 
-                                {/* Precio al Mayor Secundario */}
-                                <Form.Item label="Precio al Mayor" style={{ marginBottom: 8 }}>
+                                <Form.Item label="Secondary Wholesale Price" style={{ marginBottom: 8 }}>
                                     <Row gutter={8}>
                                         <Col span={12}>
                                             <Form.Item
                                                 name="secondaryWholesalePrice"
                                                 noStyle
                                                 rules={[
-                                                    { type: 'number', min: 0, message: 'Debe ser >= 0' },
+                                                    { type: 'number', min: 0, message: 'Must be >= 0' },
                                                     ({ getFieldValue }) => ({
                                                         validator(_, value) {
                                                             if (!value) return Promise.resolve();
@@ -1326,13 +1307,13 @@ export const ProductFormModal = ({ open, product, onClose, defaultType }: Produc
                                                             if (!secondaryCost || value >= secondaryCost) {
                                                                 return Promise.resolve();
                                                             }
-                                                            return Promise.reject(new Error('Debe ser >= costo empaque'));
+                                                            return Promise.reject(new Error('Must be >= packaging cost'));
                                                         },
                                                     }),
                                                 ]}
                                             >
                                                 <InputNumber
-                                                    placeholder="Auto-calculado"
+                                                    placeholder="Auto-calculated"
                                                     style={{ width: '100%' }}
                                                     precision={2}
                                                     min={0}
@@ -1343,7 +1324,7 @@ export const ProductFormModal = ({ open, product, onClose, defaultType }: Produc
                                         <Col span={12}>
                                             <Form.Item name="secondaryWholesaleProfitPercent" noStyle>
                                                 <InputNumber
-                                                    placeholder="% Ganancia"
+                                                    placeholder="Profit %"
                                                     style={{ width: '100%' }}
                                                     precision={2}
                                                     min={-100}
@@ -1360,7 +1341,6 @@ export const ProductFormModal = ({ open, product, onClose, defaultType }: Produc
                     )}
                 </Form>
             </Modal>
-
 
             <PriceUpdateConfirmModal
                 visible={priceUpdateModalVisible}

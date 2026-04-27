@@ -21,18 +21,18 @@ export class InventoryAdjustmentsController {
   ) {}
 
   @Post()
-  @ApiOperation({ summary: 'Crear ajuste de inventario' })
-  @ApiResponse({ status: 201, description: 'Ajuste creado exitosamente' })
+  @ApiOperation({ summary: 'Create an inventory adjustment' })
+  @ApiResponse({ status: 201, description: 'Adjustment created successfully' })
   @ApiResponse({
     status: 400,
-    description: 'Stock insuficiente o datos inválidos',
+    description: 'Insufficient stock or invalid data',
   })
   create(@Body() createAdjustmentDto: CreateAdjustmentDto) {
     return this.inventoryAdjustmentsService.create(createAdjustmentDto);
   }
 
   @Get()
-  @ApiOperation({ summary: 'Listar ajustes con filtros' })
+  @ApiOperation({ summary: 'Retrieve inventory adjustments with filters' })
   findAll(
     @Query('productId') productId?: string,
     @Query('type') type?: string,
@@ -51,13 +51,13 @@ export class InventoryAdjustmentsController {
   }
 
   @Get('product/:productId')
-  @ApiOperation({ summary: 'Obtener historial de ajustes de un producto' })
+  @ApiOperation({ summary: 'Retrieve adjustment history for a specific product' })
   findByProduct(@Param('productId') productId: string) {
     return this.inventoryAdjustmentsService.findByProduct(productId);
   }
 
   @Get(':id')
-  @ApiOperation({ summary: 'Obtener ajuste por ID' })
+  @ApiOperation({ summary: 'Retrieve an inventory adjustment by ID' })
   findOne(@Param('id') id: string) {
     return this.inventoryAdjustmentsService.findOne(id);
   }

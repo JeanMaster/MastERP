@@ -10,17 +10,21 @@ import { CreatePurchaseOrderDto } from './dto/create-purchase-order.dto';
 export class PurchaseOrdersService {
   constructor(private prisma: PrismaService) {}
 
+  /**
+   * Creates a new purchase order.
+   * Validates supplier and product existence, and calculates totals.
+   * @param createPurchaseOrderDto The data for the new purchase order.
+   * @returns The created purchase order record with its items.
+   */
   async create(createPurchaseOrderDto: CreatePurchaseOrderDto) {
     const { supplierId, items, ...orderData } = createPurchaseOrderDto;
 
-    // Verify supplier exists
+    // Verify supplier existence
     const supplier = await this.prisma.supplier.findUnique({
       where: { id: supplierId },
     });
     if (!supplier) {
-      throw new NotFoundException(
-        `Proveedor con ID ${supplierId} no encontrado`,
-      );
+      throw new NotFoundException(`Supplier with ID ${supplierId} not found`);
     }
 
     // Calculate totals
@@ -33,9 +37,7 @@ export class PurchaseOrdersService {
       });
 
       if (!product) {
-        throw new NotFoundException(
-          `Producto con ID ${item.productId} no encontrado`,
-        );
+        throw new NotFoundException(`Product with ID ${item.productId} not found`);
       }
 
       const itemTotal = item.quantity * item.cost;
@@ -47,7 +49,7 @@ export class PurchaseOrdersService {
       });
     }
 
-    // Simplified tax logic (0 for now, same as purchases for consistency)
+    // Simplified tax logic (0 for now, matching core purchases)
     const taxAmount = 0;
     const total = subtotal + taxAmount;
 
@@ -79,6 +81,10 @@ export class PurchaseOrdersService {
     });
   }
 
+  /**
+   * Retrieves all purchase orders, ordered by creation date descending.
+   * @returns A list of purchase orders.
+   */
   async findAll() {
     return this.prisma.purchaseOrder.findMany({
       include: {
@@ -95,6 +101,11 @@ export class PurchaseOrdersService {
     });
   }
 
+  /**
+   * Retrieves a single purchase order by its ID.
+   * @param id The ID of the purchase order.
+   * @returns The purchase order record with full details.
+   */
   async findOne(id: string) {
     const order = await this.prisma.purchaseOrder.findUnique({
       where: { id },
@@ -113,12 +124,18 @@ export class PurchaseOrdersService {
     });
 
     if (!order) {
-      throw new NotFoundException(`Pedido con ID ${id} no encontrado`);
+      throw new NotFoundException(`Purchase order with ID ${id} not found`);
     }
 
     return order;
   }
 
+  /**
+   * Updates the status of a purchase order.
+   * @param id The ID of the purchase order.
+   * @param status The new status.
+   * @returns The updated purchase order record.
+   */
   async updateStatus(id: string, status: string) {
     return this.prisma.purchaseOrder.update({
       where: { id },
@@ -126,13 +143,16 @@ export class PurchaseOrdersService {
     });
   }
 
+  /**
+   * Deletes a purchase order.
+   * Only allowed if the status is PENDING or CANCELLED.
+   * @param id The ID of the purchase order to delete.
+   * @returns The deleted purchase order record.
+   */
   async remove(id: string) {
-    // Only allow removing if PENDING or CANCELLED
     const order = await this.findOne(id);
     if (order.status === 'COMPLETED') {
-      throw new BadRequestException(
-        'No se puede eliminar un pedido ya completado',
-      );
+      throw new BadRequestException('Cannot delete a completed purchase order');
     }
 
     return this.prisma.purchaseOrder.delete({

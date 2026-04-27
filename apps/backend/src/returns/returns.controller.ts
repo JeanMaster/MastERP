@@ -20,20 +20,26 @@ import { AuthGuard } from '@nestjs/passport';
 export class ReturnsController {
   constructor(private readonly returnsService: ReturnsService) {}
 
+  /**
+   * Creates a new return request.
+   */
   @Post()
-  @ApiOperation({ summary: 'Crear una nueva devolución' })
-  @ApiResponse({ status: 201, description: 'Devolución creada exitosamente' })
+  @ApiOperation({ summary: 'Create a new return request' })
+  @ApiResponse({ status: 201, description: 'Return created successfully' })
   @ApiResponse({
     status: 400,
-    description: 'Datos inválidos o devolución no elegible',
+    description: 'Invalid data or return not eligible',
   })
   create(@Body() createReturnDto: CreateReturnDto) {
     return this.returnsService.create(createReturnDto);
   }
 
+  /**
+   * Lists all returns with optional filters.
+   */
   @Get()
-  @ApiOperation({ summary: 'Listar devoluciones con filtros' })
-  @ApiResponse({ status: 200, description: 'Lista de devoluciones' })
+  @ApiOperation({ summary: 'List returns with filters' })
+  @ApiResponse({ status: 200, description: 'List of returns' })
   findAll(
     @Query('status') status?: string,
     @Query('returnType') returnType?: string,
@@ -49,60 +55,66 @@ export class ReturnsController {
     return this.returnsService.findAll(filters);
   }
 
+  /**
+   * Retrieves a single return by its ID.
+   */
   @Get(':id')
-  @ApiOperation({ summary: 'Obtener una devolución por ID' })
-  @ApiResponse({ status: 200, description: 'Devolución encontrada' })
-  @ApiResponse({ status: 404, description: 'Devolución no encontrada' })
+  @ApiOperation({ summary: 'Get a return by ID' })
+  @ApiResponse({ status: 200, description: 'Return found' })
+  @ApiResponse({ status: 404, description: 'Return not found' })
   findOne(@Param('id') id: string) {
     return this.returnsService.findOne(id);
   }
 
+  /**
+   * Updates a return record.
+   */
   @Patch(':id')
-  @ApiOperation({ summary: 'Actualizar una devolución' })
-  @ApiResponse({ status: 200, description: 'Devolución actualizada' })
+  @ApiOperation({ summary: 'Update a return record' })
+  @ApiResponse({ status: 200, description: 'Return updated successfully' })
   update(@Param('id') id: string, @Body() updateReturnDto: UpdateReturnDto) {
     return this.returnsService.update(id, updateReturnDto);
   }
 
+  /**
+   * Approves a pending return.
+   */
   @Patch(':id/approve')
-  @ApiOperation({ summary: 'Aprobar una devolución pendiente' })
-  @ApiResponse({ status: 200, description: 'Devolución aprobada' })
-  @ApiResponse({
-    status: 400,
-    description: 'La devolución no puede ser aprobada',
-  })
+  @ApiOperation({ summary: 'Approve a pending return' })
+  @ApiResponse({ status: 200, description: 'Return approved successfully' })
+  @ApiResponse({ status: 400, description: 'Return cannot be approved' })
   approve(@Param('id') id: string, @Body('approvedBy') approvedBy: string) {
     return this.returnsService.approve(id, approvedBy);
   }
 
+  /**
+   * Rejects a pending return.
+   */
   @Patch(':id/reject')
-  @ApiOperation({ summary: 'Rechazar una devolución pendiente' })
-  @ApiResponse({ status: 200, description: 'Devolución rechazada' })
-  @ApiResponse({
-    status: 400,
-    description: 'La devolución no puede ser rechazada',
-  })
+  @ApiOperation({ summary: 'Reject a pending return' })
+  @ApiResponse({ status: 200, description: 'Return rejected successfully' })
+  @ApiResponse({ status: 400, description: 'Return cannot be rejected' })
   reject(@Param('id') id: string, @Body('reason') reason: string) {
     return this.returnsService.reject(id, reason);
   }
 
+  /**
+   * Processes an approved return (applies stock changes and finalizes).
+   */
   @Post(':id/process')
-  @ApiOperation({ summary: 'Procesar una devolución aprobada' })
-  @ApiResponse({
-    status: 200,
-    description: 'Devolución procesada exitosamente',
-  })
-  @ApiResponse({
-    status: 400,
-    description: 'La devolución no puede ser procesada',
-  })
+  @ApiOperation({ summary: 'Process an approved return' })
+  @ApiResponse({ status: 200, description: 'Return processed successfully' })
+  @ApiResponse({ status: 400, description: 'Return cannot be processed' })
   process(@Param('id') id: string) {
     return this.returnsService.process(id);
   }
 
+  /**
+   * Validates whether a return is eligible before submission.
+   */
   @Post('validate')
-  @ApiOperation({ summary: 'Validar elegibilidad de devolución' })
-  @ApiResponse({ status: 200, description: 'Resultado de validación' })
+  @ApiOperation({ summary: 'Validate return eligibility' })
+  @ApiResponse({ status: 200, description: 'Validation result' })
   validate(@Body('saleId') saleId: string, @Body('items') items: any[]) {
     return this.returnsService.validateReturnEligibility(saleId, items);
   }

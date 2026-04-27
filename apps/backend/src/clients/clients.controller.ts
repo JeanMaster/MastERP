@@ -22,25 +22,25 @@ export class ClientsController {
   constructor(private readonly clientsService: ClientsService) {}
 
   @Post()
-  @ApiOperation({ summary: 'Crear un nuevo cliente' })
-  @ApiResponse({ status: 201, description: 'Cliente creado exitosamente' })
-  @ApiResponse({ status: 409, description: 'RIF ya registrado' })
+  @ApiOperation({ summary: 'Create a new client' })
+  @ApiResponse({ status: 201, description: 'Client created successfully' })
+  @ApiResponse({ status: 409, description: 'ID/RIF already registered' })
   create(@Body() createClientDto: CreateClientDto) {
     return this.clientsService.create(createClientDto);
   }
 
   @Get()
-  @ApiOperation({ summary: 'Listar todos los clientes' })
+  @ApiOperation({ summary: 'Retrieve all clients' })
   @ApiQuery({
     name: 'search',
     required: false,
-    description: 'Buscar por nombre, RIF o email',
+    description: 'Search by name, RIF/ID, or email',
   })
   @ApiQuery({
     name: 'active',
     required: false,
     type: Boolean,
-    description: 'Filtrar por activos',
+    description: 'Filter by active status',
   })
   findAll(@Query('search') search?: string, @Query('active') active?: string) {
     const isActive = active === undefined ? true : active === 'true';
@@ -48,25 +48,25 @@ export class ClientsController {
   }
 
   @Get(':id')
-  @ApiOperation({ summary: 'Obtener un cliente por ID' })
-  @ApiResponse({ status: 200, description: 'Cliente encontrado' })
-  @ApiResponse({ status: 404, description: 'Cliente no encontrado' })
+  @ApiOperation({ summary: 'Retrieve a client by ID' })
+  @ApiResponse({ status: 200, description: 'Client found' })
+  @ApiResponse({ status: 404, description: 'Client not found' })
   findOne(@Param('id') id: string) {
     return this.clientsService.findOne(id);
   }
 
   @Patch(':id')
-  @ApiOperation({ summary: 'Actualizar un cliente' })
-  @ApiResponse({ status: 200, description: 'Cliente actualizado' })
-  @ApiResponse({ status: 404, description: 'Cliente no encontrado' })
+  @ApiOperation({ summary: 'Update a client' })
+  @ApiResponse({ status: 200, description: 'Client updated' })
+  @ApiResponse({ status: 404, description: 'Client not found' })
   update(@Param('id') id: string, @Body() updateClientDto: UpdateClientDto) {
     return this.clientsService.update(id, updateClientDto);
   }
 
   @Delete(':id')
-  @ApiOperation({ summary: 'Eliminar un cliente (soft delete)' })
-  @ApiResponse({ status: 200, description: 'Cliente marcado como inactivo' })
-  @ApiResponse({ status: 404, description: 'Cliente no encontrado' })
+  @ApiOperation({ summary: 'Deactivate a client (soft delete)' })
+  @ApiResponse({ status: 200, description: 'Client marked as inactive' })
+  @ApiResponse({ status: 404, description: 'Client not found' })
   remove(@Param('id') id: string) {
     return this.clientsService.remove(id);
   }

@@ -13,8 +13,14 @@ import { Decimal } from '@prisma/client/runtime/library';
 export class ProductsService {
   constructor(private prisma: PrismaService) {}
 
+  /**
+   * Creates a new product.
+   * Handles subcategory validation, price validation, and cost calculation for composed products.
+   * @param createProductDto Data Transfer Object for product creation.
+   * @returns The created product record.
+   */
   async create(createProductDto: CreateProductDto) {
-    // Validar que la subcategoría sea hija de la categoría
+    // Validate that the subcategory is a child of the selected category
     if (createProductDto.subcategoryId) {
       const subcategory = await this.prisma.department.findUnique({
         where: { id: createProductDto.subcategoryId },
@@ -26,12 +32,12 @@ export class ProductsService {
         subcategory.parentId !== createProductDto.categoryId
       ) {
         throw new BadRequestException(
-          'La subcategoría seleccionada no pertenece a la categoría especificada',
+          'The selected subcategory does not belong to the specified category',
         );
       }
     }
 
-    // Validar que los precios de venta sean >= precio de costo
+    // Validate that sale prices are >= cost price
     this.validatePrices(createProductDto);
 
     // Cost calculation for composed products
@@ -111,12 +117,17 @@ export class ProductsService {
       });
     } catch (error) {
       if (error.code === 'P2002') {
-        throw new ConflictException('error sku duplicado');
+        throw new ConflictException('Duplicate SKU error');
       }
       throw error;
     }
   }
 
+  /**
+   * Retrieves all products matching the specified filters.
+   * @param options Filtering options (active, search, category, etc.).
+   * @returns A list of filtered products.
+   */
   async findAll(
     options: {
       active?: boolean;
@@ -179,6 +190,11 @@ export class ProductsService {
     return products.map((product) => this.convertDecimalsToNumber(product));
   }
 
+  /**
+   * Retrieves a single product by its ID.
+   * @param id The ID of the product.
+   * @returns The product record or throws NotFoundException.
+   */
   async findOne(id: string) {
     const product = await this.prisma.product.findUnique({
       where: { id },
@@ -206,16 +222,23 @@ export class ProductsService {
     });
 
     if (!product) {
-      throw new NotFoundException(`Producto con ID ${id} no encontrado`);
+      throw new NotFoundException(`Product with ID ${id} not found`);
     }
 
     return this.convertDecimalsToNumber(product);
   }
 
+  /**
+   * Updates an existing product.
+   * Handles price change detection, margin calculation, and composed product updates.
+   * @param id The ID of the product to update.
+   * @param updateProductDto The new data for the product.
+   * @returns The updated product record.
+   */
   async update(id: string, updateProductDto: UpdateProductDto) {
     const existingProduct = await this.findOne(id);
 
-    // Validar subcategoría si está presente
+    // Validate subcategory if present
     if (updateProductDto.subcategoryId && updateProductDto.categoryId) {
       const subcategory = await this.prisma.department.findUnique({
         where: { id: updateProductDto.subcategoryId },
@@ -227,12 +250,12 @@ export class ProductsService {
         subcategory.parentId !== updateProductDto.categoryId
       ) {
         throw new BadRequestException(
-          'La subcategoría seleccionada no pertenece a la categoría especificada',
+          'The selected subcategory does not belong to the specified category',
         );
       }
     }
 
-    // Validar precios
+    // Validate prices if any price is updated
     if (
       updateProductDto.costPrice !== undefined ||
       updateProductDto.salePrice !== undefined ||
@@ -402,12 +425,18 @@ export class ProductsService {
       return result;
     } catch (error) {
       if (error.code === 'P2002') {
-        throw new ConflictException('error sku duplicado');
+        throw new ConflictException('Duplicate SKU error');
       }
       throw error;
     }
   }
 
+  /**
+   * Deletes a product (soft delete).
+   * Marks the product as inactive.
+   * @param id The ID of the product to delete.
+   * @returns The updated product record.
+   */
   async remove(id: string) {
     await this.findOne(id);
 
@@ -417,25 +446,26 @@ export class ProductsService {
     });
   }
 
-  // Validar que los precios de venta sean >= costo
+  /**
+   * Validates that sale prices are not lower than the cost price.
+   * For services, cost is assumed to be 0 if not specified.
+   * @param dto The product data to validate.
+   */
   private validatePrices(dto: CreateProductDto | UpdateProductDto) {
-    // Si es servicio, el costo puede ser irrelevante, pero asumimos 0 para validar que precio venta > 0
     const costPrice = dto.costPrice || 0;
 
     if (dto.salePrice !== undefined && dto.salePrice < costPrice) {
-      // Nota: Para servicios, costPrice es 0, así que salePrice solo debe ser >= 0
       if (costPrice > 0 || dto.salePrice < 0) {
         throw new BadRequestException(
-          'El precio de venta no puede ser menor al precio de costo',
+          'The sale price cannot be lower than the cost price',
         );
       }
     }
 
-    // ... (resto igual, costPrice es 0 si undefined)
     if (dto.offerPrice !== undefined && dto.offerPrice < costPrice) {
       if (costPrice > 0 || dto.offerPrice < 0) {
         throw new BadRequestException(
-          'El precio en oferta no puede ser menor al precio de costo',
+          'The offer price cannot be lower than the cost price',
         );
       }
     }
@@ -443,13 +473,18 @@ export class ProductsService {
     if (dto.wholesalePrice !== undefined && dto.wholesalePrice < costPrice) {
       if (costPrice > 0 || dto.wholesalePrice < 0) {
         throw new BadRequestException(
-          'El precio al mayor no puede ser menor al precio de costo',
+          'The wholesale price cannot be lower than the cost price',
         );
       }
     }
   }
 
-  // Convertir Decimals a Numbers para JSON
+  /**
+   * Internal helper to convert Decimal fields to Numbers for JSON responses.
+   * Also calculates dynamic stock for composed products based on component availability.
+   * @param product The product object with Decimal fields.
+   * @returns A clean object with Numbers.
+   */
   private convertDecimalsToNumber(product: any) {
     let calculatedStock =
       product.stock !== undefined && product.stock !== null
@@ -519,7 +554,9 @@ export class ProductsService {
   }
 
   /**
-   * Batch update product prices using margin percentages
+   * Batch updates product prices using margin percentages.
+   * @param updates A list of price updates with margins.
+   * @returns An object with the count of updated/failed products and details.
    */
   async batchUpdatePrices(
     updates: Array<{

@@ -1,5 +1,4 @@
 import { useEffect } from 'react';
-
 import { Modal, Form, InputNumber, Input, message, Alert, Descriptions } from 'antd';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { banksApi } from '../../../services/banksApi';
@@ -12,6 +11,10 @@ interface LiquidateBatchModalProps {
     onClose: () => void;
 }
 
+/**
+ * LiquidateBatchModal Component
+ * Confirms the liquidation of a POS batch, moving funds from "in transit" to "real balance".
+ */
 export const LiquidateBatchModal = ({ open, bankAccount, onClose }: LiquidateBatchModalProps) => {
     const [form] = Form.useForm();
     const queryClient = useQueryClient();
@@ -19,17 +22,17 @@ export const LiquidateBatchModal = ({ open, bankAccount, onClose }: LiquidateBat
     const liquidateMutation = useMutation({
         mutationFn: banksApi.liquidatePos,
         onSuccess: () => {
-            message.success('Liquidación procesada correctamente');
+            message.success('Liquidation processed successfully');
             queryClient.invalidateQueries({ queryKey: ['banks'] });
             onClose();
             form.resetFields();
         },
         onError: (error: any) => {
-            message.error(error.response?.data?.message || 'Error al procesar liquidación');
+            message.error(error.response?.data?.message || 'Error processing liquidation');
         }
     });
 
-    // F9 Keyboard Shortcut
+    // F9 Keyboard Shortcut for quick processing
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
             if (!open) return;
@@ -60,41 +63,41 @@ export const LiquidateBatchModal = ({ open, bankAccount, onClose }: LiquidateBat
 
     return (
         <Modal
-            title="Confirmar Liquidación de Lote POS"
+            title="Confirm POS Batch Liquidation"
             open={open}
             onOk={handleSubmit}
             onCancel={onClose}
             confirmLoading={liquidateMutation.isPending}
-            okText="Procesar Liquidación (F9)"
-            cancelText="Cancelar"
+            okText="Process Liquidation (F9)"
+            cancelText="Cancel"
             width={500}
         >
             <div style={{ marginTop: 16 }}>
                 <Alert
-                    message="Proceso de Liquidación"
-                    description="Al confirmar, el saldo en tránsito se moverá al saldo real de la cuenta. Se registrará un gasto automático por la comisión bancaria."
+                    message="Liquidation Process"
+                    description="Confirming this will move the in-transit balance to the real account balance. An automatic expense will be recorded for the bank commission."
                     type="info"
                     showIcon
                     style={{ marginBottom: 20 }}
                 />
 
                 <Descriptions bordered column={1} size="small" style={{ marginBottom: 20 }}>
-                    <Descriptions.Item label="Monto en Tránsito">
+                    <Descriptions.Item label="In-Transit Amount">
                         <span style={{ fontWeight: 'bold', color: '#1890ff' }}>
                             {bankAccount.currency.symbol} {formatVenezuelanPrice(pendingAmount)}
                         </span>
                     </Descriptions.Item>
-                    <Descriptions.Item label="Cuenta Destino">
+                    <Descriptions.Item label="Destination Account">
                         {bankAccount.bankName} - {bankAccount.accountNumber}
                     </Descriptions.Item>
                 </Descriptions>
 
                 <Form form={form} layout="vertical" initialValues={{ commissionAmount: 0 }}>
                     <Form.Item
-                        label="Comisión Bancaria (Deducir)"
+                        label="Bank Commission (Deduction)"
                         name="commissionAmount"
-                        rules={[{ required: true, message: 'Ingrese la comisión (puede ser 0)' }]}
-                        help="Este monto se restará del total y se registrará como un Gasto."
+                        rules={[{ required: true, message: 'Please enter the commission (can be 0)' }]}
+                        help="This amount will be subtracted from the total and recorded as an Expense."
                     >
                         <InputNumber
                             style={{ width: '100%' }}
@@ -106,10 +109,10 @@ export const LiquidateBatchModal = ({ open, bankAccount, onClose }: LiquidateBat
                     </Form.Item>
 
                     <Form.Item
-                        label="Notas / Referencia"
+                        label="Notes / Reference"
                         name="notes"
                     >
-                        <Input.TextArea placeholder="Ej: Lote #1234 - Liquidación Bangente" rows={2} />
+                        <Input.TextArea placeholder="e.g., Batch #1234 - POS Settlement" rows={2} />
                     </Form.Item>
                 </Form>
             </div>

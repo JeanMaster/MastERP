@@ -12,8 +12,12 @@ interface InvoiceModalProps {
     onClose: () => void;
 }
 
+/**
+ * InvoiceModal Component
+ * Post-sale receipt management.
+ * Provides options to print the fiscal receipt (SENIAT format) or send it via WhatsApp/Email.
+ */
 export const InvoiceModal = ({ open, sale, onClose }: InvoiceModalProps) => {
-    // Si no hay sale, renderizar un modal vacío que se puede cerrar
     if (!sale) {
         return (
             <Modal
@@ -23,18 +27,21 @@ export const InvoiceModal = ({ open, sale, onClose }: InvoiceModalProps) => {
                 destroyOnClose
             >
                 <div style={{ textAlign: 'center', padding: 20 }}>
-                    Cargando datos de factura...
+                    Loading invoice data...
                 </div>
             </Modal>
         );
     }
 
-    const clientName = sale.client?.name || 'CONTADO';
+    const clientName = sale.client?.name || 'CASH CUSTOMER';
     const clientPhone = (sale.client as any)?.phone || null;
     const { companyInfo } = usePOSStore();
     const clientEmail = (sale.client as any)?.email || null;
     const hasWhatsapp = (sale.client as any)?.hasWhatsapp || false;
 
+    /**
+     * Formats a rich WhatsApp message with sale details.
+     */
     const formatWhatsAppUrl = (phone: string) => {
         let cleanPhone = phone.replace(/\D/g, '');
         if (cleanPhone.startsWith('04')) {
@@ -43,26 +50,25 @@ export const InvoiceModal = ({ open, sale, onClose }: InvoiceModalProps) => {
             cleanPhone = '58' + cleanPhone;
         }
 
-        // Build items list
         const itemsList = sale.items?.map(item =>
-            `   • ${item.quantity}x ${item.product?.name || 'Producto'} - ${formatVenezuelanPrice(item.total)}`
+            `   • ${item.quantity}x ${item.product?.name || 'Product'} - ${formatVenezuelanPrice(item.total)}`
         ).join('\n') || '';
 
         const invoiceMessage = encodeURIComponent(
             `🏢 *${companyInfo?.name || 'MastERP'}*\n` +
-            `RIF: ${companyInfo?.rif || 'J-00000000-0'}\n` +
+            `Tax ID (RIF): ${companyInfo?.rif || 'J-00000000-0'}\n` +
             `━━━━━━━━━━━━━━━━\n\n` +
-            `🧾 *FACTURA ${sale.invoiceNumber}*\n\n` +
-            `Hola ${clientName}, aquí está el detalle de tu compra:\n\n` +
-            `📅 *Fecha:* ${new Date(sale.date).toLocaleDateString('es-VE')}\n` +
-            `🕐 *Hora:* ${new Date(sale.date).toLocaleTimeString('es-VE')}\n\n` +
-            `📦 *Artículos:*\n${itemsList}\n\n` +
+            `🧾 *INVOICE ${sale.invoiceNumber}*\n\n` +
+            `Hello ${clientName}, here are your purchase details:\n\n` +
+            `📅 *Date:* ${new Date(sale.date).toLocaleDateString('en-US')}\n` +
+            `🕐 *Time:* ${new Date(sale.date).toLocaleTimeString('en-US')}\n\n` +
+            `📦 *Items:*\n${itemsList}\n\n` +
             `━━━━━━━━━━━━━━━━\n` +
             `💵 Subtotal: ${formatVenezuelanPrice(sale.subtotal)}\n` +
-            (sale.discount > 0 ? `🏷️ Descuento: -${formatVenezuelanPrice(sale.discount)}\n` : '') +
+            (sale.discount > 0 ? `🏷️ Discount: -${formatVenezuelanPrice(sale.discount)}\n` : '') +
             `💰 *TOTAL: ${formatVenezuelanPrice(sale.total)}*\n\n` +
-            `💳 Método de pago: ${sale.paymentMethod}\n\n` +
-            `¡Gracias por tu compra! 🙏\n` +
+            `💳 Payment Method: ${sale.paymentMethod}\n\n` +
+            `Thank you for your purchase! 🙏\n` +
             `_${companyInfo?.name || 'MastERP'}_`
         );
         return `https://wa.me/${cleanPhone}?text=${invoiceMessage}`;
@@ -71,39 +77,41 @@ export const InvoiceModal = ({ open, sale, onClose }: InvoiceModalProps) => {
     const handleWhatsApp = () => {
         if (clientPhone && hasWhatsapp) {
             window.open(formatWhatsAppUrl(clientPhone), '_blank');
-            message.success('Abriendo WhatsApp...');
+            message.success('Opening WhatsApp...');
             onClose();
         } else {
-            message.warning('El cliente no tiene WhatsApp registrado');
+            message.warning('Customer does not have WhatsApp registered');
         }
     };
 
     const handleEmail = () => {
         if (clientEmail) {
-            const subject = encodeURIComponent(`Factura ${sale.invoiceNumber} - ${companyInfo?.name || 'MastERP'}`);
+            const subject = encodeURIComponent(`Invoice ${sale.invoiceNumber} - ${companyInfo?.name || 'MastERP'}`);
             const body = encodeURIComponent(
-                `Estimado/a ${clientName},\n\n` +
-                `Adjunto encontrará los detalles de su factura:\n\n` +
-                `Número de Factura: ${sale.invoiceNumber}\n` +
-                `Fecha: ${new Date(sale.date).toLocaleDateString('es-VE')}\n` +
+                `Dear ${clientName},\n\n` +
+                `Please find the details of your invoice below:\n\n` +
+                `Invoice Number: ${sale.invoiceNumber}\n` +
+                `Date: ${new Date(sale.date).toLocaleDateString('en-US')}\n` +
                 `Total: ${formatVenezuelanPrice(sale.total)}\n\n` +
-                `¡Gracias por su preferencia!\n\n${companyInfo?.name || 'MastERP'}`
+                `Thank you for your business!\n\n${companyInfo?.name || 'MastERP'}`
             );
             window.open(`mailto:${clientEmail}?subject=${subject}&body=${body}`, '_blank');
-            message.success('Abriendo cliente de correo...');
+            message.success('Opening email client...');
             onClose();
         } else {
-            message.warning('El cliente no tiene correo electrónico registrado');
+            message.warning('Customer does not have an email registered');
         }
     };
 
+    /**
+     * Generates a printable HTML version of the invoice following SENIAT (Venezuelan Tax) standards.
+     */
     const handlePrint = () => {
-        // Create printable invoice content with SENIAT format
         const printContent = `
             <!DOCTYPE html>
             <html>
             <head>
-                <title>Factura ${sale.invoiceNumber}</title>
+                <title>Invoice ${sale.invoiceNumber}</title>
                 <style>
                     body { font-family: Arial, sans-serif; font-size: 12px; margin: 20px; }
                     .header { text-align: center; margin-bottom: 20px; }
@@ -125,28 +133,28 @@ export const InvoiceModal = ({ open, sale, onClose }: InvoiceModalProps) => {
             <body>
                 <div class="header">
                     <div class="company-name">${companyInfo?.name || 'MastERP'}</div>
-                    <div class="fiscal-info">RIF: ${companyInfo?.rif || 'J-00000000-0'}</div>
-                    <div class="fiscal-info">Dirección Fiscal: Venezuela</div>
-                    <div class="invoice-title">FACTURA</div>
+                    <div class="fiscal-info">Tax ID (RIF): ${companyInfo?.rif || 'J-00000000-0'}</div>
+                    <div class="fiscal-info">Fiscal Address: Venezuela</div>
+                    <div class="invoice-title">INVOICE</div>
                     <div style="font-size: 14px; margin-top: 5px;">${sale.invoiceNumber}</div>
                 </div>
                 
                 <div class="info-section">
                     <div class="info-row">
-                        <span><strong>Fecha:</strong> ${new Date(sale.date).toLocaleDateString('es-VE')}</span>
-                        <span><strong>Hora:</strong> ${new Date(sale.date).toLocaleTimeString('es-VE')}</span>
+                        <span><strong>Date:</strong> ${new Date(sale.date).toLocaleDateString('en-US')}</span>
+                        <span><strong>Time:</strong> ${new Date(sale.date).toLocaleTimeString('en-US')}</span>
                     </div>
                     <div class="info-row">
-                        <span><strong>Cliente:</strong> ${clientName}</span>
+                        <span><strong>Customer:</strong> ${clientName}</span>
                     </div>
                 </div>
                 
                 <table>
                     <thead>
                         <tr>
-                            <th>Cant.</th>
-                            <th>Descripción</th>
-                            <th>P. Unit.</th>
+                            <th>Qty.</th>
+                            <th>Description</th>
+                            <th>Unit Price</th>
                             <th>Total</th>
                         </tr>
                     </thead>
@@ -154,35 +162,35 @@ export const InvoiceModal = ({ open, sale, onClose }: InvoiceModalProps) => {
                         ${sale.items?.map(item => `
                             <tr>
                                 <td>${item.quantity}</td>
-                                <td>${item.product?.name || 'Producto'}</td>
+                                <td>${item.product?.name || 'Product'}</td>
                                 <td>${formatVenezuelanPrice(item.unitPrice)}</td>
                                 <td>${formatVenezuelanPrice(item.total)}</td>
                             </tr>
-                        `).join('') || '<tr><td colspan="4">Sin items</td></tr>'}
+                        `).join('') || '<tr><td colspan="4">No items</td></tr>'}
                     </tbody>
                 </table>
                 
                 <div class="totals">
                     <div class="total-row">Subtotal: ${formatVenezuelanPrice(sale.subtotal)}</div>
-                    ${sale.discount > 0 ? `<div class="total-row">Descuento: -${formatVenezuelanPrice(sale.discount)}</div>` : ''}
-                    ${sale.tax > 0 ? `<div class="total-row">IVA (16%): ${formatVenezuelanPrice(sale.tax)}</div>` : ''}
+                    ${sale.discount > 0 ? `<div class="total-row">Discount: -${formatVenezuelanPrice(sale.discount)}</div>` : ''}
+                    ${sale.tax > 0 ? `<div class="total-row">VAT (16%): ${formatVenezuelanPrice(sale.tax)}</div>` : ''}
                     <div class="total-row grand-total">TOTAL: ${formatVenezuelanPrice(sale.total)}</div>
                 </div>
                 
                 <div class="info-section">
-                    <div><strong>Forma de Pago:</strong> ${sale.paymentMethod}</div>
-                    ${sale.tendered ? `<div><strong>Pagó con:</strong> ${formatVenezuelanPrice(sale.tendered)}</div>` : ''}
-                    ${sale.change ? `<div><strong>Cambio:</strong> ${formatVenezuelanPrice(sale.change)}</div>` : ''}
+                    <div><strong>Payment Method:</strong> ${sale.paymentMethod}</div>
+                    ${sale.tendered ? `<div><strong>Paid with:</strong> ${formatVenezuelanPrice(sale.tendered)}</div>` : ''}
+                    ${sale.change ? `<div><strong>Change:</strong> ${formatVenezuelanPrice(sale.change)}</div>` : ''}
                 </div>
                 
                 <div class="seniat-notice">
-                    <strong>NOTA:</strong> Esta factura cumple con las disposiciones del SENIAT.
-                    Documento válido para efectos fiscales según la normativa vigente.
+                    <strong>NOTE:</strong> This invoice complies with SENIAT regulations.
+                    Valid document for fiscal purposes according to current legislation.
                 </div>
                 
                 <div class="footer">
-                    ¡Gracias por su compra!<br>
-                    Generado por ${companyInfo?.name || 'MastERP'}
+                    Thank you for your purchase!<br>
+                    Generated by ${companyInfo?.name || 'MastERP'}
                 </div>
             </body>
             </html>
@@ -198,7 +206,7 @@ export const InvoiceModal = ({ open, sale, onClose }: InvoiceModalProps) => {
                 printWindow.close();
             }, 250);
         }
-        message.success('Preparando impresión...');
+        message.success('Preparing print view...');
         onClose();
     };
 
@@ -218,29 +226,29 @@ export const InvoiceModal = ({ open, sale, onClose }: InvoiceModalProps) => {
             title={
                 <div style={{ textAlign: 'center' }}>
                     <Title level={4} style={{ margin: 0 }}>
-                        🧾 Venta Completada
+                        🧾 Sale Completed
                     </Title>
                 </div>
             }
         >
             <Card style={{ marginBottom: 16 }}>
                 <Descriptions column={2} size="small">
-                    <Descriptions.Item label="Factura" span={2}>
+                    <Descriptions.Item label="Invoice" span={2}>
                         <Tag color="blue" style={{ fontSize: 16 }}>{sale.invoiceNumber}</Tag>
                     </Descriptions.Item>
-                    <Descriptions.Item label="Fecha">
-                        {new Date(sale.date).toLocaleDateString('es-VE')}
+                    <Descriptions.Item label="Date">
+                        {new Date(sale.date).toLocaleDateString('en-US')}
                     </Descriptions.Item>
-                    <Descriptions.Item label="Hora">
-                        {new Date(sale.date).toLocaleTimeString('es-VE')}
+                    <Descriptions.Item label="Time">
+                        {new Date(sale.date).toLocaleTimeString('en-US')}
                     </Descriptions.Item>
-                    <Descriptions.Item label="Cliente" span={2}>
+                    <Descriptions.Item label="Customer" span={2}>
                         <Text strong>{clientName}</Text>
                     </Descriptions.Item>
-                    <Descriptions.Item label="Productos">
-                        {sale.items?.length || 0} artículos
+                    <Descriptions.Item label="Products">
+                        {sale.items?.length || 0} items
                     </Descriptions.Item>
-                    <Descriptions.Item label="Método de Pago">
+                    <Descriptions.Item label="Payment Method">
                         {sale.paymentMethod}
                     </Descriptions.Item>
                 </Descriptions>
@@ -249,7 +257,7 @@ export const InvoiceModal = ({ open, sale, onClose }: InvoiceModalProps) => {
 
                 <Row justify="space-between" align="middle">
                     <Col>
-                        <Text type="secondary">Total de la Venta</Text>
+                        <Text type="secondary">Sale Total</Text>
                     </Col>
                     <Col>
                         <Title level={2} style={{ margin: 0, color: '#52c41a' }}>
@@ -259,7 +267,7 @@ export const InvoiceModal = ({ open, sale, onClose }: InvoiceModalProps) => {
                 </Row>
             </Card>
 
-            <Divider>¿Cómo deseas enviar la factura?</Divider>
+            <Divider>How would you like to receive the invoice?</Divider>
 
             <Space direction="vertical" size="middle" style={{ width: '100%' }}>
                 <Button
@@ -271,8 +279,8 @@ export const InvoiceModal = ({ open, sale, onClose }: InvoiceModalProps) => {
                     onClick={handleWhatsApp}
                     disabled={!clientPhone || !hasWhatsapp}
                 >
-                    Enviar por WhatsApp
-                    {(!clientPhone || !hasWhatsapp) && <Text type="secondary" style={{ marginLeft: 8 }}>(No disponible)</Text>}
+                    Send via WhatsApp
+                    {(!clientPhone || !hasWhatsapp) && <Text type="secondary" style={{ marginLeft: 8 }}>(Unavailable)</Text>}
                 </Button>
 
                 <Button
@@ -284,8 +292,8 @@ export const InvoiceModal = ({ open, sale, onClose }: InvoiceModalProps) => {
                     onClick={handleEmail}
                     disabled={!clientEmail}
                 >
-                    Enviar por Email
-                    {!clientEmail && <Text type="secondary" style={{ marginLeft: 8 }}>(No disponible)</Text>}
+                    Send via Email
+                    {!clientEmail && <Text type="secondary" style={{ marginLeft: 8 }}>(Unavailable)</Text>}
                 </Button>
 
                 <Button
@@ -295,7 +303,7 @@ export const InvoiceModal = ({ open, sale, onClose }: InvoiceModalProps) => {
                     block
                     onClick={handlePrint}
                 >
-                    Imprimir Factura (SENIAT)
+                    Print Invoice (SENIAT)
                 </Button>
 
                 <Divider style={{ margin: '8px 0' }} />
@@ -307,7 +315,7 @@ export const InvoiceModal = ({ open, sale, onClose }: InvoiceModalProps) => {
                     block
                     onClick={handleSkip}
                 >
-                    No imprimir ahora
+                    Don't print now
                 </Button>
             </Space>
         </Modal>

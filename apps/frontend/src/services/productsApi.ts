@@ -126,6 +126,11 @@ export interface UpdateProductDto {
 }
 
 export const productsApi = {
+    /**
+     * Retrieves all products matching the specified filters.
+     * @param filters Filtering criteria (active, search, category, type, pagination).
+     * @returns A list of products.
+     */
     getAll: async (filters: { active?: boolean; search?: string; categoryId?: string; subcategoryId?: string; type?: 'PRODUCT' | 'SERVICE' | 'COMPOSED'; limit?: number; offset?: number } = {}): Promise<Product[]> => {
         const { active, search, categoryId, subcategoryId, type, limit, offset } = filters;
         const params = new URLSearchParams();
@@ -141,25 +146,50 @@ export const productsApi = {
         return data;
     },
 
+    /**
+     * Retrieves a single product by its ID.
+     * @param id The ID of the product.
+     * @returns The product record.
+     */
     getOne: async (id: string): Promise<Product> => {
         const { data } = await api.get(`/products/${id}`);
         return data;
     },
 
+    /**
+     * Creates a new product.
+     * @param dto The data for the new product.
+     * @returns The created product record.
+     */
     create: async (dto: CreateProductDto): Promise<Product> => {
         const { data } = await api.post(`/products`, dto);
         return data;
     },
 
+    /**
+     * Updates an existing product.
+     * @param id The ID of the product to update.
+     * @param dto The new data for the product.
+     * @returns The updated product record.
+     */
     update: async (id: string, dto: UpdateProductDto): Promise<Product> => {
         const { data } = await api.patch(`/products/${id}`, dto);
         return data;
     },
 
+    /**
+     * Deletes a product (soft delete).
+     * @param id The ID of the product to delete.
+     */
     delete: async (id: string): Promise<void> => {
         await api.delete(`/products/${id}`);
     },
 
+    /**
+     * Batch updates product prices using margin percentages.
+     * @param updates A list of price updates with margins.
+     * @returns The result of the batch update.
+     */
     batchUpdatePrices: async (updates: Array<{
         productId: string;
         newCostPrice: number;
@@ -172,3 +202,4 @@ export const productsApi = {
         return data;
     },
 };
+

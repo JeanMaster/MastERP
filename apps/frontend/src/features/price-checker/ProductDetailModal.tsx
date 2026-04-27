@@ -13,10 +13,17 @@ interface ProductDetailModalProps {
     companySettings?: any;
 }
 
+/**
+ * ProductDetailModal Component
+ * Immersive detailed view for a single product. 
+ * Shows large price highlights, stock status, and category metadata.
+ */
 export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({ visible, onClose, product, companySettings }) => {
     if (!product) return null;
 
-    // Price Logic (Duplicated from Page for simplicity, updated to handle offer)
+    /**
+     * Re-calculates finalized prices for the detailed view.
+     */
     const getDualPrices = () => {
         const primarySymbol = 'Bs';
         const secondarySymbol = companySettings?.preferredSecondaryCurrency?.symbol || '$';
@@ -24,23 +31,24 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({ visible,
 
         let priceInPrimary = product.salePrice;
 
-        // Convert to Primary if stored in foreign (e.g. USDT -> Bs)
+        // 1. Currency Conversion
         if (product.currency && !product.currency.isPrimary) {
             const prodRate = Number(product.currency.exchangeRate) || 1;
             priceInPrimary = product.salePrice * prodRate;
         }
 
-        // Add IVA if enabled and product is not exempt
+        // 2. Tax Application
         if (companySettings?.taxEnabled && !product.isTaxExempt) {
             const taxRate = Number(companySettings.taxRate) || 16;
             priceInPrimary = priceInPrimary * (1 + taxRate / 100);
         }
 
-        // Apply POS Rounding Logic
+        // 3. POS Rounding
         const roundingEnabled = companySettings?.roundingEnabled !== undefined ? companySettings.roundingEnabled : true;
         const roundingFactor = companySettings?.roundingFactor || 10;
         priceInPrimary = getRoundedPrice(priceInPrimary, roundingFactor, roundingEnabled);
 
+        // 4. Secondary View
         let priceInSecondary = 0;
         if (secondaryRate > 0) {
             priceInSecondary = priceInPrimary / secondaryRate;
@@ -61,68 +69,69 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({ visible,
             open={visible}
             onCancel={onClose}
             footer={[
-                <Button key="close" type="primary" size="large" onClick={onClose} style={{ width: '100%', height: '50px', fontSize: '18px' }}>
-                    Cerrar
+                <Button key="close" type="primary" size="large" onClick={onClose} style={{ width: '100%', height: '60px', fontSize: '20px', borderRadius: '12px' }}>
+                    Close Details
                 </Button>
             ]}
-            width={800}
+            width={850}
             centered
             className="price-checker-modal"
-            styles={{ body: { padding: '24px' } }}
+            styles={{ body: { padding: '32px' } }}
         >
-            <Row gutter={[24, 24]} align="middle">
+            <Row gutter={[32, 32]} align="middle">
                 <Col xs={24} md={12} style={{ textAlign: 'center' }}>
                     <Image
                         width="100%"
-                        src={(product.images && product.images.length > 0) ? product.images[0] : 'https://via.placeholder.com/400x400?text=Sin+Imagen'}
+                        src={(product.images && product.images.length > 0) ? product.images[0] : 'https://via.placeholder.com/450x450?text=No+Image+Available'}
                         alt={product.name}
-                        style={{ objectFit: 'contain', maxHeight: '400px', borderRadius: '8px' }}
-                        fallback="https://via.placeholder.com/400x400?text=Error+Carga"
+                        style={{ objectFit: 'contain', maxHeight: '420px', borderRadius: '16px', border: '1px solid #f1f5f9' }}
+                        fallback="https://via.placeholder.com/450x450?text=Error+Loading+Image"
                     />
                 </Col>
                 <Col xs={24} md={12}>
-                    <Title level={2} style={{ marginBottom: 8, lineHeight: 1.2 }}>{product.name}</Title>
-                    <Text type="secondary" style={{ fontSize: '18px' }}>SKU: {product.sku}</Text>
+                    <Title level={2} style={{ marginBottom: 4, lineHeight: 1.1, fontWeight: 800 }}>{product.name}</Title>
+                    <Text type="secondary" style={{ fontSize: '18px', fontWeight: 500 }}>SKU: {product.sku}</Text>
 
-                    <Divider />
+                    <Divider style={{ margin: '20px 0' }} />
 
-                    <div style={{ marginBottom: 24, textAlign: 'center', background: '#f6ffed', padding: '20px', borderRadius: '12px', border: '1px solid #b7eb8f' }}>
-                        <Text style={{ fontSize: '18px', display: 'block', color: '#52c41a', marginBottom: 4 }}>Precio</Text>
+                    <div style={{ marginBottom: 24, textAlign: 'center', background: '#f0fdf4', padding: '24px', borderRadius: '20px', border: '1px solid #dcfce7' }}>
+                        <Text strong style={{ fontSize: '16px', display: 'block', color: '#16a34a', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '1px' }}>Retail Price</Text>
 
                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-                            {/* Primary Price */}
-                            <Title level={1} style={{ margin: 0, color: '#389e0d', fontSize: '48px' }}>
+                            {/* Main Price Tag */}
+                            <Title level={1} style={{ margin: 0, color: '#15803d', fontSize: '56px', fontWeight: 900 }}>
                                 {formatVenezuelanPrice(primary, primarySymbol)}
                             </Title>
+                            
                             {companySettings?.taxEnabled && (
-                                <Tag color={product.isTaxExempt ? 'default' : 'success'} style={{ fontSize: '14px', marginTop: -8 }}>
-                                    {product.isTaxExempt ? 'EXENTO DE IVA' : 'IVA INCLUIDO'}
+                                <Tag color={product.isTaxExempt ? 'default' : 'success'} style={{ fontSize: '15px', padding: '2px 12px', borderRadius: '6px' }}>
+                                    {product.isTaxExempt ? 'TAX EXEMPT' : 'VAT INCLUDED'}
                                 </Tag>
                             )}
 
                             {secondary > 0 && (
-                                <Text style={{ fontSize: '22px', color: '#8c8c8c', marginTop: 4, fontWeight: 500 }}>
-                                    Equivalente: {secondarySymbol} {secondary.toFixed(2)}
+                                <Text style={{ fontSize: '24px', color: '#64748b', marginTop: 8, fontWeight: 600 }}>
+                                    Reference: {secondarySymbol} {secondary.toFixed(2)}
                                 </Text>
                             )}
                         </div>
                     </div>
 
-                    <Descriptions column={1} size="middle" bordered>
-                        <Descriptions.Item label="Categoría">
-                            {product.category?.name || 'N/A'}
+                    <Descriptions column={1} size="large" bordered style={{ borderRadius: '12px', overflow: 'hidden' }}>
+                        <Descriptions.Item label="Category" labelStyle={{ fontWeight: 600, width: '120px' }}>
+                            {product.category?.name || 'Uncategorized'}
                         </Descriptions.Item>
-                        <Descriptions.Item label="Disponibilidad">
+                        <Descriptions.Item label="Availability" labelStyle={{ fontWeight: 600 }}>
                             {product.stock > 0 ? (
-                                <Tag color="success" style={{ fontSize: '16px', padding: '4px 10px' }}>
-                                    En Stock ({product.stock})
+                                <Tag color="success" style={{ fontSize: '16px', padding: '4px 12px', borderRadius: '6px' }}>
+                                    In Stock ({product.stock})
                                 </Tag>
                             ) : (
-                                <Tag color="error" style={{ fontSize: '16px', padding: '4px 10px' }}>Agotado</Tag>
+                                <Tag color="error" style={{ fontSize: '16px', padding: '4px 12px', borderRadius: '6px' }}>Out of Stock</Tag>
                             )}
                         </Descriptions.Item>
                         {product.description && (
-                            <Descriptions.Item label="Detalles">
+                            <Descriptions.Item label="Details" labelStyle={{ fontWeight: 600 }}>
                                 {product.description}
                             </Descriptions.Item>
                         )}

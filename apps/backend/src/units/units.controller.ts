@@ -21,36 +21,39 @@ export class UnitsController {
   constructor(private readonly unitsService: UnitsService) {}
 
   @Post()
-  @ApiOperation({ summary: 'Crear una nueva unidad' })
-  @ApiResponse({ status: 201, description: 'Unidad creada' })
+  @ApiOperation({ summary: 'Create a new unit of measurement' })
+  @ApiResponse({ status: 201, description: 'Unit created successfully' })
   create(@Body() createUnitDto: CreateUnitDto) {
     return this.unitsService.create(createUnitDto);
   }
 
   @Get()
-  @ApiOperation({ summary: 'Listar todas las unidades' })
-  @ApiResponse({ status: 200, description: 'Lista de unidades' })
+  @ApiOperation({ summary: 'Retrieve all units of measurement' })
+  @ApiResponse({ status: 200, description: 'List of units retrieved' })
   findAll() {
     return this.unitsService.findAll();
   }
 
   @Get(':id')
-  @ApiOperation({ summary: 'Obtener una unidad por ID' })
-  @ApiResponse({ status: 200, description: 'Unidad encontrada' })
+  @ApiOperation({ summary: 'Retrieve a unit of measurement by ID' })
+  @ApiResponse({ status: 200, description: 'Unit found' })
+  @ApiResponse({ status: 404, description: 'Unit not found' })
   findOne(@Param('id') id: string) {
     return this.unitsService.findOne(id);
   }
 
   @Patch(':id')
-  @ApiOperation({ summary: 'Actualizar una unidad' })
-  @ApiResponse({ status: 200, description: 'Unidad actualizada' })
+  @ApiOperation({ summary: 'Update a unit of measurement' })
+  @ApiResponse({ status: 200, description: 'Unit updated successfully' })
+  @ApiResponse({ status: 404, description: 'Unit not found' })
   update(@Param('id') id: string, @Body() updateUnitDto: UpdateUnitDto) {
     return this.unitsService.update(id, updateUnitDto);
   }
 
   @Delete(':id')
-  @ApiOperation({ summary: 'Eliminar una unidad (soft delete)' })
-  @ApiResponse({ status: 200, description: 'Unidad eliminada' })
+  @ApiOperation({ summary: 'Deactivate a unit of measurement (soft delete)' })
+  @ApiResponse({ status: 200, description: 'Unit deactivated successfully' })
+  @ApiResponse({ status: 404, description: 'Unit not found' })
   remove(@Param('id') id: string) {
     return this.unitsService.remove(id);
   }

@@ -22,14 +22,17 @@ import { productsApi } from '../../services/productsApi';
 import type { Product } from '../../services/productsApi';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
-import 'dayjs/locale/es';
 
 dayjs.extend(relativeTime);
-dayjs.locale('es');
 
 const { Title, Text, Paragraph } = Typography;
 const { TextArea } = Input;
 
+/**
+ * SocialAssistant Component
+ * An AI-powered tool for generating marketing copy for social media platforms.
+ * It integrates with the product catalog to create context-aware posts for Instagram, WhatsApp, Facebook, and TikTok.
+ */
 export const SocialAssistant = () => {
     const queryClient = useQueryClient();
     const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
@@ -39,7 +42,6 @@ export const SocialAssistant = () => {
     const [isProductSearchOpen, setIsProductSearchOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
 
-    // Queries
     const { data: products } = useQuery({
         queryKey: ['products-search', searchTerm],
         queryFn: () => productsApi.getAll({ search: searchTerm, limit: 10, active: true }),
@@ -57,28 +59,30 @@ export const SocialAssistant = () => {
         queryFn: marketingApi.getSocialDrafts
     });
 
-    // Mutations
+    /**
+     * Triggers AI content generation based on product data and user instructions.
+     */
     const generateMutation = useMutation({
         mutationFn: marketingApi.generateSocialPost,
         onSuccess: (data) => {
             setGeneratedContent(data.content);
-            message.success('¡Post generado con éxito!');
+            message.success('Post generated successfully!');
             queryClient.invalidateQueries({ queryKey: ['social-drafts'] });
         },
-        onError: () => message.error('Error al generar el post con IA')
+        onError: () => message.error('Failed to generate post with AI')
     });
 
     const deleteDraftMutation = useMutation({
         mutationFn: marketingApi.deleteSocialDraft,
         onSuccess: () => {
-            message.success('Borrador eliminado');
+            message.success('Draft deleted');
             queryClient.invalidateQueries({ queryKey: ['social-drafts'] });
         }
     });
 
     const handleGenerate = () => {
         if (!selectedProductId) {
-            message.warning('Primero selecciona un producto');
+            message.warning('Please select a product first');
             return;
         }
         generateMutation.mutate({
@@ -90,7 +94,7 @@ export const SocialAssistant = () => {
 
     const copyToClipboard = (text: string) => {
         navigator.clipboard.writeText(text);
-        message.success('Copiado al portapapeles');
+        message.success('Copied to clipboard');
     };
 
     const shareOnWhatsApp = (text: string) => {
@@ -99,24 +103,25 @@ export const SocialAssistant = () => {
     };
 
     const shareOnFacebook = (text: string) => {
-        // Facebook sharer works better with URLs, but we can try to copy first
         copyToClipboard(text);
         window.open('https://www.facebook.com/sharer/sharer.php?u=' + encodeURIComponent(window.location.origin), '_blank');
-        message.info('Texto copiado. Puedes pegarlo en tu publicación de Facebook.');
+        message.info('Text copied. You can now paste it into your Facebook post.');
     };
 
     return (
         <div style={{ padding: '24px', maxWidth: '1200px', margin: '0 auto' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-                <Title level={2}><ShareAltOutlined /> Social Hub <Tag color="purple">IA Assistant</Tag></Title>
-                <Text type="secondary">Crea contenido persuasivo para tus redes sociales en segundos.</Text>
+                <div>
+                    <Title level={2} style={{ margin: 0 }}><ShareAltOutlined /> Social Hub</Title>
+                    <Text type="secondary">Create persuasive social media content in seconds using AI.</Text>
+                </div>
+                <Tag color="purple" style={{ fontSize: '14px', padding: '4px 12px' }}>AI Assistant Powered</Tag>
             </div>
 
             <Row gutter={24}>
-                {/* Left Column: Input and Generation */}
-                <Col span={14}>
+                <Col xs={24} lg={14}>
                     <Card 
-                        title="1. Selecciona el Producto" 
+                        title="1. Select a Product" 
                         bordered={false} 
                         style={{ marginBottom: 24, boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}
                     >
@@ -132,10 +137,10 @@ export const SocialAssistant = () => {
                                 <div style={{ flex: 1 }}>
                                     <Title level={4} style={{ margin: 0 }}>{selectedProduct.name}</Title>
                                     <Text type="secondary">{selectedProduct.category?.name} • SKU: {selectedProduct.sku}</Text>
-                                    <div style={{ marginTop: 4 }}>
+                                    <div style={{ marginTop: 8 }}>
                                         <Tag color="green">${selectedProduct.salePrice.toFixed(2)}</Tag>
                                         <Tag color="blue">Stock: {selectedProduct.stock}</Tag>
-                                        <Button size="small" type="link" onClick={() => setSelectedProductId(null)}>Cambiar producto</Button>
+                                        <Button size="small" type="link" onClick={() => setSelectedProductId(null)}>Change product</Button>
                                     </div>
                                 </div>
                             </div>
@@ -148,35 +153,36 @@ export const SocialAssistant = () => {
                                 onClick={() => setIsProductSearchOpen(true)}
                                 style={{ height: '80px', borderRadius: 8 }}
                             >
-                                Buscar producto en inventario...
+                                Search product in inventory...
                             </Button>
                         )}
                     </Card>
 
                     <Card 
-                        title="2. Configura tu Post" 
+                        title="2. Configure your Post" 
                         bordered={false}
                         style={{ boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}
                     >
                         <Row gutter={16}>
-                            <Col span={12}>
-                                <Text strong>Plataforma Destino</Text>
+                            <Col span={24}>
+                                <Text strong>Target Platform</Text>
                                 <Select 
                                     style={{ width: '100%', marginTop: 8 }} 
                                     value={platform} 
                                     onChange={setPlatform}
+                                    size="large"
                                 >
-                                    <Select.Option value="Instagram">Instagram (Con Hashtags)</Select.Option>
-                                    <Select.Option value="WhatsApp">WhatsApp (Directo y Personal)</Select.Option>
-                                    <Select.Option value="Facebook">Facebook (Informativo)</Select.Option>
-                                    <Select.Option value="TikTok">TikTok (Idea de Video)</Select.Option>
+                                    <Select.Option value="Instagram">Instagram (With Hashtags)</Select.Option>
+                                    <Select.Option value="WhatsApp">WhatsApp (Direct & Personal)</Select.Option>
+                                    <Select.Option value="Facebook">Facebook (Informative)</Select.Option>
+                                    <Select.Option value="TikTok">TikTok (Video Idea/Script)</Select.Option>
                                 </Select>
                             </Col>
                             <Col span={24} style={{ marginTop: 16 }}>
-                                <Text strong>Instrucciones Extra (Opcional)</Text>
+                                <Text strong>Extra Instructions (Optional)</Text>
                                 <TextArea 
                                     rows={3} 
-                                    placeholder="Ej: Solo menciona que el precio es de locura, usa un tono divertido, resalta que hay pocas unidades..."
+                                    placeholder="e.g., Use a funny tone, highlight limited stock, mention the crazy weekend deal..."
                                     style={{ marginTop: 8 }}
                                     value={instructions}
                                     onChange={e => setInstructions(e.target.value)}
@@ -198,17 +204,18 @@ export const SocialAssistant = () => {
                                 height: 50, 
                                 borderRadius: 25, 
                                 background: 'linear-gradient(90deg, #722ed1 0%, #eb2f96 100%)',
-                                border: 'none'
+                                border: 'none',
+                                fontWeight: 'bold'
                             }}
                         >
-                            Generar Post con IA
+                            Generate Post with AI
                         </Button>
                     </Card>
 
                     {generatedContent && (
                         <Card 
-                            title="Resultado de la IA" 
-                            extra={<Tag color="purple">Listo para editar</Tag>}
+                            title="AI Generated Content" 
+                            extra={<Tag color="purple">Ready to publish</Tag>}
                             style={{ marginTop: 24, boxShadow: '0 4px 20px rgba(114, 46, 209, 0.1)' }}
                         >
                             <TextArea 
@@ -217,43 +224,42 @@ export const SocialAssistant = () => {
                                 onChange={e => setGeneratedContent(e.target.value)}
                                 style={{ fontFamily: 'monospace', fontSize: '14px', borderRadius: 8 }}
                             />
-                            <div style={{ marginTop: 16, display: 'flex', justifyContent: 'center', gap: 12 }}>
-                                <Tooltip title="Copiar texto">
+                            <div style={{ marginTop: 24, display: 'flex', justifyContent: 'center', gap: 16 }}>
+                                <Tooltip title="Copy Text">
                                     <Button shape="circle" size="large" icon={<CopyOutlined />} onClick={() => copyToClipboard(generatedContent)} />
                                 </Tooltip>
-                                <Tooltip title="Enviar a WhatsApp">
-                                    <Button shape="circle" size="large" icon={<WhatsAppOutlined />} color="green" onClick={() => shareOnWhatsApp(generatedContent)} />
+                                <Tooltip title="Send to WhatsApp">
+                                    <Button shape="circle" size="large" icon={<WhatsAppOutlined />} style={{ color: '#25D366' }} onClick={() => shareOnWhatsApp(generatedContent)} />
                                 </Tooltip>
-                                <Tooltip title="Publicar en Facebook">
-                                    <Button shape="circle" size="large" icon={<FacebookOutlined />} onClick={() => shareOnFacebook(generatedContent)} />
+                                <Tooltip title="Post to Facebook">
+                                    <Button shape="circle" size="large" icon={<FacebookOutlined />} style={{ color: '#1877F2' }} onClick={() => shareOnFacebook(generatedContent)} />
                                 </Tooltip>
-                                <Tooltip title="Copiar para Instagram">
-                                    <Button shape="circle" size="large" icon={<InstagramOutlined />} onClick={() => copyToClipboard(generatedContent)} />
+                                <Tooltip title="Copy for Instagram">
+                                    <Button shape="circle" size="large" icon={<InstagramOutlined />} style={{ color: '#E4405F' }} onClick={() => copyToClipboard(generatedContent)} />
                                 </Tooltip>
                             </div>
                         </Card>
                     )}
                 </Col>
 
-                {/* Right Column: Recent Drafts */}
-                <Col span={10}>
-                    <Card title="Borradores Recientes" bordered={false} style={{ height: '100%', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
-                        {isDraftsLoading ? <Spin /> : (
+                <Col xs={24} lg={10}>
+                    <Card title="Recent Drafts" bordered={false} style={{ height: '100%', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
+                        {isDraftsLoading ? <div style={{ textAlign: 'center', padding: 20 }}><Spin /></div> : (
                             <List
                                 dataSource={drafts}
-                                locale={{ emptyText: <Empty description="Aún no hay borradores" /> }}
+                                locale={{ emptyText: <Empty description="No drafts yet" /> }}
                                 renderItem={(item: any) => (
                                     <List.Item
                                         actions={[
-                                            <Button type="link" icon={<CopyOutlined />} onClick={() => setGeneratedContent(item.content)}>Cargar</Button>,
-                                            <Popconfirm title="¿Eliminar?" onConfirm={() => deleteDraftMutation.mutate(item.id)}>
+                                            <Button type="link" icon={<CopyOutlined />} onClick={() => setGeneratedContent(item.content)}>Load</Button>,
+                                            <Popconfirm title="Delete draft?" onConfirm={() => deleteDraftMutation.mutate(item.id)}>
                                                 <Button type="link" danger icon={<DeleteOutlined />} />
                                             </Popconfirm>
                                         ]}
                                     >
                                         <List.Item.Meta
                                             avatar={<Avatar icon={item.platform === 'WhatsApp' ? <WhatsAppOutlined /> : <InstagramOutlined />} />}
-                                            title={<Text strong>{item.platform} - {dayjs(item.createdAt).fromNow()}</Text>}
+                                            title={<Text strong>{item.platform} • {dayjs(item.createdAt).fromNow()}</Text>}
                                             description={<Paragraph ellipsis={{ rows: 2 }}>{item.content}</Paragraph>}
                                         />
                                     </List.Item>
@@ -264,19 +270,19 @@ export const SocialAssistant = () => {
                 </Col>
             </Row>
 
-            {/* Product Search Modal */}
             <Modal
-                title="Buscar Producto"
+                title="Search Product"
                 open={isProductSearchOpen}
                 onCancel={() => setIsProductSearchOpen(false)}
                 footer={null}
                 width={700}
             >
                 <Input 
-                    placeholder="Escribe el nombre o SKU el producto..." 
+                    placeholder="Type name or SKU..." 
                     prefix={<SearchOutlined />} 
                     onChange={e => setSearchTerm(e.target.value)}
                     size="large"
+                    allowClear
                 />
                 <List
                     style={{ marginTop: 16 }}
@@ -295,7 +301,7 @@ export const SocialAssistant = () => {
                             <List.Item.Meta
                                 avatar={<Avatar src={product.images?.[0]} icon={<PictureOutlined />} />}
                                 title={product.name}
-                                description={`SKU: ${product.sku} | Precio: $${product.salePrice} | Stock: ${product.stock}`}
+                                description={`SKU: ${product.sku} | Price: $${product.salePrice} | Stock: ${product.stock}`}
                             />
                             <CheckCircleOutlined style={{ color: '#52c41a' }} />
                         </List.Item>

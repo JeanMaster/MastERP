@@ -74,23 +74,43 @@ export interface CreatePurchasePaymentDto {
 }
 
 export const purchasesApi = {
+    /**
+     * Retrieves all purchase records.
+     * @returns A list of purchases.
+     */
     getAll: async (): Promise<Purchase[]> => {
         const response = await api.get('/purchases');
         return response.data;
     },
 
+    /**
+     * Retrieves a single purchase record by its ID.
+     * @param id The ID of the purchase.
+     * @returns The purchase record.
+     */
     getById: async (id: string): Promise<Purchase> => {
         const response = await api.get(`/purchases/${id}`);
         return response.data;
     },
 
+    /**
+     * Registers a new purchase from a supplier.
+     * @param data The data for the new purchase.
+     * @returns The created purchase record.
+     */
     create: async (data: CreatePurchaseDto): Promise<Purchase> => {
         const response = await api.post('/purchases', data);
         return response.data;
     },
 
+    /**
+     * Registers a payment for an existing purchase.
+     * @param data The payment data.
+     * @returns The result of the payment registration.
+     */
     registerPayment: async (data: CreatePurchasePaymentDto): Promise<any> => {
         const response = await api.post('/purchases/payments', data);
         return response.data;
     },
 };
+

@@ -10,6 +10,10 @@ interface CreateSupplierModalProps {
     loading?: boolean;
 }
 
+/**
+ * CreateSupplierModal Component
+ * Modal form to create or edit a supplier profile.
+ */
 export const CreateSupplierModal: React.FC<CreateSupplierModalProps> = ({
     visible,
     onCancel,
@@ -20,6 +24,7 @@ export const CreateSupplierModal: React.FC<CreateSupplierModalProps> = ({
     const [form] = Form.useForm();
     const isEditing = !!initialValues;
 
+    // Load initial values or reset form
     useEffect(() => {
         if (visible) {
             if (initialValues) {
@@ -43,7 +48,7 @@ export const CreateSupplierModal: React.FC<CreateSupplierModalProps> = ({
         };
         window.addEventListener('keydown', handleKeyDown, true);
         return () => window.removeEventListener('keydown', handleKeyDown, true);
-    }, [visible]);
+    }, [visible, form]);
 
     const handleOk = async () => {
         try {
@@ -57,11 +62,13 @@ export const CreateSupplierModal: React.FC<CreateSupplierModalProps> = ({
 
     return (
         <Modal
-            title={isEditing ? 'Editar Proveedor' : 'Nuevo Proveedor'}
+            title={isEditing ? 'Edit Supplier' : 'New Supplier'}
             open={visible}
             onOk={handleOk}
             onCancel={onCancel}
             confirmLoading={loading}
+            okText={isEditing ? 'Update (F9)' : 'Create (F9)'}
+            cancelText="Cancel"
             width={700}
         >
             <Form
@@ -73,10 +80,10 @@ export const CreateSupplierModal: React.FC<CreateSupplierModalProps> = ({
                     <Col span={12}>
                         <Form.Item
                             name="rif"
-                            label="RIF"
+                            label="RIF (Tax ID)"
                             rules={[
-                                { required: true, message: 'El RIF es requerido' },
-                                { min: 6, message: 'Mínimo 6 caracteres' },
+                                { required: true, message: 'RIF is required' },
+                                { min: 6, message: 'Minimum 6 characters' },
                             ]}
                         >
                             <Input placeholder="J-12345678-9" />
@@ -85,34 +92,34 @@ export const CreateSupplierModal: React.FC<CreateSupplierModalProps> = ({
                     <Col span={12}>
                         <Form.Item
                             name="comercialName"
-                            label="Nombre Comercial"
-                            rules={[{ required: true, message: 'El nombre es requerido' }]}
+                            label="Commercial Name"
+                            rules={[{ required: true, message: 'Name is required' }]}
                         >
-                            <Input placeholder="Distribuidora C.A." />
+                            <Input placeholder="Distribution Co." />
                         </Form.Item>
                     </Col>
                 </Row>
 
                 <Form.Item
                     name="legalName"
-                    label="Razón Social"
+                    label="Legal Entity Name"
                 >
-                    <Input placeholder="Razón Social Completa" />
+                    <Input placeholder="Full legal name" />
                 </Form.Item>
 
                 <Row gutter={16}>
                     <Col span={12}>
                         <Form.Item
                             name="contactName"
-                            label="Persona de Contacto"
+                            label="Contact Person"
                         >
-                            <Input placeholder="Juan Pérez" />
+                            <Input placeholder="John Doe" />
                         </Form.Item>
                     </Col>
                     <Col span={12}>
                         <Form.Item
                             name="phone"
-                            label="Teléfono"
+                            label="Phone"
                         >
                             <Input placeholder="+58 412..." />
                         </Form.Item>
@@ -124,26 +131,26 @@ export const CreateSupplierModal: React.FC<CreateSupplierModalProps> = ({
                         <Form.Item
                             name="email"
                             label="Email"
-                            rules={[{ type: 'email', message: 'Email inválido' }]}
+                            rules={[{ type: 'email', message: 'Invalid email' }]}
                         >
-                            <Input placeholder="contacto@proveedor.com" />
+                            <Input placeholder="contact@supplier.com" />
                         </Form.Item>
                     </Col>
                     <Col span={12}>
                         <Form.Item
                             name="category"
-                            label="Categoría"
+                            label="Category"
                         >
-                            <Input placeholder="Alimentos, Limpieza, etc." />
+                            <Input placeholder="Food, Cleaning, etc." />
                         </Form.Item>
                     </Col>
                 </Row>
 
                 <Form.Item
                     name="address"
-                    label="Dirección"
+                    label="Address"
                 >
-                    <Input.TextArea rows={2} placeholder="Dirección fiscal o de entrega" />
+                    <Input.TextArea rows={2} placeholder="Legal or delivery address" />
                 </Form.Item>
 
                 {isEditing && (
@@ -151,7 +158,7 @@ export const CreateSupplierModal: React.FC<CreateSupplierModalProps> = ({
                         name="active"
                         valuePropName="checked"
                     >
-                        <Checkbox>Proveedor Activo</Checkbox>
+                        <Checkbox>Supplier Active</Checkbox>
                     </Form.Item>
                 )}
             </Form>

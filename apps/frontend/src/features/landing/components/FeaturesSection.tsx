@@ -4,34 +4,42 @@ import {
     TeamOutlined, 
     BarChartOutlined 
 } from '@ant-design/icons';
+import { useTranslation } from 'react-i18next';
 
+/**
+ * FeaturesSection Component
+ * Grid display of the application's unique selling points (USPs).
+ * Supports internationalization (i18n).
+ */
 export const FeaturesSection = () => {
+    const { t } = useTranslation();
+
     const features = [
         {
             icon: <GlobalOutlined />,
-            title: "POS 100% Multimoneda",
-            description: "Cobra en Bolívares y Dólares en la misma factura. El sistema re-calcula vueltos y equivalencias al instante según la tasa del día."
+            title: t('landing.features.items.multi_currency.title'),
+            description: t('landing.features.items.multi_currency.desc')
         },
         {
             icon: <ShopOutlined />,
-            title: "Sincronización Mercado Libre",
-            description: "Vende en tu local y publica en Mercado Libre al mismo tiempo. Inventario siempre cuadrado y sin dolores de cabeza."
+            title: t('landing.features.items.mercadolibre.title'),
+            description: t('landing.features.items.mercadolibre.desc')
         },
         {
             icon: <TeamOutlined />,
-            title: "Nómina y RRHH Integrado",
-            description: "Registra empleados, define sueldos base y genera la nómina quincenal con 2 clics. Envía recibos impecables."
+            title: t('landing.features.items.hr.title'),
+            description: t('landing.features.items.hr.desc')
         },
         {
             icon: <BarChartOutlined />,
-            title: "Proyección Inflacionaria",
-            description: "Nuestros reportes usan tasas históricas para aislar la inflación, mostrando crecimiento real y proyecciones exactas de inventario a fin de año."
+            title: t('landing.features.items.analytics.title'),
+            description: t('landing.features.items.analytics.desc')
         }
     ];
 
     return (
         <section id="features" className="features-section">
-            <h2 className="section-title">Diseñado para la Inestabilidad</h2>
+            <h2 className="section-title">{t('landing.features.title')}</h2>
             <div className="features-grid">
                 {features.map((f, i) => (
                     <div key={i} className="feature-card">

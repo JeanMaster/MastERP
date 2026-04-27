@@ -9,6 +9,10 @@ import { formatVenezuelanPrice } from '../../utils/formatters';
 
 const { Title } = Typography;
 
+/**
+ * ExpensesPage Component
+ * Displays a list of operative expenses with totals and filtering capabilities.
+ */
 export const ExpensesPage = () => {
     const screens = Grid.useBreakpoint();
     const isMobile = !screens.lg;
@@ -39,26 +43,16 @@ export const ExpensesPage = () => {
         expense.category.toLowerCase().includes(searchText.toLowerCase())
     );
 
-    // Calculate totals - This logic needs to be smarter about currencies
-    // Ideally user wants to see total in USD (or base currency)
-    // We can assume if currencyCode is not VES, we use amount directly (assuming USD)
-    // If it is VES, we divide by exchangeRate.
-    // Or we simply sum by currency for now.
-
-    // Calculate totals
+    /**
+     * Calculates totals in USD based on exchange rate at the time of expense.
+     * @param list List of expenses to sum.
+     */
     const calculateTotalInUSD = (list: Expense[]) => {
         return list.reduce((sum, e) => {
-            // If currency is USD, take amount directly
             if (e.currencyCode === 'USD') {
                 return sum + Number(e.amount);
             }
-            // If currency is NOT USD (e.g. VES), divide by rate
-            // Assuming rate is always stored as VES/USD (e.g. 50)
             const rate = Number(e.exchangeRate) || 1;
-            // If the rate is 1, it means we probably don't have a conversion, so we might as well return amount 
-            // BUT if it's VES and rate is 1, then $1000 VES = $1000 USD is WRONG.
-            // If rate is 1, it's virtually 0 dollars in hyperinflation, or data error.
-            // However, to avoid NaN, we divide by rate.
             return sum + (Number(e.amount) / rate);
         }, 0);
     };
@@ -73,7 +67,7 @@ export const ExpensesPage = () => {
 
     const columns = [
         {
-            title: 'Fecha',
+            title: 'Date',
             dataIndex: 'date',
             key: 'date',
             render: (date: string) => dayjs(date).format('DD/MM/YYYY'),
@@ -81,12 +75,12 @@ export const ExpensesPage = () => {
             width: 100,
         },
         {
-            title: 'Descripción',
+            title: 'Description',
             dataIndex: 'description',
             key: 'description',
         },
         {
-            title: 'Categoría',
+            title: 'Category',
             dataIndex: 'category',
             key: 'category',
             render: (category: string) => <Tag color="blue">{category}</Tag>,
@@ -94,7 +88,7 @@ export const ExpensesPage = () => {
             onFilter: (value: any, record: Expense) => record.category === value,
         },
         {
-            title: 'Monto Original',
+            title: 'Original Amount',
             key: 'originalAmount',
             align: 'right' as const,
             render: (_: any, record: Expense) => (
@@ -104,14 +98,14 @@ export const ExpensesPage = () => {
                     </Typography.Text>
                     {record.exchangeRate && Number(record.exchangeRate) !== 1 && (
                         <Typography.Text type="secondary" style={{ fontSize: '11px' }}>
-                            Tasa: {record.exchangeRate}
+                            Rate: {record.exchangeRate}
                         </Typography.Text>
                     )}
                 </Space>
             ),
         },
         {
-            title: 'Relativo ($)',
+            title: 'Relative ($)',
             key: 'usdAmount',
             align: 'right' as const,
             render: (_: any, record: Expense) => {
@@ -121,7 +115,6 @@ export const ExpensesPage = () => {
                 if (record.currencyCode === 'USD') {
                     usdAmount = Number(record.amount);
                 } else {
-                    // Assume VES or other weak currency divided by rate
                     usdAmount = Number(record.amount) / rate;
                 }
 
@@ -133,15 +126,15 @@ export const ExpensesPage = () => {
             }
         },
         {
-            title: 'Método / Cuenta',
+            title: 'Method / Account',
             key: 'paymentMethod',
             render: (_: any, record: Expense) => {
                 const methodMap: Record<string, string> = {
-                    'CASH': 'Efectivo',
-                    'TRANSFER': 'Transferencia',
+                    'CASH': 'Cash',
+                    'TRANSFER': 'Transfer',
                     'PAGO_MOVIL': 'Pago Móvil',
-                    'DEBIT': 'Débito',
-                    'CREDIT': 'Crédito',
+                    'DEBIT': 'Debit',
+                    'CREDIT': 'Credit',
                     'ZELLE': 'Zelle',
                     'USDT': 'USDT'
                 };
@@ -165,11 +158,11 @@ export const ExpensesPage = () => {
             key: 'reference',
         },
         {
-            title: 'Acciones',
+            title: 'Actions',
             key: 'actions',
             width: 80,
             render: (_: any, record: Expense) => (
-                <Tooltip title="Editar Gasto">
+                <Tooltip title="Edit Expense">
                     <Button
                         icon={<EditOutlined />}
                         onClick={() => handleEdit(record)}
@@ -184,12 +177,12 @@ export const ExpensesPage = () => {
     return (
         <div style={{ padding: isMobile ? '8px' : '24px' }}>
             <div style={{ marginBottom: 24 }}>
-                <Title level={isMobile ? 3 : 2}>Gastos Operativos</Title>
+                <Title level={isMobile ? 3 : 2}>Operative Expenses</Title>
                 <Row gutter={[16, 16]}>
                     <Col xs={12} sm={12} md={6}>
                         <Card size={isMobile ? 'small' : 'default'}>
                             <Statistic
-                                title="De Hoy (Ref $)"
+                                title="Today (Ref $)"
                                 value={totalTodayUSD}
                                 precision={2}
                                 valueStyle={{ color: '#cf1322', fontSize: isMobile ? '16px' : '24px' }}
@@ -202,7 +195,7 @@ export const ExpensesPage = () => {
                     <Col xs={12} sm={12} md={6}>
                         <Card size={isMobile ? 'small' : 'default'}>
                             <Statistic
-                                title="Del Mes (Ref $)"
+                                title="Month (Ref $)"
                                 value={totalMonthUSD}
                                 precision={2}
                                 valueStyle={{ color: '#cf1322', fontSize: isMobile ? '16px' : '24px' }}
@@ -219,7 +212,7 @@ export const ExpensesPage = () => {
                 extra={
                     <Space direction={isMobile ? 'vertical' : 'horizontal'} style={{ width: isMobile ? '100%' : 'auto' }} align={isMobile ? 'end' : 'center'}>
                         <Input
-                            placeholder="Buscar gastos..."
+                            placeholder="Search expenses..."
                             prefix={<SearchOutlined />}
                             onChange={e => setSearchText(e.target.value)}
                             style={{ width: isMobile ? '100%' : 200 }}
@@ -236,7 +229,7 @@ export const ExpensesPage = () => {
                                 danger
                                 block={isMobile}
                             >
-                                {isMobile ? 'Registrar' : 'Registrar Gasto'}
+                                {isMobile ? 'Register' : 'Register Expense'}
                             </Button>
                         </Space>
                     </Space>

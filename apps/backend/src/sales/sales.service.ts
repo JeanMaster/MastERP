@@ -22,7 +22,11 @@ export class SalesService {
   ) {}
 
   /**
-   * Crear una nueva venta
+   * Creates a new sale record.
+   * Handles stock validation/updates, invoice/control number generation,
+   * cash movements, loyalty points, and automated credit invoices.
+   * @param createSaleDto Data Transfer Object for creating a sale.
+   * @returns The created sale record with items and client details.
    */
   async create(createSaleDto: CreateSaleDto) {
     const {
@@ -31,7 +35,7 @@ export class SalesService {
       ...saleData
     } = createSaleDto;
 
-    // Validar productos, stock y preparar items con costo
+    // Validate products, stock and prepare items with cost
     const itemsWithCost: any[] = [];
 
     for (const item of items) {
@@ -47,20 +51,20 @@ export class SalesService {
 
       if (!product) {
         throw new BadRequestException(
-          `Producto con ID ${item.productId} no encontrado`,
+          `Product with ID ${item.productId} not found`,
         );
       }
 
-      // Validar stock (si aplica)
+      // Validate stock (if applicable)
       if (product.type === 'COMPOSED') {
-        // Validación para productos compuestos: check stock of all components
+        // Validation for composed products: check stock of all components
         for (const component of product.components) {
           const requiredQuantity =
             Number(component.quantity) * Number(item.quantity);
           if (Number(component.componentProduct.stock) < requiredQuantity) {
             throw new BadRequestException(
-              `Stock insuficiente para componente ${component.componentProduct.name}. ` +
-                `Requerido: ${requiredQuantity}, Disponible: ${component.componentProduct.stock}`,
+              `Insufficient stock for component ${component.componentProduct.name}. ` +
+                `Required: ${requiredQuantity}, Available: ${component.componentProduct.stock}`,
             );
           }
         }
@@ -70,7 +74,7 @@ export class SalesService {
         Number(product.stock) < Number(item.quantity)
       ) {
         throw new BadRequestException(
-          `Stock insuficiente para ${product.name}. Disponible: ${product.stock}`,
+          `Insufficient stock for ${product.name}. Available: ${product.stock}`,
         );
       }
 
@@ -82,31 +86,31 @@ export class SalesService {
 
       itemsWithCost.push({
         ...item,
-        cost: costInPrimary, // Capturar costo normalizado
-        isTaxExempt: product.isTaxExempt, // Capturar estatus fiscal histórico
+        cost: costInPrimary, // Capture normalized cost
+        isTaxExempt: product.isTaxExempt, // Capture historical tax status
       });
     }
 
-    // Obtener sesión de caja activa (si existe)
-    // Priorizar la sesión enviada por el frontend (especialmente para Admins en multi-caja)
+    // Get active cash session (if exists)
+    // Prioritize the session sent by the frontend (especially for Admins in multi-cashier setups)
     let activeSession: any = null;
     if (createSaleDto.cashSessionId) {
       activeSession = await this.prisma.cashSession.findUnique({
         where: { id: createSaleDto.cashSessionId },
       });
     } else {
-      // Fallback: buscar la primera sesión activa (comportamiento original)
+      // Fallback: search for the first active session (original behavior)
       activeSession = await this.cashRegisterService.getActiveSession();
     }
 
-    // Validar que si hay retenciones de IVA, el cliente esté seleccionado
+    // Validate that if there are VAT retentions, a client must be selected
     if (saleData.paymentMethod.includes('RETENTION_IVA') && !saleData.clientId) {
       throw new BadRequestException(
-        'Debe seleccionar un cliente para poder aplicar retenciones de IVA',
+        'A client must be selected to apply VAT retentions',
       );
     }
 
-    // Crear la venta con items en una transacción
+    // Create the sale with items in a transaction
     const sale = await this.prisma.$transaction(async (prisma) => {
       // Use reserved invoice number if provided, otherwise generate a new one
       let invoiceNumber = reservedInvoiceNumber;
@@ -114,7 +118,7 @@ export class SalesService {
         invoiceNumber = await this.invoiceService.generateInvoiceNumber();
       }
 
-      // Generar automáticamente el número de control usando el servicio de facturas (simulado aquí para usar la misma transacción de prisma si es posible)
+      // Automatically generate the control number using the sales control counter
       let controlCounter = await prisma.saleControlCounter.findFirst();
       if (!controlCounter) {
         controlCounter = await prisma.saleControlCounter.create({
@@ -127,12 +131,12 @@ export class SalesService {
         data: { currentNumber: controlCounter.currentNumber + 1 }
       });
 
-      // Crear la venta con número de factura y control
+      // Create the sale with invoice and control numbers
       const newSale = await prisma.sale.create({
         data: {
           ...saleData,
           invoiceNumber,
-          controlNumber, // <--- Assign the control number
+          controlNumber,
           igtfAmount: createSaleDto.igtfAmount || 0,
           cashSessionId: activeSession?.id,
           couponId: createSaleDto.couponId || null,
@@ -154,43 +158,15 @@ export class SalesService {
         },
       });
 
-      // Actualizar stock de productos
+      // Update product stock
       for (const item of newSale.items) {
-        if (item.product.type === 'COMPOSED') {
-          // Si es compuesto, descontar componentes
-          for (const component of item.product.components) {
-            const quantityToDecrement =
-              Number(component.quantity) * Number(item.quantity);
-            await prisma.product.update({
-              where: { id: component.componentProductId },
-              data: {
-                stock: {
-                  decrement: quantityToDecrement,
-                },
-              },
-            });
-          }
-        } else if (
-          item.product.type !== 'SERVICE' &&
-          Number(item.product.stock) > 0
-        ) {
-          await prisma.product.update({
-            where: { id: item.productId },
-            data: {
-              stock: {
-                decrement: Number(item.quantity),
-              },
-            },
-          });
-        }
+        await this.updateProductStockWithTx(prisma, item.productId, Number(item.quantity), 'DECREMENT');
       }
 
       // --- Mercado Libre Auto-Sync Hook ---
       // After stock is updated in local DB, trigger sync for any mapped ML products
       for (const item of newSale.items) {
         // For composed products, we should ideally sync the components if they are published too.
-        // But usually, the "finished product" (Composed) is what is published.
-        // The service handles checking if a mapping exists.
         this.mlService
           .syncProductStock(item.productId)
           .catch((err) =>
@@ -213,7 +189,7 @@ export class SalesService {
       // --- Loyalty Points Hook (Redemption) INSIDE Transaction ---
       if (newSale.paymentMethod.toUpperCase().includes('LOYALTY_POINTS')) {
         if (!newSale.clientId) {
-          throw new Error('Se requiere un cliente registrado para pagar con puntos de fidelidad. El cliente "CONTADO" no puede usar puntos.');
+          throw new Error('A registered client is required to pay with loyalty points. "CONTADO" client cannot use points.');
         }
 
         const methods = newSale.paymentMethod.split(', ');
@@ -225,7 +201,7 @@ export class SalesService {
             const pointsToRedeem = subparts[2] ? parseFloat(subparts[2]) : 0;
             
             if (pointsToRedeem <= 0) {
-              throw new Error('Formato de puntos inválido o cantidad insuficiente para redimir.');
+              throw new Error('Invalid points format or insufficient quantity for redemption.');
             }
 
             // This is now inside the transaction 'prisma' (tx)
@@ -234,14 +210,14 @@ export class SalesService {
               newSale.clientId,
               newSale.id,
               pointsToRedeem,
-              `Canje de puntos en Venta #${newSale.invoiceNumber}`
+              `Points redemption in Sale #${newSale.invoiceNumber}`
             );
             foundAndProcessed = true;
           }
         }
 
         if (!foundAndProcessed) {
-          throw new Error('Error al procesar el pago con puntos: Información de puntos no encontrada en el método de pago.');
+          throw new Error('Error processing points payment: Points information not found in the payment method.');
         }
       }
 
@@ -260,7 +236,7 @@ export class SalesService {
       }
     }
 
-    // Registrar movimientos en caja (Fuera de la transacción de venta para no bloquear, si falla se puede manejar o ignorar)
+    // Register cash movements
     if (activeSession) {
       try {
         await this.registerCashMovements(
@@ -270,7 +246,6 @@ export class SalesService {
         );
       } catch (error) {
         console.error('Error recording cash movements for sale:', error);
-        // No lanzamos error para no revertir la venta, pero logueamos el fallo
       }
     }
 
@@ -284,7 +259,7 @@ export class SalesService {
       }
     }
 
-    // Detectar si hay crédito en el método de pago y crear factura automáticamente
+    // Detect if there is credit in the payment method and create an invoice automatically
     if (this.hasCredit(saleData.paymentMethod)) {
       try {
         const creditInfo = this.extractCreditInfo(
@@ -293,30 +268,28 @@ export class SalesService {
           Number(sale.exchangeRate),
         );
 
-        // Si es un crédito en divisa (ej: USD), el monto de la factura debe ser en esa divisa
-        // para protegerse de la inflación, tal como pidió el usuario.
+        // If it's a foreign currency credit (e.g., USD), the invoice amount must be in that currency
         const invoiceAmount = creditInfo.originalAmount || creditInfo.amount;
 
-        // Calcular fecha de vencimiento (30 días por defecto)
+        // Calculate due date (30 days by default)
         const dueDate = new Date();
         dueDate.setDate(dueDate.getDate() + 30);
 
         await this.invoiceService.createCreditInvoice({
-          clientId: sale.clientId || '', // Si no hay cliente, se puede manejar con un cliente genérico
+          clientId: sale.clientId || '',
           saleId: sale.id,
           subtotal: Number(sale.subtotal),
           discount: Number(sale.discount),
           tax: Number(sale.tax),
           total: invoiceAmount,
           dueDate,
-          notes: `Factura generada automáticamente por venta a crédito - ${sale.invoiceNumber}`,
-          invoiceNumber: sale.invoiceNumber, // Use SAME number as sale
+          notes: `Invoice generated automatically for credit sale - ${sale.invoiceNumber}`,
+          invoiceNumber: sale.invoiceNumber,
           currencyCode: creditInfo.currencyCode,
           exchangeRate: creditInfo.exchangeRate,
         });
       } catch (error) {
         console.error('Error creating credit invoice:', error);
-        // No lanzamos error para no revertir la venta
       }
     }
 
@@ -332,7 +305,6 @@ export class SalesService {
             const voucherNumber = parts[2] || `POS-${sale.invoiceNumber}`;
 
             // Create retention record
-            // We find or create the invoice for this sale
             let invoice = await this.prisma.invoice.findFirst({
               where: { saleId: sale.id }
             });
@@ -346,10 +318,10 @@ export class SalesService {
                 discount: Number(sale.discount),
                 tax: Number(sale.tax),
                 total: Number(sale.total),
-                paidAmount: Number(sale.total), // Mark as paid, retention will be registered as a payment
+                paidAmount: Number(sale.total),
                 balance: 0,
                 status: 'PAID',
-                notes: `Factura generada para registro de retención - ${sale.invoiceNumber}`,
+                notes: `Invoice generated for retention registration - ${sale.invoiceNumber}`,
                 invoiceNumber: sale.invoiceNumber,
                 currencyCode: 'VES',
                 exchangeRate: Number(sale.exchangeRate)
@@ -378,7 +350,12 @@ export class SalesService {
   }
 
   /**
-   * Registrar movimientos de caja basados en el método de pago
+   * Registers cash movements based on the payment method.
+   * Only BS cash and USD cash movements are recorded in the physical drawer.
+   * Mobile payments are recorded as bank movements.
+   * @param sessionId The ID of the active cash session.
+   * @param sale The sale record.
+   * @param paymentMethodStr The raw payment method string.
    */
   private async registerCashMovements(
     sessionId: string,
@@ -386,14 +363,12 @@ export class SalesService {
     paymentMethodStr: string,
   ) {
     const methods = paymentMethodStr.split(', ');
-    console.log('Debugging Mobile Payment - Payment Strings:', methods);
 
     for (const methodPart of methods) {
-      console.log('Processing Method Part:', methodPart);
       let method = methodPart;
-      let amount = Number(sale.total); // Por defecto todo el monto si es simple
+      let amount = Number(sale.total); // Default to full amount if simple
 
-      // Si es compuesto "METHOD:AMOUNT" o "METHOD:AMOUNT:EXTRA"
+      // If composite "METHOD:AMOUNT" or "METHOD:AMOUNT:EXTRA"
       let extraData: string | null = null;
       if (methodPart.includes(':')) {
         const parts = methodPart.split(':');
@@ -404,55 +379,53 @@ export class SalesService {
         }
       }
 
-      // Identificar si es Efectivo (VES) o Divisa (USD)
-      // Según indicación del usuario: Solo efectivo BS y efectivo $ van a gaveta.
-      // Ignorar formas de pago de Retención en movimientos de caja físico
+      // Identify if it is Cash (VES) or Foreign Currency (USD)
+      // Ignore Retention payment forms in physical cash movements
       if (method.startsWith('RETENTION')) {
         continue;
       }
 
       if (method === 'CASH') {
-        // Pago en efectivo Bs
+        // Cash payment in Bs
         await this.cashRegisterService.createMovement({
           sessionId,
           type: MovementType.SALE,
           amount: amount,
           currencyCode: 'VES',
           exchangeRate: 1,
-          description: `Venta #${sale.invoiceNumber}`,
+          description: `Sale #${sale.invoiceNumber}`,
           saleId: sale.id,
         });
       } else if (method === 'CURRENCY_USD') {
-        // Solo USD va a gaveta como divisa física
+        // Only USD goes to the drawer as physical foreign currency
         await this.cashRegisterService.createMovement({
           sessionId,
           type: MovementType.SALE,
           amount: amount,
           currencyCode: 'USD',
           exchangeRate: Number(sale.exchangeRate),
-          description: `Venta #${sale.invoiceNumber} (USD)`,
+          description: `Sale #${sale.invoiceNumber} (USD)`,
           saleId: sale.id,
         });
       } else if (method === 'MOBILE' && extraData) {
-        // Pago Móvil directo a Banco
+        // Mobile Payment directly to Bank
         const bankId = extraData;
-        // Verificar que el ID sea válido (simple check de longitud/existencia)
         if (bankId && bankId.length > 10) {
           try {
-            // Crear movimiento bancario IN
+            // Create bank movement IN
             await this.prisma.bankMovement.create({
               data: {
                 bankAccountId: bankId,
                 type: 'IN',
                 amount: amount,
                 category: 'SALE',
-                description: `Pago Móvil Venta #${sale.invoiceNumber}`,
+                description: `Mobile Payment Sale #${sale.invoiceNumber}`,
                 reference: `PM-${sale.invoiceNumber}`,
                 createdAt: new Date(),
               },
             });
 
-            // Actualizar saldo del banco
+            // Update bank balance
             await this.prisma.bankAccount.update({
               where: { id: bankId },
               data: { balance: { increment: amount } },
@@ -463,20 +436,12 @@ export class SalesService {
               error,
             );
           }
-        } else {
-          console.warn(
-            `Invalid Bank ID received for MOBILE payment: ${bankId}`,
-          );
         }
-      } else if (method === 'MOBILE') {
-        console.warn(
-          `MOBILE payment without valid extraData (Bank ID) received: ${methodPart}`,
-        );
       }
     }
-    // Otros métodos (CURRENCY_UDT, DEBIT, CREDIT, TRANSFER) no generan movimiento de caja físico (gaveta)
+    // Other methods (CURRENCY_UDT, DEBIT, CREDIT, TRANSFER) do not generate physical drawer movements
 
-    // Registrar el vuelto como una salida de caja si existe
+    // Register the change as a cash output if it exists
     if (Number(sale.change) > 0) {
       await this.cashRegisterService.createMovement({
         sessionId,
@@ -484,14 +449,15 @@ export class SalesService {
         amount: Number(sale.change),
         currencyCode: 'VES',
         exchangeRate: 1,
-        description: `Vuelto de venta #${sale.invoiceNumber}`,
+        description: `Change for sale #${sale.invoiceNumber}`,
         saleId: sale.id,
       });
     }
   }
 
   /**
-   * Listar todas las ventas
+   * Retrieves all sale records.
+   * @returns A list of sales with items and client details.
    */
   async findAll() {
     return this.prisma.sale.findMany({
@@ -508,12 +474,15 @@ export class SalesService {
   }
 
   /**
-   * Listar ventas con filtros
+   * Retrieves sales records matching specific filters.
+   * Calculates revalued totals and summary statistics.
+   * @param filters Filtering criteria (dates, client, amount, etc.).
+   * @returns Filtered sales and summary statistics.
    */
   async findWithFilters(filters: any) {
     const where: any = {};
 
-    // Filtro por número de factura
+    // Filter by invoice number
     if (filters.invoiceNumber) {
       where.invoiceNumber = {
         contains: filters.invoiceNumber,
@@ -521,7 +490,7 @@ export class SalesService {
       };
     }
 
-    // Filtro por rango de fechas
+    // Filter by date range
     if (filters.startDate || filters.endDate) {
       where.date = {};
       if (filters.startDate) {
@@ -534,12 +503,12 @@ export class SalesService {
       }
     }
 
-    // Filtro por cliente
+    // Filter by client
     if (filters.clientId) {
       where.clientId = filters.clientId;
     }
 
-    // Filtro por forma de pago
+    // Filter by payment method
     if (filters.paymentMethod) {
       where.paymentMethod = {
         contains: filters.paymentMethod,
@@ -547,7 +516,7 @@ export class SalesService {
       };
     }
 
-    // Filtro por monto
+    // Filter by amount
     if (filters.minAmount || filters.maxAmount) {
       where.total = {};
       if (filters.minAmount) {
@@ -558,7 +527,7 @@ export class SalesService {
       }
     }
 
-    // Filtro por producto
+    // Filter by product
     if (filters.productId) {
       where.items = {
         some: {
@@ -652,11 +621,11 @@ export class SalesService {
     return {
       sales: processedSales,
       summary: {
-        totalVentas: processedSales.length,
-        ingresoBruto: totalRevenueTarget,
-        ingresoNominal: totalRevenueNominal,
-        descuentos: totalDiscountTarget,
-        ticketPromedio:
+        totalSales: processedSales.length,
+        grossRevenue: totalRevenueTarget,
+        nominalRevenue: totalRevenueNominal,
+        discounts: totalDiscountTarget,
+        averageTicket:
           processedSales.length > 0
             ? totalRevenueTarget / processedSales.length
             : 0,
@@ -665,7 +634,10 @@ export class SalesService {
   }
 
   /**
-   * Obtener las últimas compras de un cliente
+   * Retrieves the most recent purchases for a specific client.
+   * @param clientId The ID of the client.
+   * @param limit The maximum number of purchases to retrieve. Defaults to 5.
+   * @returns A list of recent purchases.
    */
   async getClientRecentPurchases(clientId: string, limit: number = 5) {
     return this.prisma.sale.findMany({
@@ -691,7 +663,9 @@ export class SalesService {
   }
 
   /**
-   * Obtener una venta por ID
+   * Retrieves a single sale record by its ID.
+   * @param id The ID of the sale.
+   * @returns The sale record with items and client details.
    */
   async findOne(id: string) {
     const sale = await this.prisma.sale.findUnique({
@@ -707,20 +681,23 @@ export class SalesService {
     });
 
     if (!sale) {
-      throw new BadRequestException(`Venta con ID ${id} no encontrada`);
+      throw new BadRequestException(`Sale with ID ${id} not found`);
     }
 
     return sale;
   }
 
   /**
-   * Actualizar el método de pago de una venta
+   * Updates the payment method of an existing sale.
+   * @param id The ID of the sale.
+   * @param paymentMethod The new payment method string.
+   * @returns The updated sale record.
    */
   async updatePaymentMethod(id: string, paymentMethod: string) {
-    // Verificar que la venta existe
+    // Verify that the sale exists
     const sale = await this.prisma.sale.findUnique({ where: { id } });
     if (!sale) {
-      throw new BadRequestException(`Venta con ID ${id} no encontrada`);
+      throw new BadRequestException(`Sale with ID ${id} not found`);
     }
 
     return this.prisma.sale.update({
@@ -730,8 +707,10 @@ export class SalesService {
   }
 
   /**
-   * Eliminar una venta y restaurar stock.
-   * Si es la última venta, permite retroceder el contador de facturas.
+   * Deletes a sale record and restores product stock.
+   * If it is the latest sale, it also decrements the invoice counter.
+   * @param id The ID of the sale to delete.
+   * @returns The deleted sale record.
    */
   async remove(id: string) {
     const sale = await this.prisma.sale.findUnique({
@@ -740,44 +719,22 @@ export class SalesService {
     });
 
     if (!sale) {
-      throw new BadRequestException(`Venta con ID ${id} no encontrada`);
+      throw new BadRequestException(`Sale with ID ${id} not found`);
     }
 
     return await this.prisma.$transaction(async (prisma) => {
-      // 1. Restaurar stock
+      // 1. Restore stock
       for (const item of sale.items) {
-        const product = await prisma.product.findUnique({
-          where: { id: item.productId },
-          include: { components: true },
-        });
-
-        if (product) {
-          if (product.type === 'COMPOSED') {
-            // Restaurar componentes
-            for (const component of product.components) {
-              const quantityToRestore =
-                Number(component.quantity) * Number(item.quantity);
-              await prisma.product.update({
-                where: { id: component.componentProductId },
-                data: { stock: { increment: quantityToRestore } },
-              });
-            }
-          } else if (product.type !== 'SERVICE') {
-            await prisma.product.update({
-              where: { id: item.productId },
-              data: { stock: { increment: Number(item.quantity) } },
-            });
-          }
-        }
+        await this.updateProductStockWithTx(prisma, item.productId, Number(item.quantity), 'INCREMENT');
       }
 
-      // 2. Eliminar movimientos de caja asociados
+      // 2. Delete associated cash movements
       await prisma.cashMovement.deleteMany({ where: { saleId: id } });
 
-      // 3. Eliminar factura a crédito si existe
+      // 3. Delete credit invoice if exists
       await prisma.invoice.deleteMany({ where: { saleId: id } });
 
-      // 4. Verificar si es la última factura para retroceder el contador
+      // 4. Check if it is the latest invoice to roll back the counter
       const latestSale = await prisma.sale.findFirst({
         orderBy: { createdAt: 'desc' },
       });
@@ -798,8 +755,9 @@ export class SalesService {
   }
 
   /**
-   * Declarar IMPAGO (Pérdida/Robo): Elimina la venta y la deuda, pero NO restaura el stock.
-   * Se usa cuando el cliente se llevó la mercancía pero nunca pagó y se declara incobrable.
+   * Marks a sale as uncollectible (e.g., loss/theft).
+   * Deletes the sale and debt but DOES NOT restore stock.
+   * @param id The ID of the sale.
    */
   async markAsUncollectible(id: string) {
     const sale = await this.prisma.sale.findUnique({
@@ -808,20 +766,20 @@ export class SalesService {
     });
 
     if (!sale) {
-      throw new BadRequestException(`Venta con ID ${id} no encontrada`);
+      throw new BadRequestException(`Sale with ID ${id} not found`);
     }
 
     return await this.prisma.$transaction(async (prisma) => {
       // 1. SKIP RESTOCKING (This is the key difference)
       // We assume the items are lost/stolen/consumed.
 
-      // 2. Eliminar movimientos de caja asociados
+      // 2. Delete associated cash movements
       await prisma.cashMovement.deleteMany({ where: { saleId: id } });
 
-      // 3. Eliminar factura a crédito si existe
+      // 3. Delete credit invoice if exists
       await prisma.invoice.deleteMany({ where: { saleId: id } });
 
-      // 4. Verificar si es la última factura para retroceder el contador (esto se mantiene igual)
+      // 4. Check if it is the latest invoice to roll back the counter
       const latestSale = await prisma.sale.findFirst({
         orderBy: { createdAt: 'desc' },
       });
@@ -836,44 +794,94 @@ export class SalesService {
         }
       }
 
-      // 5. Eliminar items y venta
+      // 5. Delete items and sale
       await prisma.saleItem.deleteMany({ where: { saleId: id } });
       return prisma.sale.delete({ where: { id } });
     });
   }
 
   /**
-   * Helper: Detectar si el método de pago incluye crédito
+   * Internal helper to update product stock within a transaction.
+   * Handles composed products by updating component stock.
+   * @param prisma The transaction context.
+   * @param productId The ID of the product.
+   * @param quantity The quantity to adjust.
+   * @param type 'INCREMENT' (restock) or 'DECREMENT' (sold).
+   */
+  private async updateProductStockWithTx(
+    prisma: any,
+    productId: string,
+    quantity: number,
+    type: 'INCREMENT' | 'DECREMENT'
+  ) {
+    const product = await prisma.product.findUnique({
+      where: { id: productId },
+      include: { components: true },
+    });
+
+    if (!product) return;
+
+    if (product.type === 'COMPOSED') {
+      for (const component of product.components) {
+        const adjustmentQuantity = Number(component.quantity) * quantity;
+        await prisma.product.update({
+          where: { id: component.componentProductId },
+          data: {
+            stock: {
+              [type.toLowerCase()]: adjustmentQuantity,
+            },
+          },
+        });
+      }
+    } else if (product.type !== 'SERVICE') {
+      await prisma.product.update({
+        where: { id: productId },
+        data: {
+          stock: {
+            [type.toLowerCase()]: quantity,
+          },
+        },
+      });
+    }
+  }
+
+  /**
+   * Helper to check if the payment method involves credit.
+   * @param paymentMethod The raw payment method string.
+   * @returns True if credit is involved.
    */
   private hasCredit(paymentMethod: string): boolean {
     return paymentMethod.toUpperCase().includes('ACCOUNT_CREDIT');
   }
 
   /**
-   * Helper: Extraer información detallada del crédito (monto, moneda, tasa)
+   * Helper to extract detailed credit information (amount, currency, rate).
+   * @param paymentMethod The raw payment method string.
+   * @param totalAmount The total amount of the sale.
+   * @param saleRate The exchange rate used for the sale.
+   * @returns Detailed credit information.
    */
   private extractCreditInfo(
     paymentMethod: string,
     totalAmount: number,
     saleRate: number = 1,
   ): {
-    amount: number; // en Bs
+    amount: number; // in Bs
     currencyCode: string;
     exchangeRate: number;
-    originalAmount?: number; // en divisa si aplica
+    originalAmount?: number; // in foreign currency if applicable
   } {
     const methods = paymentMethod.split(', ');
 
     for (const methodPart of methods) {
       if (methodPart.toUpperCase().includes('ACCOUNT_CREDIT')) {
-        // Formato: ACCOUNT_CREDIT_USD:10.5:45.5 (Metodo_MONEDA:MONTO_DIVISA:TASA)
-        // O simple: ACCOUNT_CREDIT:500 (Metodo:MONTO_BS)
+        // Format: ACCOUNT_CREDIT_USD:10.5:45.5 (METHOD_CURRENCY:FOREIGN_AMOUNT:RATE)
+        // Or simple: ACCOUNT_CREDIT:500 (METHOD:BS_AMOUNT)
         const mainParts = methodPart.split(':');
-        const methodKey = mainParts[0]; // ACCOUNT_CREDIT o ACCOUNT_CREDIT_USD
+        const methodKey = mainParts[0];
         const isForeign = methodKey.includes('_');
         const amount = mainParts[1] ? parseFloat(mainParts[1]) : totalAmount;
 
-        // Si es moneda extranjera y no viene tasa, usar la tasa de la venta
         const defaultRate = isForeign ? (saleRate > 1 ? saleRate : 1) : 1;
         const rate = mainParts[2] ? parseFloat(mainParts[2]) : defaultRate;
 

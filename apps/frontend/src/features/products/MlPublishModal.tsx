@@ -16,6 +16,11 @@ interface MlPublishModalProps {
     onClose: () => void;
 }
 
+/**
+ * MlPublishModal Component
+ * Integration modal for publishing products directly to Mercado Libre.
+ * Handles category navigation, title optimization, and multi-image selection.
+ */
 export const MlPublishModal = ({ open, product, onClose }: MlPublishModalProps) => {
     const [form] = Form.useForm();
     const queryClient = useQueryClient();
@@ -24,7 +29,7 @@ export const MlPublishModal = ({ open, product, onClose }: MlPublishModalProps) 
     const [currentLevelCategories, setCurrentLevelCategories] = useState<{ id: string; name: string }[]>([]);
     const [loadingCategories, setLoadingCategories] = useState(false);
 
-    // Initial values
+    // Initialize form with product data
     useEffect(() => {
         if (product && open) {
             form.setFieldsValue({
@@ -39,18 +44,24 @@ export const MlPublishModal = ({ open, product, onClose }: MlPublishModalProps) 
         }
     }, [product, open, form]);
 
+    /**
+     * Loads root categories from Mercado Libre.
+     */
     const loadInitialCategories = async () => {
         setLoadingCategories(true);
         try {
             const cats = await mercadolibreApi.getCategories();
             setCurrentLevelCategories(cats);
         } catch (error) {
-            message.error('Error al cargar categorías');
+            message.error('Error loading categories');
         } finally {
             setLoadingCategories(false);
         }
     };
 
+    /**
+     * Handles hierarchical category navigation.
+     */
     const handleCategoryLevelSelect = async (categoryId: string) => {
         setLoadingCategories(true);
         try {
@@ -58,24 +69,25 @@ export const MlPublishModal = ({ open, product, onClose }: MlPublishModalProps) 
             if (subcats && subcats.length > 0) {
                 setCurrentLevelCategories(subcats);
             } else {
-                // Leaf category reached
+                // Leaf category reached (final node)
                 form.setFieldValue('categoryId', categoryId);
-                message.success('Categoría seleccionada: ' + categoryId);
+                message.success('Category selected: ' + categoryId);
             }
         } catch (error) {
-            message.error('Error al cargar subcategorías');
+            message.error('Error loading subcategories');
         } finally {
             setLoadingCategories(false);
         }
     };
 
-    // Fetch linked accounts
+    // Fetch linked ML accounts
     const { data: accounts = [], isLoading: loadingAccounts } = useQuery({
         queryKey: ['ml-accounts'],
         queryFn: mercadolibreApi.getAccounts,
         enabled: open,
     });
 
+    // Fetch settings for currency conversion display
     const { data: companySettings } = useQuery({
         queryKey: ['company-settings'],
         queryFn: companySettingsApi.getSettings,
@@ -85,13 +97,13 @@ export const MlPublishModal = ({ open, product, onClose }: MlPublishModalProps) 
     const publishMutation = useMutation({
         mutationFn: (payload: any) => mercadolibreApi.publishProduct(payload.productId, payload.mlAccountId, payload.overrides),
         onSuccess: () => {
-            message.success('¡Producto publicado exitosamente en Mercado Libre!');
+            message.success('Product published successfully on Mercado Libre!');
             queryClient.invalidateQueries({ queryKey: ['ml-mappings'] });
             queryClient.invalidateQueries({ queryKey: ['products'] });
             onClose();
         },
         onError: (error: any) => {
-            message.error(error.response?.data?.message || 'Error al publicar el producto');
+            message.error(error.response?.data?.message || 'Error publishing product');
         },
     });
 
@@ -112,7 +124,7 @@ export const MlPublishModal = ({ open, product, onClose }: MlPublishModalProps) 
                 }
             });
         } catch (err) {
-            // Form validation error
+            // Form validation failed
         }
     };
 
@@ -127,7 +139,7 @@ export const MlPublishModal = ({ open, product, onClose }: MlPublishModalProps) 
             title={
                 <Space>
                     <ShopOutlined style={{ color: '#faad14' }} />
-                    <span>Publicar en Mercado Libre</span>
+                    <span>Publish on Mercado Libre</span>
                 </Space>
             }
             open={open}
@@ -135,7 +147,7 @@ export const MlPublishModal = ({ open, product, onClose }: MlPublishModalProps) 
             width={800}
             footer={[
                 <Button key="cancel" onClick={onClose}>
-                    Cancelar
+                    Cancel
                 </Button>,
                 <Button
                     key="submit"
@@ -146,20 +158,20 @@ export const MlPublishModal = ({ open, product, onClose }: MlPublishModalProps) 
                     onClick={handlePublish}
                     style={{ background: '#faad14', borderColor: '#faad14' }}
                 >
-                    Publicar Ahora
+                    Publish Now
                 </Button>,
             ]}
         >
             {product && (
                 <Space direction="vertical" style={{ width: '100%' }} size="middle">
                     <Form form={form} layout="vertical">
-                        <Card size="small" title="Información de la Publicación" style={{ marginBottom: 16 }}>
+                        <Card size="small" title="Listing Information" style={{ marginBottom: 16 }}>
                             <Row gutter={16}>
                                 <Col span={18}>
                                     <Form.Item
                                         name="title"
-                                        label="Título en Mercado Libre"
-                                        rules={[{ required: true }, { max: 60, message: 'Máximo 60 caracteres' }]}
+                                        label="Mercado Libre Title"
+                                        rules={[{ required: true }, { max: 60, message: 'Maximum 60 characters' }]}
                                     >
                                         <Input showCount maxLength={60} />
                                     </Form.Item>
@@ -167,20 +179,20 @@ export const MlPublishModal = ({ open, product, onClose }: MlPublishModalProps) 
                                 <Col span={6}>
                                     <Form.Item
                                         name="price"
-                                        label="Precio"
+                                        label="Price"
                                         rules={[{ required: true }]}
                                         extra={watchedPrice && companySettings && (
                                             <div style={{ color: '#1890ff', fontSize: 13, marginTop: 4 }}>
-                                                <SwapOutlined /> Conversión: {(() => {
+                                                <SwapOutlined /> Conversion: {(() => {
                                                     const secondaryRate = Number((companySettings as any).preferredSecondaryCurrency?.exchangeRate) || 0;
                                                     const isPrimary = product.currency?.isPrimary;
                                                     const prodRate = Number(product.currency?.exchangeRate) || 1;
 
                                                     if (isPrimary && secondaryRate > 0) {
-                                                        // Convert Bs to $
+                                                        // Convert Primary (Bs) to Secondary ($)
                                                         return `$ ${(watchedPrice / secondaryRate).toFixed(2)}`;
                                                     } else if (!isPrimary && prodRate > 0) {
-                                                        // Convert $ to Bs
+                                                        // Convert Secondary ($) to Primary (Bs)
                                                         return formatVenezuelanPrice(watchedPrice * prodRate, 'Bs');
                                                     }
                                                     return 'N/A';
@@ -197,46 +209,46 @@ export const MlPublishModal = ({ open, product, onClose }: MlPublishModalProps) 
                                 <Col span={12}>
                                     <Form.Item
                                         name="availableQuantity"
-                                        label="Cantidad a publicar"
-                                        rules={[{ required: true }, { type: 'number', min: 1, max: product.stock, message: `Máximo disponible: ${product.stock}` }]}
-                                        help={`Stock actual: ${product.stock}`}
+                                        label="Quantity to List"
+                                        rules={[{ required: true }, { type: 'number', min: 1, max: product.stock, message: `Max available: ${product.stock}` }]}
+                                        help={`Current Stock: ${product.stock}`}
                                     >
                                         <InputNumber style={{ width: '100%' }} />
                                     </Form.Item>
                                 </Col>
                             </Row>
 
-                            <Form.Item name="description" label="Descripción">
+                            <Form.Item name="description" label="Description">
                                 <TextArea rows={4} />
                             </Form.Item>
                         </Card>
 
-                        <Card size="small" title="Categoría de Mercado Libre" style={{ marginBottom: 16 }}>
+                        <Card size="small" title="Mercado Libre Category" style={{ marginBottom: 16 }}>
                             <Form.Item
                                 name="categoryId"
-                                label="Categoría Seleccionada"
-                                rules={[{ required: true, message: 'Debes seleccionar una categoría' }]}
+                                label="Selected Category ID"
+                                rules={[{ required: true, message: 'You must select a category' }]}
                             >
-                                <Input readOnly placeholder="Navega abajo para seleccionar..." />
+                                <Input readOnly placeholder="Navigate below to select..." />
                             </Form.Item>
 
                             <Space direction="vertical" style={{ width: '100%' }}>
-                                <Text type="secondary">Explorar categorías (niveles sucesivos):</Text>
+                                <Text type="secondary">Explore categories (successive levels):</Text>
                                 <Select
                                     style={{ width: '100%' }}
-                                    placeholder="Selecciona para refinar..."
+                                    placeholder="Select to refine..."
                                     loading={loadingCategories}
                                     onChange={handleCategoryLevelSelect}
                                     options={currentLevelCategories.map(c => ({ label: c.name, value: c.id }))}
                                     value={undefined}
                                 />
                                 <Button type="link" size="small" onClick={loadInitialCategories} style={{ padding: 0 }}>
-                                    Reiniciar navegación de categorías
+                                    Reset category navigation
                                 </Button>
                             </Space>
                         </Card>
 
-                        <Card size="small" title="Seleccionar Imágenes" style={{ marginBottom: 16 }}>
+                        <Card size="small" title="Select Images" style={{ marginBottom: 16 }}>
                             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                                 {product.images.map((url, idx) => (
                                     <div
@@ -263,22 +275,22 @@ export const MlPublishModal = ({ open, product, onClose }: MlPublishModalProps) 
                                 ))}
                             </div>
                             {selectedImages.length === 0 && (
-                                <Text type="danger">Debes seleccionar al menos una imagen.</Text>
+                                <Text type="danger">You must select at least one image.</Text>
                             )}
                         </Card>
 
-                        <Card size="small" title="Cuenta" style={{ background: '#fffbe6' }}>
+                        <Card size="small" title="Account" style={{ background: '#fffbe6' }}>
                             <Form.Item
                                 name="mlAccountId"
-                                label="Cuenta de Mercado Libre"
-                                rules={[{ required: true, message: 'Por favor selecciona una cuenta' }]}
+                                label="Mercado Libre Account"
+                                rules={[{ required: true, message: 'Please select an account' }]}
                                 style={{ marginBottom: 0 }}
                             >
                                 <Select
-                                    placeholder="Elige la cuenta para publicar"
+                                    placeholder="Choose account to publish from"
                                     loading={loadingAccounts}
                                     options={accounts.map((acc) => ({
-                                        label: acc.username || `Usuario #${acc.mlUserId}`,
+                                        label: acc.username || `User #${acc.mlUserId}`,
                                         value: acc.id,
                                     }))}
                                 />

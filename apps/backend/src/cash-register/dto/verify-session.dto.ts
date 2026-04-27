@@ -7,30 +7,21 @@ import {
   ValidateNested,
 } from 'class-validator';
 import { Type } from 'class-transformer';
-
-export class CashCountItemDto {
-  @ApiProperty()
-  @IsString()
-  denominationId: string;
-
-  @ApiProperty()
-  @IsNumber()
-  quantity: number;
-}
+import { CashCountItemDto } from './open-session.dto';
 
 export class VerifySessionDto {
-  @ApiProperty({ type: [CashCountItemDto] })
+  @ApiProperty({ type: [CashCountItemDto], description: 'Audit cash breakdown' })
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => CashCountItemDto)
   items: CashCountItemDto[];
 
-  @ApiProperty()
+  @ApiProperty({ required: false, description: 'Audit notes' })
   @IsOptional()
   @IsString()
   notes?: string;
 
-  @ApiProperty({ description: 'Exchange rate used for USD' })
+  @ApiProperty({ description: 'Current exchange rate for foreign currency audit' })
   @IsNumber()
   exchangeRate: number;
 }

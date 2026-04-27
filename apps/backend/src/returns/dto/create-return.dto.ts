@@ -11,20 +11,20 @@ import {
 import { Type } from 'class-transformer';
 
 export class CreateReturnItemDto {
-  @ApiProperty({ description: 'ID del producto' })
+  @ApiProperty({ description: 'ID of the product being returned' })
   @IsString()
   productId: string;
 
-  @ApiProperty({ description: 'Cantidad devuelta' })
+  @ApiProperty({ description: 'Quantity returned' })
   @IsNumber()
   @Min(1)
   quantity: number;
 
-  @ApiProperty({ description: 'Precio unitario' })
+  @ApiProperty({ description: 'Unit price at the time of sale' })
   @IsNumber()
   unitPrice: number;
 
-  @ApiProperty({ description: 'Total del item' })
+  @ApiProperty({ description: 'Total amount for this item' })
   @IsNumber()
   total: number;
 }
@@ -57,26 +57,26 @@ export enum RefundMethod {
 }
 
 export class CreateReturnDto {
-  @ApiProperty({ description: 'ID de la venta original' })
+  @ApiProperty({ description: 'ID of the original sale' })
   @IsString()
   originalSaleId: string;
 
-  @ApiProperty({ enum: ReturnType, description: 'Tipo de devolución' })
+  @ApiProperty({ enum: ReturnType, description: 'Type of return' })
   @IsEnum(ReturnType)
   returnType: ReturnType;
 
-  @ApiProperty({ enum: ReturnReason, description: 'Razón de la devolución' })
+  @ApiProperty({ enum: ReturnReason, description: 'Reason for the return' })
   @IsEnum(ReturnReason)
   reason: ReturnReason;
 
   @ApiProperty({
     enum: ProductCondition,
-    description: 'Condición del producto devuelto',
+    description: 'Condition of the returned product',
   })
   @IsEnum(ProductCondition)
   productCondition: ProductCondition;
 
-  @ApiProperty({ type: [CreateReturnItemDto], description: 'Items devueltos' })
+  @ApiProperty({ type: [CreateReturnItemDto], description: 'Items being returned' })
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => CreateReturnItemDto)
@@ -85,7 +85,7 @@ export class CreateReturnDto {
   @ApiProperty({
     type: [CreateReturnItemDto],
     required: false,
-    description: 'Items entregados en cambio',
+    description: 'Replacement items delivered in an exchange',
   })
   @IsOptional()
   @IsArray()
@@ -93,7 +93,7 @@ export class CreateReturnDto {
   @Type(() => CreateReturnItemDto)
   replacementItems?: CreateReturnItemDto[];
 
-  @ApiProperty({ description: 'Monto a reembolsar' })
+  @ApiProperty({ description: 'Amount to refund' })
   @IsNumber()
   @Min(0)
   refundAmount: number;
@@ -101,20 +101,20 @@ export class CreateReturnDto {
   @ApiProperty({
     enum: RefundMethod,
     required: false,
-    description: 'Método de reembolso',
+    description: 'Refund method',
   })
   @IsOptional()
   @IsEnum(RefundMethod)
   refundMethod?: RefundMethod;
 
-  @ApiProperty({ required: false, description: 'Notas adicionales' })
+  @ApiProperty({ required: false, description: 'Additional notes' })
   @IsOptional()
   @IsString()
   notes?: string;
 
   @ApiProperty({
     required: false,
-    description: 'Usuario que solicita la devolución',
+    description: 'Username of the person requesting the return',
   })
   @IsOptional()
   @IsString()

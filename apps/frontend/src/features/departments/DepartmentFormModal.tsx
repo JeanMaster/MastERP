@@ -10,6 +10,11 @@ interface DepartmentFormModalProps {
     onClose: () => void;
 }
 
+/**
+ * DepartmentFormModal Component
+ * Modal form for creating or editing departments.
+ * Supports hierarchical assignment with a 2-level limit.
+ */
 export const DepartmentFormModal = ({ open, department, onClose }: DepartmentFormModalProps) => {
     const [form] = Form.useForm();
     const queryClient = useQueryClient();
@@ -25,13 +30,13 @@ export const DepartmentFormModal = ({ open, department, onClose }: DepartmentFor
     const createMutation = useMutation({
         mutationFn: departmentsApi.create,
         onSuccess: () => {
-            message.success('Departamento creado exitosamente');
+            message.success('Department created successfully');
             queryClient.invalidateQueries({ queryKey: ['departments'] });
             onClose();
             form.resetFields();
         },
         onError: (error: any) => {
-            message.error(error.response?.data?.message || 'Error al crear departamento');
+            message.error(error.response?.data?.message || 'Error creating department');
         },
     });
 
@@ -40,13 +45,13 @@ export const DepartmentFormModal = ({ open, department, onClose }: DepartmentFor
         mutationFn: ({ id, dto }: { id: string; dto: UpdateDepartmentDto }) =>
             departmentsApi.update(id, dto),
         onSuccess: () => {
-            message.success('Departamento actualizado exitosamente');
+            message.success('Department updated successfully');
             queryClient.invalidateQueries({ queryKey: ['departments'] });
             onClose();
             form.resetFields();
         },
         onError: (error: any) => {
-            message.error(error.response?.data?.message || 'Error al actualizar departamento');
+            message.error(error.response?.data?.message || 'Error updating department');
         },
     });
 
@@ -61,7 +66,7 @@ export const DepartmentFormModal = ({ open, department, onClose }: DepartmentFor
         } else {
             form.resetFields();
         }
-    }, [department, form]);
+    }, [department, form, open]);
 
     // F9 Keyboard Shortcut
     useEffect(() => {
@@ -75,7 +80,7 @@ export const DepartmentFormModal = ({ open, department, onClose }: DepartmentFor
         };
         window.addEventListener('keydown', handleKeyDown, true);
         return () => window.removeEventListener('keydown', handleKeyDown, true);
-    }, [open]);
+    }, [open, form]);
 
     const handleSubmit = async () => {
         try {
@@ -96,12 +101,13 @@ export const DepartmentFormModal = ({ open, department, onClose }: DepartmentFor
         }
     };
 
-    // Build tree data for TreeSelect (only show root departments as options)
+    /**
+     * Builds tree data for TreeSelect, excluding current department to prevent self-parenting.
+     */
     const buildTreeData = () => {
-        // Solo mostrar departamentos principales (sin padre)
+        // Only show root departments as options (1 level of parents)
         const rootDepts = departments.filter(d => !d.parentId);
 
-        // Si estamos editando, excluir el propio departamento y sus hijos
         let filteredDepts = rootDepts;
         if (department) {
             filteredDepts = rootDepts.filter(d =>
@@ -121,34 +127,34 @@ export const DepartmentFormModal = ({ open, department, onClose }: DepartmentFor
 
     return (
         <Modal
-            title={department ? 'Editar Departamento' : 'Nuevo Departamento'}
+            title={department ? 'Edit Department' : 'New Department'}
             open={open}
             onOk={handleSubmit}
             onCancel={onClose}
             confirmLoading={createMutation.isPending || updateMutation.isPending}
-            okText={department ? 'Actualizar (F9)' : 'Crear (F9)'}
-            cancelText="Cancelar"
+            okText={department ? 'Update (F9)' : 'Create (F9)'}
+            cancelText="Cancel"
         >
             <Form form={form} layout="vertical" style={{ marginTop: 20 }}>
                 <Form.Item
-                    label="Nombre"
+                    label="Name"
                     name="name"
-                    rules={[{ required: true, message: 'El nombre es requerido' }]}
+                    rules={[{ required: true, message: 'Name is required' }]}
                 >
-                    <Input placeholder="Ej: Ferretería" />
+                    <Input placeholder="e.g., Hardware" />
                 </Form.Item>
 
-                <Form.Item label="Descripción" name="description">
-                    <Input.TextArea rows={3} placeholder="Descripción del departamento..." />
+                <Form.Item label="Description" name="description">
+                    <Input.TextArea rows={3} placeholder="Department description..." />
                 </Form.Item>
 
                 <Form.Item
-                    label="Departamento Padre (Opcional)"
+                    label="Parent Department (Optional)"
                     name="parentId"
-                    help="Solo se permiten 2 niveles: Principal → Subdepartamento"
+                    help="Only 2 levels allowed: Main → Sub-department"
                 >
                     <TreeSelect
-                        placeholder="Seleccionar departamento padre"
+                        placeholder="Select parent department"
                         allowClear
                         treeData={treeData}
                         showSearch

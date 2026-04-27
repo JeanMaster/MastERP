@@ -20,46 +20,52 @@ import { AuthGuard } from '@nestjs/passport';
 export class ProductsController {
   constructor(private readonly productsService: ProductsService) {}
 
+  /**
+   * Creates a new product.
+   */
   @UseGuards(AuthGuard('jwt'))
   @Post()
-  @ApiOperation({ summary: 'Crear un nuevo producto' })
-  @ApiResponse({ status: 201, description: 'Producto creado exitosamente' })
-  @ApiResponse({ status: 409, description: 'SKU ya registrado' })
+  @ApiOperation({ summary: 'Create a new product' })
+  @ApiResponse({ status: 201, description: 'Product created successfully' })
+  @ApiResponse({ status: 409, description: 'SKU already registered' })
   create(@Body() createProductDto: CreateProductDto) {
     return this.productsService.create(createProductDto);
   }
 
+  /**
+   * Retrieves a list of all products matching the filters.
+   */
   @Get()
-  @ApiOperation({ summary: 'Listar todos los productos' })
+  @ApiOperation({ summary: 'List all products' })
   @ApiQuery({
     name: 'active',
     required: false,
     type: Boolean,
-    description: 'Filtrar por activos',
+    description: 'Filter by active status',
   })
   @ApiQuery({
     name: 'search',
     required: false,
     type: String,
-    description: 'Buscar por nombre o SKU',
+    description: 'Search by name or SKU',
   })
   @ApiQuery({
     name: 'categoryId',
     required: false,
     type: String,
-    description: 'Filtrar por categoría',
+    description: 'Filter by category',
   })
   @ApiQuery({
     name: 'subcategoryId',
     required: false,
     type: String,
-    description: 'Filtrar por subcategoría',
+    description: 'Filter by subcategory',
   })
   @ApiQuery({
     name: 'type',
     required: false,
     enum: ['PRODUCT', 'SERVICE'],
-    description: 'Filtrar por tipo de producto/servicio',
+    description: 'Filter by product/service type',
   })
   findAll(
     @Query('active') active?: string,
@@ -78,40 +84,52 @@ export class ProductsController {
     });
   }
 
+  /**
+   * Retrieves a single product by its ID.
+   */
   @Get(':id')
-  @ApiOperation({ summary: 'Obtener un producto por ID' })
-  @ApiResponse({ status: 200, description: 'Producto encontrado' })
-  @ApiResponse({ status: 404, description: 'Producto no encontrado' })
+  @ApiOperation({ summary: 'Get a product by ID' })
+  @ApiResponse({ status: 200, description: 'Product found' })
+  @ApiResponse({ status: 404, description: 'Product not found' })
   findOne(@Param('id') id: string) {
     return this.productsService.findOne(id);
   }
 
+  /**
+   * Updates an existing product.
+   */
   @UseGuards(AuthGuard('jwt'))
   @Patch(':id')
-  @ApiOperation({ summary: 'Actualizar un producto' })
-  @ApiResponse({ status: 200, description: 'Producto actualizado' })
-  @ApiResponse({ status: 404, description: 'Producto no encontrado' })
+  @ApiOperation({ summary: 'Update a product' })
+  @ApiResponse({ status: 200, description: 'Product updated' })
+  @ApiResponse({ status: 404, description: 'Product not found' })
   update(@Param('id') id: string, @Body() updateProductDto: UpdateProductDto) {
     return this.productsService.update(id, updateProductDto);
   }
 
+  /**
+   * Deletes a product (soft delete).
+   */
   @UseGuards(AuthGuard('jwt'))
   @Delete(':id')
-  @ApiOperation({ summary: 'Eliminar un producto (soft delete)' })
-  @ApiResponse({ status: 200, description: 'Producto marcado como inactivo' })
-  @ApiResponse({ status: 404, description: 'Producto no encontrado' })
+  @ApiOperation({ summary: 'Delete a product (soft delete)' })
+  @ApiResponse({ status: 200, description: 'Product marked as inactive' })
+  @ApiResponse({ status: 404, description: 'Product not found' })
   remove(@Param('id') id: string) {
     return this.productsService.remove(id);
   }
 
+  /**
+   * Batch updates product prices using margin percentages.
+   */
   @UseGuards(AuthGuard('jwt'))
   @Post('batch-update-prices')
   @ApiOperation({
-    summary: 'Actualizar precios de venta en lote usando márgenes',
+    summary: 'Batch update product sale prices using margins',
   })
   @ApiResponse({
     status: 200,
-    description: 'Precios actualizados exitosamente',
+    description: 'Prices updated successfully',
   })
   batchUpdatePrices(
     @Body()
@@ -127,3 +145,4 @@ export class ProductsController {
     return this.productsService.batchUpdatePrices(updates);
   }
 }
+

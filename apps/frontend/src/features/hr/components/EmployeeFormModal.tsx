@@ -10,6 +10,11 @@ interface Props {
     employee?: Employee | null;
 }
 
+/**
+ * EmployeeFormModal Component
+ * Form modal for creating and updating employee profiles.
+ * Tracks personal information, labor details, and payment configurations.
+ */
 export const EmployeeFormModal: React.FC<Props> = ({ visible, onClose, employee }) => {
     const [form] = Form.useForm();
     const queryClient = useQueryClient();
@@ -21,7 +26,7 @@ export const EmployeeFormModal: React.FC<Props> = ({ visible, onClose, employee 
                 form.setFieldsValue(employee);
             } else {
                 form.resetFields();
-                form.setFieldsValue({ isActive: true, currency: 'VES' });
+                form.setFieldsValue({ isActive: true, currency: 'VES', paymentFrequency: 'BIWEEKLY' });
             }
         }
     }, [visible, employee, form]);
@@ -34,16 +39,16 @@ export const EmployeeFormModal: React.FC<Props> = ({ visible, onClose, employee 
             return employeesApi.create(values);
         },
         onSuccess: () => {
-            message.success(`Empleado ${isEditing ? 'actualizado' : 'creado'} correctamente`);
+            message.success(`Employee ${isEditing ? 'updated' : 'created'} successfully`);
             queryClient.invalidateQueries({ queryKey: ['employees'] });
             onClose();
         },
         onError: () => {
-            message.error('Error al guardar empleado');
+            message.error('Error saving employee profile');
         }
     });
 
-    // F9 Keyboard Shortcut
+    // F9 Keyboard Shortcut for quick save
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
             if (!visible) return;
@@ -68,83 +73,83 @@ export const EmployeeFormModal: React.FC<Props> = ({ visible, onClose, employee 
 
     return (
         <Modal
-            title={isEditing ? 'Editar Empleado' : 'Nuevo Empleado'}
+            title={isEditing ? 'Edit Employee Profile' : 'Register New Employee'}
             open={visible}
             onOk={handleOk}
             onCancel={onClose}
             confirmLoading={mutation.isPending}
+            okText="Save Profile (F9)"
             width={700}
         >
             <Form form={form} layout="vertical">
+                <Divider orientation="left">Personal Information</Divider>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                    <Form.Item name="firstName" label="Nombres" rules={[{ required: true }]}>
-                        <Input />
+                    <Form.Item name="firstName" label="First Names" rules={[{ required: true, message: 'Please enter first names' }]}>
+                        <Input placeholder="John" />
                     </Form.Item>
-                    <Form.Item name="lastName" label="Apellidos" rules={[{ required: true }]}>
-                        <Input />
+                    <Form.Item name="lastName" label="Last Names" rules={[{ required: true, message: 'Please enter last names' }]}>
+                        <Input placeholder="Doe" />
                     </Form.Item>
                 </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                    <Form.Item name="identification" label="Cédula / DNI" rules={[{ required: true }]}>
-                        <Input />
+                    <Form.Item name="identification" label="Tax ID / Identification (RIF/CI)" rules={[{ required: true, message: 'ID is required' }]}>
+                        <Input placeholder="V-12345678" />
                     </Form.Item>
-                    <Form.Item name="email" label="Correo Electrónico">
-                        <Input type="email" />
-                    </Form.Item>
-                </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                    <Form.Item name="phone" label="Teléfono">
-                        <Input />
-                    </Form.Item>
-                    <Form.Item name="address" label="Dirección">
-                        <Input />
-                    </Form.Item>
-                </div>
-
-                <Divider orientation={"left" as any}>Datos Laborales</Divider>
-
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                    <Form.Item name="position" label="Cargo" rules={[{ required: true }]}>
-                        <Input />
-                    </Form.Item>
-                    <Form.Item name="department" label="Departamento">
-                        <Input />
+                    <Form.Item name="email" label="Email Address">
+                        <Input type="email" placeholder="john.doe@example.com" />
                     </Form.Item>
                 </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                    <Form.Item name="paymentFrequency" label="Frecuencia de Pago" rules={[{ required: true }]} initialValue="BIWEEKLY">
+                    <Form.Item name="phone" label="Phone Number">
+                        <Input placeholder="+58 412..." />
+                    </Form.Item>
+                    <Form.Item name="address" label="Home Address">
+                        <Input placeholder="Full address..." />
+                    </Form.Item>
+                </div>
+
+                <Divider orientation="left">Employment Details</Divider>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                    <Form.Item name="position" label="Position / Job Title" rules={[{ required: true, message: 'Position is required' }]}>
+                        <Input placeholder="Sales Representative" />
+                    </Form.Item>
+                    <Form.Item name="department" label="Department">
+                        <Input placeholder="Sales / Operations" />
+                    </Form.Item>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                    <Form.Item name="paymentFrequency" label="Payment Frequency" rules={[{ required: true }]}>
                         <Select>
-                            <Select.Option value="WEEKLY">Semanal (Pago / 4)</Select.Option>
-                            <Select.Option value="BIWEEKLY">Quincenal (Pago / 2)</Select.Option>
-                            <Select.Option value="MONTHLY">Mensual (Pago Completo)</Select.Option>
+                            <Select.Option value="WEEKLY">Weekly</Select.Option>
+                            <Select.Option value="BIWEEKLY">Biweekly (Fortnightly)</Select.Option>
+                            <Select.Option value="MONTHLY">Monthly</Select.Option>
                         </Select>
                     </Form.Item>
-                    <Form.Item name="isActive" label="Estado" valuePropName="checked">
-                        <Switch checkedChildren="Activo" unCheckedChildren="Inactivo" />
+                    <Form.Item name="isActive" label="Employment Status" valuePropName="checked">
+                        <Switch checkedChildren="Active" unCheckedChildren="Inactive" />
                     </Form.Item>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                    <Form.Item name="baseSalary" label="Sueldo Base Mensual" rules={[{ required: true }]}>
+                <Divider orientation="left">Compensation</Divider>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '16px' }}>
+                    <Form.Item name="baseSalary" label="Monthly Base Salary" rules={[{ required: true, message: 'Please enter base salary' }]}>
                         <InputNumber
                             style={{ width: '100%' }}
                             precision={2}
+                            placeholder="0.00"
                             addonBefore={
                                 <Form.Item name="currency" noStyle>
-                                    <Select style={{ width: 80 }}>
-                                        <Select.Option value="VES">Bs</Select.Option>
-                                        <Select.Option value="USD">$</Select.Option>
+                                    <Select style={{ width: 100 }}>
+                                        <Select.Option value="VES">Bs. (VES)</Select.Option>
+                                        <Select.Option value="USD">$ (USD)</Select.Option>
                                     </Select>
                                 </Form.Item>
                             }
                         />
-                    </Form.Item>
-
-                    <Form.Item name="isActive" label="Estado" valuePropName="checked">
-                        <Switch checkedChildren="Activo" unCheckedChildren="Inactivo" />
                     </Form.Item>
                 </div>
             </Form>

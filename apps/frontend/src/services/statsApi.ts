@@ -175,6 +175,10 @@ export interface FiscalBookReport {
 }
 
 export const statsApi = {
+    /**
+     * Fetches summary statistics for the main dashboard.
+     * @param range Time range ('7days', '30days', '1year', 'all').
+     */
     getDashboardStats: async (range?: string): Promise<DashboardStats> => {
         const response = await api.get('/stats/dashboard', {
             params: { range }
@@ -182,6 +186,11 @@ export const statsApi = {
         return response.data;
     },
 
+    /**
+     * Fetches the Sales Book (Libro de Ventas) for fiscal compliance.
+     * @param startDate Optional start date.
+     * @param endDate Optional end date.
+     */
     getLibroVentas: async (startDate?: string, endDate?: string): Promise<FiscalBookReport> => {
         const response = await api.get('/stats/libro-ventas', {
             params: { startDate, endDate }
@@ -189,6 +198,11 @@ export const statsApi = {
         return response.data;
     },
 
+    /**
+     * Fetches the Purchases Book (Libro de Compras) for fiscal compliance.
+     * @param startDate Optional start date.
+     * @param endDate Optional end date.
+     */
     getLibroCompras: async (startDate?: string, endDate?: string): Promise<FiscalBookReport> => {
         const response = await api.get('/stats/libro-compras', {
             params: { startDate, endDate }
@@ -196,11 +210,21 @@ export const statsApi = {
         return response.data;
     },
 
+    /**
+     * Fetches an inventory report with stock valuation.
+     * @param currency Target currency for valuation.
+     */
     getInventoryReport: async (currency?: string): Promise<InventoryReport> => {
         const response = await api.get('/stats/inventory', { params: { currency } });
         return response.data;
     },
 
+    /**
+     * Fetches a comprehensive financial report.
+     * @param currency Target currency for calculation.
+     * @param startDate Optional start date.
+     * @param endDate Optional end date.
+     */
     getFinanceReport: async (currency?: string, startDate?: string, endDate?: string): Promise<FinanceReport> => {
         const response = await api.get('/stats/finance', {
             params: { currency, startDate, endDate }
@@ -208,6 +232,10 @@ export const statsApi = {
         return response.data;
     },
 
+    /**
+     * Fetches a historical balance report for the last 12 months.
+     * @param currency Target currency for calculation.
+     */
     getBalanceReport: async (currency?: string): Promise<BalanceEntry[]> => {
         const response = await api.get('/stats/balance', {
             params: { currency }
@@ -215,6 +243,9 @@ export const statsApi = {
         return response.data;
     },
 
+    /**
+     * Fetches top-selling products based on quantity or profit.
+     */
     getTopProducts: async (filters: {
         startDate?: string;
         endDate?: string;
@@ -226,6 +257,9 @@ export const statsApi = {
         return response.data;
     },
 
+    /**
+     * Fetches a Cost of Goods Sold (COGS) and restock report.
+     */
     getCOGSReport: async (currency?: string, startDate?: string, endDate?: string): Promise<COGSReport> => {
         const response = await api.get('/stats/cogs', {
             params: { currency, startDate, endDate }
@@ -233,6 +267,9 @@ export const statsApi = {
         return response.data;
     },
 
+    /**
+     * Fetches an inflation impact report.
+     */
     getInflationReport: async (startDate?: string, endDate?: string): Promise<InflationReport> => {
         const response = await api.get('/stats/inflation', {
             params: { startDate, endDate }
@@ -240,6 +277,9 @@ export const statsApi = {
         return response.data;
     },
 
+    /**
+     * Fetches a VAT (IVA) report.
+     */
     getTaxReport: async (startDate?: string, endDate?: string): Promise<TaxReport> => {
         const response = await api.get('/stats/tax', {
             params: { startDate, endDate }
@@ -247,6 +287,9 @@ export const statsApi = {
         return response.data;
     },
 
+    /**
+     * Fetches sales performance by day of the week.
+     */
     getWeeklyPerformance: async (currency: string, startDate?: string, endDate?: string): Promise<WeeklyPerformance[]> => {
         const response = await api.get('/stats/weekly-performance', {
             params: { currency, startDate, endDate }
@@ -254,6 +297,9 @@ export const statsApi = {
         return response.data;
     },
 
+    /**
+     * Fetches sales performance by day of the month.
+     */
     getMonthlyDailyPerformance: async (currency: string, startDate?: string, endDate?: string): Promise<MonthlyDailyPerformance[]> => {
         const response = await api.get('/stats/monthly-daily-performance', {
             params: { currency, startDate, endDate }
@@ -261,6 +307,9 @@ export const statsApi = {
         return response.data;
     },
 
+    /**
+     * Fetches an expenses report broken down by category.
+     */
     getExpensesReport: async (currency: string, startDate?: string, endDate?: string): Promise<ExpenseReport> => {
         const response = await api.get('/stats/expenses', {
             params: { currency, startDate, endDate }
@@ -268,6 +317,9 @@ export const statsApi = {
         return response.data;
     },
 
+    /**
+     * Fetches sales performance by hour of the day.
+     */
     getHourlyPerformance: async (currency: string, includeSundays: boolean, startDate?: string, endDate?: string): Promise<HourlyPerformanceResponse> => {
         const response = await api.get('/stats/hourly-performance', {
             params: { currency, includeSundays, startDate, endDate }
@@ -275,16 +327,25 @@ export const statsApi = {
         return response.data;
     },
 
+    /**
+     * Fetches a products report with depletion forecast.
+     */
     getProductsReport: async (currency?: string): Promise<ProductsReportItem[]> => {
         const response = await api.get('/stats/products-report', { params: { currency } });
         return response.data;
     },
 
+    /**
+     * Fetches detailed statistics for a specific product.
+     */
     getProductStats: async (id: string, currency?: string): Promise<ProductStatsResponse> => {
         const response = await api.get(`/stats/product/${id}`, { params: { currency } });
         return response.data;
     },
 
+    /**
+     * Fetches a purchases report broken down by supplier.
+     */
     getPurchasesReport: async (currency: string, startDate?: string, endDate?: string): Promise<PurchasesReportResponse> => {
         const response = await api.get('/stats/purchases', {
             params: { currency, startDate, endDate }
@@ -292,6 +353,7 @@ export const statsApi = {
         return response.data;
     },
 };
+
 
 export interface HourlyPerformanceResponse {
     data: {

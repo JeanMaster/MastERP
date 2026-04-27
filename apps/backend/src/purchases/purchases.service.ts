@@ -10,6 +10,13 @@ import { CreatePurchaseDto } from './dto/create-purchase.dto';
 export class PurchasesService {
   constructor(private prisma: PrismaService) {}
 
+  /**
+   * Registers a new purchase from a supplier.
+   * Updates product stock, tracks cost changes for price suggestions,
+   * handles linked purchase orders, and records initial payments.
+   * @param createPurchaseDto Data for the new purchase.
+   * @returns The created purchase and products with cost changes.
+   */
   async create(createPurchaseDto: CreatePurchaseDto) {
     const { supplierId, items, purchaseOrderId, ...purchaseData } =
       createPurchaseDto;
@@ -19,18 +26,15 @@ export class PurchasesService {
       where: { id: supplierId },
     });
     if (!supplier) {
-      throw new NotFoundException(
-        `Proveedor con ID ${supplierId} no encontrado`,
-      );
+      throw new NotFoundException(`Supplier with ID ${supplierId} not found`);
     }
 
     // Calculate totals
     let subtotal = 0;
-    const itemsWithTotal: any[] = []; // Explicitly typed as any[] to avoid never[] inference, or better define interface
+    const itemsWithTotal: any[] = [];
 
     // Verify currency and get conversion rate
     const currencyCode = purchaseData.currencyCode || 'VES';
-    const exchangeRate = purchaseData.exchangeRate || 1;
 
     // Find currency entity to get its ID for product update
     const currency = await this.prisma.currency.findUnique({
@@ -38,7 +42,7 @@ export class PurchasesService {
     });
 
     if (!currency) {
-      throw new NotFoundException(`Moneda ${currencyCode} no encontrada`);
+      throw new NotFoundException(`Currency ${currencyCode} not found`);
     }
 
     // Validations and calculations
@@ -49,7 +53,7 @@ export class PurchasesService {
 
       if (!product) {
         throw new NotFoundException(
-          `Producto con ID ${item.productId} no encontrado`,
+          `Product with ID ${item.productId} not found`,
         );
       }
 
@@ -63,28 +67,12 @@ export class PurchasesService {
       });
     }
 
-    // Calculate tax (Assuming 16% or 0 based on product? Purchase usually comes with tax info from invoice)
-    // For now simplifed: The DTO didn't request total/tax, so we calculate or expect it?
-    // In schema schema `taxAmount` is required.
-    // Let's assume standard tax or 0 for now until tax logic is more complex.
-    // Ideally user inputs tax from invoice. But DTO didn't have it.
-    // Let's calculate based on products tax status? Too complex for now.
-    // Let's assume input totals or calculate 0 tax for now and fix later if needed or add to DTO.
-    // Actually schema requires `taxAmount`, `subtotal`, `total`.
-    // I should calculate them or accept them.
-    // Let's calculate simple 0 tax for MVP or 16%?
-    // Let's add `total` and `tax` to DTO or calculate.
-    // I'll calculate subtotal from items.
-    // I'll assume 0 tax for now to avoid specific tax logic issues unless products have tax.
-    // Calculate tax from DTO or default to 0
     const taxAmount = createPurchaseDto.taxAmount || 0;
     const total = subtotal + taxAmount;
 
     // Calculate initial balance
     const paidAmount = purchaseData.paidAmount || 0;
     const balance = total - paidAmount;
-    const paymentStatus =
-      balance <= 0 ? 'PAID' : paidAmount > 0 ? 'PARTIAL' : 'UNPAID';
 
     // Track products with cost changes for price update suggestions
     const productsWithCostChange: any[] = [];
@@ -119,8 +107,8 @@ export class PurchasesService {
               ? {
                   create: {
                     amount: paidAmount,
-                    paymentMethod: 'CASH', // Default or need DTO field
-                    notes: 'Pago inicial al registrar compra',
+                    paymentMethod: 'CASH',
+                    notes: 'Initial payment upon purchase registration',
                   },
                 }
               : undefined,
@@ -151,10 +139,10 @@ export class PurchasesService {
         // Detect cost change
         const oldCost = Number(product.costPrice);
         const newCost = Number(item.cost);
-        const costChanged = Math.abs(oldCost - newCost) > 0.001; // Tolerance for float comparison
+        const costChanged = Math.abs(oldCost - newCost) > 0.001;
 
         if (costChanged && oldCost > 0) {
-          // Calculate current margins (only if sale prices exist)
+          // Calculate current margins
           const salePrice = Number(product.salePrice);
           const offerPrice = product.offerPrice
             ? Number(product.offerPrice)
@@ -203,8 +191,6 @@ export class PurchasesService {
           where: { id: item.productId },
           data: {
             stock: { increment: item.quantity },
-            // REMOVED: costPrice and currencyId update here.
-            // These will be updated only if the user confirms the price update suggested in the frontend.
           },
         });
       }
@@ -219,11 +205,15 @@ export class PurchasesService {
 
       return {
         ...purchase,
-        productsWithCostChange, // Include this in response for frontend
+        productsWithCostChange,
       };
     });
   }
 
+  /**
+   * Retrieves all purchase records.
+   * @returns A list of purchases with supplier and item details.
+   */
   async findAll() {
     return this.prisma.purchase.findMany({
       include: {
@@ -238,6 +228,11 @@ export class PurchasesService {
     });
   }
 
+  /**
+   * Retrieves a single purchase record by its ID.
+   * @param id The ID of the purchase.
+   * @returns The purchase record.
+   */
   async findOne(id: string) {
     const purchase = await this.prisma.purchase.findUnique({
       where: { id },
@@ -252,12 +247,18 @@ export class PurchasesService {
     });
 
     if (!purchase) {
-      throw new NotFoundException(`Compra con ID ${id} no encontrada`);
+      throw new NotFoundException(`Purchase with ID ${id} not found`);
     }
 
     return purchase;
   }
 
+  /**
+   * Registers a payment for an existing purchase.
+   * Handles bank account balance updates and debt reduction.
+   * @param dto Payment data (amount, method, account, etc.).
+   * @returns The created payment record.
+   */
   async registerPayment(dto: any) {
     const {
       purchaseId,
@@ -277,16 +278,16 @@ export class PurchasesService {
     });
 
     if (!purchase) {
-      throw new NotFoundException('Compra no encontrada');
+      throw new NotFoundException('Purchase not found');
     }
 
     if (purchase.paymentStatus === 'PAID') {
-      throw new BadRequestException('Esta compra ya está pagada');
+      throw new BadRequestException('This purchase is already fully paid');
     }
 
     if (Number(purchase.balance) < Number(amount)) {
       throw new BadRequestException(
-        `El monto excede el saldo pendiente (${purchase.balance})`,
+        `The amount exceeds the pending balance (${purchase.balance})`,
       );
     }
 
@@ -301,11 +302,10 @@ export class PurchasesService {
       });
 
       if (!bankAccount) {
-        throw new NotFoundException('Cuenta bancaria no encontrada');
+        throw new NotFoundException('Bank account not found');
       }
 
       // Calculate how much we take from the bank
-      // The payment currency is 'currencyCode' and amount is 'paymentAmount'
       const pAmount = Number(paymentAmount || amount);
       const pCurrency = currencyCode || purchase.currencyCode;
       const rate = Number(exchangeRate || 1);
@@ -324,7 +324,7 @@ export class PurchasesService {
 
       if (Number(bankAccount.balance) < amountToDeductFromBank) {
         throw new BadRequestException(
-          `Saldo insuficiente en cuenta bancaria. Saldo: ${bankAccount.balance}, Requerido: ${amountToDeductFromBank}`,
+          `Insufficient balance in bank account. Balance: ${bankAccount.balance}, Required: ${amountToDeductFromBank}`,
         );
       }
     }
@@ -354,7 +354,7 @@ export class PurchasesService {
             type: 'OUT',
             amount: amountToDeductFromBank,
             category: 'PURCHASE',
-            description: `Pago a Proveedor: ${purchase.supplier.comercialName} (Factura: ${purchase.invoiceNumber || 'N/A'})`,
+            description: `Payment to Supplier: ${purchase.supplier.comercialName} (Invoice: ${purchase.invoiceNumber || 'N/A'})`,
             reference: reference || `PAY-${payment.id.substring(0, 8)}`,
             date: new Date(),
           },
@@ -376,7 +376,7 @@ export class PurchasesService {
       // 4. Update Purchase Balance
       const newPaidAmount = Number(purchase.paidAmount) + Number(amount);
       const newBalance = Number(purchase.total) - newPaidAmount;
-      const newStatus = newBalance <= 0.01 ? 'PAID' : 'PARTIAL'; // Tolerance for float
+      const newStatus = newBalance <= 0.01 ? 'PAID' : 'PARTIAL';
 
       await tx.purchase.update({
         where: { id: purchaseId },

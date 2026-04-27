@@ -22,25 +22,25 @@ export class SuppliersController {
   constructor(private readonly suppliersService: SuppliersService) {}
 
   @Post()
-  @ApiOperation({ summary: 'Crear un nuevo proveedor' })
-  @ApiResponse({ status: 201, description: 'Proveedor creado exitosamente' })
-  @ApiResponse({ status: 409, description: 'RIF ya registrado' })
+  @ApiOperation({ summary: 'Create a new supplier' })
+  @ApiResponse({ status: 201, description: 'Supplier created successfully' })
+  @ApiResponse({ status: 409, description: 'RIF already registered' })
   create(@Body() createSupplierDto: CreateSupplierDto) {
     return this.suppliersService.create(createSupplierDto);
   }
 
   @Get()
-  @ApiOperation({ summary: 'Listar todos los proveedores' })
+  @ApiOperation({ summary: 'Retrieve all suppliers' })
   @ApiQuery({
     name: 'search',
     required: false,
-    description: 'Buscar por nombre, RIF, email o contacto',
+    description: 'Search by name, RIF, email, or contact',
   })
   @ApiQuery({
     name: 'active',
     required: false,
     type: Boolean,
-    description: 'Filtrar por activos',
+    description: 'Filter by active status',
   })
   findAll(@Query('search') search?: string, @Query('active') active?: string) {
     const isActive = active === undefined ? true : active === 'true';
@@ -48,17 +48,17 @@ export class SuppliersController {
   }
 
   @Get(':id')
-  @ApiOperation({ summary: 'Obtener un proveedor por ID' })
-  @ApiResponse({ status: 200, description: 'Proveedor encontrado' })
-  @ApiResponse({ status: 404, description: 'Proveedor no encontrado' })
+  @ApiOperation({ summary: 'Retrieve a supplier by ID' })
+  @ApiResponse({ status: 200, description: 'Supplier found' })
+  @ApiResponse({ status: 404, description: 'Supplier not found' })
   findOne(@Param('id') id: string) {
     return this.suppliersService.findOne(id);
   }
 
   @Patch(':id')
-  @ApiOperation({ summary: 'Actualizar un proveedor' })
-  @ApiResponse({ status: 200, description: 'Proveedor actualizado' })
-  @ApiResponse({ status: 404, description: 'Proveedor no encontrado' })
+  @ApiOperation({ summary: 'Update a supplier' })
+  @ApiResponse({ status: 200, description: 'Supplier updated' })
+  @ApiResponse({ status: 404, description: 'Supplier not found' })
   update(
     @Param('id') id: string,
     @Body() updateSupplierDto: UpdateSupplierDto,
@@ -67,9 +67,9 @@ export class SuppliersController {
   }
 
   @Delete(':id')
-  @ApiOperation({ summary: 'Eliminar un proveedor (soft delete)' })
-  @ApiResponse({ status: 200, description: 'Proveedor marcado como inactivo' })
-  @ApiResponse({ status: 404, description: 'Proveedor no encontrado' })
+  @ApiOperation({ summary: 'Deactivate a supplier (soft delete)' })
+  @ApiResponse({ status: 200, description: 'Supplier marked as inactive' })
+  @ApiResponse({ status: 404, description: 'Supplier not found' })
   remove(@Param('id') id: string) {
     return this.suppliersService.remove(id);
   }

@@ -8,6 +8,11 @@ import { CreatePurchaseOrderModal } from './components/CreatePurchaseOrderModal'
 import { PurchaseOrderDetailsModal } from './components/PurchaseOrderDetailsModal';
 import { companySettingsApi } from '../../services/companySettingsApi';
 
+/**
+ * PurchaseOrdersPage Component
+ * Management dashboard for Supplier Purchase Orders.
+ * Allows creating, viewing, and tracking orders, as well as sharing order details via WhatsApp.
+ */
 export const PurchaseOrdersPage: React.FC = () => {
     const screens = Grid.useBreakpoint();
     const isMobile = !screens.lg;
@@ -30,7 +35,7 @@ export const PurchaseOrdersPage: React.FC = () => {
             const data = await purchaseOrdersApi.getAll();
             setOrders(data);
         } catch (error) {
-            message.error('Error al cargar pedidos');
+            message.error('Error loading purchase orders');
         } finally {
             setLoading(false);
         }
@@ -45,35 +50,41 @@ export const PurchaseOrdersPage: React.FC = () => {
         }
     };
 
+    /**
+     * Deletes a pending purchase order.
+     */
     const handleDelete = async (id: string) => {
         try {
             await purchaseOrdersApi.delete(id);
-            message.success('Pedido eliminado');
+            message.success('Order deleted successfully');
             fetchOrders();
         } catch (error: any) {
-            message.error(error.response?.data?.message || 'Error al eliminar pedido');
+            message.error(error.response?.data?.message || 'Error deleting purchase order');
         }
     };
 
+    /**
+     * Formats and shares the order details via WhatsApp to the supplier.
+     */
     const handleShareWhatsApp = (order: PurchaseOrder) => {
-        const supplierPhone = order.supplier.phone?.replace(/\D/g, ''); // Remove non-digits
+        const supplierPhone = order.supplier.phone?.replace(/\D/g, '');
         if (!supplierPhone) {
-            message.warning('El proveedor no tiene teléfono registrado');
+            message.warning('Supplier has no phone number registered');
             return;
         }
 
-        let text = `*Pedido de: ${companyName || 'Nuestra Empresa'}*\n`;
+        let text = `*Purchase Order from: ${companyName || 'Our Company'}*\n`;
         text += `ID: ${order.id.slice(0, 8)}\n`;
-        text += `Fecha: ${dayjs(order.orderDate).format('DD/MM/YYYY')}\n\n`;
-        text += `*Artículos:*\n`;
+        text += `Date: ${dayjs(order.orderDate).format('MM/DD/YYYY')}\n\n`;
+        text += `*Items:*\n`;
 
         order.items.forEach((item, index) => {
-            text += `${index + 1}. ${item.product?.name || 'Producto'} - SKU: ${item.product?.sku || 'N/A'}\n`;
-            text += `   Cant: ${item.quantity}\n`;
+            text += `${index + 1}. ${item.product?.name || 'Product'} - SKU: ${item.product?.sku || 'N/A'}\n`;
+            text += `   Qty: ${item.quantity}\n`;
         });
 
         if (order.notes) {
-            text += `\n*Nota:* ${order.notes}`;
+            text += `\n*Note:* ${order.notes}`;
         }
 
         const encodedText = encodeURIComponent(text);
@@ -88,14 +99,14 @@ export const PurchaseOrdersPage: React.FC = () => {
 
     const columns = [
         {
-            title: 'Fecha',
+            title: 'Date',
             dataIndex: 'orderDate',
             key: 'date',
-            render: (date: string) => dayjs(date).format('DD/MM/YYYY'),
+            render: (date: string) => dayjs(date).format('MM/DD/YYYY'),
             sorter: (a: PurchaseOrder, b: PurchaseOrder) => dayjs(a.orderDate).unix() - dayjs(b.orderDate).unix(),
         },
         {
-            title: 'Proveedor',
+            title: 'Supplier',
             dataIndex: ['supplier', 'comercialName'],
             key: 'supplier',
         },
@@ -108,32 +119,32 @@ export const PurchaseOrdersPage: React.FC = () => {
             ),
         },
         {
-            title: 'Estado',
+            title: 'Status',
             dataIndex: 'status',
             key: 'status',
             render: (status: string) => {
                 let color = 'orange';
                 let label = status;
-                if (status === 'COMPLETED') { color = 'green'; label = 'Recibido'; }
-                if (status === 'CANCELLED') { color = 'red'; label = 'Cancelado'; }
-                if (status === 'PENDING') { color = 'blue'; label = 'Pendiente'; }
+                if (status === 'COMPLETED') { color = 'green'; label = 'Received'; }
+                if (status === 'CANCELLED') { color = 'red'; label = 'Cancelled'; }
+                if (status === 'PENDING') { color = 'blue'; label = 'Pending'; }
                 return <Tag color={color}>{label}</Tag>;
             },
         },
         {
-            title: 'Acciones',
+            title: 'Actions',
             key: 'actions',
             fixed: isMobile ? false : ('right' as const),
             render: (_: any, record: PurchaseOrder) => (
                 <Space>
-                    <Tooltip title="Ver Detalles">
+                    <Tooltip title="View Details">
                         <Button
                             icon={<EyeOutlined />}
                             type="text"
                             onClick={() => handleViewDetails(record)}
                         />
                     </Tooltip>
-                    <Tooltip title="Enviar por WhatsApp">
+                    <Tooltip title="Send via WhatsApp">
                         <Button
                             icon={<WhatsAppOutlined />}
                             type="text"
@@ -143,9 +154,9 @@ export const PurchaseOrdersPage: React.FC = () => {
                     </Tooltip>
                     {record.status === 'PENDING' && (
                         <Popconfirm
-                            title="¿Eliminar pedido?"
+                            title="Delete this order?"
                             onConfirm={() => handleDelete(record.id)}
-                            okText="Sí"
+                            okText="Yes"
                             cancelText="No"
                         >
                             <Button
@@ -165,7 +176,7 @@ export const PurchaseOrdersPage: React.FC = () => {
             <Card>
                 <Row justify="space-between" align="middle" gutter={[16, 16]} style={{ marginBottom: 24 }}>
                     <Col xs={24} md={12}>
-                        <Typography.Title level={isMobile ? 3 : 2} style={{ margin: 0 }}>📋 Pedidos a Proveedores</Typography.Title>
+                        <Typography.Title level={isMobile ? 3 : 2} style={{ margin: 0 }}>📋 Purchase Orders</Typography.Title>
                     </Col>
                     <Col xs={24} md={12} style={{ textAlign: isMobile ? 'left' : 'right' }}>
                         <Space wrap={isMobile}>
@@ -176,7 +187,7 @@ export const PurchaseOrdersPage: React.FC = () => {
                                 onClick={() => setModalVisible(true)}
                                 block={isMobile}
                             >
-                                Nuevo Pedido
+                                New Order
                             </Button>
                         </Space>
                     </Col>

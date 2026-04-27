@@ -6,8 +6,16 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { productsApi } from '../../services/productsApi';
 import type { Product } from '../../services/productsApi';
 import { ProductFormModal } from './ProductFormModal';
+import { useTranslation } from 'react-i18next';
 
+/**
+ * CompositeProductsPage Component
+ * Specialized interface for managing composed products (combos or recipes).
+ * Lists products that are made up of multiple other components.
+ * Supports internationalization (i18n).
+ */
 export const CompositeProductsPage = () => {
+    const { t } = useTranslation();
     const screens = Grid.useBreakpoint();
     const isMobile = !screens.lg;
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -25,11 +33,11 @@ export const CompositeProductsPage = () => {
     const deleteMutation = useMutation({
         mutationFn: productsApi.delete,
         onSuccess: () => {
-            message.success('Producto compuesto eliminado exitosamente');
+            message.success(t('products.composite.delete_success'));
             queryClient.invalidateQueries({ queryKey: ['products'] });
         },
         onError: (error: any) => {
-            message.error(error.response?.data?.message || 'Error al eliminar producto compuesto');
+            message.error(error.response?.data?.message || t('common.error'));
         },
     });
 
@@ -52,7 +60,7 @@ export const CompositeProductsPage = () => {
         setEditingProduct(null);
     };
 
-    // Filter products locally for search
+    // Client-side filtering
     const filteredData = products.filter((product) =>
         product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         product.sku.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -61,13 +69,13 @@ export const CompositeProductsPage = () => {
 
     const columns = [
         {
-            title: 'SKU',
+            title: t('products.composite.sku'),
             dataIndex: 'sku',
             key: 'sku',
             width: '10%',
         },
         {
-            title: 'Nombre',
+            title: t('products.composite.name'),
             dataIndex: 'name',
             key: 'name',
             width: '25%',
@@ -103,7 +111,7 @@ export const CompositeProductsPage = () => {
             ),
         },
         {
-            title: 'Componentes',
+            title: t('products.composite.components'),
             key: 'components',
             width: '15%',
             render: (_: any, record: Product) => (
@@ -115,13 +123,13 @@ export const CompositeProductsPage = () => {
                     ))
                 }>
                     <Tag icon={<NodeIndexOutlined />} color="purple">
-                        {record.components?.length || 0} Componentes
+                        {t('products.composite.components_count', { count: record.components?.length || 0 })}
                     </Tag>
                 </Tooltip>
             ),
         },
         {
-            title: 'Costo de Receta',
+            title: t('products.composite.recipe_cost'),
             key: 'costPrice',
             width: '12%',
             render: (_: any, record: Product) => (
@@ -131,7 +139,7 @@ export const CompositeProductsPage = () => {
             ),
         },
         {
-            title: 'Precio Venta',
+            title: t('products.composite.sale_price'),
             key: 'salePrice',
             width: '12%',
             render: (_: any, record: Product) => (
@@ -141,7 +149,7 @@ export const CompositeProductsPage = () => {
             ),
         },
         {
-            title: 'Categoría',
+            title: t('products.composite.category'),
             key: 'category',
             width: '12%',
             render: (_: any, record: Product) => (
@@ -156,7 +164,7 @@ export const CompositeProductsPage = () => {
             ),
         },
         {
-            title: 'Acciones',
+            title: t('common.actions'),
             key: 'actions',
             width: '15%',
             render: (_: any, record: Product) => (
@@ -166,17 +174,17 @@ export const CompositeProductsPage = () => {
                         icon={<EditOutlined />}
                         onClick={() => handleEdit(record)}
                     >
-                        Editar
+                        {t('common.edit')}
                     </Button>
                     <Popconfirm
-                        title="¿Eliminar producto compuesto?"
-                        description="Esta acción no se puede deshacer"
+                        title={t('products.composite.delete_confirm')}
+                        description={t('products.composite.delete_desc')}
                         onConfirm={() => handleDelete(record.id)}
-                        okText="Eliminar"
-                        cancelText="Cancelar"
+                        okText={t('common.delete')}
+                        cancelText={t('common.cancel')}
                     >
                         <Button type="link" danger icon={<DeleteOutlined />}>
-                            Eliminar
+                            {t('common.delete')}
                         </Button>
                     </Popconfirm>
                 </Space>
@@ -186,11 +194,11 @@ export const CompositeProductsPage = () => {
 
     return (
         <Card
-            title={!isMobile ? "Productos Compuestos (Recetas)" : undefined}
+            title={!isMobile ? t('products.composite.title') : undefined}
             extra={!isMobile ? (
                 <Space>
                     <Input
-                        placeholder="Buscar receta..."
+                        placeholder={t('products.composite.search_placeholder')}
                         prefix={<SearchOutlined />}
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
@@ -199,17 +207,17 @@ export const CompositeProductsPage = () => {
                     />
                     <Button icon={<ReloadOutlined />} onClick={() => queryClient.invalidateQueries({ queryKey: ['products'] })} />
                     <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}>
-                        Nueva Receta
+                        {t('products.composite.new_button')}
                     </Button>
                 </Space>
             ) : null}
         >
             {isMobile && (
                 <div style={{ marginBottom: 16 }}>
-                    <h2 style={{ fontSize: 20, marginBottom: 16 }}>🧩 Productos Compuestos</h2>
+                    <h2 style={{ fontSize: 20, marginBottom: 16 }}>{t('products.composite.mobile_title')}</h2>
                     <Space direction="vertical" style={{ width: '100%' }} size="middle">
                         <Input
-                            placeholder="Buscar receta..."
+                            placeholder={t('products.composite.search_placeholder')}
                             prefix={<SearchOutlined />}
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
@@ -225,7 +233,7 @@ export const CompositeProductsPage = () => {
                                 style={{ flex: 1 }}
                                 size="large"
                             >
-                                Nueva Receta
+                                {t('products.composite.new_button')}
                             </Button>
                             <Button
                                 icon={<ReloadOutlined />}
@@ -247,7 +255,7 @@ export const CompositeProductsPage = () => {
                     defaultPageSize: 15,
                     showSizeChanger: true,
                     pageSizeOptions: ['10', '15', '20', '50', '100'],
-                    showTotal: (total, range) => `${range[0]}-${range[1]} de ${total} recetas`,
+                    showTotal: (total, range) => t('products.composite.pagination_total', { rangeStart: range[0], rangeEnd: range[1], total }),
                     size: isMobile ? 'small' : 'default',
                     responsive: true,
                     position: ['bottomRight']

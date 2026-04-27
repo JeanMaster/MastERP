@@ -12,7 +12,10 @@ export class SuppliersService {
   constructor(private prisma: PrismaService) {}
 
   /**
-   * Crear un nuevo proveedor
+   * Creates a new supplier record.
+   * @param createSupplierDto The data for the new supplier.
+   * @returns The created supplier record.
+   * @throws ConflictException if the RIF is already registered.
    */
   async create(createSupplierDto: CreateSupplierDto) {
     try {
@@ -21,17 +24,20 @@ export class SuppliersService {
       });
     } catch (error) {
       if (error.code === 'P2002') {
-        throw new ConflictException('El RIF ya está registrado');
+        throw new ConflictException('RIF already registered');
       }
       throw error;
     }
   }
 
   /**
-   * Listar todos los proveedores activos con filtros opcionales
+   * Retrieves all suppliers with optional search filters.
+   * @param search Search term (name, RIF, email, or contact).
+   * @param active Filter by active/inactive status.
+   * @returns A list of matching suppliers.
    */
   async findAll(search?: string, active: boolean = true) {
-    const where: any = { active };
+    const where: { active: boolean; OR?: any[] } = { active };
 
     if (search) {
       where.OR = [
@@ -49,7 +55,10 @@ export class SuppliersService {
   }
 
   /**
-   * Obtener un proveedor por ID
+   * Retrieves a single supplier by its ID.
+   * @param id The ID of the supplier.
+   * @returns The supplier record.
+   * @throws NotFoundException if the supplier is not found.
    */
   async findOne(id: string) {
     const supplier = await this.prisma.supplier.findUnique({
@@ -57,14 +66,19 @@ export class SuppliersService {
     });
 
     if (!supplier) {
-      throw new NotFoundException(`Proveedor con ID ${id} no encontrado`);
+      throw new NotFoundException(`Supplier with ID ${id} not found`);
     }
 
     return supplier;
   }
 
   /**
-   * Actualizar un proveedor
+   * Updates an existing supplier's information.
+   * @param id The ID of the supplier to update.
+   * @param updateSupplierDto The updated data.
+   * @returns The updated supplier record.
+   * @throws NotFoundException if the supplier doesn't exist.
+   * @throws ConflictException if the new RIF is already in use.
    */
   async update(id: string, updateSupplierDto: UpdateSupplierDto) {
     await this.findOne(id);
@@ -77,7 +91,7 @@ export class SuppliersService {
     } catch (error) {
       if (error.code === 'P2002') {
         throw new ConflictException(
-          'El RIF ya está registrado por otro proveedor',
+          'RIF already registered by another supplier',
         );
       }
       throw error;
@@ -85,7 +99,9 @@ export class SuppliersService {
   }
 
   /**
-   * Soft delete: marcar como inactivo
+   * Performs a soft delete by marking the supplier as inactive.
+   * @param id The ID of the supplier to deactivate.
+   * @returns The updated supplier record.
    */
   async remove(id: string) {
     await this.findOne(id);

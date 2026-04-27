@@ -12,24 +12,32 @@ interface SessionSummaryModalProps {
     onStartClose: () => void;
 }
 
+/**
+ * SessionSummaryModal Component
+ * Displays a real-time summary of the current cash register session (Report X).
+ * Calculates totals by payment method (Cash VES/USD, Debit, Transfers, Credit) and estimates the expected cash balance.
+ */
 export const SessionSummaryModal = ({ open, session, onCancel, onStartClose }: SessionSummaryModalProps) => {
     if (!session) return null;
 
-    // Calcular resumen de métodos de pago
+    // Payment breakdown summary
     const paymentSummary = {
         CASH_VES: 0,
         CASH_USD: 0,
         DEBIT: 0,
-        PAGO_MOVIL: 0, // Assume part of DEBIT or specific
+        PAGO_MOVIL: 0,
         CREDIT: 0,
         TRANSFER: 0,
         OTHER: 0
     };
 
     let totalSales = 0;
-
     const round = (num: number) => Math.round((num + Number.EPSILON) * 100) / 100;
 
+    /**
+     * Process each sale to categorize payment methods.
+     * Note: A single sale can have split payments.
+     */
     session.sales?.forEach(sale => {
         totalSales += Number(sale.total);
 
@@ -69,8 +77,10 @@ export const SessionSummaryModal = ({ open, session, onCancel, onStartClose }: S
     paymentSummary.CREDIT = round(paymentSummary.CREDIT);
     paymentSummary.OTHER = round(paymentSummary.OTHER);
 
-    // Calcular Efectivo Esperado (Apertura + Ventas Efectivo + Ingresos - Egresos - Retiros)
-    // Usamos los movimientos de la sesión para esto, que es más fiable para el flujo de caja
+    /**
+     * Calculate Expected Cash in Drawer
+     * Formula: Opening Balance + Cash Sales + Income Adjustments - Expenses - Withdrawals
+     */
     let expectedCashVES = Number(session.openingBalance);
     session.movements.forEach(m => {
         const amt = Number(m.amount);
@@ -95,12 +105,12 @@ export const SessionSummaryModal = ({ open, session, onCancel, onStartClose }: S
     expectedCashVES = round(expectedCashVES);
 
     const paymentMethodsList = [
-        { name: 'Efectivo (Bs)', amount: paymentSummary.CASH_VES, color: '#52c41a', symbol: 'Bs' },
-        { name: 'Efectivo (USD)', amount: paymentSummary.CASH_USD, color: '#13c2c2', symbol: '$' },
-        { name: 'Punto / Débito', amount: paymentSummary.DEBIT, color: '#1890ff', symbol: 'Bs' },
-        { name: 'Transferencias', amount: paymentSummary.TRANSFER, color: '#f5222d', symbol: 'Bs' },
-        { name: 'Créditos', amount: paymentSummary.CREDIT, color: '#faad14', symbol: 'Bs' },
-        { name: 'Otros', amount: paymentSummary.OTHER, color: '#d9d9d9', symbol: 'Bs' },
+        { name: 'Cash (Bs)', amount: paymentSummary.CASH_VES, color: '#52c41a', symbol: 'Bs' },
+        { name: 'Cash (USD)', amount: paymentSummary.CASH_USD, color: '#13c2c2', symbol: '$' },
+        { name: 'Debit Card / POS', amount: paymentSummary.DEBIT, color: '#1890ff', symbol: 'Bs' },
+        { name: 'Bank Transfers', amount: paymentSummary.TRANSFER, color: '#f5222d', symbol: 'Bs' },
+        { name: 'Store Credit', amount: paymentSummary.CREDIT, color: '#faad14', symbol: 'Bs' },
+        { name: 'Other', amount: paymentSummary.OTHER, color: '#d9d9d9', symbol: 'Bs' },
     ];
 
     return (
@@ -108,7 +118,7 @@ export const SessionSummaryModal = ({ open, session, onCancel, onStartClose }: S
             title={
                 <Space>
                     <ShopOutlined />
-                    <span>Resumen de Turno (Reporte X)</span>
+                    <span>Shift Summary (Report X)</span>
                 </Space>
             }
             open={open}
@@ -116,13 +126,13 @@ export const SessionSummaryModal = ({ open, session, onCancel, onStartClose }: S
             width={700}
             footer={[
                 <Button key="print" icon={<PrinterOutlined />} onClick={() => window.print()}>
-                    Imprimir Reporte
+                    Print Report
                 </Button>,
                 <Button key="close-session" danger type="primary" icon={<CloseCircleOutlined />} onClick={onStartClose}>
-                    Cerrar Caja
+                    Close Register
                 </Button>,
                 <Button key="ok" onClick={onCancel}>
-                    Cerrar
+                    Close
                 </Button>
             ]}
         >
@@ -130,7 +140,7 @@ export const SessionSummaryModal = ({ open, session, onCancel, onStartClose }: S
                 <Row gutter={24}>
                     <Col span={12}>
                         <Statistic
-                            title="Total Ventas (Bruto)"
+                            title="Total Sales (Gross)"
                             value={totalSales}
                             precision={2}
                             prefix="Bs."
@@ -139,7 +149,7 @@ export const SessionSummaryModal = ({ open, session, onCancel, onStartClose }: S
                     </Col>
                     <Col span={12}>
                         <Statistic
-                            title="Efectivo Esperado en Gaveta"
+                            title="Expected Cash in Drawer"
                             value={expectedCashVES}
                             precision={2}
                             prefix="Bs."
@@ -148,7 +158,7 @@ export const SessionSummaryModal = ({ open, session, onCancel, onStartClose }: S
                     </Col>
                 </Row>
 
-                <Divider>Desglose por Método de Pago</Divider>
+                <Divider>Breakdown by Payment Method</Divider>
 
                 <List
                     dataSource={paymentMethodsList}
@@ -165,11 +175,11 @@ export const SessionSummaryModal = ({ open, session, onCancel, onStartClose }: S
                 <div style={{ background: '#fafafa', padding: 16, borderRadius: 8, border: '1px solid #f0f0f0' }}>
                     <Row justify="space-between">
                         <Col>
-                            <Text type="secondary">Cajero asignado:</Text>
+                            <Text type="secondary">Assigned Cashier:</Text>
                             <Text strong style={{ marginLeft: 8 }}>{session.cashierId}</Text>
                         </Col>
                         <Col>
-                            <Text type="secondary">Apertura:</Text>
+                            <Text type="secondary">Opened At:</Text>
                             <Text strong style={{ marginLeft: 8 }}>{new Date(session.openedAt).toLocaleString()}</Text>
                         </Col>
                     </Row>

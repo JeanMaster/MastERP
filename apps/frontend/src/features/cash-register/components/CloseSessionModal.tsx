@@ -12,6 +12,10 @@ interface CloseSessionModalProps {
     onSuccess: () => void;
 }
 
+/**
+ * CloseSessionModal Component
+ * Modal to record the final cash count and close a cash session.
+ */
 export const CloseSessionModal = ({ open, session, onCancel, onSuccess }: CloseSessionModalProps) => {
     const [form] = Form.useForm();
     const [loading, setLoading] = useState(false);
@@ -67,7 +71,7 @@ export const CloseSessionModal = ({ open, session, onCancel, onSuccess }: CloseS
 
     const expectedBalance = calculateExpected();
 
-    // F9 Keyboard Shortcut
+    // F9 Keyboard Shortcut for quick closure
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
             if (!open) return;
@@ -88,16 +92,16 @@ export const CloseSessionModal = ({ open, session, onCancel, onSuccess }: CloseS
 
             const dto: CloseSessionDto = {
                 actualBalance: values.actualBalance,
-                closedBy: values.closedBy || 'Usuario',
+                closedBy: values.closedBy || 'User',
                 closingNotes: values.notes
             };
 
             await cashRegisterApi.closeSession(session.id, dto);
-            message.success('Caja cerrada exitosamente');
+            message.success('Cash closed successfully');
             form.resetFields();
             onSuccess();
         } catch (error: any) {
-            message.error(error.response?.data?.message || 'Error al cerrar caja');
+            message.error(error.response?.data?.message || 'Error closing cash register');
             console.error(error);
         } finally {
             setLoading(false);
@@ -115,26 +119,26 @@ export const CloseSessionModal = ({ open, session, onCancel, onSuccess }: CloseS
 
     return (
         <Modal
-            title="Cerrar Caja"
+            title="Close Cash Register"
             open={open}
             onCancel={handleCancel}
             onOk={handleSubmit}
             confirmLoading={loading}
-            okText="Cerrar Caja (F9)"
-            cancelText="Cancelar"
+            okText="Close Cash (F9)"
+            cancelText="Cancel"
             width={600}
         >
             <Alert
-                message="Resumen de la Sesión"
+                message="Session Summary"
                 description={
                     <Descriptions column={2} size="small" style={{ marginTop: 10 }}>
-                        <Descriptions.Item label="Apertura">
+                        <Descriptions.Item label="Opening Balance">
                             {formatVenezuelanPrice(Number(session.openingBalance))}
                         </Descriptions.Item>
-                        <Descriptions.Item label="Responsable">
+                        <Descriptions.Item label="Responsible">
                             {session.openedBy}
                         </Descriptions.Item>
-                        <Descriptions.Item label="Balance Esperado" span={2}>
+                        <Descriptions.Item label="Expected Balance" span={2}>
                             <strong style={{ fontSize: 16, color: '#1890ff' }}>
                                 {formatVenezuelanPrice(expectedBalance)}
                             </strong>
@@ -152,10 +156,10 @@ export const CloseSessionModal = ({ open, session, onCancel, onSuccess }: CloseS
             >
                 <Form.Item
                     name="actualBalance"
-                    label="Conteo Real"
+                    label="Actual Count"
                     rules={[
-                        { required: true, message: 'Ingresa el conteo real' },
-                        { type: 'number', min: 0, message: 'Debe ser mayor o igual a 0' }
+                        { required: true, message: 'Please enter the actual count' },
+                        { type: 'number', min: 0, message: 'Must be greater than or equal to 0' }
                     ]}
                 >
                     <InputNumber
@@ -171,7 +175,7 @@ export const CloseSessionModal = ({ open, session, onCancel, onSuccess }: CloseS
 
                 {actualBalance !== undefined && actualBalance !== null && (
                     <Alert
-                        message={variance === 0 ? '¡Caja cuadrada!' : (variance > 0 ? 'Sobrante' : 'Faltante')}
+                        message={variance === 0 ? 'Cash matched!' : (variance > 0 ? 'Surplus' : 'Shortage')}
                         description={
                             <div style={{ fontSize: 18, fontWeight: 'bold' }}>
                                 {variance >= 0 ? '+' : ''}{formatVenezuelanPrice(variance)}
@@ -185,20 +189,20 @@ export const CloseSessionModal = ({ open, session, onCancel, onSuccess }: CloseS
 
                 <Form.Item
                     name="closedBy"
-                    label="Cerrado por"
-                    rules={[{ required: true, message: 'Ingresa el nombre' }]}
-                    initialValue="Usuario"
+                    label="Closed by"
+                    rules={[{ required: true, message: 'Please enter a name' }]}
+                    initialValue="User"
                 >
-                    <Input placeholder="Nombre del responsable" />
+                    <Input placeholder="Responsible name" />
                 </Form.Item>
 
                 <Form.Item
                     name="notes"
-                    label="Notas de Cierre (opcional)"
+                    label="Closing Notes (Optional)"
                 >
                     <TextArea
                         rows={3}
-                        placeholder="Observaciones, explicación de varianza, etc..."
+                        placeholder="Observations, variance explanation, etc..."
                     />
                 </Form.Item>
             </Form>

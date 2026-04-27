@@ -1,40 +1,32 @@
 import { ApiProperty } from '@nestjs/swagger';
 import {
+  IsArray,
   IsNumber,
   IsOptional,
   IsString,
-  Min,
-  IsArray,
   ValidateNested,
 } from 'class-validator';
 import { Type } from 'class-transformer';
-import { CashCountItemDto } from './verify-session.dto';
+import { CashCountItemDto } from './open-session.dto';
 
 export class CloseSessionDto {
-  @ApiProperty({ description: 'Saldo real contado' })
+  @ApiProperty({ description: 'Actual balance found in the drawer' })
   @IsNumber()
-  @Min(0)
   actualBalance: number;
 
-  @ApiProperty({ description: 'Usuario que cierra', required: false })
-  @IsOptional()
-  @IsString()
-  closedBy?: string;
-
-  @ApiProperty({ description: 'Notas de cierre', required: false })
+  @ApiProperty({ required: false, description: 'Closing notes or observations' })
   @IsOptional()
   @IsString()
   closingNotes?: string;
 
-  @ApiProperty({ type: [CashCountItemDto], required: false })
+  @ApiProperty({ type: [CashCountItemDto], required: false, description: 'Closing cash breakdown' })
   @IsOptional()
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => CashCountItemDto)
   items?: CashCountItemDto[];
 
-  @ApiProperty({ description: 'Exchange rate used for USD', required: false })
   @IsOptional()
-  @IsNumber()
-  exchangeRate?: number;
+  @IsString()
+  closedBy?: string;
 }

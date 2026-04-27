@@ -6,16 +6,23 @@ import { CreateTaxRetentionDto } from './dto/create-tax-retention.dto';
 export class TaxRetentionsService {
   constructor(private prisma: PrismaService) {}
 
+  /**
+   * Creates a new tax retention record (IVA or ISLR).
+   * Automatically updates the associated invoice (client) or purchase (supplier) balance
+   * and records a corresponding payment/purchase-payment record.
+   * @param createTaxRetentionDto The retention data.
+   * @returns The created tax retention record.
+   */
   async create(createTaxRetentionDto: CreateTaxRetentionDto) {
     const { invoiceId, purchaseId, amount, ...retentionData } = createTaxRetentionDto;
 
-    return await this.prisma.$transaction(async (prisma) => {
+    return this.prisma.$transaction(async (prisma) => {
       // 1. Check for duplicate voucher number
       const existing = await prisma.taxRetention.findUnique({
         where: { voucherNumber: retentionData.voucherNumber },
       });
       if (existing) {
-        throw new BadRequestException(`El número de comprobante ${retentionData.voucherNumber} ya existe`);
+        throw new BadRequestException(`Voucher number ${retentionData.voucherNumber} already exists`);
       }
 
       // 2. Create the retention record
@@ -35,7 +42,7 @@ export class TaxRetentionsService {
         });
 
         if (!invoice) {
-          throw new BadRequestException('La factura especificada no existe');
+          throw new BadRequestException('The specified invoice does not exist');
         }
 
         // Register a payment record of type RETENTION
@@ -45,7 +52,7 @@ export class TaxRetentionsService {
             amount,
             paymentMethod: `RETENTION_${retentionData.type}`,
             reference: retentionData.voucherNumber,
-            notes: `Retención recibida - Comprobante #${retentionData.voucherNumber}`,
+            notes: `Retention received - Voucher #${retentionData.voucherNumber}`,
           },
         });
 
@@ -70,7 +77,7 @@ export class TaxRetentionsService {
         });
 
         if (!purchase) {
-          throw new BadRequestException('La compra especificada no existe');
+          throw new BadRequestException('The specified purchase does not exist');
         }
 
         // Register a purchase payment record of type RETENTION
@@ -80,7 +87,7 @@ export class TaxRetentionsService {
             amount,
             paymentMethod: `RETENTION_${retentionData.type}`,
             reference: retentionData.voucherNumber,
-            notes: `Retención emitida - Comprobante #${retentionData.voucherNumber}`,
+            notes: `Retention issued - Voucher #${retentionData.voucherNumber}`,
           },
         });
 
@@ -93,7 +100,7 @@ export class TaxRetentionsService {
           data: {
             balance: newBalance,
             paidAmount: newPaidAmount,
-            paymentStatus: newBalance <= 0 ? 'PAID' : 'PARTIAL',
+            paymentStatus: (newBalance <= 0 ? 'PAID' : 'PARTIAL') as any,
           },
         });
       }
@@ -102,6 +109,9 @@ export class TaxRetentionsService {
     });
   }
 
+  /**
+   * Retrieves all tax retention records.
+   */
   async findAll() {
     return this.prisma.taxRetention.findMany({
       include: {
@@ -116,6 +126,9 @@ export class TaxRetentionsService {
     });
   }
 
+  /**
+   * Retrieves a single tax retention record by its ID.
+   */
   async findOne(id: string) {
     return this.prisma.taxRetention.findUnique({
       where: { id },
@@ -126,22 +139,98 @@ export class TaxRetentionsService {
     });
   }
 
+  /**
+   * Deletes a tax retention record and reverts its impact on the associated invoice or purchase.
+   */
   async remove(id: string) {
-    // ... (keep existing code)
+    const retention = await this.prisma.taxRetention.findUnique({
+      where: { id },
+    });
+
+    if (!retention) {
+      throw new BadRequestException('Retention record not found');
+    }
+
+    return this.prisma.$transaction(async (prisma) => {
+      // 1. Revert Invoice Impact
+      if (retention.invoiceId) {
+        const invoice = await prisma.invoice.findUnique({
+          where: { id: retention.invoiceId },
+        });
+
+        if (invoice) {
+          const newBalance = Number(invoice.balance) + Number(retention.amount);
+          const newPaidAmount = Number(invoice.paidAmount) - Number(retention.amount);
+
+          await prisma.invoice.update({
+            where: { id: retention.invoiceId },
+            data: {
+              balance: newBalance,
+              paidAmount: Math.max(0, newPaidAmount),
+              status: (newPaidAmount <= 0 ? 'PENDING' : 'PARTIAL') as any,
+            },
+          });
+
+          // Delete associated payment record
+          await prisma.payment.deleteMany({
+            where: {
+              invoiceId: retention.invoiceId,
+              reference: retention.voucherNumber,
+              paymentMethod: { startsWith: 'RETENTION_' },
+            },
+          });
+        }
+      }
+
+      // 2. Revert Purchase Impact
+      if (retention.purchaseId) {
+        const purchase = await prisma.purchase.findUnique({
+          where: { id: retention.purchaseId },
+        });
+
+        if (purchase) {
+          const newBalance = Number(purchase.balance) + Number(retention.amount);
+          const newPaidAmount = Number(purchase.paidAmount) - Number(retention.amount);
+
+          await prisma.purchase.update({
+            where: { id: retention.purchaseId },
+            data: {
+              balance: newBalance,
+              paidAmount: Math.max(0, newPaidAmount),
+              paymentStatus: (newPaidAmount <= 0 ? 'PENDING' : 'PARTIAL') as any,
+            },
+          });
+
+          // Delete associated purchase payment record
+          await prisma.purchasePayment.deleteMany({
+            where: {
+              purchaseId: retention.purchaseId,
+              reference: retention.voucherNumber,
+              paymentMethod: { startsWith: 'RETENTION_' },
+            },
+          });
+        }
+      }
+
+      // 3. Delete the retention record
+      return prisma.taxRetention.delete({
+        where: { id },
+      });
+    });
   }
 
   /**
-   * Generar el archivo TXT para el SENIAT (Retenciones de IVA)
+   * Generates a TXT file for SENIAT (Venezuelan Tax Authority) compliance (IVA retentions).
    */
   async generateSeniatTxt(startDate?: Date, endDate?: Date): Promise<string> {
     const company = await this.prisma.companySettings.findFirst();
     if (!company) {
-      throw new BadRequestException('Debe configurar los datos de la empresa (RIF) antes de exportar.');
+      throw new BadRequestException('Company settings (RIF) must be configured before exporting.');
     }
 
     const where: any = {
       type: 'IVA',
-      purchaseId: { not: null }, // Solo retenciones practicadas a proveedores
+      purchaseId: { not: null }, // Only retentions practiced to suppliers
     };
 
     if (startDate || endDate) {
@@ -161,7 +250,7 @@ export class TaxRetentionsService {
     });
 
     if (retentions.length === 0) {
-      throw new BadRequestException('No se encontraron retenciones en el periodo seleccionado.');
+      throw new BadRequestException('No retentions found in the selected period.');
     }
 
     const cleanRif = (rif: string) => rif.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
@@ -176,26 +265,25 @@ export class TaxRetentionsService {
       const p = ret.purchase;
       if (!p) continue;
 
-      const period = `${ret.voucherDate.getFullYear()}${ (ret.voucherDate.getMonth() + 1).toString().padStart(2, '0') }`;
+      const period = `${ret.voucherDate.getFullYear()}${(ret.voucherDate.getMonth() + 1).toString().padStart(2, '0')}`;
       
-      // Columnas según estándar SENIAT (TAB-delimited)
       const row = [
-        cleanRif(company.rif),       // A: RIF Agente
-        period,                      // B: Período (AAAAMM)
-        formatDate(p.invoiceDate),    // C: Fecha Factura (DD-MM-AAAA)
-        'C',                         // D: Tipo Operación (Siempre C para compras)
-        '01',                        // E: Tipo Documento (01=Factura, asumiendo factura)
-        cleanRif(p.supplier.rif),    // F: RIF Proveedor
-        p.invoiceNumber || '',       // G: Número Documento
-        p.invoiceControlNumber || '',// H: Número Control
-        p.total.toFixed(2),          // I: Monto Total
-        ret.baseAmount.toFixed(2),   // J: Base Imponible
-        ret.amount.toFixed(2),       // K: Monto Retenido
-        '0',                         // L: Documento Afectado (0 si no aplica)
-        ret.voucherNumber,           // M: Número Comprobante
-        '0.00',                      // N: Monto Exento (simplificado)
-        '16.00',                     // O: Alícuota (ej. 16.00)
-        '0',                         // P: Expediente (0 si no aplica)
+        cleanRif(company.rif),
+        period,
+        formatDate(p.invoiceDate),
+        'C',
+        '01',
+        cleanRif(p.supplier.rif),
+        p.invoiceNumber || '',
+        p.invoiceControlNumber || '',
+        p.total.toFixed(2),
+        ret.baseAmount.toFixed(2),
+        ret.amount.toFixed(2),
+        '0',
+        ret.voucherNumber,
+        '0.00',
+        '16.00',
+        '0',
       ];
 
       txt += row.join('\t') + '\r\n';

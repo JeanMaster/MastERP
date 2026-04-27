@@ -205,41 +205,41 @@ export const CashRegisterPage = () => {
 
     const getMovementTypeLabel = (type: string) => {
         const labels: Record<string, string> = {
-            SALE: 'Venta',
-            EXPENSE: 'Gasto',
-            DEPOSIT: 'Retiro de Caja',
-            WITHDRAWAL: 'Ingreso a Caja',
-            OPENING: 'Apertura',
-            CLOSING: 'Cierre',
-            ADJUSTMENT: 'Ajuste de Caja',
-            CHANGE: 'Vuelto Entregado'
+            SALE: 'Sale',
+            EXPENSE: 'Expense',
+            DEPOSIT: 'Cash Withdrawal',
+            WITHDRAWAL: 'Cash Deposit',
+            OPENING: 'Opening',
+            CLOSING: 'Closing',
+            ADJUSTMENT: 'Cash Adjustment',
+            CHANGE: 'Change Given'
         };
         return labels[type] || type;
     };
 
     const i18nPaymentMethod = (method: string) => {
         const labels: Record<string, string> = {
-            CASH: 'Efectivo Bs',
-            CURRENCY_USD: 'Efectivo $',
-            DEBIT: 'Tarjeta Débito',
-            MOBILE: 'Pago Móvil',
-            TRANSFER: 'Transferencia',
-            CREDIT: 'Crédito',
-            CURRENCY_UDT: 'Otros'
+            CASH: 'Cash Bs',
+            CURRENCY_USD: 'Cash $',
+            DEBIT: 'Debit Card',
+            MOBILE: 'Mobile Payment',
+            TRANSFER: 'Transfer',
+            CREDIT: 'Credit',
+            CURRENCY_UDT: 'Other'
         };
         return labels[method] || method;
     };
 
     const movementsColumns = [
         {
-            title: 'Hora',
+            title: 'Time',
             dataIndex: 'createdAt',
             key: 'time',
             width: 80,
             render: (date: string) => dayjs(date).format('HH:mm')
         },
         {
-            title: 'Tipo',
+            title: 'Type',
             dataIndex: 'type',
             key: 'type',
             width: 120,
@@ -251,19 +251,19 @@ export const CashRegisterPage = () => {
             )
         },
         {
-            title: 'Descripción',
+            title: 'Description',
             dataIndex: 'description',
             key: 'description'
         },
         {
-            title: 'Monto',
+            title: 'Amount',
             dataIndex: 'amount',
             key: 'amount',
             width: 140,
             align: 'right' as const,
             render: (amount: number, record: CashMovement) => {
                 const isPositive = ['SALE', 'WITHDRAWAL', 'OPENING', 'ADJUSTMENT'].includes(record.type) && amount >= 0;
-                // Si es ADJUSTMENT pero el monto es negativo, se verá rojo.
+                // If it's an adjustment but the amount is negative, it will show red.
                 const color = isPositive ? '#52c41a' : '#ff4d4f';
 
                 if (record.currencyCode && record.currencyCode !== 'VES') {
@@ -291,12 +291,12 @@ export const CashRegisterPage = () => {
 
     const historyColumns = [
         {
-            title: 'Fecha',
+            title: 'Date',
             key: 'date',
             width: 150,
             render: (_: any, record: CashSession) => (
                 <div>
-                    <div><strong>{dayjs(record.openedAt).format('DD/MM/YYYY')}</strong></div>
+                    <div><strong>{dayjs(record.openedAt).format('MM/DD/YYYY')}</strong></div>
                     <div style={{ fontSize: 11, color: '#888' }}>
                         {dayjs(record.openedAt).format('HH:mm')} - {record.closedAt ? dayjs(record.closedAt).format('HH:mm') : '-'}
                     </div>
@@ -304,20 +304,20 @@ export const CashRegisterPage = () => {
             )
         },
         {
-            title: 'Responsable',
+            title: 'Responsible',
             key: 'user',
             width: 120,
             render: (_: any, record: CashSession) => (
                 <div>
                     <div>{record.openedBy}</div>
                     {record.closedBy && record.closedBy !== record.openedBy && (
-                        <div style={{ fontSize: 11, color: '#888' }}>Cerró: {record.closedBy}</div>
+                        <div style={{ fontSize: 11, color: '#888' }}>Closed by: {record.closedBy}</div>
                     )}
                 </div>
             )
         },
         {
-            title: 'Apertura',
+            title: 'Opening',
             dataIndex: 'openingBalance',
             key: 'opening',
             width: 100,
@@ -325,7 +325,7 @@ export const CashRegisterPage = () => {
             render: (amount: number) => formatVenezuelanPrice(Number(amount))
         },
         {
-            title: 'Esperado',
+            title: 'Expected',
             dataIndex: 'expectedBalance',
             key: 'expected',
             width: 100,
@@ -333,7 +333,7 @@ export const CashRegisterPage = () => {
             render: (amount: number) => formatVenezuelanPrice(Number(amount || 0))
         },
         {
-            title: 'Real',
+            title: 'Actual',
             dataIndex: 'actualBalance',
             key: 'actual',
             width: 100,
@@ -341,7 +341,7 @@ export const CashRegisterPage = () => {
             render: (amount: number) => formatVenezuelanPrice(Number(amount || 0))
         },
         {
-            title: 'Varianza',
+            title: 'Variance',
             dataIndex: 'variance',
             key: 'variance',
             width: 100,
@@ -361,11 +361,11 @@ export const CashRegisterPage = () => {
     const getStatusTag = (status: string) => {
         switch (status) {
             case 'OPEN':
-                return <Tag color="green" style={{ fontSize: 13, padding: '2px 8px' }}>● ABIERTA</Tag>;
+                return <Tag color="green" style={{ fontSize: 13, padding: '2px 8px' }}>● OPEN</Tag>;
             case 'AWAITING_CLOSE':
-                return <Tag color="warning" style={{ fontSize: 13, padding: '2px 8px' }}>● SOLICITA CIERRE</Tag>;
+                return <Tag color="warning" style={{ fontSize: 13, padding: '2px 8px' }}>● AWAITING CLOSE</Tag>;
             case 'CLOSED':
-                return <Tag color="default" style={{ fontSize: 13, padding: '2px 8px' }}>● CERRADA</Tag>;
+                return <Tag color="default" style={{ fontSize: 13, padding: '2px 8px' }}>● CLOSED</Tag>;
             default:
                 return <Tag>{status}</Tag>;
         }
@@ -384,18 +384,18 @@ export const CashRegisterPage = () => {
     const handleApproveClose = async (sessionId: string) => {
         try {
             await cashRegisterApi.approveClose(sessionId, user?.username || 'Admin');
-            message.success('Cierre de caja autorizado correctamente');
+            message.success('Cash close authorized successfully');
             refetch();
             refetchHistory();
             refetchRegisters();
         } catch (error: any) {
-            message.error(error.message || 'Error al autorizar cierre');
+            message.error(error.message || 'Error authorizing close');
         }
     };
 
     const registerColumns = [
         {
-            title: 'Nombre de la Caja',
+            title: 'Cash Register Name',
             dataIndex: 'name',
             key: 'name',
             render: (text: string, record: CashRegister) => (
@@ -406,23 +406,23 @@ export const CashRegisterPage = () => {
             )
         },
         {
-            title: 'Estado',
+            title: 'Status',
             key: 'status',
             render: (_: any, record: CashRegister) => (
                 record.activeSession
                     ? getStatusTag(record.activeSession.status)
-                    : <Tag color="default">● CERRADA</Tag>
+                    : <Tag color="default">● CLOSED</Tag>
             )
         },
         {
-            title: 'Responsable',
+            title: 'Responsible',
             key: 'manager',
             render: (_: any, record: CashRegister) => (
                 record.activeSession?.cashierId || record.activeSession?.openedBy || '-'
             )
         },
         {
-            title: 'Dinero en Gaveta',
+            title: 'Cash in Drawer',
             key: 'balance',
             align: 'right' as const,
             render: (_: any, record: CashRegister) => (
@@ -432,7 +432,7 @@ export const CashRegisterPage = () => {
             )
         },
         {
-            title: 'Acciones',
+            title: 'Actions',
             key: 'actions',
             align: 'right' as const,
             render: (_: any, record: CashRegister) => (
@@ -443,7 +443,7 @@ export const CashRegisterPage = () => {
                             icon={<PlusOutlined />}
                             onClick={() => handleOpenRegister(record.id)}
                         >
-                            Abrir
+                            Open
                         </Button>
                     ) : (
                         <>
@@ -451,7 +451,7 @@ export const CashRegisterPage = () => {
                                 icon={<EyeOutlined />}
                                 onClick={() => handleSelectRegister(record.id)}
                             >
-                                Ver Detalle
+                                View Details
                             </Button>
                             <Button
                                 type="primary"
@@ -462,7 +462,7 @@ export const CashRegisterPage = () => {
                                     setIsTransferToTreasuryOpen(true);
                                 }}
                             >
-                                Tesorería
+                                Treasury
                             </Button>
                             <Button
                                 danger
@@ -473,7 +473,7 @@ export const CashRegisterPage = () => {
                                     setIsCloseModalVisible(true);
                                 }}
                             >
-                                Cerrar
+                                Close
                             </Button>
                         </>
                     )}
@@ -483,14 +483,14 @@ export const CashRegisterPage = () => {
     ];
 
     const renderCashCountTable = (counts: any[]) => {
-        if (!counts || counts.length === 0) return <Empty description="No se reportó desglose de efectivo" image={Empty.PRESENTED_IMAGE_SIMPLE} />;
+        if (!counts || counts.length === 0) return <Empty description="No cash breakdown reported" image={Empty.PRESENTED_IMAGE_SIMPLE} />;
 
         const vesItems = counts.filter(c => c.currencyCode === 'VES');
         const usdItems = counts.filter(c => c.currencyCode === 'USD');
 
         const columns = [
-            { title: 'Denominación', dataIndex: 'value', key: 'value', render: (val: any, record: any) => `${Number(val).toFixed(2)} ${record.currencyCode}` },
-            { title: 'Cantidad', dataIndex: 'quantity', key: 'quantity', align: 'center' as const },
+            { title: 'Denomination', dataIndex: 'value', key: 'value', render: (val: any, record: any) => `${Number(val).toFixed(2)} ${record.currencyCode}` },
+            { title: 'Quantity', dataIndex: 'quantity', key: 'quantity', align: 'center' as const },
             { title: 'Subtotal', dataIndex: 'total', key: 'total', align: 'right' as const, render: (val: any, record: any) => `${Number(val).toFixed(2)} ${record.currencyCode}` },
         ];
 
@@ -512,7 +512,7 @@ export const CashRegisterPage = () => {
                     />
                 </Col>
                 <Col span={12}>
-                    <Title level={5}>USD (Dólares)</Title>
+                    <Title level={5}>USD (Dollars)</Title>
                     <Table
                         dataSource={usdItems}
                         columns={columns}
@@ -543,19 +543,19 @@ export const CashRegisterPage = () => {
                         onClick={() => setRegisterId('')}
                         style={{ marginBottom: 16 }}
                     >
-                        Volver al Panel de Cajas
+                        Back to Registers Panel
                     </Button>
 
                     {activeSession.status === 'AWAITING_CLOSE' ? (
                         <Alert
-                            message={<Title level={4} style={{ margin: 0, color: '#856404' }}>📢 {activeSession.register.name.toUpperCase()} SOLICITA CIERRE</Title>}
+                            message={<Title level={4} style={{ margin: 0, color: '#856404' }}>📢 {activeSession.register.name.toUpperCase()} REQUESTS CLOSE</Title>}
                             description={
                                 <Space direction="vertical" style={{ width: '100%' }}>
-                                    <Text>El cajero ha realizado el arqueo y solicita cerrar la sesión. Revise los montos antes de autorizar.</Text>
+                                    <Text>The cashier has completed the count and requests to close the session. Review the amounts before authorizing.</Text>
                                     <div style={{ marginTop: 8 }}>
-                                        <Text strong>Contado por Cajero: {formatVenezuelanPrice(Number(activeSession.actualBalance))}</Text>
+                                        <Text strong>Counted by Cashier: {formatVenezuelanPrice(Number(activeSession.actualBalance))}</Text>
                                         <br />
-                                        <Text type="secondary">Varianza reportada: {formatVenezuelanPrice(Number(activeSession.variance))}</Text>
+                                        <Text type="secondary">Reported variance: {formatVenezuelanPrice(Number(activeSession.variance))}</Text>
                                     </div>
                                     <Button
                                         type="primary"
@@ -563,7 +563,7 @@ export const CashRegisterPage = () => {
                                         style={{ marginTop: 12, backgroundColor: '#52c41a', borderColor: '#52c41a' }}
                                         onClick={() => handleApproveClose(activeSession.id)}
                                     >
-                                        Autorizar Cierre de Caja
+                                        Authorize Cash Close
                                     </Button>
                                 </Space>
                             }
@@ -573,7 +573,7 @@ export const CashRegisterPage = () => {
                         />
                     ) : (
                         <Alert
-                            message={`Sesión iniciada: ${dayjs(activeSession.openedAt).format('DD/MM/YYYY HH:mm')}`}
+                            message={`Session started: ${dayjs(activeSession.openedAt).format('MM/DD/YYYY HH:mm')}`}
                             type="info"
                             showIcon
                             style={{ marginBottom: 16 }}
@@ -585,7 +585,7 @@ export const CashRegisterPage = () => {
                         <Col xs={24} sm={12} md={6}>
                             <Card>
                                 <Statistic
-                                    title="Apertura"
+                                    title="Opening"
                                     value={Number(activeSession.openingBalance)}
                                     precision={2}
                                     prefix="Bs."
@@ -596,7 +596,7 @@ export const CashRegisterPage = () => {
                         <Col xs={24} sm={12} md={6}>
                             <Card>
                                 <Statistic
-                                    title="Ventas Totales"
+                                    title="Total Sales"
                                     value={activeSession.sales?.reduce((acc, curr) => acc + Number(curr.total), 0) || 0}
                                     precision={2}
                                     prefix="Bs."
@@ -607,7 +607,7 @@ export const CashRegisterPage = () => {
                         <Col xs={24} sm={12} md={6}>
                             <Card>
                                 <Statistic
-                                    title="Gastos / Retiros"
+                                    title="Expenses / Withdrawals"
                                     value={summary.expenses + summary.deposits}
                                     precision={2}
                                     prefix="Bs."
@@ -618,7 +618,7 @@ export const CashRegisterPage = () => {
                         <Col xs={24} sm={12} md={6}>
                             <Card style={{ borderColor: '#1890ff', borderWidth: 2 }}>
                                 <Statistic
-                                    title="Efectivo en Gaveta (Esperado)"
+                                    title="Cash in Drawer (Expected)"
                                     value={summary.expected}
                                     precision={2}
                                     prefix="Bs."
@@ -629,7 +629,7 @@ export const CashRegisterPage = () => {
                     </Row>
 
                     {/* Payment Pillar Breakdown */}
-                    <Card title="Resumen por Formas de Pago" style={{ marginBottom: 24 }}>
+                    <Card title="Payment Method Summary" style={{ marginBottom: 24 }}>
                         <Row gutter={[16, 16]}>
                             {Object.entries(summary.methodsBreakdown).map(([method, amount]) => (
                                 amount > 0 && (
@@ -655,7 +655,7 @@ export const CashRegisterPage = () => {
                                 icon={<DollarOutlined />}
                                 onClick={() => setIsAddMovementOpen(true)}
                             >
-                                Registrar Movimiento
+                                Register Movement
                             </Button>
                             <Button
                                 type="primary"
@@ -663,13 +663,13 @@ export const CashRegisterPage = () => {
                                 style={{ backgroundColor: '#722ed1', borderColor: '#722ed1' }}
                                 onClick={() => setIsTransferToTreasuryOpen(true)}
                             >
-                                Trasladar a Tesorería
+                                Transfer to Treasury
                             </Button>
                             <Button
                                 icon={<ReloadOutlined />}
                                 onClick={() => refetch()}
                             >
-                                Actualizar
+                                Update
                             </Button>
                             <Button
                                 danger
@@ -677,25 +677,25 @@ export const CashRegisterPage = () => {
                                 icon={<LogoutOutlined />}
                                 onClick={() => setIsCloseModalVisible(true)}
                             >
-                                Cerrar Caja
+                                Close Cash
                             </Button>
                         </Space>
                     </Card>
 
                     {/* Reported Cash Details */}
                     {activeSession?.cashCounts && activeSession.cashCounts.length > 0 && (
-                        <Card title={<Space><InboxOutlined /> Arqueo de Efectivo Reportado por el Cajero</Space>} style={{ marginBottom: 24 }}>
+                        <Card title={<Space><InboxOutlined /> Cash Count Reported by Cashier</Space>} style={{ marginBottom: 24 }}>
                             <Tabs
                                 type="card"
                                 items={[
                                     {
                                         key: 'closing',
-                                        label: 'Arqueo de Cierre',
+                                        label: 'Closing Count',
                                         children: renderCashCountTable(activeSession.cashCounts.filter(c => c.type === 'CLOSING'))
                                     },
                                     {
                                         key: 'verification',
-                                        label: 'Arqueo de Apertura',
+                                        label: 'Opening Count',
                                         children: renderCashCountTable(activeSession.cashCounts.filter(c => c.type === 'VERIFICATION'))
                                     }
                                 ].filter(item => {
@@ -714,7 +714,7 @@ export const CashRegisterPage = () => {
                             items={[
                                 {
                                     key: 'movements',
-                                    label: <Space><HistoryOutlined /> Movimientos Generales</Space>,
+                                    label: <Space><HistoryOutlined /> General Movements</Space>,
                                     children: (
                                         <Table
                                             dataSource={activeSession.movements}
@@ -727,32 +727,32 @@ export const CashRegisterPage = () => {
                                 },
                                 {
                                     key: 'sales',
-                                    label: <Space><ShopOutlined /> Detalle de Ventas</Space>,
+                                    label: <Space><ShopOutlined /> Sales Details</Space>,
                                     children: (
                                         <Table
                                             dataSource={activeSession.sales}
                                             columns={[
                                                 {
-                                                    title: 'Factura',
+                                                    title: 'Invoice',
                                                     dataIndex: 'invoiceNumber',
                                                     key: 'invoice',
                                                     render: (text: string) => <Text strong>{text}</Text>
                                                 },
                                                 {
-                                                    title: 'Hora',
+                                                    title: 'Time',
                                                     dataIndex: 'date',
                                                     key: 'time',
                                                     render: (date: string) => dayjs(date).format('HH:mm')
                                                 },
                                                 {
-                                                    title: 'Monto Total',
+                                                    title: 'Total Amount',
                                                     dataIndex: 'total',
                                                     key: 'total',
                                                     align: 'right',
                                                     render: (total: number) => formatVenezuelanPrice(Number(total))
                                                 },
                                                 {
-                                                    title: 'Métodos de Pago',
+                                                    title: 'Payment Methods',
                                                     dataIndex: 'paymentMethod',
                                                     key: 'methods',
                                                     render: (methods: string) => {
@@ -790,7 +790,7 @@ export const CashRegisterPage = () => {
         if (user?.role === 'ADMIN') {
             return (
                 <Card
-                    title={<Title level={4} style={{ margin: 0 }}>📊 Panel de Control de Cajas</Title>}
+                    title={<Title level={4} style={{ margin: 0 }}>📊 Cash Registers Dashboard</Title>}
                     extra={<Button icon={<ReloadOutlined />} onClick={() => refetchRegisters()} />}
                 >
                     <Table
@@ -807,7 +807,7 @@ export const CashRegisterPage = () => {
         return (
             <Card>
                 <Empty
-                    description="No hay sesión activa"
+                    description="No active session"
                     image={Empty.PRESENTED_IMAGE_SIMPLE}
                 >
                     <Button
@@ -816,7 +816,7 @@ export const CashRegisterPage = () => {
                         icon={<PlusOutlined />}
                         onClick={() => setIsOpenModalVisible(true)}
                     >
-                        Abrir Caja
+                        Open Cash
                     </Button>
                 </Empty>
             </Card>
@@ -826,12 +826,12 @@ export const CashRegisterPage = () => {
     return (
         <div style={{ padding: 24 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-                <Title level={2}>🏦 Caja</Title>
+                <Title level={2}>🏦 Cashier</Title>
                 {activeSession && (
                     <Space>
                         {getStatusTag(activeSession.status)}
                         <Text type="secondary">
-                            {activeSession.register.name} | Abierta por: <strong>{activeSession.openedBy}</strong>
+                            {activeSession.register.name} | Opened by: <strong>{activeSession.openedBy}</strong>
                         </Text>
                     </Space>
                 )}
@@ -843,14 +843,14 @@ export const CashRegisterPage = () => {
                 items={[
                     {
                         key: 'current',
-                        label: 'Panel de Control',
+                        label: 'Control Panel',
                         children: renderCurrentTab()
                     },
                     {
                         key: 'history',
                         label: (
                             <span>
-                                <HistoryOutlined /> Historial Global
+                                <HistoryOutlined /> Global History
                             </span>
                         ),
                         children: (
@@ -868,13 +868,13 @@ export const CashRegisterPage = () => {
                                         },
                                         expandedRowRender: (record: CashSession) => (
                                             <div style={{ padding: '0 24px' }}>
-                                                <Title level={5}>Sesión de Caja: {record.register.name}</Title>
+                                                <Title level={5}>Cash Session: {record.register.name}</Title>
                                                 <Tabs
                                                     size="small"
                                                     items={[
                                                         {
                                                             key: 'movements',
-                                                            label: 'Movimientos Generales',
+                                                            label: 'General Movements',
                                                             children: (
                                                                 <Table
                                                                     dataSource={record.movements}
@@ -887,14 +887,14 @@ export const CashRegisterPage = () => {
                                                         },
                                                         {
                                                             key: 'sales',
-                                                            label: 'Detalle de Ventas',
+                                                            label: 'Sales Details',
                                                             children: (
                                                                 <Table
                                                                     dataSource={record.sales}
                                                                     columns={[
-                                                                        { title: 'Factura', dataIndex: 'invoiceNumber', key: 'invoice' },
-                                                                        { title: 'Monto Total', dataIndex: 'total', key: 'total', align: 'right', render: (total: number) => formatVenezuelanPrice(Number(total)) },
-                                                                        { title: 'Método de Pago', dataIndex: 'paymentMethod', key: 'methods', render: (m) => i18nPaymentMethod(m.split(':')[0]) }
+                                                                        { title: 'Invoice', dataIndex: 'invoiceNumber', key: 'invoice' },
+                                                                        { title: 'Total Amount', dataIndex: 'total', key: 'total', align: 'right', render: (total: number) => formatVenezuelanPrice(Number(total)) },
+                                                                        { title: 'Payment Method', dataIndex: 'paymentMethod', key: 'methods', render: (m) => i18nPaymentMethod(m.split(':')[0]) }
                                                                     ]}
                                                                     rowKey="id"
                                                                     pagination={false}
@@ -907,7 +907,7 @@ export const CashRegisterPage = () => {
 
                                                 {record.cashCounts && record.cashCounts.length > 0 && (
                                                     <div style={{ marginTop: 24 }}>
-                                                        <Title level={5}>Arqueo de Efectivo Reportado</Title>
+                                                        <Title level={5}>Reported Cash Count</Title>
                                                         {renderCashCountTable(record.cashCounts.filter(c => c.type === 'CLOSING'))}
                                                     </div>
                                                 )}
@@ -920,13 +920,13 @@ export const CashRegisterPage = () => {
                                                 icon={<EyeOutlined />}
                                                 onClick={(e) => onExpand(record, e)}
                                             >
-                                                {expanded ? 'Ocultar' : 'Ver detalles'}
+                                                {expanded ? 'Hide' : 'View details'}
                                             </Button>
                                         )
                                     }}
                                     pagination={{
                                         pageSize: 10,
-                                        showTotal: (total) => `Total: ${total} sesiones`
+                                        showTotal: (total) => `Total: ${total} sessions`
                                     }}
                                 />
                             </Card>
@@ -936,7 +936,7 @@ export const CashRegisterPage = () => {
                         key: 'config',
                         label: (
                             <span>
-                                <SettingOutlined /> Gestión de Cajas
+                                <SettingOutlined /> Registers Management
                             </span>
                         ),
                         children: <RegistersManagement />

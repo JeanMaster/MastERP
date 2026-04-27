@@ -1,4 +1,4 @@
-import { Card, Row, Col, Statistic, Table, Button, Tag, Spin, Empty } from 'antd';
+import { Card, Row, Col, Statistic, Table, Button, Tag, Spin, Empty, Typography } from 'antd';
 import { useQuery } from '@tanstack/react-query';
 import { marketingApi } from '../../services/marketingApi';
 import { 
@@ -9,49 +9,59 @@ import {
 } from '@ant-design/icons';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip as RechartsTooltip } from 'recharts';
 
+const { Title, Text } = Typography;
+
+/**
+ * MarketingDashboard Component
+ * Central control hub for customer engagement intelligence.
+ * Visualizes customer segmentation (tiers), churn risk analysis, and provides actionable shortcuts for upcoming events like birthdays.
+ */
 export const MarketingDashboard = () => {
     const { data: stats, isLoading } = useQuery({
         queryKey: ['marketing-stats'],
         queryFn: marketingApi.getStats,
-        refetchInterval: 60000 // Refresh every minute
+        refetchInterval: 60000 // Refresh every minute for real-time engagement
     });
 
     if (isLoading) {
         return (
             <div style={{ textAlign: 'center', padding: '50px' }}>
-                <Spin size="large" tip="Cargando inteligencia de marketing..." />
+                <Spin size="large" tip="Loading marketing intelligence..." />
             </div>
         );
     }
 
-    if (!stats) return <Empty description="No hay datos de marketing disponibles" />;
+    if (!stats) return <Empty description="No marketing data available" />;
 
     const tierData = [
-        { name: 'VIP (Diamante)', value: stats.tiers.vip, color: '#722ed3' },
-        { name: 'Gold (Oro)', value: stats.tiers.gold, color: '#faad14' },
-        { name: 'Silver (Plata)', value: stats.tiers.silver, color: '#1890ff' },
-        { name: 'Bronce', value: stats.tiers.bronze, color: '#8c8c8c' },
+        { name: 'VIP (Diamond)', value: stats.tiers.vip, color: '#722ed3' },
+        { name: 'Gold', value: stats.tiers.gold, color: '#faad14' },
+        { name: 'Silver', value: stats.tiers.silver, color: '#1890ff' },
+        { name: 'Bronze', value: stats.tiers.bronze, color: '#8c8c8c' },
     ].filter(t => t.value > 0);
 
+    /**
+     * Opens a pre-filled WhatsApp message for customer birthdays.
+     */
     const handleWhatsApp = (phone: string, name: string) => {
-        const message = encodeURIComponent(`¡Hola ${name}! Te escribimos de MastERP para desearte un muy feliz cumpleaños. Tenemos un regalo especial para ti en tu próxima compra. 🎂🎁`);
+        const message = encodeURIComponent(`Hi ${name}! We wish you a very happy birthday from the MastERP team. We have a special gift waiting for you on your next visit! 🎂🎁`);
         window.open(`https://wa.me/${phone.replace(/\D/g, '')}?text=${message}`, '_blank');
     };
 
     const birthdayColumns = [
         {
-            title: 'Cliente',
+            title: 'Customer',
             dataIndex: 'name',
             key: 'name',
         },
         {
-            title: 'Día',
+            title: 'Day',
             dataIndex: 'day',
             key: 'day',
             render: (day: number) => <Tag color="blue">{day}</Tag>
         },
         {
-            title: 'Acción',
+            title: 'Action',
             key: 'action',
             render: (_: any, record: any) => (
                 <Button 
@@ -61,7 +71,7 @@ export const MarketingDashboard = () => {
                     onClick={() => handleWhatsApp(record.phone, record.name)}
                     size="small"
                 >
-                    Felicitar
+                    Send Wishes
                 </Button>
             )
         }
@@ -69,13 +79,13 @@ export const MarketingDashboard = () => {
 
     return (
         <div style={{ padding: '24px' }}>
-            <h2 style={{ marginBottom: '24px' }}>MarketingP: Centro de Control</h2>
+            <Title level={2} style={{ marginBottom: '24px' }}>📈 Marketing Control Center</Title>
             
             <Row gutter={[16, 16]}>
                 <Col xs={24} md={8}>
                     <Card bordered={false}>
                         <Statistic 
-                            title="Total Clientes VIP" 
+                            title="Total VIP Customers" 
                             value={stats.tiers.vip} 
                             prefix={<StarFilled style={{ color: '#722ed3' }} />} 
                             valueStyle={{ color: '#722ed3' }}
@@ -85,21 +95,21 @@ export const MarketingDashboard = () => {
                 <Col xs={24} md={8}>
                     <Card bordered={false}>
                         <Statistic 
-                            title="Tasa de Abandono (Churn)" 
+                            title="Churn Risk Rate" 
                             value={stats.churn.percentage.toFixed(1)} 
                             suffix="%" 
                             prefix={<FallOutlined style={{ color: '#cf1322' }} />}
                             valueStyle={{ color: '#cf1322' }}
                         />
                         <div style={{ fontSize: '12px', color: '#8c8c8c' }}>
-                            {stats.churn.count} clientes inactivos (&gt; {stats.churn.days} días)
+                            {stats.churn.count} inactive customers (&gt; {stats.churn.days} days)
                         </div>
                     </Card>
                 </Col>
                 <Col xs={24} md={8}>
                     <Card bordered={false}>
                         <Statistic 
-                            title="Cumpleaños este Mes" 
+                            title="Birthdays This Month" 
                             value={stats.upcomingBirthdays.length} 
                             prefix={<GiftOutlined style={{ color: '#eb2f96' }} />}
                         />
@@ -107,7 +117,7 @@ export const MarketingDashboard = () => {
                 </Col>
 
                 <Col xs={24} lg={14}>
-                    <Card title="Segmentación por Tiers" bordered={false} style={{ height: '100%', minHeight: '400px' }}>
+                    <Card title="Customer Tier Segmentation" bordered={false} style={{ height: '100%', minHeight: '400px' }}>
                         <div style={{ height: '300px' }}>
                             <ResponsiveContainer width="100%" height="100%">
                                 <PieChart>
@@ -133,7 +143,7 @@ export const MarketingDashboard = () => {
                 </Col>
 
                 <Col xs={24} lg={10}>
-                    <Card title="🎂 Próximos Cumpleaños" bordered={false} style={{ height: '100%', minHeight: '400px' }}>
+                    <Card title="🎂 Upcoming Birthdays" bordered={false} style={{ height: '100%', minHeight: '400px' }}>
                         <Table 
                             dataSource={stats.upcomingBirthdays} 
                             columns={birthdayColumns} 
@@ -145,7 +155,7 @@ export const MarketingDashboard = () => {
                 </Col>
 
                 <Col xs={24}>
-                    <Card title="🏆 Top Acumuladores de Puntos" bordered={false}>
+                    <Card title="🏆 Top Points Accumulators" bordered={false}>
                         <TopEarnersTable />
                     </Card>
                 </Col>
@@ -154,6 +164,10 @@ export const MarketingDashboard = () => {
     );
 };
 
+/**
+ * TopEarnersTable Sub-component
+ * Lists customers with the highest loyalty points.
+ */
 const TopEarnersTable = () => {
     const { data: topEarners, isLoading } = useQuery({
         queryKey: ['marketing-top-earners'],
@@ -161,12 +175,13 @@ const TopEarnersTable = () => {
     });
 
     const columns = [
-        { title: 'Cliente', dataIndex: 'name', key: 'name' },
-        { title: 'ID', dataIndex: 'id', key: 'id' },
+        { title: 'Customer Name', dataIndex: 'name', key: 'name' },
+        { title: 'Client ID', dataIndex: 'id', key: 'id' },
         { 
-            title: 'Puntos Acumulados', 
+            title: 'Accumulated Points', 
             dataIndex: 'loyaltyPoints', 
             key: 'loyaltyPoints',
+            align: 'right' as const,
             render: (val: any) => <Tag color="gold">{Number(val).toFixed(0)} pts</Tag>
         },
     ];

@@ -7,8 +7,15 @@ import { UpdateExpenseDto } from './dto/update-expense.dto';
 export class ExpensesService {
   constructor(private prisma: PrismaService) {}
 
+  /**
+   * Creates a new expense record.
+   * If the expense is linked to a bank account, it also records a bank movement
+   * and updates the account balance.
+   * @param createExpenseDto The data for the new expense.
+   * @returns The created expense record.
+   */
   async create(createExpenseDto: CreateExpenseDto) {
-    // Get current exchange rate for secondary currency if not provided or 1
+    // Get current exchange rate for secondary currency if not provided or set to 1
     let exchangeRate = createExpenseDto.exchangeRate;
     if (!exchangeRate || exchangeRate === 1) {
       const companySettings = await this.prisma.companySettings.findFirst({
@@ -23,7 +30,7 @@ export class ExpensesService {
 
     return this.prisma.$transaction(async (tx) => {
       // 1. Create the expense
-      const expense = await (tx as any).expense.create({
+      const expense = await tx.expense.create({
         data: {
           description: createExpenseDto.description,
           amount: createExpenseDto.amount,
@@ -44,14 +51,14 @@ export class ExpensesService {
 
       // 2. If it's linked to a bank account, record movement and update balance
       if (createExpenseDto.bankAccountId) {
-        const bankAccount = await (tx as any).bankAccount.findUnique({
+        const bankAccount = await tx.bankAccount.findUnique({
           where: { id: createExpenseDto.bankAccountId },
           include: { currency: true },
         });
 
         if (!bankAccount) {
           throw new NotFoundException(
-            `Cuenta bancaria ${createExpenseDto.bankAccountId} no encontrada`,
+            `Bank account ${createExpenseDto.bankAccountId} not found`,
           );
         }
 
@@ -74,13 +81,13 @@ export class ExpensesService {
         }
 
         // Create Bank Movement (type OUT)
-        const movement = await (tx as any).bankMovement.create({
+        const movement = await tx.bankMovement.create({
           data: {
             bankAccountId: bankAccount.id,
             type: 'OUT',
             amount: amountInBankCurrency,
             category: 'EXPENSE',
-            description: `Gasto: ${createExpenseDto.description}`,
+            description: `Expense: ${createExpenseDto.description}`,
             reference:
               createExpenseDto.reference || `EXP-${expense.id.substring(0, 8)}`,
             date: expense.date,
@@ -88,13 +95,13 @@ export class ExpensesService {
         });
 
         // Update Expense with movement link
-        await (tx as any).expense.update({
+        await tx.expense.update({
           where: { id: expense.id },
           data: { bankMovementId: movement.id },
         });
 
         // Update Bank Balance
-        await (tx as any).bankAccount.update({
+        await tx.bankAccount.update({
           where: { id: bankAccount.id },
           data: { balance: { decrement: amountInBankCurrency } },
         });
@@ -104,8 +111,12 @@ export class ExpensesService {
     });
   }
 
+  /**
+   * Retrieves all expenses, ordered by date descending.
+   * @returns A list of expenses including bank account data.
+   */
   async findAll() {
-    return (this.prisma as any).expense.findMany({
+    return this.prisma.expense.findMany({
       include: {
         bankAccount: true,
       },
@@ -115,8 +126,14 @@ export class ExpensesService {
     });
   }
 
+  /**
+   * Retrieves a single expense record by its ID.
+   * @param id The ID of the expense.
+   * @returns The expense record.
+   * @throws NotFoundException if the expense is not found.
+   */
   async findOne(id: string) {
-    const expense = await (this.prisma as any).expense.findUnique({
+    const expense = await this.prisma.expense.findUnique({
       where: { id },
     });
 
@@ -127,10 +144,16 @@ export class ExpensesService {
     return expense;
   }
 
+  /**
+   * Updates an existing expense record.
+   * @param id The ID of the expense to update.
+   * @param updateExpenseDto The updated data.
+   * @returns The updated expense record.
+   */
   async update(id: string, updateExpenseDto: UpdateExpenseDto) {
     await this.findOne(id); // Check existence
 
-    return (this.prisma as any).expense.update({
+    return this.prisma.expense.update({
       where: { id },
       data: {
         description: updateExpenseDto.description,
@@ -150,9 +173,14 @@ export class ExpensesService {
     });
   }
 
+  /**
+   * Deletes an expense record.
+   * @param id The ID of the expense to delete.
+   * @returns The deleted expense record.
+   */
   async remove(id: string) {
     await this.findOne(id); // Check existence
-    return (this.prisma as any).expense.delete({
+    return this.prisma.expense.delete({
       where: { id },
     });
   }

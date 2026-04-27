@@ -8,6 +8,11 @@ import { DepartmentFormModal } from './DepartmentFormModal';
 
 const { useBreakpoint } = Grid;
 
+/**
+ * DepartmentsPage Component
+ * Management interface for organizational departments and sub-departments.
+ * Displays data in a hierarchical tree structure (2 levels deep).
+ */
 export const DepartmentsPage = () => {
     const screens = useBreakpoint();
     const isMobile = !screens.lg;
@@ -26,11 +31,11 @@ export const DepartmentsPage = () => {
     const deleteMutation = useMutation({
         mutationFn: departmentsApi.delete,
         onSuccess: () => {
-            message.success('Departamento eliminado exitosamente');
+            message.success('Department deleted successfully');
             queryClient.invalidateQueries({ queryKey: ['departments'] });
         },
         onError: (error: any) => {
-            message.error(error.response?.data?.message || 'Error al eliminar departamento');
+            message.error(error.response?.data?.message || 'Error deleting department');
         },
     });
 
@@ -53,13 +58,16 @@ export const DepartmentsPage = () => {
         setEditingDepartment(null);
     };
 
-    // Filter departments
+    // Client-side filtering
     const filteredData = departments.filter((dept) =>
         dept.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         dept.description?.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
-    // Build tree structure for table
+    /**
+     * Builds a tree structure for the Ant Design table.
+     * Currently supports up to 2 levels of hierarchy.
+     */
     const buildTree = (depts: Department[]): any[] => {
         const parents = depts.filter(d => !d.parentId);
         return parents.map(parent => ({
@@ -70,7 +78,7 @@ export const DepartmentsPage = () => {
                 .map(child => ({
                     key: child.id,
                     ...child,
-                    children: undefined, // Solo 2 niveles
+                    children: undefined, // Supports 2 levels only
                 })),
         }));
     };
@@ -79,29 +87,29 @@ export const DepartmentsPage = () => {
 
     const columns = [
         {
-            title: 'Nombre',
+            title: 'Name',
             dataIndex: 'name',
             key: 'name',
             width: '30%',
         },
         {
-            title: 'Descripción',
+            title: 'Description',
             dataIndex: 'description',
             key: 'description',
             width: '35%',
         },
         {
-            title: 'Tipo',
+            title: 'Type',
             key: 'type',
             width: '15%',
             render: (_: any, record: Department) => (
                 <Tag color={record.parentId ? 'blue' : 'green'}>
-                    {record.parentId ? 'Subdepartamento' : 'Principal'}
+                    {record.parentId ? 'Sub-department' : 'Main'}
                 </Tag>
             ),
         },
         {
-            title: 'Acciones',
+            title: 'Actions',
             key: 'actions',
             width: '20%',
             render: (_: any, record: Department) => (
@@ -111,17 +119,17 @@ export const DepartmentsPage = () => {
                         icon={<EditOutlined />}
                         onClick={() => handleEdit(record)}
                     >
-                        Editar
+                        Edit
                     </Button>
                     <Popconfirm
-                        title="¿Eliminar departamento?"
-                        description="Esta acción no se puede deshacer"
+                        title="Delete department?"
+                        description="This action cannot be undone"
                         onConfirm={() => handleDelete(record.id)}
-                        okText="Eliminar"
-                        cancelText="Cancelar"
+                        okText="Delete"
+                        cancelText="Cancel"
                     >
                         <Button type="link" danger icon={<DeleteOutlined />}>
-                            Eliminar
+                            Delete
                         </Button>
                     </Popconfirm>
                 </Space>
@@ -131,11 +139,11 @@ export const DepartmentsPage = () => {
 
     return (
         <Card
-            title="Departamentos"
+            title="Departments"
             extra={
                 <Space direction={isMobile ? 'vertical' : 'horizontal'} style={{ width: isMobile ? '100%' : 'auto' }} align={isMobile ? 'end' : 'center'}>
                     <Input
-                        placeholder="Buscar departamento..."
+                        placeholder="Search department..."
                         prefix={<SearchOutlined />}
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
@@ -144,7 +152,7 @@ export const DepartmentsPage = () => {
                     <Space>
                         <Button icon={<ReloadOutlined />} onClick={() => queryClient.invalidateQueries({ queryKey: ['departments'] })} />
                         <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}>
-                            {isMobile ? 'Nuevo' : 'Nuevo Departamento'}
+                            {isMobile ? 'New' : 'New Department'}
                         </Button>
                     </Space>
                 </Space>

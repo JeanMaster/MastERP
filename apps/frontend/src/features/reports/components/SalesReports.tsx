@@ -36,6 +36,11 @@ import { InvoiceModal } from '../../pos/components/InvoiceModal';
 const { RangePicker } = DatePicker;
 const { Title, Text } = Typography;
 
+/**
+ * SalesReports Component
+ * Comprehensive sales history and reporting dashboard.
+ * Displays aggregate statistics (Total Sales, Adjusted Revenue, Nominal Revenue, Discounts) and an itemized table of sales with filtering capabilities.
+ */
 export const SalesReports = () => {
     const screens = Grid.useBreakpoint();
     const isMobile = !screens.lg;
@@ -49,16 +54,19 @@ export const SalesReports = () => {
     const [pageSize, setPageSize] = useState<number>(10);
     const queryClient = useQueryClient();
 
+    /**
+     * Updates the payment method for a specific sale record.
+     */
     const updatePaymentSchema = useMutation({
         mutationFn: (variables: { id: string, method: string }) =>
             salesApi.updatePaymentMethod(variables.id, variables.method),
         onSuccess: () => {
-            message.success('Método de pago actualizado');
+            message.success('Payment method updated');
             setIsEditPaymentModalOpen(false);
             queryClient.invalidateQueries({ queryKey: ['sales-reports'] });
         },
         onError: () => {
-            message.error('Error al actualizar método de pago');
+            message.error('Error updating payment method');
         }
     });
 
@@ -71,29 +79,32 @@ export const SalesReports = () => {
         }
     };
 
+    /**
+     * Removes a sale record, voids the invoice, and restores inventory stock.
+     */
     const deleteSaleMutation = useMutation({
         mutationFn: (id: string) => salesApi.remove(id),
         onSuccess: () => {
-            message.success('Venta eliminada y stock restaurado');
+            message.success('Sale deleted and stock restored');
             queryClient.invalidateQueries({ queryKey: ['sales-reports'] });
         },
         onError: () => {
-            message.error('Error al eliminar la venta');
+            message.error('Error deleting sale');
         }
     });
 
     const handleDeleteSale = (sale: Sale) => {
         Modal.confirm({
-            title: '¿Eliminar Venta?',
-            content: `Esta acción anulará la factura ${sale.invoiceNumber}, restaurará el stock de los productos y, si fue la última venta, permitirá reutilizar el número de factura.`,
-            okText: 'Sí, Eliminar',
+            title: 'Delete Sale?',
+            content: `This action will void invoice ${sale.invoiceNumber}, restore product stock, and if it was the last sale, allow the invoice number to be reused.`,
+            okText: 'Yes, Delete',
             okType: 'danger',
             cancelText: 'No',
             onOk: () => deleteSaleMutation.mutate(sale.id)
         });
     };
 
-    // Fetch sales data with filters
+    // Fetch sales data with current filters
     const { data, isLoading, refetch } = useQuery({
         queryKey: ['sales-reports', filters],
         queryFn: () => salesApi.getWithFilters(filters),
@@ -101,9 +112,8 @@ export const SalesReports = () => {
     });
 
     const sales = data?.sales || [];
-    const summary = data?.summary || { totalVentas: 0, ingresoBruto: 0, ingresoNominal: 0, descuentos: 0, ticketPromedio: 0 };
+    const summary = data?.summary || { totalSales: 0, grossRevenue: 0, nominalRevenue: 0, discounts: 0, averageTicket: 0 };
 
-    // Fetch reference data for filters
     const { data: products = [] } = useQuery({
         queryKey: ['products'],
         queryFn: () => productsApi.getAll(),
@@ -114,13 +124,12 @@ export const SalesReports = () => {
         queryFn: () => clientsApi.getAll(),
     });
 
-    // Use backend summary statistics
-    const totalSales = summary.totalVentas;
-    const totalRevenue = summary.ingresoBruto;
-    const totalDiscount = summary.descuentos;
-    const averageTicket = summary.ticketPromedio;
+    // Summary statistics from backend
+    const totalSalesCount = summary.totalSales;
+    const totalAdjustedRevenue = summary.grossRevenue;
+    const totalDiscount = summary.discounts;
+    const averageTicket = summary.averageTicket;
 
-    // Handle filter changes
     const handleDateRangeChange = (dates: any) => {
         setDateRange(dates);
         if (dates && dates.length === 2) {
@@ -150,13 +159,12 @@ export const SalesReports = () => {
         setDateRange(null);
     };
 
-    // Simplified table columns - only showing: Factura, Fecha, Productos, Total
     const columns = [
         {
-            title: 'Factura',
+            title: 'Invoice #',
             dataIndex: 'invoiceNumber',
             key: 'invoiceNumber',
-            width: 100,
+            width: 120,
             fixed: 'left' as const,
             render: (invoiceNumber: string, record: Sale) => (
                 <Button
@@ -173,24 +181,23 @@ export const SalesReports = () => {
             sorter: (a: Sale, b: Sale) => a.invoiceNumber.localeCompare(b.invoiceNumber)
         },
         {
-            title: 'Fecha',
+            title: 'Date',
             dataIndex: 'date',
             key: 'date',
-            width: 140,
-            render: (date: string) => dayjs(date).format('DD/MM/YYYY HH:mm'),
+            width: 150,
+            render: (date: string) => dayjs(date).format('MM/DD/YYYY HH:mm'),
             sorter: (a: Sale, b: Sale) => dayjs(a.date).unix() - dayjs(b.date).unix()
         },
         {
-            title: 'Cliente',
+            title: 'Customer',
             dataIndex: 'client',
             key: 'client',
-            width: 140,
-            render: (client: any) => client?.name || 'Cliente General'
+            width: 160,
+            render: (client: any) => client?.name || 'Walk-in Customer'
         },
         {
-            title: 'Productos',
+            title: 'Items',
             key: 'products',
-            // No fixed width - let it flex
             render: (_: any, record: Sale) => (
                 <div style={{ maxWidth: '100%' }}>
                     {record.items.slice(0, 3).map(item => (
@@ -200,17 +207,17 @@ export const SalesReports = () => {
                     ))}
                     {record.items.length > 3 && (
                         <Text type="secondary" style={{ fontSize: '11px' }}>
-                            +{record.items.length - 3} más...
+                            +{record.items.length - 3} more...
                         </Text>
                     )}
                 </div>
             )
         },
         {
-            title: 'Monto Pagado',
+            title: 'Paid Amt (Nominal)',
             dataIndex: 'total',
             key: 'nominalTotal',
-            width: 120,
+            width: 150,
             align: 'right' as const,
             render: (value: number) => (
                 <Text style={{ fontSize: '14px', color: '#595959' }}>
@@ -220,10 +227,10 @@ export const SalesReports = () => {
             sorter: (a: Sale, b: Sale) => (a.total || 0) - (b.total || 0)
         },
         {
-            title: 'Total (Ajust.)',
+            title: 'Revalued Total',
             dataIndex: 'revaluedTotal',
             key: 'total',
-            width: 120,
+            width: 150,
             align: 'right' as const,
             render: (value: number | null | undefined, record: Sale) => (
                 <Text strong style={{ color: '#1890ff', fontSize: '14px' }}>
@@ -233,9 +240,9 @@ export const SalesReports = () => {
             sorter: (a: Sale, b: Sale) => (a.revaluedTotal || a.total || 0) - (b.revaluedTotal || b.total || 0)
         },
         {
-            title: 'Acciones',
+            title: 'Actions',
             key: 'actions',
-            width: 120,
+            width: 130,
             align: 'center' as const,
             fixed: isMobile ? false : ('right' as const),
             render: (_: any, record: Sale) => (
@@ -246,10 +253,10 @@ export const SalesReports = () => {
                         onClick={(e) => {
                             e.stopPropagation();
                             setSelectedSale(record);
-                            setNewPaymentMethod(record.paymentMethod.split(',')[0]); // Default to first method
+                            setNewPaymentMethod(record.paymentMethod.split(',')[0]);
                             setIsEditPaymentModalOpen(true);
                         }}
-                        title="Editar Método de Pago"
+                        title="Edit Payment Method"
                     />
                     <Button
                         type="text"
@@ -259,7 +266,7 @@ export const SalesReports = () => {
                             e.stopPropagation();
                             handleDeleteSale(record);
                         }}
-                        title="Eliminar Venta"
+                        title="Delete Sale"
                     />
                     <Button
                         type="text"
@@ -269,7 +276,7 @@ export const SalesReports = () => {
                             setSelectedSale(record);
                             setIsInvoiceModalOpen(true);
                         }}
-                        title="Reimprimir Factura"
+                        title="Reprint Invoice"
                         style={{ color: '#1890ff' }}
                     />
                 </Space>
@@ -282,8 +289,8 @@ export const SalesReports = () => {
             <div style={{ marginBottom: 24 }}>
                 <Row justify="space-between" align="middle" gutter={[16, 16]}>
                     <Col xs={24} md={12}>
-                        <Title level={isMobile ? 3 : 2} style={{ margin: 0 }}>📊 Reportes de Ventas</Title>
-                        <Text type="secondary">Visualiza y analiza el desempeño de tus ventas</Text>
+                        <Title level={isMobile ? 3 : 2} style={{ margin: 0 }}>📊 Sales Reports</Title>
+                        <Text type="secondary">Visualize and analyze your sales performance</Text>
                     </Col>
                     <Col xs={24} md={12} style={{ textAlign: isMobile ? 'left' : 'right' }}>
                         <Space wrap>
@@ -293,14 +300,14 @@ export const SalesReports = () => {
                                 onClick={() => refetch()}
                                 block={isMobile}
                             >
-                                Actualizar
+                                Refresh
                             </Button>
                             <Button
                                 icon={<DownloadOutlined />}
                                 disabled={sales.length === 0}
                                 block={isMobile}
                             >
-                                Exportar
+                                Export
                             </Button>
                         </Space>
                     </Col>
@@ -312,63 +319,58 @@ export const SalesReports = () => {
                 <Col xs={12} lg={4}>
                     <Card size="small">
                         <Statistic
-                            title="Total Ventas"
-                            value={totalSales}
+                            title="Total Sales"
+                            value={totalSalesCount}
                             prefix={<ShoppingOutlined />}
                             valueStyle={{ color: '#1890ff', fontSize: isMobile ? 18 : 22 }}
-                            styles={{ content: { color: '#1890ff', fontSize: isMobile ? 18 : 22 } }}
                         />
                     </Card>
                 </Col>
                 <Col xs={12} lg={5}>
                     <Card size="small">
                         <Statistic
-                            title="Ingreso Bruto (Ajustado)"
-                            value={totalRevenue}
+                            title="Adjusted Gross Revenue"
+                            value={totalAdjustedRevenue}
                             precision={2}
                             prefix={<DollarOutlined />}
                             formatter={(value) => formatVenezuelanPrice(Number(value))}
                             valueStyle={{ color: '#52c41a', fontSize: isMobile ? 18 : 22 }}
-                            styles={{ content: { color: '#52c41a', fontSize: isMobile ? 18 : 22 } }}
                         />
                     </Card>
                 </Col>
                 <Col xs={12} lg={5}>
                     <Card size="small" style={{ border: '1px solid #d9d9d9' }}>
                         <Statistic
-                            title="Ingreso Real (Nominal)"
-                            value={summary.ingresoNominal || 0}
+                            title="Real Nominal Revenue"
+                            value={summary.nominalRevenue || 0}
                             precision={2}
                             prefix={<ShoppingOutlined style={{ opacity: 0.7 }} />}
                             formatter={(value) => formatVenezuelanPrice(Number(value))}
                             valueStyle={{ color: '#595959', fontSize: isMobile ? 18 : 22 }}
-                            styles={{ content: { color: '#595959', fontSize: isMobile ? 18 : 22 } }}
                         />
                     </Card>
                 </Col>
                 <Col xs={12} lg={5}>
                     <Card size="small">
                         <Statistic
-                            title="Descuentos"
+                            title="Total Discounts"
                             value={totalDiscount}
                             precision={2}
                             prefix={<DollarOutlined />}
                             formatter={(value) => formatVenezuelanPrice(Number(value))}
                             valueStyle={{ color: '#ff4d4f', fontSize: isMobile ? 18 : 22 }}
-                            styles={{ content: { color: '#ff4d4f', fontSize: isMobile ? 18 : 22 } }}
                         />
                     </Card>
                 </Col>
                 <Col xs={12} lg={5}>
                     <Card size="small">
                         <Statistic
-                            title="Ticket Promedio"
+                            title="Average Ticket"
                             value={averageTicket}
                             precision={2}
                             prefix={<DollarOutlined />}
                             formatter={(value) => formatVenezuelanPrice(Number(value))}
                             valueStyle={{ color: '#722ed1', fontSize: isMobile ? 18 : 22 }}
-                            styles={{ content: { color: '#722ed1', fontSize: isMobile ? 18 : 22 } }}
                         />
                     </Card>
                 </Col>
@@ -376,11 +378,11 @@ export const SalesReports = () => {
 
             {!isMobile && (
                 <Alert
-                    message="Guía de Devoluciones y Ajuste por Inflación"
+                    message="Returns and Inflation Adjustment Guide"
                     description={
                         <Space direction="vertical" size={2}>
-                            <Text>• El <Text strong>Ingreso Real (Nominal)</Text> es la suma de los montos exactos cobrados el día de la venta. <Text strong style={{ color: '#cf1322' }}>Use el dato de 'Monto Pagado' en la tabla para devoluciones.</Text></Text>
-                            <Text>• El <Text strong>Ingreso Bruto (Ajustado)</Text> revaloriza las ventas a la tasa de hoy para comparar peras con peras frente a la inflación.</Text>
+                            <Text>• <Text strong>Real Nominal Revenue</Text> is the exact amount collected on the day of sale. <Text strong style={{ color: '#cf1322' }}>Use the 'Paid Amt' data for refunds.</Text></Text>
+                            <Text>• <Text strong>Adjusted Gross Revenue</Text> revalues historical sales to today's rate for inflation-adjusted growth analysis.</Text>
                         </Space>
                     }
                     type="info"
@@ -389,23 +391,23 @@ export const SalesReports = () => {
                 />
             )}
 
-            <Card title="Filtros" style={{ marginBottom: 16 }} size={isMobile ? 'small' : 'default'}>
+            <Card title="Filters" style={{ marginBottom: 16 }} size={isMobile ? 'small' : 'default'}>
                 <Row gutter={[16, 16]}>
                     <Col xs={24} md={8}>
-                        <Text strong>Rango de Fechas:</Text>
+                        <Text strong>Date Range:</Text>
                         <RangePicker
                             style={{ width: '100%', marginTop: 8 }}
                             value={dateRange}
                             onChange={handleDateRangeChange}
-                            format="DD/MM/YYYY"
-                            placeholder={['Inicio', 'Fin']}
+                            format="MM/DD/YYYY"
+                            placeholder={['Start Date', 'End Date']}
                         />
                     </Col>
                     <Col xs={12} md={4}>
-                        <Text strong>Cliente:</Text>
+                        <Text strong>Customer:</Text>
                         <Select
                             style={{ width: '100%', marginTop: 8 }}
-                            placeholder="Todos"
+                            placeholder="All Customers"
                             allowClear
                             onChange={(value) => handleFilterChange('clientId', value)}
                             value={filters.clientId}
@@ -413,10 +415,10 @@ export const SalesReports = () => {
                         />
                     </Col>
                     <Col xs={12} md={4}>
-                        <Text strong>Producto:</Text>
+                        <Text strong>Product:</Text>
                         <Select
                             style={{ width: '100%', marginTop: 8 }}
-                            placeholder="Todos"
+                            placeholder="All Products"
                             allowClear
                             onChange={(value) => handleFilterChange('productId', value)}
                             value={filters.productId}
@@ -424,23 +426,23 @@ export const SalesReports = () => {
                         />
                     </Col>
                     <Col xs={12} md={4}>
-                        <Text strong>Pago:</Text>
+                        <Text strong>Payment:</Text>
                         <Select
                             style={{ width: '100%', marginTop: 8 }}
-                            placeholder="Todos"
+                            placeholder="All Methods"
                             allowClear
                             onChange={(value) => handleFilterChange('paymentMethod', value)}
                             value={filters.paymentMethod}
                         >
-                            <Select.Option value="CASH">Efectivo</Select.Option>
-                            <Select.Option value="DEBIT">T. Débito</Select.Option>
-                            <Select.Option value="CREDIT">T. Crédito</Select.Option>
-                            <Select.Option value="TRANSFER">Transferencia</Select.Option>
-                            <Select.Option value="MOBILE">Pago Móvil</Select.Option>
+                            <Select.Option value="CASH">Cash</Select.Option>
+                            <Select.Option value="DEBIT">Debit Card</Select.Option>
+                            <Select.Option value="CREDIT">Credit Card</Select.Option>
+                            <Select.Option value="TRANSFER">Transfer</Select.Option>
+                            <Select.Option value="MOBILE">Mobile Payment</Select.Option>
                         </Select>
                     </Col>
                     <Col xs={12} md={4}>
-                        <Text strong>Monto Mín:</Text>
+                        <Text strong>Min Amount:</Text>
                         <InputNumber
                             style={{ width: '100%', marginTop: 8 }}
                             placeholder="0.00"
@@ -452,8 +454,8 @@ export const SalesReports = () => {
                 </Row>
                 <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 16 }}>
                     <Space>
-                        <Button onClick={handleResetFilters}>Limpiar</Button>
-                        <Button type="primary" onClick={() => refetch()} loading={isLoading}>Filtrar</Button>
+                        <Button onClick={handleResetFilters}>Clear All</Button>
+                        <Button type="primary" onClick={() => refetch()} loading={isLoading}>Apply Filters</Button>
                     </Space>
                 </div>
             </Card>
@@ -490,30 +492,30 @@ export const SalesReports = () => {
             />
 
             <Modal
-                title="Editar Método de Pago"
+                title="Edit Payment Method"
                 open={isEditPaymentModalOpen}
                 onCancel={() => setIsEditPaymentModalOpen(false)}
                 onOk={handleEditPayment}
                 confirmLoading={updatePaymentSchema.isPending}
             >
-                <Text>Seleccione el nuevo método de pago para la factura <Text strong>{selectedSale?.invoiceNumber}</Text>:</Text>
+                <Text>Select the new payment method for invoice <Text strong>{selectedSale?.invoiceNumber}</Text>:</Text>
                 <Select
                     style={{ width: '100%', marginTop: 16 }}
                     value={newPaymentMethod}
                     onChange={setNewPaymentMethod}
                 >
-                    <Select.Option value="CASH">Efectivo (Bs)</Select.Option>
-                    <Select.Option value="DEBIT">Tarjeta Débito</Select.Option>
-                    <Select.Option value="CREDIT">Tarjeta Crédito</Select.Option>
-                    <Select.Option value="TRANSFER">Transferencia</Select.Option>
-                    <Select.Option value="MOBILE">Pago Móvil</Select.Option>
-                    <Select.Option value="CURRENCY_USD">Efectivo USD</Select.Option>
-                    <Select.Option value="CURRENCY_EUR">Efectivo EUR</Select.Option>
+                    <Select.Option value="CASH">Cash (Bs)</Select.Option>
+                    <Select.Option value="DEBIT">Debit Card</Select.Option>
+                    <Select.Option value="CREDIT">Credit Card</Select.Option>
+                    <Select.Option value="TRANSFER">Transfer</Select.Option>
+                    <Select.Option value="MOBILE">Mobile Payment</Select.Option>
+                    <Select.Option value="CURRENCY_USD">Cash USD</Select.Option>
+                    <Select.Option value="CURRENCY_EUR">Cash EUR</Select.Option>
                 </Select>
                 <div style={{ marginTop: 12 }}>
                     <Text type="warning" style={{ fontSize: 12 }}>
-                        Nota: Esta acción solo actualiza la etiqueta del reporte.
-                        Los movimientos de caja originales no se modificarán automáticamente.
+                        Note: This action only updates the reporting label. 
+                        The original cash register movements will not be automatically updated.
                     </Text>
                 </div>
             </Modal>

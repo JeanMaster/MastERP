@@ -13,7 +13,8 @@ export class CashRegisterService {
   constructor(private prisma: PrismaService) {}
 
   /**
-   * Obtener o crear caja principal
+   * Retrieves the main cash register or creates it if it doesn't exist.
+   * @returns The main cash register record.
    */
   async getOrCreateMainRegister() {
     let register = await this.prisma.cashRegister.findFirst({
@@ -23,8 +24,8 @@ export class CashRegisterService {
     if (!register) {
       register = await this.prisma.cashRegister.create({
         data: {
-          name: 'Caja Principal',
-          location: 'Tienda',
+          name: 'Main Register',
+          location: 'Store',
         },
       });
     }
@@ -33,10 +34,13 @@ export class CashRegisterService {
   }
 
   /**
-   * Abrir sesión de caja
+   * Opens a new cash session.
+   * Validates that neither the register nor the cashier has another active session.
+   * @param openSessionDto Data for opening the session.
+   * @returns The created cash session.
    */
   async openSession(openSessionDto: OpenSessionDto) {
-    // Verificar que no haya otra sesión abierta en ESTA caja
+    // Verify that no other session is open for THIS register
     const activeSession = await this.prisma.cashSession.findFirst({
       where: {
         registerId: openSessionDto.registerId,
@@ -46,11 +50,11 @@ export class CashRegisterService {
 
     if (activeSession) {
       throw new BadRequestException(
-        'Ya existe una sesión abierta para esta caja',
+        'An open session already exists for this register',
       );
     }
 
-    // Verificar que el cajero no tenga otra sesión abierta en ninguna caja
+    // Verify that the cashier does not have another open session in any register
     if (openSessionDto.cashierId) {
       const cashierSession = await this.prisma.cashSession.findFirst({
         where: {
@@ -61,12 +65,12 @@ export class CashRegisterService {
 
       if (cashierSession) {
         throw new BadRequestException(
-          `El cajero ${openSessionDto.cashierId} ya tiene una sesión abierta en otra caja.`,
+          `Cashier ${openSessionDto.cashierId} already has an open session in another register.`,
         );
       }
     }
 
-    // Calcular balance inicial si se proporcionan items
+    // Calculate initial balance if items are provided
     let openingBalance = openSessionDto.openingBalance || 0;
     if (openSessionDto.items && openSessionDto.items.length > 0) {
       openingBalance = 0;
@@ -85,18 +89,18 @@ export class CashRegisterService {
       }
     }
 
-    // Crear nueva sesión
+    // Create new session
     const session = await this.prisma.cashSession.create({
       data: {
         registerId: openSessionDto.registerId,
         openingBalance: openingBalance,
-        openedBy: openSessionDto.openedBy || 'Sistema',
+        openedBy: openSessionDto.openedBy || 'System',
         cashierId: openSessionDto.cashierId,
         openingNotes: openSessionDto.openingNotes,
         openedAt: new Date(),
         verifiedAt: openSessionDto.items ? new Date() : null,
         verifiedBy: openSessionDto.items
-          ? openSessionDto.openedBy || 'Sistema'
+          ? openSessionDto.openedBy || 'System'
           : null,
         verificationDiff: openSessionDto.items ? 0 : null,
       },
@@ -105,7 +109,7 @@ export class CashRegisterService {
       },
     });
 
-    // Guardar desglose si se proporcionó
+    // Save breakdown if provided
     if (openSessionDto.items && openSessionDto.items.length > 0) {
       await this.saveCashCounts(
         session.id,
@@ -114,21 +118,25 @@ export class CashRegisterService {
       );
     }
 
-    // Crear movimiento de apertura
+    // Create opening movement
     await this.createMovement({
       sessionId: session.id,
       type: MovementType.OPENING,
       amount: openingBalance,
       currencyCode: 'VES',
-      description: 'Apertura de caja',
-      performedBy: openSessionDto.openedBy || 'Sistema',
+      description: 'Cash register opening',
+      performedBy: openSessionDto.openedBy || 'System',
     });
 
     return session;
   }
 
   /**
-   * Solicitar cierre de caja (Cajero)
+   * Requests a session closure (Cashier action).
+   * Sets the status to AWAITING_CLOSE and records the actual balance found.
+   * @param sessionId The ID of the session to close.
+   * @param closeSessionDto Closing data including actual balance.
+   * @returns The updated session record.
    */
   async requestCloseSession(
     sessionId: string,
@@ -139,10 +147,10 @@ export class CashRegisterService {
       include: { movements: true },
     });
 
-    if (!session) throw new NotFoundException('Sesión no encontrada');
+    if (!session) throw new NotFoundException('Session not found');
     if (session.status !== 'OPEN')
       throw new BadRequestException(
-        'La sesión no está abierta o ya está en proceso de cierre',
+        'The session is not open or is already in the closing process',
       );
 
     const expectedBalance = this.calculateExpectedBalance(
@@ -152,7 +160,7 @@ export class CashRegisterService {
     const variance =
       Number(closeSessionDto.actualBalance) - Number(expectedBalance);
 
-    // Guardar desglose de efectivo si se proporcionó
+    // Save cash breakdown if provided
     if (closeSessionDto.items && closeSessionDto.items.length > 0) {
       await this.saveCashCounts(sessionId, 'CLOSING', closeSessionDto.items);
     }
@@ -170,44 +178,48 @@ export class CashRegisterService {
   }
 
   /**
-   * Aprobar cierre de caja (Administrador)
+   * Approves a session closure (Administrator action).
+   * Records variance adjustments and handles card liquidation transfers.
+   * @param sessionId The ID of the session to approve.
+   * @param adminUser The username of the approving administrator.
+   * @returns The closed session record.
    */
   async approveCloseSession(sessionId: string, adminUser: string) {
     const session = await this.prisma.cashSession.findUnique({
       where: { id: sessionId },
     });
 
-    if (!session) throw new NotFoundException('Sesión no encontrada');
+    if (!session) throw new NotFoundException('Session not found');
     if (session.status !== 'AWAITING_CLOSE')
-      throw new BadRequestException('La sesión no está esperando cierre');
+      throw new BadRequestException('The session is not awaiting closure');
 
     const variance = Number(session.variance || 0);
 
-    // Si hay varianza, crear un movimiento de AJUSTE para cuadrar la caja oficialmente
+    // If there is variance, create an ADJUSTMENT movement to square the register officially
     if (Math.abs(variance) > 0.001) {
       await this.createMovement({
         sessionId: session.id,
         type: MovementType.ADJUSTMENT,
-        amount: variance, // Usar varianza directamente (positiva si sobra, negativa si falta)
+        amount: variance, // Use variance directly (positive if surplus, negative if shortage)
         currencyCode: 'VES',
-        description: `Ajuste Automático por Varianza (${variance >= 0 ? 'Sobrante' : 'Faltante'})`,
+        description: `Automatic Variance Adjustment (${variance >= 0 ? 'Surplus' : 'Shortage'})`,
         performedBy: adminUser,
-        notes: `Cuadre oficial de caja por cierre autorizado.`,
+        notes: `Official cash squaring by authorized closure.`,
       });
     }
 
-    // Crear movimiento de cierre oficial (Salida del total hacia Tesorería/Cierre)
+    // Create official closing movement (Withdrawal of total to Treasury/Closure)
     await this.createMovement({
       sessionId: session.id,
       type: MovementType.CLOSING,
       amount: Number(session.actualBalance || 0),
       currencyCode: 'VES',
-      description: `Cierre de caja (Autorizado) - Efectivo Entregado: ${Number(session.actualBalance || 0).toFixed(2)}`,
+      description: `Cash closure (Authorized) - Cash Delivered: ${Number(session.actualBalance || 0).toFixed(2)}`,
       performedBy: adminUser,
     });
 
-    // --- Lógica de Liquidación de Tarjetas (Tesorería) ---
-    // 1. Calcular total de tarjetas (DEBIT, CREDIT)
+    // --- Card Liquidation Logic (Treasury) ---
+    // 1. Calculate total from cards (DEBIT, CREDIT)
     const sales = await this.prisma.sale.findMany({
       where: { cashSessionId: sessionId, isCancelled: false },
     });
@@ -230,7 +242,7 @@ export class CashRegisterService {
       });
     });
 
-    // 2. Buscar cuenta receptora y actualizar saldo en tránsito
+    // 2. Find receiving account and update pending liquidation balance
     const targetAccount = await (this.prisma as any).bankAccount.findFirst({
       where: { receivesPosLiquidation: true, active: true },
     });
@@ -261,7 +273,10 @@ export class CashRegisterService {
   }
 
   /**
-   * Cerrar sesión de caja
+   * Closes a cash session directly.
+   * @param sessionId The ID of the session to close.
+   * @param closeSessionDto Closing data.
+   * @returns The closed session record.
    */
   async closeSession(sessionId: string, closeSessionDto: CloseSessionDto) {
     const session = await this.prisma.cashSession.findUnique({
@@ -272,39 +287,39 @@ export class CashRegisterService {
     });
 
     if (!session) {
-      throw new NotFoundException('Sesión no encontrada');
+      throw new NotFoundException('Session not found');
     }
 
     if (session.status === 'CLOSED') {
-      throw new BadRequestException('La sesión ya está cerrada');
+      throw new BadRequestException('The session is already closed');
     }
 
-    // Calcular balance esperado
+    // Calculate expected balance
     const expectedBalance = this.calculateExpectedBalance(
       session.movements,
       Number(session.openingBalance),
     );
 
-    // Calcular varianza
+    // Calculate variance
     const variance =
       Number(closeSessionDto.actualBalance) - Number(expectedBalance);
 
-    // Crear movimiento de cierre
+    // Create closing movement
     await this.createMovement({
       sessionId: session.id,
       type: MovementType.CLOSING,
       amount: closeSessionDto.actualBalance,
       currencyCode: 'VES',
-      description: `Cierre de caja - Varianza: ${variance >= 0 ? '+' : ''}${variance.toFixed(2)}`,
-      performedBy: closeSessionDto.closedBy || 'Sistema',
+      description: `Cash closure - Variance: ${variance >= 0 ? '+' : ''}${variance.toFixed(2)}`,
+      performedBy: closeSessionDto.closedBy || 'System',
     });
 
-    // Actualizar sesión
+    // Update session
     const updatedSession = await this.prisma.cashSession.update({
       where: { id: sessionId },
       data: {
         status: 'CLOSED',
-        closedBy: closeSessionDto.closedBy || 'Sistema',
+        closedBy: closeSessionDto.closedBy || 'System',
         closedAt: new Date(),
         expectedBalance,
         actualBalance: closeSessionDto.actualBalance,
@@ -323,7 +338,10 @@ export class CashRegisterService {
   }
 
   /**
-   * Calcular balance esperado (En moneda base VES)
+   * Calculates the expected balance in base currency (VES).
+   * @param movements List of movements in the session.
+   * @param openingBalance The initial balance.
+   * @returns The calculated expected balance.
    */
   private calculateExpectedBalance(
     movements: any[],
@@ -332,20 +350,21 @@ export class CashRegisterService {
     let expected = Number(openingBalance);
 
     for (const movement of movements) {
-      // El monto del movimiento ya debería estar en su moneda original
-      // Se multiplica por la tasa histórica para obtener el impacto en Bs (gaveta)
+      // The movement amount is already in its original currency
+      // It's multiplied by the historical exchange rate to get the impact in Bs
       const amountInVES =
         Number(movement.amount) * Number(movement.exchangeRate || 1);
 
       switch (movement.type) {
         case 'SALE':
         case 'WITHDRAWAL':
+        case 'OPENING':
           expected += amountInVES;
           break;
         case 'EXPENSE':
         case 'DEPOSIT':
-        case 'CLOSING': // El cierre resta del balance para quedar en 0
-        case 'CHANGE': // El vuelto resta del balance
+        case 'CLOSING': // Closing subtracts from balance to reach 0
+        case 'CHANGE': // Change subtracts from balance
           expected -= amountInVES;
           break;
         case 'ADJUSTMENT':
@@ -357,23 +376,28 @@ export class CashRegisterService {
     return expected;
   }
 
+  /**
+   * Records a movement in an active cash session.
+   * @param createMovementDto Data for the movement.
+   * @returns The created movement record.
+   */
   async createMovement(createMovementDto: CreateMovementDto) {
-    // Verificar que la sesión existe y está abierta
+    // Verify that the session exists and is open
     const session = await this.prisma.cashSession.findUnique({
       where: { id: createMovementDto.sessionId },
     });
 
     if (!session) {
-      throw new NotFoundException('Sesión no encontrada');
+      throw new NotFoundException('Session not found');
     }
 
     if (session.status === 'CLOSED') {
       throw new BadRequestException(
-        'No se pueden agregar movimientos a una sesión cerrada',
+        'Cannot add movements to a closed session',
       );
     }
 
-    // Si no se proporciona tasa de cambio, intentar buscar la tasa actual de la moneda
+    // If exchange rate is not provided, try to fetch the current rate for the currency
     let exchangeRate = createMovementDto.exchangeRate || 1;
     if (
       !createMovementDto.exchangeRate &&
@@ -397,14 +421,17 @@ export class CashRegisterService {
         exchangeRate: exchangeRate,
         description: createMovementDto.description,
         notes: createMovementDto.notes,
-        performedBy: createMovementDto.performedBy || 'Sistema',
+        performedBy: createMovementDto.performedBy || 'System',
         saleId: createMovementDto.saleId,
       },
     });
   }
 
   /**
-   * Obtener sesión activa
+   * Retrieves the active session for a register or cashier.
+   * @param registerId Optional register filter.
+   * @param cashierId Optional cashier filter.
+   * @returns The active session including movements, sales, and counts.
    */
   async getActiveSession(registerId?: string, cashierId?: string) {
     const where: any = { status: { in: ['OPEN', 'AWAITING_CLOSE'] } };
@@ -433,7 +460,9 @@ export class CashRegisterService {
   }
 
   /**
-   * Obtener sesión por ID
+   * Retrieves a cash session by its ID.
+   * @param id The ID of the session.
+   * @returns The session record with all details.
    */
   async getSession(id: string) {
     const session = await this.prisma.cashSession.findUnique({
@@ -456,14 +485,16 @@ export class CashRegisterService {
     });
 
     if (!session) {
-      throw new NotFoundException('Sesión no encontrada');
+      throw new NotFoundException('Session not found');
     }
 
     return session;
   }
 
   /**
-   * Listar sesiones
+   * Lists cash sessions based on optional filters.
+   * @param filters Register ID, status, and date range filters.
+   * @returns A list of cash sessions.
    */
   async listSessions(filters?: any) {
     const where: any = {};
@@ -502,7 +533,11 @@ export class CashRegisterService {
   }
 
   /**
-   * Verificar sesión (Arqueo de Apertura)
+   * Verifies a session (Opening Cash Audit).
+   * @param sessionId The ID of the session.
+   * @param verifyDto The audit data including cash breakdown.
+   * @param user The username of the verifier.
+   * @returns The updated session record.
    */
   async verifySession(sessionId: string, verifyDto: any, user: string) {
     const session = await this.prisma.cashSession.findUnique({
@@ -510,17 +545,12 @@ export class CashRegisterService {
     });
 
     if (!session) {
-      throw new NotFoundException('Sesión no encontrada');
+      throw new NotFoundException('Session not found');
     }
 
     if (session.verifiedAt) {
-      throw new BadRequestException('Esta sesión ya ha sido verificada');
+      throw new BadRequestException('This session has already been verified');
     }
-
-    // Calcular total contado
-    // NOTA: En una implementación real, calcularíamos esto basado en los IDs de denominacion
-    // Para simplificar ahora, asumiremos que el frontend o un paso intermedio nos da el total calculado
-    // O mejor: Iteramos sobre los items y consultamos la DB.
 
     let totalCountedVES = 0;
 
@@ -540,12 +570,12 @@ export class CashRegisterService {
 
     const diff = totalCountedVES - Number(session.openingBalance);
 
-    // Guardar desglose de efectivo
+    // Save cash breakdown
     if (verifyDto.items && verifyDto.items.length > 0) {
       await this.saveCashCounts(sessionId, 'VERIFICATION', verifyDto.items);
     }
 
-    // Actualizar sesión
+    // Update session
     return this.prisma.cashSession.update({
       where: { id: sessionId },
       data: {
@@ -553,21 +583,24 @@ export class CashRegisterService {
         verifiedBy: user,
         verificationDiff: diff,
         openingNotes: session.openingNotes
-          ? `${session.openingNotes} | Arqueo OK: ${diff.toFixed(2)}`
-          : `Arqueo OK: ${diff.toFixed(2)}`,
+          ? `${session.openingNotes} | Audit OK: ${diff.toFixed(2)}`
+          : `Audit OK: ${diff.toFixed(2)}`,
       },
     });
   }
 
   /**
-   * Guardar desglose de efectivo (Billetes/Monedas)
+   * Saves a breakdown of cash (banknotes/coins).
+   * @param sessionId The ID of the session.
+   * @param type The count type (VERIFICATION or CLOSING).
+   * @param items The list of denominations and quantities.
    */
   private async saveCashCounts(
     sessionId: string,
     type: 'VERIFICATION' | 'CLOSING',
     items: any[],
   ) {
-    // Limpiar desgloses previos del mismo tipo (si existen) para evitar duplicados en reintentos
+    // Clear previous breakdowns of the same type to avoid duplicates on retries
     await this.prisma.sessionCashCount.deleteMany({
       where: {
         sessionId,
@@ -575,7 +608,7 @@ export class CashRegisterService {
       },
     });
 
-    // Guardar nuevos items
+    // Save new items
     for (const item of items) {
       const denom = await this.prisma.currencyDenomination.findUnique({
         where: { id: item.denominationId },
@@ -597,7 +630,8 @@ export class CashRegisterService {
   }
 
   /**
-   * Obtener denominaciones activas
+   * Retrieves all active currency denominations.
+   * @returns A list of active denominations.
    */
   async getDenominations() {
     return this.prisma.currencyDenomination.findMany({
@@ -606,7 +640,15 @@ export class CashRegisterService {
     });
   }
 
-  // Existing methods...
+  /**
+   * Transfers funds from a cash session to a bank account (Treasury).
+   * @param sessionId The ID of the cash session.
+   * @param bankAccountId The ID of the destination bank account.
+   * @param amount The amount to transfer.
+   * @param description A brief description of the transfer.
+   * @param performedBy The username of the person performing the transfer.
+   * @returns The created bank movement record.
+   */
   transferToTreasury(
     sessionId: string,
     bankAccountId: string,
@@ -615,60 +657,59 @@ export class CashRegisterService {
     performedBy: string,
   ) {
     return this.prisma.$transaction(async (tx) => {
-      // 1. Verificar sesión abierta
+      // 1. Verify open session
       const session = await tx.cashSession.findUnique({
         where: { id: sessionId },
       });
 
       if (!session || session.status === 'CLOSED') {
         throw new BadRequestException(
-          'La sesión de caja debe estar abierta para realizar un traslado',
+          'The cash session must be open to perform a transfer',
         );
       }
 
-      // 2. Obtener información de la cuenta bancaria para saber su moneda
+      // 2. Get bank account info to know its currency
       const bankAccount = await tx.bankAccount.findUnique({
         where: { id: bankAccountId },
         include: { currency: true },
       });
 
       if (!bankAccount) {
-        throw new NotFoundException('Cuenta bancaria no encontrada');
+        throw new NotFoundException('Bank account not found');
       }
 
-      // 3. Obtener la tasa de cambio actual si es una transferencia en divisa
+      // 3. Get current exchange rate if it's a transfer in foreign currency
       let exchangeRate = 1;
       if (bankAccount.currency.code !== 'VES') {
         exchangeRate = Number(bankAccount.currency.exchangeRate);
       }
 
-      // 4. Crear movimiento de EGRESO en Caja (Restar de la gaveta)
-      // Se registra el monto original de la moneda y la tasa para que expectedBalance reste bien
+      // 4. Create WITHDRAWAL movement in Cash (Subtract from drawer)
       await tx.cashMovement.create({
         data: {
           sessionId,
           type: MovementType.DEPOSIT,
           amount,
           currencyCode: bankAccount.currency.code,
-          exchangeRate, // Crucial para que calculateExpectedBalance reste el equivalente en Bs
-          description: `Traslado a Tesorería: ${description} (${bankAccount.currency.code})`,
+          exchangeRate,
+          description: `Transfer to Treasury: ${description} (${bankAccount.currency.code})`,
           performedBy,
         },
       });
 
-      // 5. Crear movimiento de INGRESO en Tesorería (Sumar al banco/bóveda)
+      // 5. Create INCOMING movement in Treasury (Add to bank/vault)
       const bankMovement = await tx.bankMovement.create({
         data: {
           bankAccountId,
           type: 'IN',
           amount,
           category: 'SALE_TRANSFER',
-          description: `Traslado desde Caja: ${description}`,
+          description: `Transfer from Cash: ${description}`,
           cashSessionId: sessionId,
         },
       });
 
-      // 6. Actualizar balance de la cuenta bancaria (En su moneda original)
+      // 6. Update bank account balance
       await tx.bankAccount.update({
         where: { id: bankAccountId },
         data: {
@@ -681,7 +722,8 @@ export class CashRegisterService {
   }
 
   /**
-   * Listar todas las cajas
+   * Lists all cash registers with their active session status and balance.
+   * @returns A list of registers with simplified active session info.
    */
   async listRegisters() {
     const registers = await this.prisma.cashRegister.findMany({
@@ -696,7 +738,6 @@ export class CashRegisterService {
       orderBy: { name: 'asc' },
     });
 
-    // Transform to include balance and status in a simpler way
     return registers.map((r) => {
       const activeSession = r.sessions[0] || null;
       let currentBalance = 0;
@@ -724,20 +765,25 @@ export class CashRegisterService {
   }
 
   /**
-   * Crear nueva caja
+   * Creates a new cash register.
+   * @param data Name and location of the register.
+   * @returns The created register record.
    */
   async createRegister(data: { name: string; location?: string }) {
     return this.prisma.cashRegister.create({
       data: {
         name: data.name,
-        location: data.location || 'Tienda',
+        location: data.location || 'Store',
         isActive: true,
       },
     });
   }
 
   /**
-   * Actualizar caja
+   * Updates a cash register's information.
+   * @param id The ID of the register.
+   * @param data The new data.
+   * @returns The updated register record.
    */
   async updateRegister(
     id: string,
@@ -750,7 +796,9 @@ export class CashRegisterService {
   }
 
   /**
-   * Eliminar caja (Soft delete)
+   * Deactivates a cash register (soft delete).
+   * @param id The ID of the register to delete.
+   * @returns The updated register record.
    */
   async deleteRegister(id: string) {
     return this.prisma.cashRegister.update({

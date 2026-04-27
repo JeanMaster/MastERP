@@ -8,6 +8,11 @@ import { ClientFormModal } from './ClientFormModal';
 import { ClientPurchaseHistory } from '../../components/ClientPurchaseHistory';
 import type { ColumnsType } from 'antd/es/table';
 
+/**
+ * ClientsPage Component
+ * Management interface for CRM (Customer Relationship Management).
+ * Allows listing, searching, editing, and contacting clients via social media/WhatsApp.
+ */
 export const ClientsPage = () => {
     const screens = Grid.useBreakpoint();
     const isMobile = !screens.lg;
@@ -16,21 +21,21 @@ export const ClientsPage = () => {
     const [editingClient, setEditingClient] = useState<Client | null>(null);
     const queryClient = useQueryClient();
 
-    // Fetch clients
+    // Fetch clients with optional search filter
     const { data: clients, isLoading } = useQuery({
         queryKey: ['clients', search],
         queryFn: () => clientsApi.getAll(search),
     });
 
-    // Delete mutation
+    // Delete (Deactivate) mutation
     const deleteMutation = useMutation({
         mutationFn: clientsApi.delete,
         onSuccess: () => {
-            message.success('Cliente eliminado');
+            message.success('Client deleted successfully');
             queryClient.invalidateQueries({ queryKey: ['clients'] });
         },
         onError: () => {
-            message.error('Error al eliminar cliente');
+            message.error('Error deleting client');
         },
     });
 
@@ -48,36 +53,38 @@ export const ClientsPage = () => {
         setEditingClient(null);
     };
 
+    /**
+     * Formats a phone number for WhatsApp Web API.
+     * Handles Venezuelan local formats automatically.
+     */
     const formatWhatsAppUrl = (phone: string, name: string) => {
-        // Remove non-numeric characters
         let cleanPhone = phone.replace(/\D/g, '');
 
-        // Handle common Venezuelan format: if starts with 04, replace with 584
+        // Handle Venezuelan mobile format (04xx -> 584xx)
         if (cleanPhone.startsWith('04')) {
             cleanPhone = '58' + cleanPhone.substring(1);
         } else if (!cleanPhone.startsWith('58') && cleanPhone.length === 10) {
-            // Assume missing 58 for local mobile 4xx
             cleanPhone = '58' + cleanPhone;
         }
 
-        const message = encodeURIComponent(`Hola ${name}, te contactamos de MastERP...`);
-        return `https://wa.me/${cleanPhone}/?text=${message}`;
+        const msg = encodeURIComponent(`Hello ${name}, we are contacting you from MastERP...`);
+        return `https://wa.me/${cleanPhone}/?text=${msg}`;
     };
 
     const columns: ColumnsType<Client> = [
         {
-            title: 'ID',
+            title: 'ID/RIF',
             dataIndex: 'id',
             key: 'id',
             width: 150,
         },
         {
-            title: 'Nombre',
+            title: 'Name',
             dataIndex: 'name',
             key: 'name',
         },
         {
-            title: 'Teléfono',
+            title: 'Phone',
             dataIndex: 'phone',
             key: 'phone',
             width: 150,
@@ -85,7 +92,7 @@ export const ClientsPage = () => {
                 <Space>
                     {phone}
                     {record.hasWhatsapp && phone && (
-                        <Tooltip title="Enviar WhatsApp">
+                        <Tooltip title="Send WhatsApp">
                             <WhatsAppOutlined
                                 style={{ color: '#25D366', cursor: 'pointer', fontSize: 16 }}
                                 onClick={() => window.open(formatWhatsAppUrl(phone, record.name), '_blank')}
@@ -101,7 +108,7 @@ export const ClientsPage = () => {
             key: 'email',
         },
         {
-            title: 'Redes Sociales',
+            title: 'Social Media',
             key: 'social',
             width: 120,
             render: (_, record: Client) => (
@@ -134,7 +141,7 @@ export const ClientsPage = () => {
             ),
         },
         {
-            title: 'Acciones',
+            title: 'Actions',
             key: 'actions',
             width: 150,
             fixed: isMobile ? false : ('right' as const),
@@ -147,10 +154,10 @@ export const ClientsPage = () => {
                         onClick={() => handleEdit(record)}
                     />
                     <Popconfirm
-                        title="¿Eliminar cliente?"
-                        description="Esta acción marcará al cliente como inactivo"
+                        title="Delete client?"
+                        description="This action will mark the client as inactive."
                         onConfirm={() => handleDelete(record.id)}
-                        okText="Sí"
+                        okText="Yes"
                         cancelText="No"
                     >
                         <Button
@@ -169,9 +176,9 @@ export const ClientsPage = () => {
             <Card>
                 <Row justify="space-between" align="middle" gutter={[16, 16]} style={{ marginBottom: 24 }}>
                     <Col xs={24} md={12}>
-                        <Typography.Title level={isMobile ? 3 : 2} style={{ margin: 0 }}>👥 Gestión de Clientes</Typography.Title>
+                        <Typography.Title level={isMobile ? 3 : 2} style={{ margin: 0 }}>👥 Clients Management</Typography.Title>
                     </Col>
-                    <Col xs={24} md={12} style={{ textAlign: isMobile ? 'right' : 'right' }}>
+                    <Col xs={24} md={12} style={{ textAlign: 'right' }}>
                         <Space wrap={isMobile}>
                             <Button
                                 icon={<ReloadOutlined />}
@@ -183,7 +190,7 @@ export const ClientsPage = () => {
                                 onClick={() => setIsModalOpen(true)}
                                 block={isMobile}
                             >
-                                {isMobile ? 'Nuevo' : 'Nuevo Cliente'}
+                                {isMobile ? 'New' : 'New Client'}
                             </Button>
                         </Space>
                     </Col>
@@ -191,7 +198,7 @@ export const ClientsPage = () => {
 
                 <div style={{ marginBottom: 16 }}>
                     <Input
-                        placeholder="Buscar por nombre, ID o email"
+                        placeholder="Search by name, ID/RIF or email"
                         prefix={<SearchOutlined />}
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
@@ -212,7 +219,7 @@ export const ClientsPage = () => {
                         showSizeChanger: true,
                         pageSizeOptions: ['10', '20', '50', '100'],
                         size: isMobile ? 'small' : 'default',
-                        showTotal: (total) => `Total: ${total} clientes`,
+                        showTotal: (total) => `Total: ${total} clients`,
                     }}
                 />
             </Card>

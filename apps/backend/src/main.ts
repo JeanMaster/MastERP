@@ -7,18 +7,18 @@ import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
-  // Filtro de excepciones global para debuguear errores 500 en producción
+  // Global exception filter for debugging 500 errors in production
   const httpAdapterHost = app.get(HttpAdapterHost);
   app.useGlobalFilters(new AllExceptionsFilter(httpAdapterHost));
 
-  // CORS - Configuración Permisiva para LAN
+  // CORS - Permissive configuration for LAN access
   app.enableCors({
-    origin: true, // Refleja el origen de la solicitud (Permite todo)
+    origin: true, // Reflects the request origin (allows all)
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
     credentials: true,
   });
 
-  // Validación global
+  // Global validation pipe
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
@@ -30,18 +30,16 @@ async function bootstrap() {
   // Swagger/OpenAPI
   const config = new DocumentBuilder()
     .setTitle('MastERP API')
-    .setDescription(
-      'API REST para el sistema ERP MastERP - Migración Web',
-    )
+    .setDescription('REST API for the MastERP ERP System')
     .setVersion('1.0')
-    .addTag('health', 'Endpoints de salud del sistema')
+    .addTag('health', 'System health endpoints')
     .addBearerAuth()
     .build();
 
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api/docs', app, document);
 
-  // Prefijo global para todas las rutas
+  // Global route prefix for all endpoints
   app.setGlobalPrefix('api');
 
   // Trust proxy for production (important for getting real IP and secure cookies behind Render/Vercel/Railway)
@@ -51,13 +49,13 @@ async function bootstrap() {
   }
 
   const port = process.env.PORT ?? 3000;
-  // Escuchar en 0.0.0.0 para permitir acceso desde la red local o contenedores
+  // Listen on 0.0.0.0 to allow access from the local network or containers
   await app.listen(port, '0.0.0.0');
 
   if (process.env.NODE_ENV !== 'production') {
     console.log(`🚀 Backend running on port ${port}`);
-    console.log(`🌐 Acceso local: http://localhost:${port}`);
-    console.log(`🌐 Acceso en red: http://(tu-ip-local):${port}`);
+    console.log(`🌐 Local access: http://localhost:${port}`);
+    console.log(`🌐 Network access: http://(your-local-ip):${port}`);
     console.log(`📚 API Documentation: http://localhost:${port}/api/docs`);
   }
 }

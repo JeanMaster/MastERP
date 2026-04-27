@@ -11,11 +11,15 @@ interface AddMovementModalProps {
     onSuccess: () => void;
 }
 
+/**
+ * AddMovementModal Component
+ * Modal to register a manual cash movement (expense, deposit, or withdrawal).
+ */
 export const AddMovementModal = ({ open, sessionId, onCancel, onSuccess }: AddMovementModalProps) => {
     const [form] = Form.useForm();
     const [loading, setLoading] = useState(false);
 
-    // F9 Keyboard Shortcut
+    // F9 Keyboard Shortcut for quick registration
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
             if (!open) return;
@@ -41,15 +45,15 @@ export const AddMovementModal = ({ open, sessionId, onCancel, onSuccess }: AddMo
                 currencyCode: values.currencyCode || 'VES',
                 description: values.description,
                 notes: values.notes,
-                performedBy: values.performedBy || 'Usuario'
+                performedBy: values.performedBy || 'User'
             };
 
             await cashRegisterApi.createMovement(dto);
-            message.success('Movimiento registrado exitosamente');
+            message.success('Movement registered successfully');
             form.resetFields();
             onSuccess();
         } catch (error: any) {
-            message.error(error.response?.data?.message || 'Error al registrar movimiento');
+            message.error(error.response?.data?.message || 'Error registering movement');
             console.error(error);
         } finally {
             setLoading(false);
@@ -63,13 +67,13 @@ export const AddMovementModal = ({ open, sessionId, onCancel, onSuccess }: AddMo
 
     return (
         <Modal
-            title="Registrar Movimiento de Caja"
+            title="Register Cash Movement"
             open={open}
             onCancel={handleCancel}
             onOk={handleSubmit}
             confirmLoading={loading}
-            okText="Registrar (F9)"
-            cancelText="Cancelar"
+            okText="Register (F9)"
+            cancelText="Cancel"
             width={500}
         >
             <Form
@@ -79,22 +83,22 @@ export const AddMovementModal = ({ open, sessionId, onCancel, onSuccess }: AddMo
             >
                 <Form.Item
                     name="type"
-                    label="Tipo de Movimiento"
-                    rules={[{ required: true, message: 'Selecciona el tipo' }]}
+                    label="Movement Type"
+                    rules={[{ required: true, message: 'Please select a type' }]}
                 >
-                    <Select placeholder="Selecciona el tipo" size="large">
-                        <Select.Option value="EXPENSE">💸 Gasto (pagar algo)</Select.Option>
-                        <Select.Option value="WITHDRAWAL">💰 Ingreso a Caja (agregar dinero)</Select.Option>
-                        <Select.Option value="DEPOSIT">🏦 Retiro de Caja (sacar dinero)</Select.Option>
+                    <Select placeholder="Select type" size="large">
+                        <Select.Option value="EXPENSE">💸 Expense (Pay something)</Select.Option>
+                        <Select.Option value="WITHDRAWAL">💰 Cash In (Add money)</Select.Option>
+                        <Select.Option value="DEPOSIT">🏦 Cash Out (Remove money)</Select.Option>
                     </Select>
                 </Form.Item>
 
                 <Form.Item
                     name="amount"
-                    label="Monto"
+                    label="Amount"
                     rules={[
-                        { required: true, message: 'Ingresa el monto' },
-                        { type: 'number', min: 0.01, message: 'Debe ser mayor a 0' }
+                        { required: true, message: 'Please enter the amount' },
+                        { type: 'number', min: 0.01, message: 'Must be greater than 0' }
                     ]}
                 >
                     <InputNumber
@@ -109,39 +113,39 @@ export const AddMovementModal = ({ open, sessionId, onCancel, onSuccess }: AddMo
 
                 <Form.Item
                     name="description"
-                    label="Descripción"
-                    rules={[{ required: true, message: 'Ingresa una descripción' }]}
+                    label="Description"
+                    rules={[{ required: true, message: 'Please enter a description' }]}
                 >
-                    <Input placeholder="Ej: Comprar materiales de limpieza" />
+                    <Input placeholder="e.g., Cleaning supplies purchase" />
                 </Form.Item>
 
                 <Form.Item
                     name="currencyCode"
-                    label="Moneda"
+                    label="Currency"
                     initialValue="VES"
                 >
                     <Select>
                         <Select.Option value="VES">Bolívares (VES)</Select.Option>
-                        <Select.Option value="USD">Dólares (USD)</Select.Option>
+                        <Select.Option value="USD">Dollars (USD)</Select.Option>
                         <Select.Option value="EUR">Euros (EUR)</Select.Option>
                     </Select>
                 </Form.Item>
 
                 <Form.Item
                     name="performedBy"
-                    label="Realizado por"
-                    initialValue="Usuario"
+                    label="Performed by"
+                    initialValue="User"
                 >
-                    <Input placeholder="Nombre del responsable" />
+                    <Input placeholder="Responsible name" />
                 </Form.Item>
 
                 <Form.Item
                     name="notes"
-                    label="Notas (opcional)"
+                    label="Notes (Optional)"
                 >
                     <TextArea
                         rows={2}
-                        placeholder="Detalles adicionales..."
+                        placeholder="Additional details..."
                     />
                 </Form.Item>
             </Form>

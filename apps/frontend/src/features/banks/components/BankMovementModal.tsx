@@ -1,5 +1,4 @@
 import { useEffect } from 'react';
-
 import { Modal, Form, Input, InputNumber, Select, message, Row, Col } from 'antd';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { banksApi, type BankAccount } from '../../../services/banksApi';
@@ -10,6 +9,10 @@ interface BankMovementModalProps {
     onClose: () => void;
 }
 
+/**
+ * BankMovementModal Component
+ * Modal to register a manual bank movement (income or outcome).
+ */
 export const BankMovementModal = ({ open, bankAccount, onClose }: BankMovementModalProps) => {
     const [form] = Form.useForm();
     const queryClient = useQueryClient();
@@ -17,18 +20,18 @@ export const BankMovementModal = ({ open, bankAccount, onClose }: BankMovementMo
     const mutation = useMutation({
         mutationFn: banksApi.addMovement,
         onSuccess: () => {
-            message.success('Movimiento registrado exitosamente');
+            message.success('Movement registered successfully');
             queryClient.invalidateQueries({ queryKey: ['banks'] });
             queryClient.invalidateQueries({ queryKey: ['bank-history', bankAccount?.id] });
             onClose();
             form.resetFields();
         },
         onError: (error: any) => {
-            message.error(error.response?.data?.message || 'Error al registrar movimiento');
+            message.error(error.response?.data?.message || 'Error registering movement');
         },
     });
 
-    // F9 Keyboard Shortcut
+    // F9 Keyboard Shortcut for quick registration
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
             if (!open) return;
@@ -56,13 +59,13 @@ export const BankMovementModal = ({ open, bankAccount, onClose }: BankMovementMo
 
     return (
         <Modal
-            title={`Nuevo Movimiento: ${bankAccount?.bankName}`}
+            title={`New Movement: ${bankAccount?.bankName}`}
             open={open}
             onOk={handleSubmit}
             onCancel={onClose}
             confirmLoading={mutation.isPending}
-            okText="Registrar (F9)"
-            cancelText="Cancelar"
+            okText="Register (F9)"
+            cancelText="Cancel"
         >
             <Form
                 form={form}
@@ -73,21 +76,21 @@ export const BankMovementModal = ({ open, bankAccount, onClose }: BankMovementMo
                 <Row gutter={16}>
                     <Col span={12}>
                         <Form.Item
-                            label="Tipo"
+                            label="Type"
                             name="type"
                             rules={[{ required: true }]}
                         >
                             <Select
                                 options={[
-                                    { value: 'IN', label: 'Ingreso (+)' },
-                                    { value: 'OUT', label: 'Egreso (-)' },
+                                    { value: 'IN', label: 'Income (+)' },
+                                    { value: 'OUT', label: 'Outcome (-)' },
                                 ]}
                             />
                         </Form.Item>
                     </Col>
                     <Col span={12}>
                         <Form.Item
-                            label="Monto"
+                            label="Amount"
                             name="amount"
                             rules={[{ required: true, type: 'number', min: 0.01 }]}
                         >
@@ -97,34 +100,34 @@ export const BankMovementModal = ({ open, bankAccount, onClose }: BankMovementMo
                 </Row>
 
                 <Form.Item
-                    label="Categoría"
+                    label="Category"
                     name="category"
                     rules={[{ required: true }]}
                 >
                     <Select
                         options={[
-                            { value: 'INJECTION', label: 'Inyección de Capital' },
-                            { value: 'EXPENSE', label: 'Gasto' },
-                            { value: 'ADJUSTMENT', label: 'Ajuste de Saldo' },
-                            { value: 'TRANSFER', label: 'Transferencia entre Cuentas' },
-                            { value: 'OTHER', label: 'Otro' },
+                            { value: 'INJECTION', label: 'Capital Injection' },
+                            { value: 'EXPENSE', label: 'Expense' },
+                            { value: 'ADJUSTMENT', label: 'Balance Adjustment' },
+                            { value: 'TRANSFER', label: 'Transfer between Accounts' },
+                            { value: 'OTHER', label: 'Other' },
                         ]}
                     />
                 </Form.Item>
 
                 <Form.Item
-                    label="Descripción"
+                    label="Description"
                     name="description"
                     rules={[{ required: true }]}
                 >
-                    <Input placeholder="Ej: Pago de alquiler, Venta extra..." />
+                    <Input placeholder="e.g., Rent payment, Extra sale..." />
                 </Form.Item>
 
                 <Form.Item
-                    label="Referencia (Opcional)"
+                    label="Reference (Optional)"
                     name="reference"
                 >
-                    <Input placeholder="Ref bancaria, factura #..." />
+                    <Input placeholder="Bank ref, invoice #..." />
                 </Form.Item>
             </Form>
         </Modal>

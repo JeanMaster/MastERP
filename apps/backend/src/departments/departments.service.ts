@@ -2,7 +2,6 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
-  ConflictException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateDepartmentDto } from './dto/create-department.dto';
@@ -13,11 +12,13 @@ export class DepartmentsService {
   constructor(private prisma: PrismaService) {}
 
   /**
-   * Crear un nuevo departamento
-   * Valida que solo haya 2 niveles de jerarquía (padre → hijo)
+   * Creates a new department.
+   * Validates that there are only 2 levels of hierarchy (Parent → Child).
+   * @param createDepartmentDto The data for the new department.
+   * @returns The created department record.
    */
   async create(createDepartmentDto: CreateDepartmentDto) {
-    // Si tiene parentId, verificar que el padre no tenga padre (solo 2 niveles)
+    // If it has a parentId, verify that the parent doesn't have a parent itself (limit to 2 levels)
     if (createDepartmentDto.parentId) {
       const parent = await this.prisma.department.findUnique({
         where: { id: createDepartmentDto.parentId },
@@ -25,12 +26,12 @@ export class DepartmentsService {
       });
 
       if (!parent) {
-        throw new NotFoundException('El departamento padre no existe');
+        throw new NotFoundException('Parent department not found');
       }
 
       if (parent.parentId) {
         throw new BadRequestException(
-          'No se pueden crear subdepartamentos de subdepartamentos. Solo se permiten 2 niveles de jerarquía.',
+          'Cannot create sub-departments of sub-departments. Only 2 levels of hierarchy are allowed.',
         );
       }
     }
@@ -50,8 +51,10 @@ export class DepartmentsService {
   }
 
   /**
-   * Listar todos los departamentos activos
-   * Incluye información de hijos y padre
+   * Retrieves all active departments.
+   * Includes information about parent and child departments.
+   * @param active Filter by active status (defaults to true).
+   * @returns A list of departments.
    */
   async findAll(active: boolean = true) {
     return this.prisma.department.findMany({
@@ -66,22 +69,23 @@ export class DepartmentsService {
         },
       },
       orderBy: [
-        { parentId: 'asc' }, // Padres primero (nulls first)
+        { parentId: 'asc' }, // Parents first (nulls first)
         { name: 'asc' },
       ],
     });
   }
 
   /**
-   * Obtener árbol de departamentos
+   * Retrieves the department hierarchy tree.
+   * @returns A tree structure of departments.
    */
   async getTree() {
     const all = await this.findAll();
 
-    // Filtrar solo los padres (sin parentId)
+    // Filter only roots (no parentId)
     const roots = all.filter((d) => !d.parentId);
 
-    // Construir árbol
+    // Build the tree
     return roots.map((root) => ({
       ...root,
       children: all.filter((d) => d.parentId === root.id),
@@ -89,7 +93,9 @@ export class DepartmentsService {
   }
 
   /**
-   * Obtener un departamento por ID
+   * Retrieves a single department by its ID.
+   * @param id The ID of the department.
+   * @returns The department record with full relationships.
    */
   async findOne(id: string) {
     const department = await this.prisma.department.findUnique({
@@ -105,27 +111,28 @@ export class DepartmentsService {
     });
 
     if (!department) {
-      throw new NotFoundException(`Departamento con ID ${id} no encontrado`);
+      throw new NotFoundException(`Department with ID ${id} not found`);
     }
 
     return department;
   }
 
   /**
-   * Actualizar un departamento
-   * Valida jerarquía de 2 niveles
+   * Updates an existing department.
+   * Validates the 2-level hierarchy constraint.
+   * @param id The ID of the department to update.
+   * @param updateDepartmentDto The updated data.
+   * @returns The updated department record.
    */
   async update(id: string, updateDepartmentDto: UpdateDepartmentDto) {
-    await this.findOne(id);
+    await this.findOne(id); // Ensure existence
 
-    // Si está cambiando el parentId, validar
+    // If changing the parentId, validate constraints
     if (updateDepartmentDto.parentId !== undefined) {
       if (updateDepartmentDto.parentId) {
-        // No puede asignarse a sí mismo como padre
+        // Cannot be its own parent
         if (updateDepartmentDto.parentId === id) {
-          throw new BadRequestException(
-            'Un departamento no puede ser su propio padre',
-          );
+          throw new BadRequestException('A department cannot be its own parent');
         }
 
         const parent = await this.prisma.department.findUnique({
@@ -134,16 +141,16 @@ export class DepartmentsService {
         });
 
         if (!parent) {
-          throw new NotFoundException('El departamento padre no existe');
+          throw new NotFoundException('Parent department not found');
         }
 
         if (parent.parentId) {
           throw new BadRequestException(
-            'No se pueden crear subdepartamentos de subdepartamentos',
+            'Cannot create sub-departments of sub-departments',
           );
         }
 
-        // Verificar que el departamento actual no tenga hijos (no puede ser hijo si tiene hijos)
+        // Verify that the current department doesn't have children (cannot become a child if it's already a parent)
         const current = await this.prisma.department.findUnique({
           where: { id },
           include: { children: true },
@@ -151,7 +158,7 @@ export class DepartmentsService {
 
         if (current && current.children.length > 0) {
           throw new BadRequestException(
-            'No se puede convertir en subdepartamento porque tiene subdepartamentos propios',
+            'Cannot convert to a sub-department because it has its own sub-departments',
           );
         }
       }
@@ -169,19 +176,21 @@ export class DepartmentsService {
   }
 
   /**
-   * Eliminar un departamento (soft delete)
-   * Si tiene hijos, los deja huérfanos (parentId = null)
+   * Deactivates a department (soft delete).
+   * Orphans children by setting their parentId to null.
+   * @param id The ID of the department to deactivate.
+   * @returns The deactivated department record.
    */
   async remove(id: string) {
     await this.findOne(id);
 
-    // Primero, desconectar los hijos
+    // Orphan children first
     await this.prisma.department.updateMany({
       where: { parentId: id },
       data: { parentId: null },
     });
 
-    // Luego hacer soft delete
+    // Mark as inactive
     return this.prisma.department.update({
       where: { id },
       data: { active: false },

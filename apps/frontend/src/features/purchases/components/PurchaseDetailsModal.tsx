@@ -10,6 +10,11 @@ interface PurchaseDetailsModalProps {
     onClose: () => void;
 }
 
+/**
+ * PurchaseDetailsModal Component
+ * Displays a detailed read-only view of a completed inventory purchase (Inbound Invoice).
+ * Shows supplier info, financial summary, and an itemized list of products received.
+ */
 export const PurchaseDetailsModal: React.FC<PurchaseDetailsModalProps> = ({
     visible,
     purchase,
@@ -19,18 +24,18 @@ export const PurchaseDetailsModal: React.FC<PurchaseDetailsModalProps> = ({
 
     const columns = [
         {
-            title: 'Producto',
+            title: 'Product',
             dataIndex: ['product', 'name'],
             key: 'product',
         },
         {
-            title: 'Cantidad',
+            title: 'Quantity',
             dataIndex: 'quantity',
             key: 'quantity',
             align: 'right' as const,
         },
         {
-            title: 'Costo Unitario',
+            title: 'Unit Cost',
             dataIndex: 'cost',
             key: 'cost',
             align: 'right' as const,
@@ -47,33 +52,33 @@ export const PurchaseDetailsModal: React.FC<PurchaseDetailsModalProps> = ({
 
     return (
         <Modal
-            title={`Detalle de Compra - ${purchase.invoiceNumber || 'Sin Factura'}`}
+            title={`Purchase Details - Invoice #${purchase.invoiceNumber || 'N/A'}`}
             open={visible}
             onCancel={onClose}
             footer={null}
             width={800}
         >
             <Descriptions bordered size="small" column={2}>
-                <Descriptions.Item label="Fecha">
-                    {dayjs(purchase.invoiceDate).format('DD/MM/YYYY')}
+                <Descriptions.Item label="Invoice Date">
+                    {dayjs(purchase.invoiceDate).format('MM/DD/YYYY')}
                 </Descriptions.Item>
-                <Descriptions.Item label="Proveedor">
+                <Descriptions.Item label="Supplier">
                     {purchase.supplier?.comercialName || 'N/A'}
                 </Descriptions.Item>
-                <Descriptions.Item label="Estado">
+                <Descriptions.Item label="Status">
                     <Tag color={purchase.status === 'COMPLETED' ? 'green' : 'orange'}>
-                        {purchase.status === 'COMPLETED' ? 'Completado' : purchase.status}
+                        {purchase.status === 'COMPLETED' ? 'Completed' : purchase.status}
                     </Tag>
                 </Descriptions.Item>
-                <Descriptions.Item label="Moneda">
-                    {purchase.currencyCode} (Tasa: {purchase.exchangeRate})
+                <Descriptions.Item label="Currency">
+                    {purchase.currencyCode} (Rate: {purchase.exchangeRate})
                 </Descriptions.Item>
-                <Descriptions.Item label="Total Compra" span={2}>
+                <Descriptions.Item label="Grand Total" span={2}>
                     <strong>{purchase.currencyCode} {formatVenezuelanPrice(Number(purchase.total))}</strong>
                 </Descriptions.Item>
             </Descriptions>
 
-            <h3 style={{ marginTop: 24, marginBottom: 16 }}>Items</h3>
+            <h3 style={{ marginTop: 24, marginBottom: 16 }}>Received Items</h3>
             <Table
                 dataSource={purchase.items}
                 columns={columns}

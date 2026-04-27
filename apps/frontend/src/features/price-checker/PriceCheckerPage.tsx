@@ -8,14 +8,23 @@ import { ProductDetailModal } from './ProductDetailModal';
 import { useNavigate } from 'react-router-dom';
 import { formatVenezuelanPrice } from '../../utils/formatters';
 import { getRoundedPrice } from '../../utils/rounding';
+import { useTranslation } from 'react-i18next';
 
 const { Header, Content } = Layout;
 const { Title, Text } = Typography;
 
+/**
+ * PriceCheckerPage Component
+ * A high-visibility interface designed for customer-facing terminals or fast inventory lookups.
+ * Allows users to browse products by department, search by name, or scan barcodes.
+ * Implements dual-currency pricing logic (Primary/Secondary) and POS rounding rules.
+ * Supports internationalization (i18n).
+ */
 export const PriceCheckerPage = () => {
+    const { t } = useTranslation();
     const navigate = useNavigate();
     const [searchTerm, setSearchTerm] = useState('');
-    const [products, setProducts] = useState<Product[]>([]); // For search results or current category products
+    const [products, setProducts] = useState<Product[]>([]);
     const [loading, setLoading] = useState(false);
 
     // Navigation State
@@ -24,15 +33,15 @@ export const PriceCheckerPage = () => {
     const [currentDept, setCurrentDept] = useState<Department | null>(null);
     const [currentSubDept, setCurrentSubDept] = useState<Department | null>(null);
 
-    // Settings State (for Currency)
+    // Business Logic Settings
     const [companySettings, setCompanySettings] = useState<any>(null);
-
     const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
-
     const searchInputRef = useRef<any>(null);
 
-    // Initial Load
+    /**
+     * Loads the department hierarchy and global tax/currency settings on mount.
+     */
     useEffect(() => {
         const loadData = async () => {
             setLoading(true);
@@ -52,7 +61,9 @@ export const PriceCheckerPage = () => {
         loadData();
     }, []);
 
-    // Search Logic
+    /**
+     * Executes product lookup by SKU/Barcode or Name.
+     */
     const handleSearch = async (value: string) => {
         if (!value.trim()) {
             if (viewMode === 'ROOT') setProducts([]);
@@ -68,18 +79,20 @@ export const PriceCheckerPage = () => {
             });
             setProducts(results);
 
-            // If only one match, open details
+            // Instant modal popup if a direct barcode match is found
             if (results.length === 1 && (results[0].sku === value || results[0].sku.endsWith(value))) {
                 handleProductClick(results[0]);
             }
         } catch (error) {
-            console.error("Error searching", error);
+            console.error("Error searching products", error);
         } finally {
             setLoading(false);
         }
     };
 
-    // Load Products for a specific level
+    /**
+     * Loads products filtered by Department and/or Sub-department.
+     */
     const loadCategoryProducts = async (deptId: string, subDeptId?: string) => {
         setLoading(true);
         try {
@@ -94,12 +107,10 @@ export const PriceCheckerPage = () => {
         }
     };
 
-    // Navigation Handlers
     const handleDeptClick = async (dept: Department) => {
         setCurrentDept(dept);
         setViewMode('DEPT');
-        setSearchTerm(''); // Clear search when navigating
-        // Load products for this dept (mixed with subdepts)
+        setSearchTerm('');
         await loadCategoryProducts(dept.id);
     };
 
@@ -123,8 +134,6 @@ export const PriceCheckerPage = () => {
         if (searchTerm) {
             setSearchTerm('');
             setProducts([]);
-            // If we were in a category before search, we ideally go back there. 
-            // For simplicity, if we have nav state, reload that state.
             if (currentSubDept) {
                 loadCategoryProducts(currentDept!.id, currentSubDept.id);
             } else if (currentDept) {
@@ -158,13 +167,11 @@ export const PriceCheckerPage = () => {
         }
     };
 
-    // Price Calculation Helper
+    /**
+     * Calculates the dual-currency final price considering tax rules and POS rounding rules.
+     */
     const getDualPrices = (product: Product) => {
         if (!companySettings) return { primary: product.salePrice, secondary: 0, primarySymbol: 'Bs', secondarySymbol: '$' };
-
-        // Assuming Base Currency is ALWAYS defined as Primary in Company Settings or defaulting to 'Bs'
-        // But referencing POS Logic: Primary = Bs. Secondary = Preferred Secondary (e.g. USD).
-        // Product Price Storage: Usually stored in Base Currency (Bs) unless exchangeRate > 1 (which implies it was calculated from USD)
 
         const primarySymbol = 'Bs';
         const secondarySymbol = companySettings.preferredSecondaryCurrency?.symbol || '$';
@@ -172,25 +179,23 @@ export const PriceCheckerPage = () => {
 
         let priceInPrimary = product.salePrice;
 
-        // Logic from POSPage:
-        // 1. Calculate Price in Primary Currency (Bs)
-        // If product.currency property exists and is NOT primary, convert to primary.
+        // 1. Currency normalization
         if (product.currency && !product.currency.isPrimary) {
             const prodRate = product.currency.exchangeRate || 1;
             priceInPrimary = product.salePrice * prodRate;
         }
 
-        // Add IVA if enabled and product is not exempt
+        // 2. Tax Application (VAT/IVA)
         if (companySettings.taxEnabled && !product.isTaxExempt) {
             priceInPrimary = priceInPrimary * (1 + (Number(companySettings.taxRate) || 16) / 100);
         }
 
-        // Apply POS Rounding Logic
+        // 3. POS Rounding Logic
         const roundingEnabled = companySettings.roundingEnabled !== undefined ? companySettings.roundingEnabled : true;
         const roundingFactor = companySettings.roundingFactor || 10;
         priceInPrimary = getRoundedPrice(priceInPrimary, roundingFactor, roundingEnabled);
 
-        // 2. Calculate Price in Secondary
+        // 4. Secondary Currency conversion
         let priceInSecondary = 0;
         if (secondaryRate > 0) {
             priceInSecondary = priceInPrimary / secondaryRate;
@@ -204,7 +209,6 @@ export const PriceCheckerPage = () => {
         };
     };
 
-    // Render Helpers
     const renderDepartmentCard = (dept: Department) => (
         <Col xs={12} sm={8} md={6} lg={4} key={dept.id}>
             <Card
@@ -218,7 +222,8 @@ export const PriceCheckerPage = () => {
                     justifyContent: 'center',
                     border: '1px solid #91caff',
                     background: '#e6f7ff',
-                    borderRadius: 12
+                    borderRadius: 16,
+                    boxShadow: '0 4px 10px rgba(0,0,0,0.05)'
                 }}
             >
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
@@ -242,7 +247,8 @@ export const PriceCheckerPage = () => {
                     justifyContent: 'center',
                     border: '1px solid #d3adf7',
                     background: '#f9f0ff',
-                    borderRadius: 12
+                    borderRadius: 16,
+                    boxShadow: '0 4px 10px rgba(0,0,0,0.05)'
                 }}
             >
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
@@ -261,8 +267,8 @@ export const PriceCheckerPage = () => {
                 <Card
                     hoverable
                     onClick={() => handleProductClick(product)}
-                    style={{ height: '100%', borderRadius: 12, overflow: 'hidden' }}
-                    bodyStyle={{ padding: 12, display: 'flex', flexDirection: 'column', height: '100%' }}
+                    style={{ height: '100%', borderRadius: 16, overflow: 'hidden', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}
+                    styles={{ body: { padding: 12, display: 'flex', flexDirection: 'column', height: '100%' } }}
                 >
                     <div style={{
                         height: 140,
@@ -270,24 +276,27 @@ export const PriceCheckerPage = () => {
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        position: 'relative'
+                        position: 'relative',
+                        background: '#fafafa',
+                        borderRadius: 12
                     }}>
                         <img
                             alt={product.name}
                             src={(product.images && product.images.length > 0) ? product.images[0] : 'https://via.placeholder.com/200?text=No+Image'}
-                            style={{ maxHeight: '100%', maxWidth: '100%', objectFit: 'contain' }}
+                            style={{ maxHeight: '90%', maxWidth: '90%', objectFit: 'contain' }}
                         />
                     </div>
 
                     <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
                         <Text strong style={{
-                            fontSize: 15,
+                            fontSize: 14,
                             marginBottom: 8,
                             lineHeight: 1.2,
                             display: '-webkit-box',
                             WebkitLineClamp: 2,
                             WebkitBoxOrient: 'vertical',
-                            overflow: 'hidden'
+                            overflow: 'hidden',
+                            height: 34
                         }}>
                             {product.name}
                         </Text>
@@ -296,24 +305,24 @@ export const PriceCheckerPage = () => {
                             <div style={{
                                 background: '#f6ffed',
                                 border: '1px solid #b7eb8f',
-                                borderRadius: 6,
-                                padding: '4px 8px',
+                                borderRadius: 8,
+                                padding: '6px 8px',
                                 textAlign: 'center',
                                 marginBottom: 4
                             }}>
-                                <Text strong style={{ color: '#389e0d', fontSize: 18, display: 'block' }}>
+                                <Text strong style={{ color: '#389e0d', fontSize: 20, display: 'block' }}>
                                     {formatVenezuelanPrice(primary, primarySymbol)}
                                 </Text>
                                 {companySettings?.taxEnabled && (
-                                    <span style={{ fontSize: 10, color: product.isTaxExempt ? '#888' : '#52c41a', fontWeight: 'bold' }}>
-                                        {product.isTaxExempt ? 'EXENTO' : 'IVA INCL.'}
+                                    <span style={{ fontSize: 10, color: product.isTaxExempt ? '#8c8c8c' : '#52c41a', fontWeight: 'bold', textTransform: 'uppercase' }}>
+                                        {product.isTaxExempt ? t('price_checker.tax_exempt') : t('price_checker.tax_included')}
                                     </span>
                                 )}
                             </div>
 
                             {secondary > 0 && (
                                 <div style={{ textAlign: 'center' }}>
-                                    <Text type="secondary" style={{ fontSize: 14 }}>
+                                    <Text type="secondary" style={{ fontSize: 15, fontWeight: 600 }}>
                                         {secondarySymbol} {secondary.toFixed(2)}
                                     </Text>
                                 </div>
@@ -326,46 +335,40 @@ export const PriceCheckerPage = () => {
     };
 
     const renderContent = () => {
-        // Search Mode
         if (searchTerm && searchTerm.trim().length > 0) {
-            if (loading) return <div style={{ textAlign: 'center', padding: 50 }}><Spin size="large" /></div>;
-            if (products.length === 0) return <Empty description="No se encontraron productos" />;
+            if (loading) return <div style={{ textAlign: 'center', padding: 50, width: '100%' }}><Spin size="large" /></div>;
+            if (products.length === 0) return <div style={{ width: '100%' }}><Empty description={t('price_checker.no_products')} /></div>;
             return products.map(renderProductCard);
         }
 
-        // Root Mode: Show Departments
         if (viewMode === 'ROOT') {
-            if (loading) return <div style={{ textAlign: 'center', padding: 50 }}><Spin size="large" /></div>;
-            if (departments.length === 0) return <Empty description="No hay departamentos" />;
+            if (loading) return <div style={{ textAlign: 'center', padding: 50, width: '100%' }}><Spin size="large" /></div>;
+            if (departments.length === 0) return <div style={{ width: '100%' }}><Empty description={t('price_checker.no_categories')} /></div>;
             return departments.map(renderDepartmentCard);
         }
 
-        // Dept Mode: Show SubDepts + Products
         if (viewMode === 'DEPT' && currentDept) {
             const subDepts = currentDept.children || [];
-
-            if (loading) return <div style={{ textAlign: 'center', padding: 50 }}><Spin size="large" /></div>;
+            if (loading) return <div style={{ textAlign: 'center', padding: 50, width: '100%' }}><Spin size="large" /></div>;
 
             const subDeptNodes = subDepts.map(renderSubDeptCard);
             const productNodes = products.map(renderProductCard);
 
-            if (subDeptNodes.length === 0 && productNodes.length === 0) return <Empty description="Categoría vacía" />;
-
+            if (subDeptNodes.length === 0 && productNodes.length === 0) return <div style={{ width: '100%' }}><Empty description={t('price_checker.empty_category')} /></div>;
             return [...subDeptNodes, ...productNodes];
         }
 
-        // SubDept Mode: Show Products
         if (viewMode === 'SUBDEPT') {
-            if (loading) return <div style={{ textAlign: 'center', padding: 50 }}><Spin size="large" /></div>;
-            if (products.length === 0) return <Empty description="Categoría vacía" />;
+            if (loading) return <div style={{ textAlign: 'center', padding: 50, width: '100%' }}><Spin size="large" /></div>;
+            if (products.length === 0) return <div style={{ width: '100%' }}><Empty description={t('price_checker.empty_subcategory')} /></div>;
             return products.map(renderProductCard);
         }
     };
 
     return (
-        <Layout style={{ minHeight: '100vh', background: '#f0f2f5' }}>
+        <Layout style={{ minHeight: '100vh', background: '#f8fafc' }}>
             <Header style={{
-                background: '#001529',
+                background: '#1e293b',
                 padding: '0 24px',
                 display: 'flex',
                 alignItems: 'center',
@@ -373,25 +376,25 @@ export const PriceCheckerPage = () => {
                 height: '80px',
                 position: 'sticky',
                 top: 0,
-                zIndex: 100
+                zIndex: 100,
+                boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
             }}>
                 <div style={{ display: 'flex', alignItems: 'center' }}>
-                    <BarcodeOutlined style={{ fontSize: '32px', color: '#1890ff', marginRight: '16px' }} />
-                    <Title level={3} style={{ color: 'white', margin: 0, marginRight: 24 }}>Visor de Precios</Title>
+                    <BarcodeOutlined style={{ fontSize: '32px', color: '#38bdf8', marginRight: '16px' }} />
+                    <Title level={3} style={{ color: 'white', margin: 0, marginRight: 24, fontWeight: 700 }}>{t('price_checker.title')}</Title>
 
-                    {/* Breadcrumbs / Navigation Info */}
                     {!searchTerm && viewMode !== 'ROOT' && (
                         <Breadcrumb style={{ display: 'flex', alignItems: 'center' }}>
-                            <Breadcrumb.Item onClick={handleHomeClick} style={{ cursor: 'pointer', color: 'rgba(255,255,255,0.7)' }}>
-                                <HomeOutlined /> Inicio
+                            <Breadcrumb.Item onClick={handleHomeClick} style={{ cursor: 'pointer', color: 'rgba(255,255,255,0.6)' }}>
+                                <HomeOutlined /> {t('price_checker.breadcrumb_start')}
                             </Breadcrumb.Item>
                             {currentDept && (
-                                <Breadcrumb.Item onClick={() => currentSubDept && handleDeptClick(currentDept)} style={{ cursor: currentSubDept ? 'pointer' : 'default', color: 'rgba(255,255,255,0.7)' }}>
+                                <Breadcrumb.Item onClick={() => currentSubDept && handleDeptClick(currentDept)} style={{ cursor: currentSubDept ? 'pointer' : 'default', color: 'rgba(255,255,255,0.6)' }}>
                                     {currentDept.name}
                                 </Breadcrumb.Item>
                             )}
                             {currentSubDept && (
-                                <Breadcrumb.Item style={{ color: 'white' }}>
+                                <Breadcrumb.Item style={{ color: 'white', fontWeight: 600 }}>
                                     {currentSubDept.name}
                                 </Breadcrumb.Item>
                             )}
@@ -404,21 +407,27 @@ export const PriceCheckerPage = () => {
                     icon={<ArrowLeftOutlined />}
                     onClick={() => navigate('/login')}
                     size="large"
+                    style={{ background: '#334155', border: 'none', height: 45 }}
                 >
-                    Salir
+                    {t('price_checker.back_to_login')}
                 </Button>
             </Header>
 
             <Content style={{ padding: '24px', maxWidth: '1600px', margin: '0 auto', width: '100%' }}>
-                {/* Search Bar */}
-                <div style={{ marginBottom: '24px', textAlign: 'center' }}>
+                {/* Search Bar Container */}
+                <div style={{ marginBottom: '32px', textAlign: 'center' }}>
                     <Input.Search
                         ref={searchInputRef}
-                        placeholder="Escanea el código de barras o escribe el nombre..."
+                        placeholder={t('price_checker.search_placeholder')}
                         allowClear
-                        enterButton={<Button type="primary" icon={<SearchOutlined />} size="large">Buscar</Button>}
+                        enterButton={
+                            <Button type="primary" icon={<SearchOutlined />} size="large" style={{ height: 56, padding: '0 32px' }}>
+                                {t('price_checker.search_button')}
+                            </Button>
+                        }
                         size="large"
-                        style={{ maxWidth: '800px', width: '100%' }}
+                        style={{ maxWidth: '900px', width: '100%' }}
+                        styles={{ input: { height: 56, borderRadius: '12px 0 0 12px', fontSize: 18 } }}
                         onSearch={handleSearch}
                         onChange={(e) => setSearchTerm(e.target.value)}
                         value={searchTerm}
@@ -426,17 +435,22 @@ export const PriceCheckerPage = () => {
                     />
                 </div>
 
-                {/* Back Button for Navigation */}
+                {/* Local Navigation Control */}
                 {(viewMode !== 'ROOT' || (searchTerm && searchTerm.length > 0)) && (
-                    <div style={{ marginBottom: 16 }}>
-                        <Button onClick={handleBackClick} icon={<ArrowLeftOutlined />} size="large">
-                            Regresar
+                    <div style={{ marginBottom: 20 }}>
+                        <Button 
+                            onClick={handleBackClick} 
+                            icon={<ArrowLeftOutlined />} 
+                            size="large" 
+                            style={{ borderRadius: 8, height: 45, display: 'flex', alignItems: 'center' }}
+                        >
+                            {t('price_checker.return')}
                         </Button>
                     </div>
                 )}
 
-                {/* Grid Content */}
-                <Row gutter={[16, 16]}>
+                {/* Main Grid View */}
+                <Row gutter={[20, 20]}>
                     {renderContent()}
                 </Row>
 

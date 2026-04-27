@@ -8,8 +8,16 @@ import { formatVenezuelanPrice } from '../../utils/formatters';
 import { ProductFormModal } from './ProductFormModal';
 import { MlPublishModal } from './MlPublishModal';
 import { mercadolibreApi } from '../../services/mercadolibreApi';
+import { useTranslation } from 'react-i18next';
 
+/**
+ * ProductsPage Component
+ * Main interface for inventory management of finished goods.
+ * Includes search, CRUD operations, and Mercado Libre integration status.
+ * Supports internationalization (i18n).
+ */
 export const ProductsPage = () => {
+    const { t } = useTranslation();
     const screens = Grid.useBreakpoint();
     const isMobile = !screens.lg;
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -40,11 +48,11 @@ export const ProductsPage = () => {
     const deleteMutation = useMutation({
         mutationFn: productsApi.delete,
         onSuccess: () => {
-            message.success('Producto eliminado exitosamente');
+            message.success(t('products.finished.delete_success'));
             queryClient.invalidateQueries({ queryKey: ['products'] });
         },
         onError: (error: any) => {
-            message.error(error.response?.data?.message || 'Error al eliminar producto');
+            message.error(error.response?.data?.message || t('common.error'));
         },
     });
 
@@ -67,7 +75,7 @@ export const ProductsPage = () => {
         setEditingProduct(null);
     };
 
-    // Filter products
+    // Client-side filtering
     const filteredData = products.filter((product) =>
         product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         product.sku.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -109,13 +117,13 @@ export const ProductsPage = () => {
             ),
         },
         {
-            title: 'SKU',
+            title: t('products.finished.sku'),
             dataIndex: 'sku',
             key: 'sku',
             width: '10%',
         },
         {
-            title: 'Nombre',
+            title: t('products.finished.name'),
             dataIndex: 'name',
             key: 'name',
             width: '20%',
@@ -140,15 +148,15 @@ export const ProductsPage = () => {
                         </div>
                     </Tooltip>
                     {record.type === 'COMPOSED' && (
-                        <Tooltip title="Producto Compuesto (Combo)">
-                            <Tag color="purple" style={{ fontSize: '10px' }}>COMBO</Tag>
+                        <Tooltip title={t('products.finished.combo_tooltip')}>
+                            <Tag color="purple" style={{ fontSize: '10px' }}>{t('products.finished.combo_tag')}</Tag>
                         </Tooltip>
                     )}
                 </Space>
             ),
         },
         {
-            title: 'Categoría',
+            title: t('products.finished.category'),
             key: 'category',
             width: '12%',
             render: (_: any, record: Product) => (
@@ -163,7 +171,7 @@ export const ProductsPage = () => {
             ),
         },
         {
-            title: 'Moneda',
+            title: 'Curr.',
             key: 'currency',
             width: '8%',
             render: (_: any, record: Product) => (
@@ -171,7 +179,7 @@ export const ProductsPage = () => {
             ),
         },
         {
-            title: 'Precio Costo',
+            title: t('products.composite.recipe_cost'),
             key: 'costPrice',
             width: '10%',
             render: (_: any, record: Product) => (
@@ -187,7 +195,7 @@ export const ProductsPage = () => {
             ),
         },
         {
-            title: 'Precios',
+            title: t('products.finished.prices'),
             key: 'prices',
             width: '12%',
             render: (_: any, record: Product) => {
@@ -197,12 +205,12 @@ export const ProductsPage = () => {
                     <div style={{ fontSize: 12 }}>
                         {record.offerPrice && (
                             <div style={{ marginBottom: 4 }}>
-                                <strong>Oferta:</strong> {record.currency.symbol} {record.offerPrice.toFixed(2)}
+                                <strong>{t('products.finished.offer')}:</strong> {record.currency.symbol} {record.offerPrice.toFixed(2)}
                             </div>
                         )}
                         {record.wholesalePrice && (
                             <div>
-                                <strong>Al Mayor:</strong> {formatVenezuelanPrice(record.wholesalePrice, record.currency.symbol, 2, true)}
+                                <strong>{t('products.finished.wholesale')}:</strong> {formatVenezuelanPrice(record.wholesalePrice, record.currency.symbol, 2, true)}
                             </div>
                         )}
                     </div>
@@ -227,7 +235,7 @@ export const ProductsPage = () => {
             },
         },
         {
-            title: 'Stock',
+            title: t('products.finished.stock'),
             key: 'stock',
             width: '8%',
             render: (_: any, record: Product) => {
@@ -240,13 +248,13 @@ export const ProductsPage = () => {
             },
         },
         {
-            title: 'Unidad',
+            title: t('products.finished.unit'),
             key: 'unit',
             width: '8%',
             render: (_: any, record: Product) => record.unit?.abbreviation || '-',
         },
         {
-            title: <Space><ShopOutlined /> Mercado Libre</Space>,
+            title: <Space><ShopOutlined /> {t('products.finished.ml_status')}</Space>,
             key: 'mercadolibre',
             width: '12%',
             align: 'center' as const,
@@ -257,7 +265,7 @@ export const ProductsPage = () => {
                 if (mapping) {
                     const isError = mapping.syncStatus === 'FAILED';
                     return (
-                        <Tooltip title={isError ? `Error: ${mapping.syncError}` : "Publicado y sincronizado"}>
+                        <Tooltip title={isError ? `Error: ${mapping.syncError}` : t('products.finished.published')}>
                             <a href={mapping.mlPermalink || '#'} target="_blank" rel="noopener noreferrer">
                                 <Tag
                                     icon={isError ? <CloseCircleOutlined /> : <CheckCircleOutlined />}
@@ -281,15 +289,15 @@ export const ProductsPage = () => {
                             setMlProduct(record);
                             setIsMlModalOpen(true);
                         }}
-                        title={hasAccounts ? "Publicar en Mercado Libre" : "Vincula una cuenta de ML primero"}
+                        title={hasAccounts ? t('products.finished.publish') : t('products.finished.ml_no_accounts')}
                     >
-                        Publicar
+                        {t('products.finished.publish')}
                     </Button>
                 );
             }
         },
         {
-            title: 'Acciones',
+            title: t('common.actions'),
             key: 'actions',
             width: '10%',
             render: (_: any, record: Product) => (
@@ -299,17 +307,17 @@ export const ProductsPage = () => {
                         icon={<EditOutlined />}
                         onClick={() => handleEdit(record)}
                     >
-                        Editar
+                        {t('common.edit')}
                     </Button>
                     <Popconfirm
-                        title="¿Eliminar producto?"
-                        description="Esta acción no se puede deshacer"
+                        title={t('products.finished.delete_confirm')}
+                        description={t('products.finished.delete_desc')}
                         onConfirm={() => handleDelete(record.id)}
-                        okText="Eliminar"
-                        cancelText="Cancelar"
+                        okText={t('common.delete')}
+                        cancelText={t('common.cancel')}
                     >
                         <Button type="link" danger icon={<DeleteOutlined />}>
-                            Eliminar
+                            {t('common.delete')}
                         </Button>
                     </Popconfirm>
                 </Space>
@@ -319,11 +327,11 @@ export const ProductsPage = () => {
 
     return (
         <Card
-            title={!isMobile ? "Productos Terminados" : undefined}
+            title={!isMobile ? t('products.finished.title') : undefined}
             extra={!isMobile ? (
                 <Space>
                     <Input
-                        placeholder="Buscar producto..."
+                        placeholder={t('products.finished.search_placeholder')}
                         prefix={<SearchOutlined />}
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
@@ -332,17 +340,17 @@ export const ProductsPage = () => {
                     />
                     <Button icon={<ReloadOutlined />} onClick={() => queryClient.invalidateQueries({ queryKey: ['products'] })} />
                     <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}>
-                        Nuevo Producto
+                        {t('products.finished.new_button')}
                     </Button>
                 </Space>
             ) : null}
         >
             {isMobile && (
                 <div style={{ marginBottom: 16 }}>
-                    <h2 style={{ fontSize: 20, marginBottom: 16 }}>📦 Productos Terminados</h2>
+                    <h2 style={{ fontSize: 20, marginBottom: 16 }}>📦 {t('products.finished.title')}</h2>
                     <Space direction="vertical" style={{ width: '100%' }} size="middle">
                         <Input
-                            placeholder="Buscar producto..."
+                            placeholder={t('products.finished.search_placeholder')}
                             prefix={<SearchOutlined />}
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
@@ -358,7 +366,7 @@ export const ProductsPage = () => {
                                 style={{ flex: 1 }}
                                 size="large"
                             >
-                                Nuevo
+                                {t('products.finished.new_short')}
                             </Button>
                             <Button
                                 icon={<ReloadOutlined />}
@@ -380,7 +388,7 @@ export const ProductsPage = () => {
                     defaultPageSize: 15,
                     showSizeChanger: true,
                     pageSizeOptions: ['10', '15', '20', '50', '100'],
-                    showTotal: (total, range) => `${range[0]}-${range[1]} de ${total} productos`,
+                    showTotal: (total, range) => t('products.finished.pagination_total', { rangeStart: range[0], rangeEnd: range[1], total }),
                     size: isMobile ? 'small' : 'default',
                     responsive: true,
                     position: ['bottomRight']

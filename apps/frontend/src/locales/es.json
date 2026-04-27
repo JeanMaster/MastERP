@@ -1,0 +1,244 @@
+{
+  "common": {
+    "save": "Guardar",
+    "cancel": "Cancelar",
+    "delete": "Eliminar",
+    "edit": "Editar",
+    "actions": "Acciones",
+    "search": "Buscar",
+    "loading": "Cargando...",
+    "success": "Éxito",
+    "error": "Error",
+    "refresh": "Actualizar",
+    "switch_theme": "Cambiar Tema",
+    "switch_lang": "Cambiar Idioma"
+  },
+  "menu": {
+    "dashboard": "Tablero",
+    "inventory": {
+      "label": "Inventario",
+      "finished_products": "Productos Terminados",
+      "bundle_products": "Combos / Combos",
+      "currencies": "Monedas y Tasas",
+      "categories": "Categorías / Departamentos",
+      "units": "Unidades de Medida",
+      "adjustments": "Ajustes de Inventario",
+      "services": "Catálogo de Servicios"
+    },
+    "sales": {
+      "label": "Ventas",
+      "pos": "Punto de Venta (POS)",
+      "history": "Historial de Ventas",
+      "returns": "Cambios y Devoluciones",
+      "receivable": "Cuentas por Cobrar",
+      "cash_drawer": "Caja / Gaveta",
+      "retentions": "Retenciones de Impuestos",
+      "customers": "Clientes"
+    },
+    "marketing": {
+      "label": "Centro de Marketing",
+      "control_center": "Centro de Control",
+      "social": "Redes Sociales (AI)",
+      "campaigns": "Campañas Masivas",
+      "templates": "Plantillas de Mensajes",
+      "coupons": "Cupones de Descuento",
+      "settings": "Configuración"
+    },
+    "purchases": {
+      "label": "Compras",
+      "suppliers": "Proveedores",
+      "orders": "Órdenes de Compra",
+      "history": "Historial de Compras",
+      "payable": "Cuentas por Pagar"
+    },
+    "expenses": "Gastos Operativos",
+    "hr": {
+      "label": "Recursos Humanos",
+      "directory": "Directorio de Empleados",
+      "payroll": "Períodos de Nómina"
+    },
+    "banks": "Bancos / Efectivo",
+    "reports": "Reportes Avanzados",
+    "mercadolibre": "Sincronización ML",
+    "settings": {
+      "label": "Configuración Sistema",
+      "business": "Perfil del Negocio",
+      "ai": "Centro de Inteligencia AI",
+      "dev": "Opciones de Desarrollador",
+      "general": "Opciones Generales",
+      "network": "Red y Conectividad",
+      "users": "Gestión de Usuarios"
+    },
+    "logout": "Cerrar Sesión",
+    "sign_out": "Salir"
+  },
+  "currencies": {
+    "title": "Monedas",
+    "name": "Nombre",
+    "code": "Código",
+    "symbol": "Símbolo",
+    "type": "Tipo",
+    "rate": "Tasa de Cambio",
+    "primary": "Principal",
+    "secondary": "Secundaria",
+    "search": "Buscar moneda...",
+    "new": "Nueva Moneda",
+    "edit": "Editar",
+    "delete": "Eliminar",
+    "delete_confirm": "¿Eliminar moneda?",
+    "delete_desc": "Esta acción no se puede deshacer",
+    "delete_success": "Moneda eliminada exitosamente"
+  },
+  "products": {
+    "composite": {
+      "title": "Productos Compuestos (Recetas)",
+      "mobile_title": "🧩 Productos Compuestos",
+      "sku": "Código / SKU",
+      "name": "Nombre",
+      "components": "Componentes",
+      "recipe_cost": "Costo Receta",
+      "sale_price": "Precio Venta",
+      "category": "Categoría",
+      "search_placeholder": "Buscar receta...",
+      "new_button": "Nueva Receta",
+      "delete_confirm": "¿Eliminar producto compuesto?",
+      "delete_desc": "Esta acción no se puede deshacer",
+      "delete_success": "Producto compuesto eliminado exitosamente",
+      "pagination_total": "{{rangeStart}}-{{rangeEnd}} de {{total}} recetas",
+      "components_count": "{{count}} Componentes"
+    },
+    "finished": {
+      "title": "Productos Terminados",
+      "search_placeholder": "Buscar producto...",
+      "new_button": "Nuevo Producto",
+      "new_short": "Nuevo",
+      "prices": "Precios",
+      "wholesale": "Mayorista",
+      "offer": "Oferta",
+      "stock": "Existencia",
+      "unit": "Unidad",
+      "ml_status": "Mercado Libre",
+      "publish": "Publicar",
+      "published": "Publicado y sincronizado",
+      "ml_no_accounts": "Vincule una cuenta de ML primero",
+      "delete_confirm": "¿Eliminar producto?",
+      "delete_desc": "Esta acción no se puede deshacer",
+      "delete_success": "Producto eliminado exitosamente",
+      "pagination_total": "{{rangeStart}}-{{rangeEnd}} de {{total}} productos",
+      "combo_tag": "COMBO",
+      "combo_tooltip": "Producto Compuesto (Combo)"
+    }
+  },
+  "price_checker": {
+    "title": "Verificador de Precios",
+    "breadcrumb_start": "Inicio",
+    "back_to_login": "Cerrar Terminal",
+    "search_placeholder": "Escanee código o escriba nombre...",
+    "search_button": "Buscar",
+    "return": "Volver",
+    "tax_exempt": "Exento de IVA",
+    "tax_included": "IVA Incluido",
+    "no_products": "No se encontraron productos",
+    "no_categories": "No hay categorías disponibles",
+    "empty_category": "Esta categoría está vacía",
+    "empty_subcategory": "No hay productos en esta sub-categoría"
+  },
+  "landing": {
+    "nav": {
+      "features": "Características",
+      "pricing": "Precios",
+      "about": "Nosotros",
+      "sign_in": "Iniciar Sesión",
+      "try_free": "Probar Gratis"
+    },
+    "hero": {
+      "title": "Eleva tu negocio con inteligencia",
+      "subtitle": "El ERP en la nube que te ayuda a gestionar inventario, ventas y crecimiento con IA.",
+      "cta": "Empezar Ahora"
+    },
+    "features": {
+      "title": "Diseñado para un Crecimiento Resiliente",
+      "inventory": "Inventario Inteligente",
+      "pos": "Punto de Venta Moderno",
+      "ai": "IA de Negocios",
+      "items": {
+        "multi_currency": {
+          "title": "Punto de Venta Multimoneda 100%",
+          "desc": "Cobre en moneda local y extranjera en la misma factura. El sistema recalcula el cambio y las equivalencias al instante basándose en tasas en tiempo real."
+        },
+        "mercadolibre": {
+          "title": "Integración con Mercado Libre",
+          "desc": "Venda en tienda y publique en Mercado Libre simultáneamente. Mantenga su inventario perfectamente sincronizado en todos los canales físicos y digitales."
+        },
+        "hr": {
+          "title": "RRHH y Nómina Integrados",
+          "desc": "Gestione perfiles de empleados, asigne salarios base y genere la nómina quincenal con solo dos clics. Recibos de pago digitales automatizados."
+        },
+        "analytics": {
+          "title": "Métricas Ajustadas por Inflación",
+          "desc": "Nuestros reportes usan tasas de cambio históricas para aislar la inflación, revelando el crecimiento real del negocio y proyecciones precisas de inventario."
+        }
+      }
+    },
+    "pricing": {
+      "title": "Precios Simples y Transparentes",
+      "badges": {
+        "popular": "MÁS POPULAR"
+      },
+      "tiers": {
+        "starter": {
+          "name": "Inicial",
+          "price": "Gratis",
+          "cta": "Empezar Gratis",
+          "features": [
+            "1 Usuario (+Admin)",
+            "Punto de Venta Básico",
+            "Productos Ilimitados",
+            "1 Moneda Activa"
+          ]
+        },
+        "professional": {
+          "name": "PYME / Profesional",
+          "price": "25",
+          "cta": "Probar Premium",
+          "features": [
+            "Usuarios Ilimitados",
+            "POS Multimoneda Avanzado",
+            "Módulo de Nómina Completo",
+            "Múltiples Cajas",
+            "Reportes Ajustados por Inflación"
+          ]
+        },
+        "enterprise": {
+          "name": "Empresarial",
+          "price": "89",
+          "cta": "Contactar Ventas",
+          "features": [
+            "Todo el plan PYME",
+            "Sincronización Mercado Libre",
+            "Proyecciones de Stock ML",
+            "Integración API REST",
+            "Soporte Prioritario 24/7"
+          ]
+        }
+      }
+    },
+    "footer": {
+      "copyright": "© {{year}} MastERP Systems. Todos los derechos reservados.",
+      "mission": "Construido con tecnología de vanguardia para empoderar a los comerciantes y vencer la inestabilidad económica."
+    }
+  },
+  "auth": {
+    "title": "Inicie sesión para gestionar su negocio",
+    "username_placeholder": "Usuario",
+    "password_placeholder": "Contraseña",
+    "username_required": "Por favor ingrese su usuario",
+    "password_required": "Por favor ingrese su contraseña",
+    "sign_in": "Entrar",
+    "or": "O",
+    "open_visor": "Abrir Verificador de Precios",
+    "error_network": "No se pudo conectar al servidor. Verifique su red.",
+    "error_invalid": "Usuario o contraseña inválidos.",
+    "error_server": "Ocurrió un error en el servidor al iniciar sesión."
+  }
+}

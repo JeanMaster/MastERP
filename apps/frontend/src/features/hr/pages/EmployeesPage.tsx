@@ -8,6 +8,11 @@ import { EmployeeFormModal } from '../components/EmployeeFormModal';
 
 const { Title } = Typography;
 
+/**
+ * EmployeesPage Component
+ * Management dashboard for the workforce. 
+ * Allows creating, updating, and deactivating (soft-deleting) employee profiles, tracking their salary, position, and payment frequency.
+ */
 export const EmployeesPage = () => {
     const [isModalVisible, setIsModalVisible] = useState(false);
     const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
@@ -18,10 +23,13 @@ export const EmployeesPage = () => {
         queryFn: employeesApi.findAll,
     });
 
+    /**
+     * Soft-deletes (deactivates) an employee record.
+     */
     const deleteMutation = useMutation({
         mutationFn: employeesApi.remove,
         onSuccess: () => {
-            message.success('Empleado eliminado (inactivado)');
+            message.success('Employee deactivated successfully');
             queryClient.invalidateQueries({ queryKey: ['employees'] });
         }
     });
@@ -42,7 +50,7 @@ export const EmployeesPage = () => {
 
     const columns = [
         {
-            title: 'Nombre',
+            title: 'Full Name',
             key: 'name',
             render: (_: any, record: Employee) => (
                 <Space>
@@ -52,71 +60,70 @@ export const EmployeesPage = () => {
             )
         },
         {
-            title: 'Identificación',
+            title: 'ID Number',
             dataIndex: 'identification',
             key: 'identification',
         },
         {
-            title: 'Cargo',
+            title: 'Position',
             dataIndex: 'position',
             key: 'position',
         },
         {
-            title: 'Departamento',
+            title: 'Department',
             dataIndex: 'department',
             key: 'department',
         },
         {
-            title: 'Frecuencia',
+            title: 'Payment Frequency',
             dataIndex: 'paymentFrequency',
             key: 'paymentFrequency',
             render: (freq: string) => {
-                const map: any = { WEEKLY: 'Semanal', BIWEEKLY: 'Quincenal', MONTHLY: 'Mensual' };
+                const map: any = { 
+                    WEEKLY: 'Weekly', 
+                    BIWEEKLY: 'Biweekly', 
+                    MONTHLY: 'Monthly' 
+                };
                 return map[freq] || freq;
             }
         },
         {
-            title: 'Frecuencia',
-            dataIndex: 'paymentFrequency',
-            key: 'paymentFrequency',
-            render: (freq: string) => {
-                const map: any = { WEEKLY: 'Semanal', BIWEEKLY: 'Quincenal', MONTHLY: 'Mensual' };
-                return map[freq] || freq;
-            }
-        },
-        {
-            title: 'Sueldo Base',
+            title: 'Base Salary',
             key: 'salary',
+            align: 'right' as const,
             render: (_: any, record: Employee) => (
                 <span>
-                    {record.baseSalary} <small>{record.currency || 'VES'}</small>
+                    <strong>{record.baseSalary}</strong> <small>{record.currency || 'VES'}</small>
                 </span>
             )
         },
         {
-            title: 'Estado',
+            title: 'Status',
             key: 'status',
+            align: 'center' as const,
             render: (_: any, record: Employee) => (
                 <Tag color={record.isActive ? 'green' : 'red'}>
-                    {record.isActive ? 'Activo' : 'Inactivo'}
+                    {record.isActive ? 'Active' : 'Inactive'}
                 </Tag>
             )
         },
         {
-            title: 'Acciones',
+            title: 'Actions',
             key: 'actions',
+            width: 100,
             render: (_: any, record: Employee) => (
                 <Space>
-                    <Tooltip title="Editar">
+                    <Tooltip title="Edit">
                         <Button
                             icon={<EditOutlined />}
                             onClick={() => handleEdit(record)}
                         />
                     </Tooltip>
                     <Popconfirm
-                        title="¿Inactivar empleado?"
+                        title="Deactivate employee profile?"
+                        description="This will mark the employee as inactive."
                         onConfirm={() => handleDelete(record.id)}
-                        okText="Sí"
+                        okText="Yes"
                         cancelText="No"
                     >
                         <Button icon={<DeleteOutlined />} danger disabled={!record.isActive} />
@@ -128,10 +135,10 @@ export const EmployeesPage = () => {
 
     return (
         <div style={{ padding: '24px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '24px' }}>
-                <Title level={2}>Gestión de Empleados</Title>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '24px', alignItems: 'center' }}>
+                <Title level={2} style={{ margin: 0 }}>👥 Employee Management</Title>
                 <Button type="primary" icon={<PlusOutlined />} onClick={handleCreate}>
-                    Nuevo Empleado
+                    Register New Employee
                 </Button>
             </div>
 
@@ -140,6 +147,9 @@ export const EmployeesPage = () => {
                 dataSource={employees}
                 rowKey="id"
                 loading={isLoading}
+                pagination={{
+                    showTotal: (total) => `Total: ${total} employees`
+                }}
             />
 
             <EmployeeFormModal

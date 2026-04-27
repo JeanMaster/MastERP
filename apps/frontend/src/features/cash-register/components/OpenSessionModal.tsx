@@ -14,6 +14,10 @@ interface OpenSessionModalProps {
     onSuccess: () => void;
 }
 
+/**
+ * OpenSessionModal Component
+ * Modal to handle the opening of a new cash session and initial cash count.
+ */
 export const OpenSessionModal = ({ open, registerId, onCancel, onSuccess }: OpenSessionModalProps) => {
     const [form] = Form.useForm();
     const [loading, setLoading] = useState(false);
@@ -45,7 +49,7 @@ export const OpenSessionModal = ({ open, registerId, onCancel, onSuccess }: Open
             }
         } catch (error) {
             console.error('Error fetching data:', error);
-            message.error('Error al cargar datos iniciales');
+            message.error('Error loading initial data');
         } finally {
             setLoading(false);
         }
@@ -72,7 +76,7 @@ export const OpenSessionModal = ({ open, registerId, onCancel, onSuccess }: Open
         return { totalVES, totalUSD, totalEquivalent };
     };
 
-    // F9 Keyboard Shortcut
+    // F9 Keyboard Shortcut for quick opening
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
             if (!open) return;
@@ -92,7 +96,7 @@ export const OpenSessionModal = ({ open, registerId, onCancel, onSuccess }: Open
             const { totalEquivalent } = calculateTotals();
 
             if (totalEquivalent <= 0) {
-                return message.warning('El saldo inicial debe ser mayor a 0. Registre el efectivo en caja.');
+                return message.warning('Initial balance must be greater than 0. Please record the cash in drawer.');
             }
 
             setLoading(true);
@@ -111,12 +115,12 @@ export const OpenSessionModal = ({ open, registerId, onCancel, onSuccess }: Open
             };
 
             await cashRegisterApi.openSession(dto);
-            message.success('Caja abierta exitosamente');
+            message.success('Cash opened successfully');
             setCounts({});
             form.resetFields();
             onSuccess();
         } catch (error: any) {
-            message.error(error.response?.data?.message || 'Error al abrir caja');
+            message.error(error.response?.data?.message || 'Error opening cash register');
             console.error(error);
         } finally {
             setLoading(false);
@@ -132,9 +136,9 @@ export const OpenSessionModal = ({ open, registerId, onCancel, onSuccess }: Open
             pagination={false}
             size="small"
             columns={[
-                { title: 'Billetes', dataIndex: 'label', key: 'label' },
+                { title: 'Bills', dataIndex: 'label', key: 'label' },
                 {
-                    title: 'Cantidad',
+                    title: 'Quantity',
                     key: 'qty',
                     render: (_: any, record: any) => (
                         <InputNumber
@@ -160,13 +164,13 @@ export const OpenSessionModal = ({ open, registerId, onCancel, onSuccess }: Open
 
     return (
         <Modal
-            title="Apertura de Caja y Arqueo Inicial"
+            title="Open Cash & Initial Count"
             open={open}
             onCancel={onCancel}
             onOk={handleSubmit}
             confirmLoading={loading}
-            okText="Abrir Caja (F9)"
-            cancelText="Cancelar"
+            okText="Open Cash (F9)"
+            cancelText="Cancel"
             width={850}
         >
             <Form form={form} layout="vertical" style={{ marginTop: 20 }}>
@@ -174,10 +178,10 @@ export const OpenSessionModal = ({ open, registerId, onCancel, onSuccess }: Open
                     <Col span={12}>
                         <Form.Item
                             name="cashierId"
-                            label="Cajero Asignado"
-                            rules={[{ required: true, message: 'Selecciona el cajero' }]}
+                            label="Assigned Cashier"
+                            rules={[{ required: true, message: 'Please select a cashier' }]}
                         >
-                            <Select placeholder="Seleccionar cajero">
+                            <Select placeholder="Select cashier">
                                 {users.map(user => (
                                     <Select.Option key={user.id} value={user.username}>
                                         {user.name} ({user.username})
@@ -187,17 +191,17 @@ export const OpenSessionModal = ({ open, registerId, onCancel, onSuccess }: Open
                         </Form.Item>
                     </Col>
                     <Col span={12}>
-                        <Form.Item name="notes" label="Notas de Apertura">
-                            <TextArea rows={1} placeholder="Observaciones..." />
+                        <Form.Item name="notes" label="Opening Notes">
+                            <TextArea rows={1} placeholder="Observations..." />
                         </Form.Item>
                     </Col>
                 </Row>
 
-                <Divider titlePlacement="left">Conteo de Efectivo en Gaveta</Divider>
+                <Divider titlePlacement="left">Cash in Drawer Count</Divider>
 
                 <Alert
-                    message="IMPORTANTE"
-                    description="Ingrese el efectivo físico que hay en la caja en este momento. El saldo inicial se calculará automáticamente."
+                    message="IMPORTANT"
+                    description="Enter the physical cash currently in the drawer. The initial balance will be calculated automatically."
                     type="info"
                     showIcon
                     style={{ marginBottom: 20 }}
@@ -212,10 +216,10 @@ export const OpenSessionModal = ({ open, registerId, onCancel, onSuccess }: Open
                         </div>
                     </Col>
                     <Col span={12}>
-                        <Title level={5}>Dólares (USD)</Title>
+                        <Title level={5}>Dollars (USD)</Title>
                         {renderDenominationTable('USD')}
                         <div style={{ textAlign: 'right', marginTop: 8 }}>
-                            <Text type="secondary">Tasa: {exchangeRate.toFixed(2)} Bs/$</Text>
+                            <Text type="secondary">Rate: {exchangeRate.toFixed(2)} Bs/$</Text>
                             <br />
                             <Text strong>Subtotal USD: Bs. {(totalUSD * exchangeRate).toFixed(2)} ({totalUSD}$)</Text>
                         </div>
@@ -224,7 +228,7 @@ export const OpenSessionModal = ({ open, registerId, onCancel, onSuccess }: Open
 
                 <div style={{ background: '#f0f2f5', padding: 20, borderRadius: 8, marginTop: 24 }}>
                     <Statistic
-                        title="Saldo Inicial Total (Bs.)"
+                        title="Total Initial Balance (Bs.)"
                         value={totalEquivalent}
                         precision={2}
                         prefix="Bs."

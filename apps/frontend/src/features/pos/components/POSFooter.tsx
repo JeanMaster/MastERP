@@ -8,6 +8,10 @@ import {
 
 const { Text } = Typography;
 
+/**
+ * FunctionKey Internal Component
+ * Displays a keyboard shortcut button with a label and icon.
+ */
 const FunctionKey = ({
     fKey,
     label,
@@ -24,9 +28,9 @@ const FunctionKey = ({
     <Button
         style={{
             height: '50px',
-            minWidth: '90px', // Allow auto width but minimum
+            minWidth: '90px',
             display: 'flex',
-            flexDirection: 'row', // Cambiar a horizontal
+            flexDirection: 'row',
             alignItems: 'center',
             justifyContent: 'center',
             background: color,
@@ -36,12 +40,10 @@ const FunctionKey = ({
         }}
         onClick={onClick}
     >
-        {/* F-Key pequeña en la esquina o integrada */}
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', lineHeight: 1 }}>
             <Text type="secondary" style={{ fontSize: 9 }}>{fKey}</Text>
             <Text strong style={{ fontSize: 11 }}>{label}</Text>
         </div>
-        {/* Icono a la derecha */}
         {icon && <div style={{ fontSize: 18 }}>{icon}</div>}
     </Button>
 );
@@ -53,6 +55,11 @@ interface POSFooterProps {
     onCouponClick?: () => void;
 }
 
+/**
+ * POSFooter Component
+ * Bottom bar of the POS interface.
+ * Contains global keyboard shortcut buttons and the main Checkout (Totalize) button.
+ */
 export const POSFooter = ({ onClientClick, onCheckoutClick, onCajaClick, onCouponClick }: POSFooterProps) => {
     const screens = Grid.useBreakpoint();
     const isMobile = !screens.lg;
@@ -67,17 +74,17 @@ export const POSFooter = ({ onClientClick, onCheckoutClick, onCajaClick, onCoupo
             gap: isMobile ? 5 : 10,
             width: '100%'
         }}>
-            {/* Botones de Función */}
+            {/* Action Shortcut Buttons */}
             <div style={{ display: 'flex', gap: isMobile ? 5 : 10, flexWrap: 'wrap' }}>
                 <FunctionKey
                     fKey="F3"
-                    label={isMobile ? "" : "Cliente"}
+                    label={isMobile ? "" : "Customer"}
                     icon={<UserOutlined />}
                     onClick={onClientClick}
                 />
                 <FunctionKey
                     fKey="F2"
-                    label={isMobile ? "" : "Cupón"}
+                    label={isMobile ? "" : "Coupon"}
                     icon={<ShoppingCartOutlined />}
                     onClick={onCouponClick}
                 />
@@ -85,16 +92,16 @@ export const POSFooter = ({ onClientClick, onCheckoutClick, onCajaClick, onCoupo
                     <>
                         <FunctionKey
                             fKey="F10"
-                            label="Caja"
+                            label="Register"
                             icon={<SaveOutlined />}
                             onClick={onCajaClick}
                         />
-                        <FunctionKey fKey="F11" label="Cargar" icon={<ReloadOutlined />} />
+                        <FunctionKey fKey="F11" label="Reload" icon={<ReloadOutlined />} />
                     </>
                 )}
             </div>
 
-            {/* Botón Totalizar - Más destacado en móvil */}
+            {/* Principal Checkout Button */}
             <Button
                 type="primary"
                 style={{
@@ -111,12 +118,12 @@ export const POSFooter = ({ onClientClick, onCheckoutClick, onCajaClick, onCoupo
                 onClick={onCheckoutClick}
             >
                 <ShoppingCartOutlined style={{ fontSize: isMobile ? 20 : 24 }} />
-                <span>{isMobile ? "Pagar" : "F9 Totalizar"}</span>
+                <span>{isMobile ? "Pay" : "F9 Checkout"}</span>
             </Button>
 
             {!isMobile && (
                 <FunctionKey
-                    fKey="SUPR"
+                    fKey="DEL"
                     label="Reset"
                     icon={<ReloadOutlined />}
                     color="#fff1f0"

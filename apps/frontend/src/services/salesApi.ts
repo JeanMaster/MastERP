@@ -73,15 +73,19 @@ export interface SalesFilters {
 export interface SalesResponse {
     sales: Sale[];
     summary: {
-        totalVentas: number;
-        ingresoBruto: number;
-        ingresoNominal: number;
-        descuentos: number;
-        ticketPromedio: number;
+        totalSales: number;
+        grossRevenue: number;
+        nominalRevenue: number;
+        discounts: number;
+        averageTicket: number;
     };
 }
 
 export const salesApi = {
+    /**
+     * Retrieves all sales records.
+     * @returns A list of sales.
+     */
     getAll: async (): Promise<Sale[]> => {
         const { data } = await api.get(`/sales`);
         // Handle both new format { sales: [], summary: {} } and old format []
@@ -91,6 +95,11 @@ export const salesApi = {
         return Array.isArray(data) ? data : [];
     },
 
+    /**
+     * Retrieves sales records matching specific filters.
+     * @param filters Filtering criteria (dates, client, product, etc.).
+     * @returns Filtered sales and summary statistics.
+     */
     getWithFilters: async (filters: SalesFilters): Promise<SalesResponse> => {
         const params = new URLSearchParams();
 
@@ -107,40 +116,78 @@ export const salesApi = {
         return data;
     },
 
+    /**
+     * Retrieves a single sale record by its ID.
+     * @param id The ID of the sale.
+     * @returns The sale record.
+     */
     getOne: async (id: string): Promise<Sale> => {
         const { data } = await api.get(`/sales/${id}`);
         return data;
     },
 
+    /**
+     * Retrieves the next available invoice number.
+     * @returns The next invoice number string.
+     */
     getNextInvoiceNumber: async (): Promise<string> => {
         const { data } = await api.get(`/sales/next-invoice-number`);
         return data;
     },
 
+    /**
+     * Reserves an invoice number for immediate use.
+     * @returns The reserved invoice number string.
+     */
     reserveInvoiceNumber: async (): Promise<string> => {
         const { data } = await api.get(`/sales/reserve-invoice-number`);
         return data;
     },
 
+    /**
+     * Creates a new sale record.
+     * @param dto The data for the new sale.
+     * @returns The created sale record.
+     */
     create: async (dto: CreateSaleDto): Promise<Sale> => {
         const { data } = await api.post(`/sales`, dto);
         return data;
     },
 
+    /**
+     * Retrieves a client's recent purchases.
+     * @param clientId The ID of the client.
+     * @param limit Maximum number of records.
+     * @returns A list of recent purchases.
+     */
     getClientRecentPurchases: async (clientId: string, limit: number = 5): Promise<Sale[]> => {
         const { data } = await api.get(`/sales/client/${clientId}/recent?limit=${limit}`);
         return data;
     },
 
+    /**
+     * Updates the payment method of an existing sale.
+     * @param id The ID of the sale.
+     * @param paymentMethod The new payment method string.
+     * @returns The updated sale record.
+     */
     updatePaymentMethod: async (id: string, paymentMethod: string): Promise<Sale> => {
         const { data } = await api.patch(`/sales/${id}/payment-method`, { paymentMethod });
         return data;
     },
 
+    /**
+     * Deletes a sale record and restores stock.
+     * @param id The ID of the sale to delete.
+     */
     remove: async (id: string): Promise<void> => {
         await api.delete(`/sales/${id}`);
     },
 
+    /**
+     * Marks a sale as uncollectible (no stock restoral).
+     * @param id The ID of the sale.
+     */
     markAsUncollectible: async (id: string): Promise<void> => {
         await api.delete(`/sales/${id}/uncollectible`);
     },

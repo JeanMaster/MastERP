@@ -8,6 +8,10 @@ import { UnitFormModal } from './UnitFormModal';
 
 const { useBreakpoint } = Grid;
 
+/**
+ * UnitsPage Component
+ * Management interface for measurement units (e.g., Kg, Units, Meters).
+ */
 export const UnitsPage = () => {
     const screens = useBreakpoint();
     const isMobile = !screens.lg;
@@ -16,7 +20,7 @@ export const UnitsPage = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const queryClient = useQueryClient();
 
-    // Fetch units
+    // Fetch measurement units
     const { data: units = [], isLoading } = useQuery({
         queryKey: ['units'],
         queryFn: unitsApi.getAll,
@@ -26,11 +30,11 @@ export const UnitsPage = () => {
     const deleteMutation = useMutation({
         mutationFn: unitsApi.delete,
         onSuccess: () => {
-            message.success('Unidad eliminada exitosamente');
+            message.success('Unit deleted successfully');
             queryClient.invalidateQueries({ queryKey: ['units'] });
         },
         onError: (error: any) => {
-            message.error(error.response?.data?.message || 'Error al eliminar unidad');
+            message.error(error.response?.data?.message || 'Error deleting unit');
         },
     });
 
@@ -53,7 +57,7 @@ export const UnitsPage = () => {
         setEditingUnit(null);
     };
 
-    // Filter units
+    // Client-side filtering
     const filteredData = units.filter((unit) =>
         unit.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         unit.abbreviation.toLowerCase().includes(searchTerm.toLowerCase())
@@ -61,20 +65,20 @@ export const UnitsPage = () => {
 
     const columns = [
         {
-            title: 'Nombre',
+            title: 'Name',
             dataIndex: 'name',
             key: 'name',
             width: '40%',
         },
         {
-            title: 'Abreviación',
+            title: 'Abbreviation',
             dataIndex: 'abbreviation',
             key: 'abbreviation',
             width: '30%',
             render: (text: string) => <Tag color="blue">{text}</Tag>,
         },
         {
-            title: 'Acciones',
+            title: 'Actions',
             key: 'actions',
             width: '30%',
             render: (_: any, record: Unit) => (
@@ -84,17 +88,17 @@ export const UnitsPage = () => {
                         icon={<EditOutlined />}
                         onClick={() => handleEdit(record)}
                     >
-                        Editar
+                        Edit
                     </Button>
                     <Popconfirm
-                        title="¿Eliminar unidad?"
-                        description="Esta acción no se puede deshacer"
+                        title="Delete unit?"
+                        description="This action cannot be undone"
                         onConfirm={() => handleDelete(record.id)}
-                        okText="Eliminar"
-                        cancelText="Cancelar"
+                        okText="Delete"
+                        cancelText="Cancel"
                     >
                         <Button type="link" danger icon={<DeleteOutlined />}>
-                            Eliminar
+                            Delete
                         </Button>
                     </Popconfirm>
                 </Space>
@@ -104,11 +108,11 @@ export const UnitsPage = () => {
 
     return (
         <Card
-            title="Unidades de Medida"
+            title="Measurement Units"
             extra={
                 <Space direction={isMobile ? 'vertical' : 'horizontal'} style={{ width: isMobile ? '100%' : 'auto' }} align={isMobile ? 'end' : 'center'}>
                     <Input
-                        placeholder="Buscar unidad..."
+                        placeholder="Search unit..."
                         prefix={<SearchOutlined />}
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
@@ -117,7 +121,7 @@ export const UnitsPage = () => {
                     <Space>
                         <Button icon={<ReloadOutlined />} onClick={() => queryClient.invalidateQueries({ queryKey: ['units'] })} />
                         <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}>
-                            {isMobile ? 'Nueva' : 'Nueva Unidad'}
+                            {isMobile ? 'New' : 'New Unit'}
                         </Button>
                     </Space>
                 </Space>

@@ -1,57 +1,62 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString, IsNumber, IsOptional, IsEnum, Min } from 'class-validator';
+import {
+  IsEnum,
+  IsNotEmpty,
+  IsNumber,
+  IsOptional,
+  IsString,
+} from 'class-validator';
 
 export enum MovementType {
+  OPENING = 'OPENING',
   SALE = 'SALE',
   EXPENSE = 'EXPENSE',
-  DEPOSIT = 'DEPOSIT',
+  DEPOSIT = 'DEPOSIT', // Transfer to bank/treasury
   WITHDRAWAL = 'WITHDRAWAL',
-  OPENING = 'OPENING',
-  CLOSING = 'CLOSING',
   ADJUSTMENT = 'ADJUSTMENT',
-  CHANGE = 'CHANGE',
+  CHANGE = 'CHANGE', // Given change
+  CLOSING = 'CLOSING',
 }
 
 export class CreateMovementDto {
-  @ApiProperty({ description: 'ID de la sesión de caja' })
+  @ApiProperty({ description: 'ID of the active cash session' })
+  @IsNotEmpty()
   @IsString()
   sessionId: string;
 
-  @ApiProperty({ enum: MovementType, description: 'Tipo de movimiento' })
+  @ApiProperty({ enum: MovementType, description: 'Type of cash movement' })
   @IsEnum(MovementType)
   type: MovementType;
 
-  @ApiProperty({ description: 'Monto del movimiento' })
+  @ApiProperty({ description: 'Amount of the movement' })
   @IsNumber()
-  // No Min(0) to allow negative adjustments if needed
   amount: number;
 
-  @ApiProperty({ description: 'Código de moneda', default: 'VES' })
+  @ApiProperty({ example: 'VES', description: 'Currency code' })
   @IsOptional()
   @IsString()
   currencyCode?: string;
 
-  @ApiProperty({ description: 'Descripción del movimiento' })
+  @ApiProperty({ required: false, description: 'Historical exchange rate' })
+  @IsOptional()
+  @IsNumber()
+  exchangeRate?: number;
+
+  @ApiProperty({ description: 'Brief description of the movement' })
+  @IsNotEmpty()
   @IsString()
   description: string;
 
-  @ApiProperty({ description: 'Notas adicionales', required: false })
+  @ApiProperty({ required: false, description: 'Additional notes' })
   @IsOptional()
   @IsString()
   notes?: string;
 
-  @ApiProperty({ description: 'Usuario que realiza', required: false })
   @IsOptional()
   @IsString()
   performedBy?: string;
 
-  @ApiProperty({ description: 'ID de venta relacionada', required: false })
   @IsOptional()
   @IsString()
   saleId?: string;
-
-  @ApiProperty({ description: 'Tasa de cambio histórica', required: false })
-  @IsOptional()
-  @IsNumber()
-  exchangeRate?: number;
 }

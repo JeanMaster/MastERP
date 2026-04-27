@@ -39,6 +39,13 @@ interface SelectedItem extends CreateReturnItemDto {
     productSku: string;
 }
 
+/**
+ * CreateReturnModal Component
+ * Multi-step wizard for initiating a product return or exchange.
+ * Flow: 
+ * 1. Find Original Invoice -> 2. Select Items & Quantities -> 
+ * 3. Define Return Type (Refund/Exchange) -> 4. Select Replacement (Optional) -> 5. Review & Submit.
+ */
 export const CreateReturnModal = ({ open, onCancel, onSuccess }: CreateReturnModalProps) => {
     const { roundingEnabled, roundingFactor } = usePOSStore();
     const [currentStep, setCurrentStep] = useState(0);
@@ -76,10 +83,12 @@ export const CreateReturnModal = ({ open, onCancel, onSuccess }: CreateReturnMod
         onCancel();
     };
 
-    // Step 1: Search invoice
+    /**
+     * Searches for the original sale record by invoice number.
+     */
     const handleSearchInvoice = async () => {
         if (!invoiceNumber.trim()) {
-            message.error('Ingresa un número de factura');
+            message.error('Please enter an invoice number');
             return;
         }
 
@@ -89,36 +98,33 @@ export const CreateReturnModal = ({ open, onCancel, onSuccess }: CreateReturnMod
             const foundSale = sales.find(s => s.invoiceNumber === invoiceNumber.trim());
 
             if (!foundSale) {
-                message.error('Factura no encontrada');
+                message.error('Invoice not found');
                 setSale(null);
                 return;
             }
 
-            // Validate eligibility
             const saleDate = new Date(foundSale.date);
             const today = new Date();
             const daysDiff = Math.floor((today.getTime() - saleDate.getTime()) / (1000 * 60 * 60 * 24));
 
             if (daysDiff > 30) {
-                message.warning('Esta factura supera los 30 días. Verifica la política de devolución.');
+                message.warning('This invoice is over 30 days old. Check return policy eligibility.');
             }
 
             setSale(foundSale);
             setCurrentStep(1);
         } catch (error) {
-            message.error('Error al buscar la factura');
+            message.error('Error searching for invoice');
             console.error(error);
         } finally {
             setLoading(false);
         }
     };
 
-    // Step 2: Select items
     const handleItemSelection = (checked: boolean, item: any) => {
         if (checked) {
-            // Defensive check for product data
             if (!item.product) {
-                message.error('Datos de producto no disponibles');
+                message.error('Product data not available');
                 return;
             }
 
@@ -156,7 +162,7 @@ export const CreateReturnModal = ({ open, onCancel, onSuccess }: CreateReturnMod
             setReplacementSearchResults(results);
         } catch (error) {
             console.error('Error searching products:', error);
-            message.error('Error al buscar productos');
+            message.error('Error searching products');
         } finally {
             setIsSearchingProducts(false);
         }
@@ -164,18 +170,15 @@ export const CreateReturnModal = ({ open, onCancel, onSuccess }: CreateReturnMod
 
     const addReplacementItem = (product: any) => {
         if (replacementItems.some(i => i.productId === product.id)) {
-            message.warning('Producto ya agregado');
+            message.warning('Product already added');
             return;
         }
 
         let unitPrice = Number(product.salePrice);
-
-        // Auto-convert if product is in foreign currency
         if (product.currency && !product.currency.isPrimary && product.currency.exchangeRate) {
             unitPrice = unitPrice * Number(product.currency.exchangeRate);
         }
 
-        // Apply POS rounding
         unitPrice = getRoundedPrice(unitPrice, roundingFactor, roundingEnabled);
 
         const newItem: SelectedItem = {
@@ -201,7 +204,6 @@ export const CreateReturnModal = ({ open, onCancel, onSuccess }: CreateReturnMod
 
     const updateReplacementPrice = (productId: string, price: number) => {
         const roundedPrice = getRoundedPrice(price, roundingFactor, roundingEnabled);
-
         setReplacementItems(replacementItems.map(item =>
             item.productId === productId
                 ? { ...item, unitPrice: roundedPrice, total: item.quantity * roundedPrice }
@@ -213,16 +215,17 @@ export const CreateReturnModal = ({ open, onCancel, onSuccess }: CreateReturnMod
         setReplacementItems(replacementItems.filter(i => i.productId !== productId));
     };
 
-    // Step 3: Choose return type
     const handleNext = () => {
         if (currentStep === 1 && selectedItems.length === 0) {
-            message.error('Selecciona al menos un item para devolver');
+            message.error('Please select at least one item to return');
             return;
         }
         setCurrentStep(currentStep + 1);
     };
 
-    // Step 4: Submit
+    /**
+     * Submits the return request to the API.
+     */
     const handleSubmit = async () => {
         if (!sale) return;
 
@@ -250,17 +253,17 @@ export const CreateReturnModal = ({ open, onCancel, onSuccess }: CreateReturnMod
             refundAmount,
             refundMethod: returnType === 'REFUND' ? refundMethod as any : undefined,
             notes,
-            requestedBy: 'Usuario' // TODO: Get from auth
+            requestedBy: 'User'
         };
 
         setLoading(true);
         try {
             await returnsApi.create(dto);
-            message.success('Devolución creada exitosamente');
+            message.success('Return request created successfully');
             resetModal();
             onSuccess();
         } catch (error: any) {
-            message.error(error.response?.data?.message || 'Error al crear devolución');
+            message.error(error.response?.data?.message || 'Error creating return request');
             console.error(error);
         } finally {
             setLoading(false);
@@ -269,24 +272,24 @@ export const CreateReturnModal = ({ open, onCancel, onSuccess }: CreateReturnMod
 
     const itemsColumns = [
         {
-            title: 'Producto',
+            title: 'Product',
             key: 'product',
             render: (_: any, record: any) => (
                 <div>
-                    <div><strong>{record.product?.name || 'Producto sin datos'}</strong></div>
+                    <div><strong>{record.product?.name || 'Unknown Product'}</strong></div>
                     <div style={{ fontSize: 11, color: '#888' }}>{record.product?.sku || ''}</div>
                 </div>
             )
         },
         {
-            title: 'Cant. Original',
+            title: 'Orig. Qty',
             dataIndex: 'quantity',
             key: 'originalQty',
             width: 100,
             render: (qty: number) => Number(qty).toFixed(0)
         },
         {
-            title: 'Precio Unit.',
+            title: 'Unit Price',
             dataIndex: 'unitPrice',
             key: 'unitPrice',
             width: 100,
@@ -300,7 +303,7 @@ export const CreateReturnModal = ({ open, onCancel, onSuccess }: CreateReturnMod
             render: (total: number) => formatVenezuelanPrice(Number(total))
         },
         {
-            title: 'Devolver',
+            title: 'Select',
             key: 'select',
             width: 80,
             render: (_: any, record: any) => (
@@ -315,7 +318,7 @@ export const CreateReturnModal = ({ open, onCancel, onSuccess }: CreateReturnMod
     const selectedItemsColumns = [
         ...itemsColumns.filter(col => col.key !== 'select'),
         {
-            title: 'Cant. Devolver',
+            title: 'Return Qty',
             key: 'returnQty',
             width: 120,
             render: (_: any, record: SelectedItem) => (
@@ -332,12 +335,12 @@ export const CreateReturnModal = ({ open, onCancel, onSuccess }: CreateReturnMod
 
     const steps = [
         {
-            title: 'Buscar Factura',
+            title: 'Find Invoice',
             content: (
                 <div style={{ padding: '20px 0' }}>
                     <Space.Compact style={{ width: '100%' }}>
                         <Input
-                            placeholder="Número de factura (ej: FAC-00000001)"
+                            placeholder="Invoice number (e.g., FAC-00000001)"
                             value={invoiceNumber}
                             onChange={(e) => setInvoiceNumber(e.target.value)}
                             onPressEnter={handleSearchInvoice}
@@ -350,18 +353,18 @@ export const CreateReturnModal = ({ open, onCancel, onSuccess }: CreateReturnMod
                             loading={loading}
                             size="large"
                         >
-                            Buscar
+                            Search
                         </Button>
                     </Space.Compact>
 
                     {sale && (
                         <Alert
-                            message="Factura encontrada"
+                            message="Invoice Found"
                             description={
                                 <div style={{ marginTop: 10 }}>
-                                    <p><strong>Factura:</strong> {sale.invoiceNumber}</p>
-                                    <p><strong>Fecha:</strong> {dayjs(sale.date).format('DD/MM/YYYY HH:mm')}</p>
-                                    <p><strong>Cliente:</strong> {sale.client?.name || 'Cliente General'}</p>
+                                    <p><strong>Invoice:</strong> {sale.invoiceNumber}</p>
+                                    <p><strong>Date:</strong> {dayjs(sale.date).format('MM/DD/YYYY HH:mm')}</p>
+                                    <p><strong>Customer:</strong> {sale.client?.name || 'Walk-in Customer'}</p>
                                     <p><strong>Total:</strong> {formatVenezuelanPrice(Number(sale.total))}</p>
                                     <p><strong>Items:</strong> {sale.items.length}</p>
                                 </div>
@@ -375,10 +378,10 @@ export const CreateReturnModal = ({ open, onCancel, onSuccess }: CreateReturnMod
             )
         },
         {
-            title: 'Seleccionar Items',
+            title: 'Select Items',
             content: (
                 <div>
-                    <Title level={5}>Items de la factura</Title>
+                    <Title level={5}>Invoice Items</Title>
                     <Table
                         dataSource={sale?.items || []}
                         columns={itemsColumns}
@@ -389,7 +392,7 @@ export const CreateReturnModal = ({ open, onCancel, onSuccess }: CreateReturnMod
 
                     {selectedItems.length > 0 && (
                         <div style={{ marginTop: 20 }}>
-                            <Title level={5}>Items seleccionados para devolución</Title>
+                            <Title level={5}>Items selected for return</Title>
                             <Table
                                 dataSource={selectedItems}
                                 columns={selectedItemsColumns}
@@ -403,55 +406,55 @@ export const CreateReturnModal = ({ open, onCancel, onSuccess }: CreateReturnMod
             )
         },
         {
-            title: 'Tipo de Devolución',
+            title: 'Return Options',
             content: (
                 <div>
                     <Form layout="vertical">
-                        <Form.Item label="Tipo de Devolución">
+                        <Form.Item label="Return Type">
                             <Radio.Group value={returnType} onChange={(e) => setReturnType(e.target.value)}>
                                 <Space direction="vertical">
-                                    <Radio value="REFUND">Reembolso (devolver dinero)</Radio>
-                                    <Radio value="EXCHANGE_SAME">Cambio por mismo producto</Radio>
-                                    <Radio value="EXCHANGE_DIFFERENT">Cambio por producto diferente</Radio>
+                                    <Radio value="REFUND">Refund (Return money)</Radio>
+                                    <Radio value="EXCHANGE_SAME">Exchange for same product</Radio>
+                                    <Radio value="EXCHANGE_DIFFERENT">Swap for different product</Radio>
                                 </Space>
                             </Radio.Group>
                         </Form.Item>
 
-                        <Form.Item label="Razón de la devolución">
+                        <Form.Item label="Reason for Return">
                             <Select value={reason} onChange={setReason}>
-                                <Select.Option value="DEFECTIVE">Producto defectuoso</Select.Option>
-                                <Select.Option value="UNSATISFIED">Cliente insatisfecho</Select.Option>
-                                <Select.Option value="ERROR">Error en la venta</Select.Option>
-                                <Select.Option value="EXPIRED">Producto vencido</Select.Option>
-                                <Select.Option value="OTHER">Otro</Select.Option>
+                                <Select.Option value="DEFECTIVE">Defective product</Select.Option>
+                                <Select.Option value="UNSATISFIED">Customer unsatisfied</Select.Option>
+                                <Select.Option value="ERROR">Sale error</Select.Option>
+                                <Select.Option value="EXPIRED">Expired product</Select.Option>
+                                <Select.Option value="OTHER">Other</Select.Option>
                             </Select>
                         </Form.Item>
 
-                        <Form.Item label="Condición del producto">
+                        <Form.Item label="Product Condition">
                             <Select value={condition} onChange={setCondition}>
-                                <Select.Option value="EXCELLENT">Excelente</Select.Option>
-                                <Select.Option value="GOOD">Buena</Select.Option>
-                                <Select.Option value="DEFECTIVE">Defectuoso</Select.Option>
-                                <Select.Option value="DAMAGED">Dañado</Select.Option>
+                                <Select.Option value="EXCELLENT">Excellent (Resalable)</Select.Option>
+                                <Select.Option value="GOOD">Good</Select.Option>
+                                <Select.Option value="DEFECTIVE">Defective</Select.Option>
+                                <Select.Option value="DAMAGED">Damaged/Broken</Select.Option>
                             </Select>
                         </Form.Item>
 
                         {returnType === 'REFUND' && (
-                            <Form.Item label="Método de reembolso">
+                            <Form.Item label="Refund Method">
                                 <Select value={refundMethod} onChange={setRefundMethod}>
-                                    <Select.Option value="CASH">Efectivo</Select.Option>
-                                    <Select.Option value="TRANSFER">Transferencia</Select.Option>
-                                    <Select.Option value="CREDIT_NOTE">Nota de crédito</Select.Option>
+                                    <Select.Option value="CASH">Cash</Select.Option>
+                                    <Select.Option value="TRANSFER">Bank Transfer</Select.Option>
+                                    <Select.Option value="CREDIT_NOTE">Store Credit Note</Select.Option>
                                 </Select>
                             </Form.Item>
                         )}
 
-                        <Form.Item label="Notas adicionales">
+                        <Form.Item label="Additional Notes">
                             <TextArea
                                 rows={3}
                                 value={notes}
                                 onChange={(e) => setNotes(e.target.value)}
-                                placeholder="Observaciones sobre la devolución..."
+                                placeholder="Details about the return request..."
                             />
                         </Form.Item>
                     </Form>
@@ -459,13 +462,13 @@ export const CreateReturnModal = ({ open, onCancel, onSuccess }: CreateReturnMod
             )
         },
         {
-            title: 'Seleccionar Cambio',
+            title: 'Exchange Products',
             content: (
                 <div>
-                    <Title level={5}>Buscar productos para el cambio</Title>
+                    <Title level={5}>Search for replacement products</Title>
                     <Select
                         showSearch
-                        placeholder="Buscar por nombre o SKU..."
+                        placeholder="Search by Name or SKU..."
                         value={replacementSearch}
                         onSearch={handleSearchProducts}
                         onChange={(value) => {
@@ -486,16 +489,16 @@ export const CreateReturnModal = ({ open, onCancel, onSuccess }: CreateReturnMod
 
                     {replacementItems.length > 0 && (
                         <div>
-                            <Title level={5}>Productos seleccionados para el cambio</Title>
+                            <Title level={5}>Selected Replacement Items</Title>
                             <Table
                                 dataSource={replacementItems}
                                 rowKey="productId"
                                 pagination={false}
                                 size="small"
                                 columns={[
-                                    { title: 'Producto', key: 'product', render: (_, r) => <div><strong>{r.productName}</strong><br /><small>{r.productSku}</small></div> },
+                                    { title: 'Product', key: 'product', render: (_, r) => <div><strong>{r.productName}</strong><br /><small>{r.productSku}</small></div> },
                                     {
-                                        title: 'Precio',
+                                        title: 'Price',
                                         key: 'price',
                                         width: 140,
                                         render: (_, r) => (
@@ -511,7 +514,7 @@ export const CreateReturnModal = ({ open, onCancel, onSuccess }: CreateReturnMod
                                         )
                                     },
                                     {
-                                        title: 'Cant.',
+                                        title: 'Qty.',
                                         key: 'qty',
                                         render: (_, r) => (
                                             <InputNumber
@@ -539,14 +542,14 @@ export const CreateReturnModal = ({ open, onCancel, onSuccess }: CreateReturnMod
                             />
 
                             <div style={{ marginTop: 10, textAlign: 'right' }}>
-                                <Text strong>Diferencia a favor del cliente: </Text>
+                                <Text strong>Balance in favor of Customer: </Text>
                                 <Text strong style={{ color: '#52c41a' }}>
                                     {formatVenezuelanPrice(
                                         Math.max(0, selectedItems.reduce((sum, i) => sum + i.total, 0) - replacementItems.reduce((sum, i) => sum + i.total, 0))
                                     )}
                                 </Text>
                                 <br />
-                                <Text strong>Diferencia a pagar por el cliente: </Text>
+                                <Text strong>Balance to be paid by Customer: </Text>
                                 <Text strong style={{ color: '#f5222d' }}>
                                     {formatVenezuelanPrice(
                                         Math.max(0, replacementItems.reduce((sum, i) => sum + i.total, 0) - selectedItems.reduce((sum, i) => sum + i.total, 0))
@@ -559,36 +562,36 @@ export const CreateReturnModal = ({ open, onCancel, onSuccess }: CreateReturnMod
             )
         },
         {
-            title: 'Confirmar',
+            title: 'Review',
             content: (
                 <div>
                     <Alert
-                        message="Resumen de la devolución"
+                        message="Return Summary"
                         description={
                             <div style={{ marginTop: 10 }}>
-                                <p><strong>Factura:</strong> {sale?.invoiceNumber}</p>
-                                <p><strong>Tipo:</strong> {
-                                    returnType === 'REFUND' ? 'Reembolso' :
-                                        returnType === 'EXCHANGE_SAME' ? 'Cambio por mismo producto' :
-                                            'Cambio por producto diferente'
+                                <p><strong>Invoice:</strong> {sale?.invoiceNumber}</p>
+                                <p><strong>Type:</strong> {
+                                    returnType === 'REFUND' ? 'Refund' :
+                                        returnType === 'EXCHANGE_SAME' ? 'Same Product Exchange' :
+                                            'Product Swap'
                                 }</p>
-                                <p><strong>Items a devolver:</strong> {selectedItems.length}</p>
-                                <p><strong>Monto devuelto:</strong> {formatVenezuelanPrice(
+                                <p><strong>Items to return:</strong> {selectedItems.length}</p>
+                                <p><strong>Refund Amount:</strong> {formatVenezuelanPrice(
                                     selectedItems.reduce((sum, item) => sum + item.total, 0)
                                 )}</p>
                                 {returnType === 'EXCHANGE_DIFFERENT' && (
                                     <>
-                                        <p><strong>Items a cambio:</strong> {replacementItems.length}</p>
-                                        <p><strong>Monto cambio:</strong> {formatVenezuelanPrice(
+                                        <p><strong>Replacement Items:</strong> {replacementItems.length}</p>
+                                        <p><strong>Replacement Total:</strong> {formatVenezuelanPrice(
                                             replacementItems.reduce((sum, item) => sum + item.total, 0)
                                         )}</p>
                                     </>
                                 )}
                                 {returnType === 'REFUND' && (
-                                    <p><strong>Método de reembolso:</strong> {
-                                        refundMethod === 'CASH' ? 'Efectivo' :
-                                            refundMethod === 'TRANSFER' ? 'Transferencia' :
-                                                'Nota de crédito'
+                                    <p><strong>Refund Method:</strong> {
+                                        refundMethod === 'CASH' ? 'Cash' :
+                                            refundMethod === 'TRANSFER' ? 'Bank Transfer' :
+                                                'Credit Note'
                                     }</p>
                                 )}
                             </div>
@@ -602,7 +605,7 @@ export const CreateReturnModal = ({ open, onCancel, onSuccess }: CreateReturnMod
     ];
 
     const filteredSteps = steps.filter(step => {
-        if (step.title === 'Seleccionar Cambio') {
+        if (step.title === 'Exchange Products') {
             return returnType === 'EXCHANGE_DIFFERENT';
         }
         return true;
@@ -610,27 +613,27 @@ export const CreateReturnModal = ({ open, onCancel, onSuccess }: CreateReturnMod
 
     return (
         <Modal
-            title="Nueva Devolución"
+            title="Create New Return"
             open={open}
             onCancel={handleCancel}
             width={900}
             footer={
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <Button onClick={handleCancel}>Cancelar</Button>
+                    <Button onClick={handleCancel}>Cancel</Button>
                     <Space>
                         {currentStep > 0 && (
                             <Button onClick={() => setCurrentStep(currentStep - 1)}>
-                                Atrás
+                                Back
                             </Button>
                         )}
                         {currentStep < filteredSteps.length - 1 && (
                             <Button type="primary" onClick={handleNext}>
-                                Siguiente
+                                Next
                             </Button>
                         )}
                         {currentStep === filteredSteps.length - 1 && (
                             <Button type="primary" onClick={handleSubmit} loading={loading}>
-                                Crear Devolución
+                                Create Return Request
                             </Button>
                         )}
                     </Space>

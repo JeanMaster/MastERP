@@ -7,39 +7,39 @@ export enum AdjustmentType {
 }
 
 export enum AdjustmentReason {
-  DAMAGE = 'DAMAGE', // Producto dañado
-  LOSS = 'LOSS', // Pérdida/robo
-  ERROR = 'ERROR', // Error de conteo
-  INITIAL = 'INITIAL', // Inventario inicial
-  RETURN = 'RETURN', // Devolución al stock
-  TRANSFER = 'TRANSFER', // Transferencia
-  OTHER = 'OTHER', // Otro
+  DAMAGE = 'DAMAGE',
+  LOSS = 'LOSS',
+  ERROR = 'ERROR',
+  INITIAL = 'INITIAL',
+  RETURN = 'RETURN',
+  TRANSFER = 'TRANSFER',
+  OTHER = 'OTHER',
 }
 
 export class CreateAdjustmentDto {
-  @ApiProperty({ description: 'ID del producto' })
+  @ApiProperty({ description: 'ID of the product being adjusted' })
   @IsString()
   productId: string;
 
-  @ApiProperty({ enum: AdjustmentType, description: 'Tipo de ajuste' })
+  @ApiProperty({ enum: AdjustmentType, description: 'Type of stock adjustment' })
   @IsEnum(AdjustmentType)
   type: AdjustmentType;
 
-  @ApiProperty({ description: 'Cantidad a ajustar', minimum: 1 })
+  @ApiProperty({ description: 'Quantity to adjust (must be positive)', minimum: 0.01 })
   @IsNumber()
-  @Min(1)
+  @Min(0.01)
   quantity: number;
 
-  @ApiProperty({ enum: AdjustmentReason, description: 'Razón del ajuste' })
+  @ApiProperty({ enum: AdjustmentReason, description: 'Reason for the adjustment' })
   @IsEnum(AdjustmentReason)
   reason: AdjustmentReason;
 
-  @ApiProperty({ description: 'Notas adicionales', required: false })
+  @ApiProperty({ description: 'Additional notes or observations', required: false })
   @IsOptional()
   @IsString()
   notes?: string;
 
-  @ApiProperty({ description: 'Usuario que realiza', required: false })
+  @ApiProperty({ description: 'Username of the person performing the adjustment', required: false })
   @IsOptional()
   @IsString()
   performedBy?: string;

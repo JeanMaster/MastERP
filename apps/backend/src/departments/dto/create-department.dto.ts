@@ -3,25 +3,26 @@ import { ApiProperty } from '@nestjs/swagger';
 
 export class CreateDepartmentDto {
   @ApiProperty({
-    example: 'Ferretería',
-    description: 'Nombre del departamento',
+    example: 'Hardware',
+    description: 'Name of the department',
   })
-  @IsNotEmpty({ message: 'El nombre es requerido' })
+  @IsNotEmpty({ message: 'Name is required' })
   @IsString()
   name: string;
 
   @ApiProperty({
-    example: 'Departamento de herramientas y materiales',
+    example: 'Department for tools and materials',
     required: false,
+    description: 'Department description',
   })
   @IsOptional()
   @IsString()
   description?: string;
 
   @ApiProperty({
-    example: 'uuid-del-departamento-padre',
+    example: 'uuid-of-parent-department',
     required: false,
-    description: 'ID del departamento padre (solo 1 nivel permitido)',
+    description: 'ID of the parent department (only 1 level of nesting allowed)',
   })
   @IsOptional()
   @IsUUID()

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Layout, Menu, Typography, Avatar, Space, Button, Dropdown, Drawer, Grid } from 'antd';
+import { Layout, Menu, Typography, Avatar, Space, Button, Dropdown, Drawer, Grid, Segmented } from 'antd';
+import { useTranslation } from 'react-i18next';
 import {
     MenuFoldOutlined,
     MenuUnfoldOutlined,
@@ -18,6 +19,11 @@ const { Header, Sider, Content } = Layout;
 const { Text } = Typography;
 const { useBreakpoint } = Grid;
 
+/**
+ * MainLayout Component
+ * Primary application shell that provides the sidebar navigation, header controls, and content area.
+ * Implements role-based menu filtering, theme switching (Light/Dark), and responsive drawer-based navigation for mobile.
+ */
 export const MainLayout = () => {
     const screens = useBreakpoint();
     const isMobile = !screens.lg;
@@ -29,41 +35,58 @@ export const MainLayout = () => {
         const saved = localStorage.getItem('theme');
         return saved === 'light' ? false : true;
     });
+    const { t, i18n } = useTranslation();
     const navigate = useNavigate();
     const location = useLocation();
     const { user, logout, hasRole, hasPermission } = useAuth();
     const [filteredMenuItems, setFilteredMenuItems] = useState<MenuProps['items']>([]);
 
+    /**
+     * Recursively filters menu items based on the current user's roles and permissions.
+     */
     useEffect(() => {
         const filterItems = (items: AppMenuItem[]): any[] => {
             return items.reduce((acc: any[], item) => {
+                // Check role requirements
                 if (item.roles && item.roles.length > 0) {
                     const hasAllowedRole = item.roles.some(role => hasRole(role));
                     if (!hasAllowedRole) return acc;
                 }
+                // Check permission requirements
                 if (item.permissions && item.permissions.length > 0) {
                     const hasAllowedPermission = item.permissions.some(permission => hasPermission(permission));
                     if (!hasAllowedPermission) return acc;
                 }
+                
+                const translatedLabel = item.labelKey ? t(item.labelKey) : item.label;
+
                 if (item.children) {
                     const filteredChildren = filterItems(item.children);
+                    // Only include parent if it has at least one visible child or is a direct leaf itself
                     if (filteredChildren.length > 0 || (item.key && !item.children.length)) {
-                        acc.push({ ...item, children: filteredChildren.length > 0 ? filteredChildren : undefined });
+                        acc.push({ 
+                            ...item, 
+                            label: translatedLabel,
+                            children: filteredChildren.length > 0 ? filteredChildren : undefined 
+                        });
                     } else if (item.children.length > 0 && filteredChildren.length === 0) {
                         return acc;
                     } else {
-                        acc.push({ ...item, children: undefined });
+                        acc.push({ ...item, label: translatedLabel, children: undefined });
                     }
                 } else {
-                    acc.push(item);
+                    acc.push({ ...item, label: translatedLabel });
                 }
                 return acc;
             }, []);
         };
         const visibleItems = filterItems(menuItems);
         setFilteredMenuItems(visibleItems as MenuProps['items']);
-    }, [user, hasRole, hasPermission]);
+    }, [user, hasRole, hasPermission, t, i18n.language]);
 
+    /**
+     * Fetches custom branding (Company Name & Logo) from settings.
+     */
     useEffect(() => {
         companySettingsApi.getSettings().then(settings => {
             setCompanyName(settings.name);
@@ -90,6 +113,13 @@ export const MainLayout = () => {
         setIsDarkMode(!isDarkMode);
     };
 
+    const changeLanguage = (lng: string) => {
+        i18n.changeLanguage(lng);
+    };
+
+    /**
+     * Renders the branding logo in the sidebar header.
+     */
     const renderLogo = (isCollapsed: boolean) => (
         <div style={{
             height: 64,
@@ -105,7 +135,7 @@ export const MainLayout = () => {
             {companyLogo && (
                 <img
                     src={companyLogo}
-                    alt="Logo"
+                    alt="Business Logo"
                     style={{
                         height: isCollapsed ? 40 : 48,
                         width: 'auto',
@@ -208,12 +238,22 @@ export const MainLayout = () => {
                         />
 
                         <Space size="large">
+                            {!isMobile && (
+                                <Segmented
+                                    options={[
+                                        { label: 'ES', value: 'es' },
+                                        { label: 'EN', value: 'en' },
+                                    ]}
+                                    value={i18n.language.startsWith('es') ? 'es' : 'en'}
+                                    onChange={(val) => changeLanguage(val as string)}
+                                />
+                            )}
                             <Button
                                 type="text"
                                 icon={isDarkMode ? <span>☀️</span> : <span>🌙</span>}
                                 onClick={toggleTheme}
                                 size={isMobile ? "middle" : "large"}
-                                title={isDarkMode ? 'Modo Claro' : 'Modo Oscuro'}
+                                title={t('common.switch_theme')}
                                 style={{ color: isDarkMode ? '#fff' : '#000' }}
                             />
                             <Button type="text" icon={<BellOutlined />} size={isMobile ? "middle" : "large"} style={{ color: isDarkMode ? '#fff' : '#000' }} />
@@ -221,7 +261,7 @@ export const MainLayout = () => {
                                 items: [
                                     {
                                         key: 'logout',
-                                        label: 'Cerrar Sesión',
+                                        label: t('menu.sign_out'),
                                         icon: <LogoutOutlined />,
                                         onClick: logout,
                                         danger: true
@@ -232,7 +272,7 @@ export const MainLayout = () => {
                                     <Avatar icon={<UserOutlined />} size={isMobile ? "small" : "default"} />
                                     {!isMobile && (
                                         <Text strong style={{ color: isDarkMode ? '#fff' : '#000' }}>
-                                            {user?.name || 'Usuario'}
+                                            {user?.name || 'User'}
                                         </Text>
                                     )}
                                 </Space>

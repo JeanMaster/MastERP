@@ -12,7 +12,10 @@ export class ClientsService {
   constructor(private prisma: PrismaService) {}
 
   /**
-   * Crear un nuevo cliente
+   * Creates a new client record.
+   * @param createClientDto The data for the new client.
+   * @returns The created client record.
+   * @throws ConflictException if a client with the same ID already exists.
    */
   async create(createClientDto: CreateClientDto) {
     try {
@@ -22,7 +25,7 @@ export class ClientsService {
     } catch (error) {
       if (error.code === 'P2002') {
         throw new ConflictException(
-          'El Cliente con este ID ya está registrado',
+          'A client with this ID is already registered',
         );
       }
       throw error;
@@ -30,10 +33,13 @@ export class ClientsService {
   }
 
   /**
-   * Listar todos los clientes activos con filtros opcionales
+   * Retrieves all clients with optional search filters.
+   * @param search Search term (name, ID, or email).
+   * @param active Filter by active/inactive status.
+   * @returns A list of matching clients.
    */
   async findAll(search?: string, active: boolean = true) {
-    const where: any = { active };
+    const where: { active: boolean; OR?: any[] } = { active };
 
     if (search) {
       where.OR = [
@@ -50,7 +56,10 @@ export class ClientsService {
   }
 
   /**
-   * Obtener un cliente por ID
+   * Retrieves a single client by its ID.
+   * @param id The ID of the client.
+   * @returns The client record.
+   * @throws NotFoundException if the client is not found.
    */
   async findOne(id: string) {
     const client = await this.prisma.client.findUnique({
@@ -58,17 +67,22 @@ export class ClientsService {
     });
 
     if (!client) {
-      throw new NotFoundException(`Cliente con ID ${id} no encontrado`);
+      throw new NotFoundException(`Client with ID ${id} not found`);
     }
 
     return client;
   }
 
   /**
-   * Actualizar un cliente
+   * Updates an existing client's information.
+   * @param id The ID of the client to update.
+   * @param updateClientDto The updated data.
+   * @returns The updated client record.
+   * @throws NotFoundException if the client doesn't exist.
+   * @throws ConflictException if the new ID is already in use.
    */
   async update(id: string, updateClientDto: UpdateClientDto) {
-    await this.findOne(id); // Verifica que existe
+    await this.findOne(id); // Verify existence
 
     try {
       return await this.prisma.client.update({
@@ -78,7 +92,7 @@ export class ClientsService {
     } catch (error) {
       if (error.code === 'P2002') {
         throw new ConflictException(
-          'El ID ya está registrado por otro cliente',
+          'This ID is already registered by another client',
         );
       }
       throw error;
@@ -86,10 +100,12 @@ export class ClientsService {
   }
 
   /**
-   * Soft delete: marcar como inactivo
+   * Performs a soft delete by marking the client as inactive.
+   * @param id The ID of the client to deactivate.
+   * @returns The updated client record.
    */
   async remove(id: string) {
-    await this.findOne(id); // Verifica que existe
+    await this.findOne(id); // Verify existence
 
     return this.prisma.client.update({
       where: { id },

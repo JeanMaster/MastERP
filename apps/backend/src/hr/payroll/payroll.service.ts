@@ -11,6 +11,9 @@ import { GeneratePayrollDto } from './dto/generate-payroll.dto';
 export class PayrollService {
   constructor(private prisma: PrismaService) {}
 
+  /**
+   * Creates a new payroll period.
+   */
   async createPeriod(createPayrollPeriodDto: CreatePayrollPeriodDto) {
     return (this.prisma as any).payrollPeriod.create({
       data: {
@@ -22,12 +25,18 @@ export class PayrollService {
     });
   }
 
+  /**
+   * Retrieves all payroll periods ordered by start date descending.
+   */
   async findAllPeriods() {
     return (this.prisma as any).payrollPeriod.findMany({
       orderBy: { startDate: 'desc' },
     });
   }
 
+  /**
+   * Retrieves a single payroll period by its ID including payments.
+   */
   async findOnePeriod(id: string) {
     const period = await (this.prisma as any).payrollPeriod.findUnique({
       where: { id },
@@ -44,6 +53,13 @@ export class PayrollService {
     return period;
   }
 
+  /**
+   * Generates payroll payments for all eligible employees in a given period.
+   * Salary is split based on payment frequency:
+   *   - WEEKLY: BaseSalary / 4
+   *   - BIWEEKLY: BaseSalary / 2
+   *   - MONTHLY: BaseSalary (full amount)
+   */
   async generatePayroll(generatePayrollDto: GeneratePayrollDto) {
     const periodId = generatePayrollDto.payrollPeriodId;
     const period = await this.findOnePeriod(periodId);
@@ -74,7 +90,7 @@ export class PayrollService {
       throw new BadRequestException('No eligible employees found');
     }
 
-    // Transaction for generation
+    // Use a transaction to generate all payments atomically
     return await (this.prisma as any).$transaction(async (tx: any) => {
       // Delete existing payments for this period if re-generating
       await tx.payrollPayment.deleteMany({
@@ -85,46 +101,32 @@ export class PayrollService {
       let grandTotal = 0;
 
       for (const emp of employees) {
-        // Simplified Logic: Base Salary is monthly.
-        // If period is typically 15 days, we might want to split?
-        // For now, let's assume the user inputs the full BaseSalary as monthly,
-        // and we pay the full amount? OR half?
-        // Requirement said "Cálculo automático base".
-        // Let's assume standard semi-monthly payment (Quincenal) implies half salary?
-        // To be safe and simple: We will apply the FULL baseSalary and let the user edit, OR
-        // we calculate based on days?
-        // Let's implement: Salary / 2 (Assuming semi-monthly rule usually).
-        // Actually, safer to just put BaseSalary and user can adjust.
-        // Let's stick to BaseSalary / 2 (Quincena) as a default heuristic if name contains "Quincena"?
-        // No, let's just pay BaseSalary for now as 'Salary', and maybe we add a 'Quantity' logic later.
-        // *Decision*: Pay 50% of BaseSalary by default (common in LatAm for Quincena).
-
+        // Calculate income amount based on payment frequency.
+        // BIWEEKLY = half month salary (most common in LatAm - "Quincena").
+        // The user can edit individual payment items after generation.
         let incomeAmount = 0;
-        let description = 'Sueldo Base';
+        let description = 'Base Salary';
 
-        // Calculate based on frequency
-        // Default handling if paymentFrequency is missing (should be BIWEEKLY by db default)
+        // Default to BIWEEKLY if frequency is missing (matches DB default)
         const freq = emp.paymentFrequency || 'BIWEEKLY';
 
         switch (freq) {
           case 'WEEKLY':
             incomeAmount = Number(emp.baseSalary) / 4;
-            description = 'Sueldo Base (Semanal)';
+            description = 'Base Salary (Weekly)';
             break;
           case 'BIWEEKLY':
             incomeAmount = Number(emp.baseSalary) / 2;
-            description = 'Sueldo Base (Quincenal)';
+            description = 'Base Salary (Biweekly)';
             break;
           case 'MONTHLY':
             incomeAmount = Number(emp.baseSalary);
-            description = 'Sueldo Base (Mensual)';
+            description = 'Base Salary (Monthly)';
             break;
           default:
             incomeAmount = Number(emp.baseSalary) / 2;
-            description = 'Sueldo Base';
+            description = 'Base Salary';
         }
-
-        // const incomeAmount = Number(emp.baseSalary) / 2;
 
         const payment = await tx.payrollPayment.create({
           data: {
@@ -132,7 +134,7 @@ export class PayrollService {
             employeeId: emp.id,
             baseSalary: emp.baseSalary,
             currency: emp.currency,
-            exchangeRate: 1, // Default, should come from system
+            exchangeRate: 1, // Default; should be fetched from system settings
             totalIncome: incomeAmount,
             totalDeductions: 0,
             netAmount: incomeAmount,
@@ -151,7 +153,7 @@ export class PayrollService {
         grandTotal += incomeAmount;
       }
 
-      // Update Period Status
+      // Update period status to PROCESSED
       await tx.payrollPeriod.update({
         where: { id: periodId },
         data: {

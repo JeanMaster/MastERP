@@ -14,19 +14,22 @@ export class InventoryAdjustmentsService {
   constructor(private prisma: PrismaService) {}
 
   /**
-   * Crear ajuste de inventario
+   * Creates a new inventory adjustment.
+   * Updates the product's stock and records the adjustment in a transaction.
+   * @param createAdjustmentDto The data for the inventory adjustment.
+   * @returns The created inventory adjustment record.
    */
   async create(createAdjustmentDto: CreateAdjustmentDto) {
-    // 1. Obtener producto actual
+    // 1. Get current product
     const product = await this.prisma.product.findUnique({
       where: { id: createAdjustmentDto.productId },
     });
 
     if (!product) {
-      throw new NotFoundException('Producto no encontrado');
+      throw new NotFoundException('Product not found');
     }
 
-    // 2. Calcular nuevo stock
+    // 2. Calculate new stock
     const previousStock = Number(product.stock);
     let newStock = previousStock;
 
@@ -37,20 +40,20 @@ export class InventoryAdjustmentsService {
 
       if (newStock < 0) {
         throw new BadRequestException(
-          `Stock insuficiente. Stock actual: ${previousStock}, intentando decrementar: ${createAdjustmentDto.quantity}`,
+          `Insufficient stock. Current stock: ${previousStock}, attempting to decrease by: ${createAdjustmentDto.quantity}`,
         );
       }
     }
 
-    // 3. Usar transacción para actualizar producto y crear registro
+    // 3. Use transaction to update product and create the adjustment record
     return this.prisma.$transaction(async (prisma) => {
-      // Actualizar stock del producto
+      // Update product stock
       await prisma.product.update({
         where: { id: createAdjustmentDto.productId },
         data: { stock: newStock },
       });
 
-      // Crear registro de ajuste
+      // Create adjustment record
       return prisma.inventoryAdjustment.create({
         data: {
           productId: createAdjustmentDto.productId,
@@ -60,7 +63,7 @@ export class InventoryAdjustmentsService {
           newStock,
           reason: createAdjustmentDto.reason,
           notes: createAdjustmentDto.notes,
-          performedBy: createAdjustmentDto.performedBy || 'Sistema',
+          performedBy: createAdjustmentDto.performedBy || 'System',
         },
         include: {
           product: {
@@ -77,9 +80,17 @@ export class InventoryAdjustmentsService {
   }
 
   /**
-   * Listar ajustes con filtros
+   * Retrieves a list of inventory adjustments based on filters.
+   * @param filters Filtering criteria (productId, type, reason, date range).
+   * @returns A list of matching inventory adjustments.
    */
-  async findAll(filters?: any) {
+  async findAll(filters?: {
+    productId?: string;
+    type?: AdjustmentType;
+    reason?: string;
+    startDate?: string;
+    endDate?: string;
+  }) {
     const where: any = {};
 
     if (filters?.productId) {
@@ -123,7 +134,9 @@ export class InventoryAdjustmentsService {
   }
 
   /**
-   * Obtener ajuste por ID
+   * Retrieves a single inventory adjustment by its ID.
+   * @param id The ID of the adjustment.
+   * @returns The inventory adjustment record or throws NotFoundException.
    */
   async findOne(id: string) {
     const adjustment = await this.prisma.inventoryAdjustment.findUnique({
@@ -134,14 +147,16 @@ export class InventoryAdjustmentsService {
     });
 
     if (!adjustment) {
-      throw new NotFoundException('Ajuste no encontrado');
+      throw new NotFoundException('Adjustment not found');
     }
 
     return adjustment;
   }
 
   /**
-   * Obtener historial de ajustes de un producto
+   * Retrieves the adjustment history for a specific product.
+   * @param productId The ID of the product.
+   * @returns A list of adjustments for the product.
    */
   async findByProduct(productId: string) {
     return this.prisma.inventoryAdjustment.findMany({

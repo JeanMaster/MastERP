@@ -28,15 +28,20 @@ const { Title, Text } = Typography;
 const { RangePicker } = DatePicker;
 
 const reasonLabels: Record<string, string> = {
-    DAMAGE: '🔨 Daño',
-    LOSS: '📉 Pérdida',
-    ERROR: '❌ Error',
-    INITIAL: '📦 Inicial',
-    RETURN: '↩️ Devolución',
-    TRANSFER: '↔️ Transferencia',
-    OTHER: '📝 Otro'
+    DAMAGE: '🔨 Damage',
+    LOSS: '📉 Loss',
+    ERROR: '❌ Correction',
+    INITIAL: '📦 Initial Stock',
+    RETURN: '↩️ Return',
+    TRANSFER: '↔️ Transfer',
+    OTHER: '📝 Other'
 };
 
+/**
+ * InventoryAdjustmentsPage Component
+ * Management view for manual inventory adjustments (stock counts, damage reports, loss corrections).
+ * Provides filters by product, adjustment type, and date range.
+ */
 export const InventoryAdjustmentsPage = () => {
     const [isModalVisible, setIsModalVisible] = useState(false);
     const [filters, setFilters] = useState<any>({});
@@ -79,13 +84,13 @@ export const InventoryAdjustmentsPage = () => {
 
     const columns = [
         {
-            title: 'Fecha',
+            title: 'Date',
             dataIndex: 'createdAt',
             key: 'date',
             width: 150,
             render: (date: string) => (
                 <div>
-                    <div><strong>{dayjs(date).format('DD/MM/YYYY')}</strong></div>
+                    <div><strong>{dayjs(date).format('MM/DD/YYYY')}</strong></div>
                     <div style={{ fontSize: 11, color: '#888' }}>
                         {dayjs(date).format('HH:mm')}
                     </div>
@@ -93,7 +98,7 @@ export const InventoryAdjustmentsPage = () => {
             )
         },
         {
-            title: 'Producto',
+            title: 'Product',
             key: 'product',
             render: (_: any, record: InventoryAdjustment) => (
                 <div>
@@ -103,7 +108,7 @@ export const InventoryAdjustmentsPage = () => {
             )
         },
         {
-            title: 'Tipo',
+            title: 'Type',
             dataIndex: 'type',
             key: 'type',
             width: 120,
@@ -115,13 +120,13 @@ export const InventoryAdjustmentsPage = () => {
                         icon={isIncrease ? <ArrowUpOutlined /> : <ArrowDownOutlined />}
                         color={isIncrease ? 'success' : 'error'}
                     >
-                        {isIncrease ? 'Incremento' : 'Decremento'}
+                        {isIncrease ? 'Increase' : 'Decrease'}
                     </Tag>
                 );
             }
         },
         {
-            title: 'Cantidad',
+            title: 'Quantity',
             dataIndex: 'quantity',
             key: 'quantity',
             width: 100,
@@ -136,9 +141,9 @@ export const InventoryAdjustmentsPage = () => {
             }
         },
         {
-            title: 'Stock',
+            title: 'Stock Change',
             key: 'stock',
-            width: 120,
+            width: 150,
             align: 'center' as const,
             render: (_: any, record: InventoryAdjustment) => (
                 <div>
@@ -149,7 +154,7 @@ export const InventoryAdjustmentsPage = () => {
             )
         },
         {
-            title: 'Razón',
+            title: 'Reason',
             dataIndex: 'reason',
             key: 'reason',
             width: 120,
@@ -158,29 +163,29 @@ export const InventoryAdjustmentsPage = () => {
             )
         },
         {
-            title: 'Notas',
+            title: 'Notes',
             dataIndex: 'notes',
             key: 'notes',
             ellipsis: true,
             render: (notes: string) => notes || '-'
         },
         {
-            title: 'Realizado por',
+            title: 'Performed By',
             dataIndex: 'performedBy',
             key: 'performedBy',
-            width: 120
+            width: 130
         }
     ];
 
     return (
         <div style={{ padding: 24 }}>
-            <Title level={2}>📦 Ajustes de Inventario</Title>
+            <Title level={2}>📦 Inventory Adjustments</Title>
 
             <Card style={{ marginBottom: 16 }}>
                 <Row gutter={[16, 16]}>
                     <Col xs={24} sm={12} md={6}>
                         <Select
-                            placeholder="Filtrar por producto"
+                            placeholder="Filter by product"
                             showSearch
                             allowClear
                             style={{ width: '100%' }}
@@ -195,19 +200,19 @@ export const InventoryAdjustmentsPage = () => {
                     </Col>
                     <Col xs={24} sm={12} md={4}>
                         <Select
-                            placeholder="Tipo"
+                            placeholder="Type"
                             allowClear
                             style={{ width: '100%' }}
                             value={filters.type}
                             onChange={(value) => handleFilterChange('type', value)}
                         >
-                            <Select.Option value="INCREASE">↑ Incremento</Select.Option>
-                            <Select.Option value="DECREASE">↓ Decremento</Select.Option>
+                            <Select.Option value="INCREASE">↑ Increase</Select.Option>
+                            <Select.Option value="DECREASE">↓ Decrease</Select.Option>
                         </Select>
                     </Col>
                     <Col xs={24} sm={12} md={5}>
                         <Select
-                            placeholder="Razón"
+                            placeholder="Reason"
                             allowClear
                             style={{ width: '100%' }}
                             value={filters.reason}
@@ -223,7 +228,7 @@ export const InventoryAdjustmentsPage = () => {
                     <Col xs={24} sm={12} md={6}>
                         <RangePicker
                             style={{ width: '100%' }}
-                            format="DD/MM/YYYY"
+                            format="MM/DD/YYYY"
                             onChange={handleDateRangeChange}
                         />
                     </Col>
@@ -233,7 +238,7 @@ export const InventoryAdjustmentsPage = () => {
                                 icon={<ClearOutlined />}
                                 onClick={handleClearFilters}
                             >
-                                Limpiar
+                                Clear
                             </Button>
                             <Button
                                 icon={<ReloadOutlined />}
@@ -245,14 +250,14 @@ export const InventoryAdjustmentsPage = () => {
             </Card>
 
             <Card
-                title="Historial de Ajustes"
+                title="Adjustment History"
                 extra={
                     <Button
                         type="primary"
                         icon={<PlusOutlined />}
                         onClick={() => setIsModalVisible(true)}
                     >
-                        Nuevo Ajuste
+                        New Adjustment
                     </Button>
                 }
             >
@@ -262,7 +267,7 @@ export const InventoryAdjustmentsPage = () => {
                     rowKey="id"
                     pagination={{
                         pageSize: 15,
-                        showTotal: (total) => `Total: ${total} ajustes`
+                        showTotal: (total) => `Total: ${total} adjustments`
                     }}
                 />
             </Card>

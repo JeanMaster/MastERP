@@ -24,6 +24,10 @@ import { cashRegisterApi, type CashRegister } from '../../services/cashRegisterA
 
 const { Title, Text } = Typography;
 
+/**
+ * RegistersManagement Component
+ * Admin view to manage (create, edit, deactivate) physical cash registers.
+ */
 export const RegistersManagement = () => {
     const queryClient = useQueryClient();
     const [isModalVisible, setIsModalVisible] = useState(false);
@@ -40,7 +44,7 @@ export const RegistersManagement = () => {
     const createMutation = useMutation({
         mutationFn: (data: { name: string, location?: string }) => cashRegisterApi.createRegister(data),
         onSuccess: () => {
-            message.success('Caja creada correctamente');
+            message.success('Cash register created successfully');
             queryClient.invalidateQueries({ queryKey: ['cashRegisters'] });
             handleCancel();
         }
@@ -49,7 +53,7 @@ export const RegistersManagement = () => {
     const updateMutation = useMutation({
         mutationFn: ({ id, data }: { id: string, data: any }) => cashRegisterApi.updateRegister(id, data),
         onSuccess: () => {
-            message.success('Caja actualizada correctamente');
+            message.success('Cash register updated successfully');
             queryClient.invalidateQueries({ queryKey: ['cashRegisters'] });
             handleCancel();
         }
@@ -58,7 +62,7 @@ export const RegistersManagement = () => {
     const deleteMutation = useMutation({
         mutationFn: (id: string) => cashRegisterApi.deleteRegister(id),
         onSuccess: () => {
-            message.success('Caja eliminada correctamente');
+            message.success('Cash register deleted successfully');
             queryClient.invalidateQueries({ queryKey: ['cashRegisters'] });
         }
     });
@@ -95,7 +99,7 @@ export const RegistersManagement = () => {
 
     const columns = [
         {
-            title: 'Nombre de la Caja',
+            title: 'Register Name',
             dataIndex: 'name',
             key: 'name',
             render: (text: string) => (
@@ -106,28 +110,28 @@ export const RegistersManagement = () => {
             )
         },
         {
-            title: 'Ubicación',
+            title: 'Location',
             dataIndex: 'location',
             key: 'location',
             render: (text: string) => (
                 <Space>
                     <EnvironmentOutlined style={{ color: '#8c8c8c' }} />
-                    <Text type="secondary">{text || 'No especificada'}</Text>
+                    <Text type="secondary">{text || 'Not specified'}</Text>
                 </Space>
             )
         },
         {
-            title: 'Estado',
+            title: 'Status',
             dataIndex: 'isActive',
             key: 'isActive',
             render: (active: boolean) => (
                 <Tag color={active ? 'green' : 'red'}>
-                    {active ? 'ACTIVA' : 'INACTIVA'}
+                    {active ? 'ACTIVE' : 'INACTIVE'}
                 </Tag>
             )
         },
         {
-            title: 'Acciones',
+            title: 'Actions',
             key: 'actions',
             align: 'right' as const,
             render: (_: any, record: CashRegister) => (
@@ -138,10 +142,10 @@ export const RegistersManagement = () => {
                         type="text"
                     />
                     <Popconfirm
-                        title="¿Eliminar esta caja?"
-                        description="Esta acción marcará la caja como inactiva."
+                        title="Delete this register?"
+                        description="This action will mark the register as inactive."
                         onConfirm={() => deleteMutation.mutate(record.id)}
-                        okText="Sí"
+                        okText="Yes"
                         cancelText="No"
                     >
                         <Button
@@ -158,14 +162,14 @@ export const RegistersManagement = () => {
     return (
         <div style={{ padding: 24 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-                <Title level={2}>⚙️ Gestión de Cajas Registradoras</Title>
+                <Title level={2}>⚙️ Cash Registers Management</Title>
                 <Button
                     type="primary"
                     icon={<PlusOutlined />}
                     onClick={handleAdd}
                     size="large"
                 >
-                    Nueva Caja
+                    New Register
                 </Button>
             </div>
 
@@ -180,31 +184,31 @@ export const RegistersManagement = () => {
             </Card>
 
             <Modal
-                title={editingRegister ? "Editar Caja" : "Nueva Caja"}
+                title={editingRegister ? "Edit Register" : "New Register"}
                 open={isModalVisible}
                 onOk={handleSubmit}
                 onCancel={handleCancel}
                 confirmLoading={createMutation.isPending || updateMutation.isPending}
-                okText={editingRegister ? "Guardar" : "Crear"}
-                cancelText="Cancelar"
+                okText={editingRegister ? "Save" : "Create"}
+                cancelText="Cancel"
             >
                 <Form
                     form={form}
                     layout="vertical"
-                    initialValues={{ location: 'Tienda' }}
+                    initialValues={{ location: 'Store' }}
                 >
                     <Form.Item
                         name="name"
-                        label="Nombre de la Caja"
-                        rules={[{ required: true, message: 'Por favor ingresa el nombre de la caja' }]}
+                        label="Register Name"
+                        rules={[{ required: true, message: 'Please enter the register name' }]}
                     >
-                        <Input placeholder="Ej: Caja Principal, Caja Pasillo..." />
+                        <Input placeholder="e.g., Main Register, Back Counter..." />
                     </Form.Item>
                     <Form.Item
                         name="location"
-                        label="Ubicación"
+                        label="Location"
                     >
-                        <Input placeholder="Ej: Pasillo 1, Mostrador Principal..." />
+                        <Input placeholder="e.g., Aisle 1, Main Entrance..." />
                     </Form.Item>
                 </Form>
             </Modal>

@@ -11,36 +11,36 @@ import { ApiProperty } from '@nestjs/swagger';
 export class CreateSupplierDto {
   @ApiProperty({
     example: 'J-98765432-1',
-    description: 'RIF del proveedor (único)',
+    description: 'Supplier RIF (unique)',
   })
-  @IsNotEmpty({ message: 'El RIF es requerido' })
+  @IsNotEmpty({ message: 'RIF is required' })
   @IsString()
-  @Length(6, 15, { message: 'El RIF debe tener entre 6 y 15 caracteres' })
+  @Length(6, 15, { message: 'RIF must be between 6 and 15 characters' })
   rif: string;
 
   @ApiProperty({
-    example: 'Distribuidora ABC',
-    description: 'Nombre comercial',
+    example: 'ABC Distributors',
+    description: 'Commercial name',
   })
-  @IsNotEmpty({ message: 'El nombre comercial es requerido' })
+  @IsNotEmpty({ message: 'Commercial name is required' })
   @IsString()
   comercialName: string;
 
-  @ApiProperty({ example: 'Distribuidora ABC C.A.', required: false })
+  @ApiProperty({ example: 'ABC Distributors C.A.', required: false })
   @IsOptional()
   @IsString()
   legalName?: string;
 
   @ApiProperty({
-    example: 'Juan Pérez',
+    example: 'John Smith',
     required: false,
-    description: 'Nombre del contacto',
+    description: 'Contact person name',
   })
   @IsOptional()
   @IsString()
   contactName?: string;
 
-  @ApiProperty({ example: 'Zona Industrial, Caracas', required: false })
+  @ApiProperty({ example: 'Industrial Zone, Caracas', required: false })
   @IsOptional()
   @IsString()
   address?: string;
@@ -50,15 +50,15 @@ export class CreateSupplierDto {
   @IsString()
   phone?: string;
 
-  @ApiProperty({ example: 'ventas@distribuidoraabc.com', required: false })
+  @ApiProperty({ example: 'sales@abcdistributors.com', required: false })
   @IsOptional()
-  @IsEmail({}, { message: 'Email inválido' })
+  @IsEmail({}, { message: 'Invalid email address' })
   email?: string;
 
   @ApiProperty({
-    example: 'Materiales',
+    example: 'Materials',
     required: false,
-    description: 'Categoría del proveedor',
+    description: 'Supplier category',
   })
   @IsOptional()
   @IsString()
@@ -67,9 +67,9 @@ export class CreateSupplierDto {
   @ApiProperty({
     example: true,
     required: false,
-    description: 'Estado del proveedor (activo/inactivo)',
+    description: 'Supplier status (active/inactive)',
   })
   @IsOptional()
-  @IsBoolean({ message: 'El estado debe ser un valor booleano' })
+  @IsBoolean({ message: 'Status must be a boolean value' })
   active?: boolean;
 }

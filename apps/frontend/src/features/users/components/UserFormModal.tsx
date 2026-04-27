@@ -1,11 +1,9 @@
 import { Modal, Form, Input, Select, Checkbox, Row, Col, Typography, message, Switch, Divider } from 'antd';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import axios from 'axios';
 import { useEffect } from 'react';
-import { BASE_URL } from '../../../services/apiConfig';
+import { usersApi } from '../../../services/usersApi';
 
 const { Text } = Typography;
-const API_URL = BASE_URL;
 
 interface UserFormModalProps {
     open: boolean;
@@ -14,40 +12,45 @@ interface UserFormModalProps {
 }
 
 const ROLES = [
-    { label: 'Administrador', value: 'ADMIN' },
+    { label: 'Administrator', value: 'ADMIN' },
     { label: 'Supervisor', value: 'SUPERVISOR' },
-    { label: 'Cajero', value: 'CASHIER' },
+    { label: 'Cashier', value: 'CASHIER' },
 ];
 
 const PERMISSIONS = [
     {
-        group: 'Ventas',
+        group: 'Sales & POS',
         options: [
-            { label: 'Vender (POS)', value: 'MODULE_POS' },
-            { label: 'Ver Historial', value: 'VIEW_SALES' },
-            { label: 'Gestionar Caja', value: 'MANAGE_CASH_REGISTER' },
-            { label: 'Anular Ventas', value: 'VOID_SALES' },
+            { label: 'POS Operations', value: 'MODULE_POS' },
+            { label: 'View Sales History', value: 'VIEW_SALES' },
+            { label: 'Manage Cash Drawer', value: 'MANAGE_CASH_REGISTER' },
+            { label: 'Void Sales / Refunds', value: 'VOID_SALES' },
         ]
     },
     {
-        group: 'Inventario',
+        group: 'Inventory Management',
         options: [
-            { label: 'Ver Productos', value: 'VIEW_PRODUCTS' },
-            { label: 'Editar Productos', value: 'EDIT_PRODUCTS' },
-            { label: 'Ajustes de Inventario', value: 'INVENTORY_ADJUSTMENTS' },
+            { label: 'View Catalog', value: 'VIEW_PRODUCTS' },
+            { label: 'Edit Products', value: 'EDIT_PRODUCTS' },
+            { label: 'Inventory Adjustments', value: 'INVENTORY_ADJUSTMENTS' },
         ]
     },
     {
-        group: 'Administración',
+        group: 'Business Admin',
         options: [
-            { label: 'Compras', value: 'MODULE_PURCHASES' },
-            { label: 'Gastos', value: 'MODULE_EXPENSES' },
-            { label: 'Reportes', value: 'MODULE_REPORTS' },
-            { label: 'Configuración', value: 'MODULE_CONFIG' },
+            { label: 'Purchase Management', value: 'MODULE_PURCHASES' },
+            { label: 'Expense Tracking', value: 'MODULE_EXPENSES' },
+            { label: 'Advanced Reporting', value: 'MODULE_REPORTS' },
+            { label: 'System Configuration', value: 'MODULE_CONFIG' },
         ]
     }
 ];
 
+/**
+ * UserFormModal Component
+ * Form for creating and updating user accounts.
+ * Includes security role selection, password management, and granular permission toggles.
+ */
 export const UserFormModal = ({ open, onCancel, user }: UserFormModalProps) => {
     const [form] = Form.useForm();
     const queryClient = useQueryClient();
@@ -58,7 +61,7 @@ export const UserFormModal = ({ open, onCancel, user }: UserFormModalProps) => {
             if (user) {
                 form.setFieldsValue({
                     ...user,
-                    password: '', // Don't show hash
+                    password: '', // Protect sensitive data
                 });
             } else {
                 form.resetFields();
@@ -66,24 +69,27 @@ export const UserFormModal = ({ open, onCancel, user }: UserFormModalProps) => {
         }
     }, [open, user, form]);
 
+    /**
+     * Handles account creation/update logic.
+     */
     const mutation = useMutation({
-        mutationFn: async (values: any) => {
+        mutationFn: (values: any) => {
             if (isEdit) {
-                // Only send password if provided
                 const updateData = { ...values };
+                // Only send password if user explicitly entered a new one
                 if (!updateData.password) delete updateData.password;
-                return axios.patch(`${API_URL}/users/${user.id}`, updateData);
+                return usersApi.update(user.id, updateData);
             } else {
-                return axios.post(`${API_URL}/users`, values);
+                return usersApi.create(values);
             }
         },
         onSuccess: () => {
-            message.success(isEdit ? 'Usuario actualizado' : 'Usuario creado');
+            message.success(isEdit ? 'User account updated' : 'User account created');
             queryClient.invalidateQueries({ queryKey: ['users'] });
             onCancel();
         },
-        onError: () => {
-            message.error('Error al guardar usuario');
+        onError: (err: any) => {
+            message.error(err?.response?.data?.message || 'Error saving user profile');
         }
     });
 
@@ -91,7 +97,7 @@ export const UserFormModal = ({ open, onCancel, user }: UserFormModalProps) => {
         mutation.mutate(values);
     };
 
-    // F9 Keyboard Shortcut
+    // F9 Keyboard Shortcut for quick submission
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
             if (!open) return;
@@ -107,47 +113,49 @@ export const UserFormModal = ({ open, onCancel, user }: UserFormModalProps) => {
 
     return (
         <Modal
-            title={isEdit ? "Editar Usuario" : "Nuevo Usuario"}
+            title={isEdit ? "Edit User Profile" : "Register New System User"}
             open={open}
             onCancel={onCancel}
             onOk={() => form.submit()}
-            okText={isEdit ? "Guardar (F9)" : "Crear (F9)"}
+            okText={isEdit ? "Update User (F9)" : "Create User (F9)"}
             width={700}
             confirmLoading={mutation.isPending}
+            style={{ top: 20 }}
         >
             <Form
                 form={form}
                 layout="vertical"
                 onFinish={handleSubmit}
                 initialValues={{ isActive: true, role: 'CASHIER', permissions: [] }}
+                style={{ marginTop: 20 }}
             >
-                <Row gutter={16}>
+                <Row gutter={24}>
                     <Col span={12}>
                         <Form.Item
                             name="username"
-                            label="Usuario"
-                            rules={[{ required: true, message: 'Requerido' }]}
+                            label="Username / Login"
+                            rules={[{ required: true, message: 'Login username is required' }]}
                         >
-                            <Input disabled={isEdit} />
+                            <Input disabled={isEdit} placeholder="e.g., jsmith" />
                         </Form.Item>
                     </Col>
                     <Col span={12}>
                         <Form.Item
                             name="name"
-                            label="Nombre Completo"
-                            rules={[{ required: true, message: 'Requerido' }]}
+                            label="Employee Full Name"
+                            rules={[{ required: true, message: 'Please enter a name' }]}
                         >
-                            <Input />
+                            <Input placeholder="John Smith" />
                         </Form.Item>
                     </Col>
                 </Row>
 
-                <Row gutter={16}>
+                <Row gutter={24}>
                     <Col span={12}>
                         <Form.Item
                             name="role"
-                            label="Rol"
-                            rules={[{ required: true, message: 'Requerido' }]}
+                            label="Global Security Role"
+                            rules={[{ required: true }]}
                         >
                             <Select options={ROLES} />
                         </Form.Item>
@@ -155,41 +163,46 @@ export const UserFormModal = ({ open, onCancel, user }: UserFormModalProps) => {
                     <Col span={12}>
                         <Form.Item
                             name="isActive"
-                            label="Estado"
+                            label="Account Status"
                             valuePropName="checked"
                         >
-                            <Switch checkedChildren="Activo" unCheckedChildren="Inactivo" />
+                            <Switch checkedChildren="Active" unCheckedChildren="Inactive" />
                         </Form.Item>
                     </Col>
                 </Row>
 
-                <Row gutter={16}>
-                    <Col span={12}>
+                <Row gutter={24}>
+                    <Col span={24}>
                         <Form.Item
                             name="password"
-                            label={isEdit ? "Contraseña (déjalo vacío para no cambiar)" : "Contraseña"}
-                            rules={[{ required: !isEdit, message: 'Requerido' }, { min: 6, message: 'Mínimo 6 caracteres' }]}
+                            label={isEdit ? "New Password (Leave blank to keep current)" : "Password"}
+                            rules={[
+                                { required: !isEdit, message: 'Password is required' }, 
+                                { min: 6, message: 'Minimum 6 characters for security' }
+                            ]}
                         >
-                            <Input.Password />
+                            <Input.Password placeholder="******" />
                         </Form.Item>
                     </Col>
                 </Row>
 
-                <Divider>Permisos Adicionales</Divider>
+                <Divider orientation="left">Granular Access Permissions</Divider>
                 <Form.Item name="permissions">
                     <Checkbox.Group style={{ width: '100%' }}>
-                        <Row gutter={[16, 16]}>
+                        <Row gutter={[16, 24]}>
                             {PERMISSIONS.map(group => (
                                 <Col span={24} key={group.group}>
-                                    <Text strong>{group.group}</Text>
-                                    <Row>
+                                    <Text strong style={{ display: 'block', marginBottom: 12, color: '#1890ff' }}>
+                                        {group.group}
+                                    </Text>
+                                    <Row gutter={[8, 8]}>
                                         {group.options.map(option => (
                                             <Col span={12} key={option.value}>
                                                 <Checkbox value={option.value}>{option.label}</Checkbox>
                                             </Col>
                                         ))}
                                     </Row>
-                                    <div style={{ height: 10 }} />
+                                    <Divider dashed style={{ margin: '16px 0' }} />
                                 </Col>
                             ))}
                         </Row>

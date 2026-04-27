@@ -6,7 +6,9 @@ export class InvoiceService {
   constructor(private prisma: PrismaService) {}
 
   /**
-   * Generate the next control number (00-XXXXXX)
+   * Generates the next sequential control number (e.g., 00-00000001).
+   * Uses a transaction to ensure atomicity.
+   * @returns The generated control number.
    */
   async generateControlNumber(): Promise<string> {
     return await this.prisma.$transaction(async (prisma) => {
@@ -33,7 +35,9 @@ export class InvoiceService {
   }
 
   /**
-   * Generate the next invoice number
+   * Generates the next sequential invoice number.
+   * Uses a transaction to prevent race conditions.
+   * @returns The generated invoice number.
    */
   async generateInvoiceNumber(): Promise<string> {
     // Use transaction to prevent race conditions with concurrent requests
@@ -67,14 +71,16 @@ export class InvoiceService {
   }
 
   /**
-   * Get current invoice counter
+   * Retrieves the current status of the invoice counter.
+   * @returns The invoice counter record.
    */
   async getCurrentCounter() {
     return this.prisma.invoiceCounter.findFirst();
   }
 
   /**
-   * Get the next invoice number without incrementing (for display purposes)
+   * Retrieves the next invoice number for display purposes without incrementing the counter.
+   * @returns The next invoice number.
    */
   async getNextInvoiceNumber(): Promise<string> {
     return await this.prisma.$transaction(async (prisma) => {
@@ -97,7 +103,8 @@ export class InvoiceService {
   }
 
   /**
-   * Reset invoice counter (for testing or new fiscal year)
+   * Resets the invoice counter to 1.
+   * @returns The result of the update operation.
    */
   async resetCounter() {
     return this.prisma.invoiceCounter.updateMany({
@@ -108,7 +115,8 @@ export class InvoiceService {
   }
 
   /**
-   * Reserve an invoice number (for immediate use in sale creation)
+   * Reserves an invoice number for immediate use and increments the counter.
+   * @returns The reserved invoice number.
    */
   async reserveInvoiceNumber(): Promise<string> {
     return await this.prisma.$transaction(async (prisma) => {
@@ -141,7 +149,9 @@ export class InvoiceService {
   }
 
   /**
-   * Create an invoice
+   * Creates a new invoice record.
+   * @param data The invoice data.
+   * @returns The created invoice including client data.
    */
   async create(data: {
     clientId: string;
@@ -188,7 +198,10 @@ export class InvoiceService {
   }
 
   /**
-   * Create a credit invoice (Maintained for backward compatibility)
+   * Creates a credit invoice.
+   * Maintained for backward compatibility.
+   * @param data The invoice data.
+   * @returns The created invoice.
    */
   async createCreditInvoice(data: {
     clientId: string;
@@ -212,7 +225,9 @@ export class InvoiceService {
   }
 
   /**
-   * Get invoices by client
+   * Retrieves all invoices for a specific client.
+   * @param clientId The ID of the client.
+   * @returns A list of invoices including their payments.
    */
   async getClientInvoices(clientId: string) {
     const invoices = await this.prisma.invoice.findMany({
@@ -232,7 +247,8 @@ export class InvoiceService {
   }
 
   /**
-   * Get all pending invoices
+   * Retrieves all pending and partially paid invoices.
+   * @returns A list of pending invoices including client and payment data.
    */
   async getPendingInvoices() {
     const invoices = await this.prisma.invoice.findMany({
@@ -251,7 +267,9 @@ export class InvoiceService {
   }
 
   /**
-   * Get overdue invoices
+   * Retrieves all overdue invoices (pending/partial and past due date).
+   * Automatically updates status to OVERDUE for found invoices.
+   * @returns A list of overdue invoices.
    */
   async getOverdueInvoices() {
     const now = new Date();
@@ -281,7 +299,9 @@ export class InvoiceService {
   }
 
   /**
-   * Get invoice by ID
+   * Retrieves a single invoice by its ID.
+   * @param id The ID of the invoice.
+   * @returns The invoice record including client and payment data.
    */
   async getInvoiceById(id: string) {
     return this.prisma.invoice.findUnique({

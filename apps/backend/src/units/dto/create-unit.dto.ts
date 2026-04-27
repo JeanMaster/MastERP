@@ -2,13 +2,13 @@ import { IsString, IsNotEmpty } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class CreateUnitDto {
-  @ApiProperty({ example: 'Caja', description: 'Nombre de la unidad' })
-  @IsNotEmpty({ message: 'El nombre es requerido' })
+  @ApiProperty({ example: 'Box', description: 'Name of the measurement unit' })
+  @IsNotEmpty({ message: 'Name is required' })
   @IsString()
   name: string;
 
-  @ApiProperty({ example: 'CJA', description: 'Abreviación de la unidad' })
-  @IsNotEmpty({ message: 'La abreviación es requerida' })
+  @ApiProperty({ example: 'BX', description: 'Abbreviation of the measurement unit' })
+  @IsNotEmpty({ message: 'Abbreviation is required' })
   @IsString()
   abbreviation: string;
 }

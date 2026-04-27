@@ -1,4 +1,13 @@
+import { useTranslation } from 'react-i18next';
+
+/**
+ * LandingFooter Component
+ * Standard footer with copyright information and branding.
+ * Supports internationalization (i18n).
+ */
 export const LandingFooter = () => {
+    const { t } = useTranslation();
+
     return (
         <footer className="landing-footer">
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px' }}>
@@ -6,8 +15,8 @@ export const LandingFooter = () => {
                     <img src="/favicon.svg" alt="MastERP Logo" style={{ height: '24px', opacity: 0.5 }} />
                     <span style={{ fontWeight: 600, color: '#475569' }}>MastERP</span>
                 </div>
-                <p>© {new Date().getFullYear()} MastERP Systems. Todos los derechos reservados.</p>
-                <p style={{ fontSize: '14px' }}>Construido con tecnología de vanguardia para empoderar comercios y vencer la inestabilidad.</p>
+                <p>{t('landing.footer.copyright', { year: new Date().getFullYear() })}</p>
+                <p style={{ fontSize: '14px' }}>{t('landing.footer.mission')}</p>
             </div>
         </footer>
     );

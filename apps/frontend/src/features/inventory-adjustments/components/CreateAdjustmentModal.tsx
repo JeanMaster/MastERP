@@ -13,15 +13,20 @@ interface CreateAdjustmentModalProps {
 }
 
 const reasonLabels: Record<string, string> = {
-    DAMAGE: '🔨 Daño/Defecto',
-    LOSS: '📉 Pérdida/Robo',
-    ERROR: '❌ Error de Conteo',
-    INITIAL: '📦 Inventario Inicial',
-    RETURN: '↩️ Devolución al Stock',
-    TRANSFER: '↔️ Transferencia',
-    OTHER: '📝 Otro'
+    DAMAGE: '🔨 Damage/Defect',
+    LOSS: '📉 Loss/Theft',
+    ERROR: '❌ Counting Correction',
+    INITIAL: '📦 Initial Inventory',
+    RETURN: '↩️ Return to Stock',
+    TRANSFER: '↔️ Transfer',
+    OTHER: '📝 Other'
 };
 
+/**
+ * CreateAdjustmentModal Component
+ * Workflow for recording manual inventory stock changes.
+ * Supports increases and decreases, providing real-time stock projections and validation to prevent negative inventory.
+ */
 export const CreateAdjustmentModal = ({ open, onCancel, onSuccess }: CreateAdjustmentModalProps) => {
     const [form] = Form.useForm();
     const [loading, setLoading] = useState(false);
@@ -60,7 +65,7 @@ export const CreateAdjustmentModal = ({ open, onCancel, onSuccess }: CreateAdjus
         }
     };
 
-    // F9 Keyboard Shortcut
+    // F9 Keyboard Shortcut for quick submission
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
             if (!open) return;
@@ -85,17 +90,17 @@ export const CreateAdjustmentModal = ({ open, onCancel, onSuccess }: CreateAdjus
                 quantity: values.quantity,
                 reason: values.reason,
                 notes: values.notes,
-                performedBy: values.performedBy || 'Usuario'
+                performedBy: values.performedBy || 'User'
             };
 
             await inventoryAdjustmentsApi.create(dto);
-            message.success('Ajuste registrado exitosamente');
+            message.success('Adjustment recorded successfully');
             form.resetFields();
             setSelectedProduct(null);
             setQuantity(0);
             onSuccess();
         } catch (error: any) {
-            message.error(error.response?.data?.message || 'Error al crear ajuste');
+            message.error(error.response?.data?.message || 'Error creating adjustment');
             console.error(error);
         } finally {
             setLoading(false);
@@ -114,29 +119,29 @@ export const CreateAdjustmentModal = ({ open, onCancel, onSuccess }: CreateAdjus
 
     return (
         <Modal
-            title="Nuevo Ajuste de Inventario"
+            title="New Inventory Adjustment"
             open={open}
             onCancel={handleCancel}
             onOk={handleSubmit}
             confirmLoading={loading}
-            okText="Confirmar Ajuste (F9)"
-            cancelText="Cancelar"
+            okText="Confirm Adjustment (F9)"
+            cancelText="Cancel"
             width={600}
         >
             <Form
                 form={form}
                 layout="vertical"
                 style={{ marginTop: 20 }}
-                initialValues={{ type: 'INCREASE', performedBy: 'Usuario' }}
+                initialValues={{ type: 'INCREASE', performedBy: 'User' }}
             >
                 <Form.Item
                     name="productId"
-                    label="Producto"
-                    rules={[{ required: true, message: 'Selecciona un producto' }]}
+                    label="Product"
+                    rules={[{ required: true, message: 'Please select a product' }]}
                 >
                     <Select
                         showSearch
-                        placeholder="Buscar producto..."
+                        placeholder="Search product..."
                         optionFilterProp="children"
                         filterOption={(input, option) =>
                             (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
@@ -154,9 +159,9 @@ export const CreateAdjustmentModal = ({ open, onCancel, onSuccess }: CreateAdjus
                     <Alert
                         message={
                             <Statistic
-                                title="Stock Actual"
+                                title="Current Stock"
                                 value={selectedProduct.stock}
-                                suffix="unidades"
+                                suffix="units"
                                 valueStyle={{ fontSize: 20 }}
                                 styles={{ content: { fontSize: 20 } }}
                             />
@@ -169,7 +174,7 @@ export const CreateAdjustmentModal = ({ open, onCancel, onSuccess }: CreateAdjus
 
                 <Form.Item
                     name="type"
-                    label="Tipo de Ajuste"
+                    label="Adjustment Type"
                     rules={[{ required: true }]}
                 >
                     <Radio.Group
@@ -177,21 +182,21 @@ export const CreateAdjustmentModal = ({ open, onCancel, onSuccess }: CreateAdjus
                         size="large"
                         onChange={(e) => handleTypeChange(e.target.value)}
                     >
-                        <Radio.Button value="INCREASE" style={{ width: 280 }}>
-                            ↑ Incrementar (+)
+                        <Radio.Button value="INCREASE" style={{ width: 275 }}>
+                            ↑ Increase (+)
                         </Radio.Button>
-                        <Radio.Button value="DECREASE" style={{ width: 280 }}>
-                            ↓ Decrementar (-)
+                        <Radio.Button value="DECREASE" style={{ width: 275 }}>
+                            ↓ Decrease (-)
                         </Radio.Button>
                     </Radio.Group>
                 </Form.Item>
 
                 <Form.Item
                     name="quantity"
-                    label="Cantidad"
+                    label="Quantity"
                     rules={[
-                        { required: true, message: 'Ingresa la cantidad' },
-                        { type: 'number', min: 1, message: 'Debe ser mayor a 0' }
+                        { required: true, message: 'Please enter quantity' },
+                        { type: 'number', min: 1, message: 'Must be greater than 0' }
                     ]}
                 >
                     <InputNumber
@@ -205,10 +210,10 @@ export const CreateAdjustmentModal = ({ open, onCancel, onSuccess }: CreateAdjus
 
                 {selectedProduct && quantity > 0 && (
                     <Alert
-                        message="Nuevo Stock"
+                        message="Projected New Stock"
                         description={
                             <div style={{ fontSize: 24, fontWeight: 'bold', color: canDecrease ? '#1890ff' : '#ff4d4f' }}>
-                                {newStock} unidades
+                                {newStock} units
                             </div>
                         }
                         type={canDecrease ? 'success' : 'error'}
@@ -219,8 +224,8 @@ export const CreateAdjustmentModal = ({ open, onCancel, onSuccess }: CreateAdjus
 
                 {adjustmentType === 'DECREASE' && !canDecrease && quantity > 0 && (
                     <Alert
-                        message="Stock insuficiente"
-                        description={`No puedes decrementar ${quantity} unidades. Stock disponible: ${selectedProduct?.stock || 0}`}
+                        message="Insufficient Stock"
+                        description={`Unable to decrease ${quantity} units. Available stock: ${selectedProduct?.stock || 0}`}
                         type="error"
                         showIcon
                         style={{ marginBottom: 16 }}
@@ -229,10 +234,10 @@ export const CreateAdjustmentModal = ({ open, onCancel, onSuccess }: CreateAdjus
 
                 <Form.Item
                     name="reason"
-                    label="Razón del Ajuste"
-                    rules={[{ required: true, message: 'Selecciona una razón' }]}
+                    label="Adjustment Reason"
+                    rules={[{ required: true, message: 'Please select a reason' }]}
                 >
-                    <Select placeholder="Selecciona la razón" size="large">
+                    <Select placeholder="Select a reason" size="large">
                         {Object.entries(reasonLabels).map(([key, label]) => (
                             <Select.Option key={key} value={key}>
                                 {label}
@@ -243,19 +248,18 @@ export const CreateAdjustmentModal = ({ open, onCancel, onSuccess }: CreateAdjus
 
                 <Form.Item
                     name="performedBy"
-                    label="Realizado por"
-                    initialValue="Usuario"
+                    label="Performed By"
                 >
-                    <Input placeholder="Nombre del usuario" />
+                    <Input placeholder="User name" />
                 </Form.Item>
 
                 <Form.Item
                     name="notes"
-                    label="Notas (opcional)"
+                    label="Notes (Optional)"
                 >
                     <TextArea
                         rows={3}
-                        placeholder="Explicación detallada del ajuste..."
+                        placeholder="Detailed explanation of the adjustment..."
                     />
                 </Form.Item>
             </Form>

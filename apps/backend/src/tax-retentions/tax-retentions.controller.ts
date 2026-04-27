@@ -8,32 +8,47 @@ import { ApiTags, ApiOperation } from '@nestjs/swagger';
 export class TaxRetentionsController {
   constructor(private readonly taxRetentionsService: TaxRetentionsService) {}
 
+  /**
+   * Registers a new tax retention voucher.
+   */
   @Post()
-  @ApiOperation({ summary: 'Registrar un nuevo comprobante de retención' })
+  @ApiOperation({ summary: 'Register a new tax retention voucher' })
   create(@Body() createTaxRetentionDto: CreateTaxRetentionDto) {
     return this.taxRetentionsService.create(createTaxRetentionDto);
   }
 
+  /**
+   * Retrieves all tax retention vouchers.
+   */
   @Get()
-  @ApiOperation({ summary: 'Listar todos los comprobantes de retención' })
+  @ApiOperation({ summary: 'List all tax retention vouchers' })
   findAll() {
     return this.taxRetentionsService.findAll();
   }
 
+  /**
+   * Retrieves details for a specific tax retention voucher.
+   */
   @Get(':id')
-  @ApiOperation({ summary: 'Obtener detalles de un comprobante de retención' })
+  @ApiOperation({ summary: 'Get details for a specific tax retention voucher' })
   findOne(@Param('id') id: string) {
     return this.taxRetentionsService.findOne(id);
   }
 
+  /**
+   * Deletes a tax retention voucher and reverts its impact on balances.
+   */
   @Delete(':id')
-  @ApiOperation({ summary: 'Eliminar un comprobante de retención y revertir saldo' })
+  @ApiOperation({ summary: 'Delete a tax retention voucher and revert balances' })
   remove(@Param('id') id: string) {
     return this.taxRetentionsService.remove(id);
   }
 
+  /**
+   * Generates a TXT file for SENIAT tax declaration.
+   */
   @Get('export/txt')
-  @ApiOperation({ summary: 'Generar archivo TXT para declaración del SENIAT' })
+  @ApiOperation({ summary: 'Generate TXT file for SENIAT tax declaration' })
   async exportTxt(
     @Query('startDate') startDateStr?: string,
     @Query('endDate') endDateStr?: string,
@@ -44,3 +59,4 @@ export class TaxRetentionsController {
     return this.taxRetentionsService.generateSeniatTxt(startDate, endDate);
   }
 }
+

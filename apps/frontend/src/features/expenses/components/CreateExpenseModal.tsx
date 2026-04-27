@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Modal, Form, Input, InputNumber, DatePicker, Select, message, Space } from 'antd';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -16,27 +15,31 @@ interface CreateExpenseModalProps {
 }
 
 const EXPENSE_CATEGORIES = [
-    'SERVICIOS',
-    'NOMINA',
-    'MANTENIMIENTO',
-    'ALQUILER',
-    'PROVEEDORES',
-    'TRANSPORTE',
+    'SERVICES',
+    'PAYROLL',
+    'MAINTENANCE',
+    'RENT',
+    'SUPPLIERS',
+    'TRANSPORTATION',
     'MARKETING',
-    'IMPUESTOS',
-    'OTROS'
+    'TAXES',
+    'OTHERS'
 ];
 
 const PAYMENT_METHODS = [
-    { value: 'CASH', label: 'Efectivo' },
-    { value: 'TRANSFER', label: 'Transferencia' },
+    { value: 'CASH', label: 'Cash' },
+    { value: 'TRANSFER', label: 'Transfer' },
     { value: 'PAGO_MOVIL', label: 'Pago Móvil' },
-    { value: 'DEBIT', label: 'Tarjeta Débito' },
-    { value: 'CREDIT', label: 'Tarjeta Crédito' },
+    { value: 'DEBIT', label: 'Debit Card' },
+    { value: 'CREDIT', label: 'Credit Card' },
     { value: 'ZELLE', label: 'Zelle' },
     { value: 'USDT', label: 'USDT (Binance)' },
 ];
 
+/**
+ * CreateExpenseModal Component
+ * Modal to create or edit an operative expense record.
+ */
 export const CreateExpenseModal = ({ open, onCancel, expense }: CreateExpenseModalProps) => {
     const [form] = Form.useForm();
     const queryClient = useQueryClient();
@@ -66,7 +69,7 @@ export const CreateExpenseModal = ({ open, onCancel, expense }: CreateExpenseMod
         enabled: open
     });
 
-    // Set default values when modal opens
+    // Set initial values when modal opens
     useEffect(() => {
         if (open) {
             if (expense) {
@@ -83,24 +86,23 @@ export const CreateExpenseModal = ({ open, onCancel, expense }: CreateExpenseMod
                     reference: expense.reference,
                     notes: expense.notes,
                     bankAccountId: expense.bankAccountId,
+                    isTaxable: expense.isTaxable || false,
+                    taxAmount: expense.taxAmount || 0,
                 });
             } else if (currencies.length > 0) {
                 // Create Mode: Set Defaults
                 form.resetFields();
 
-                // Default to USD usually if available, or Primary
+                // Default to Primary or USD
                 const primary = currencies.find(c => c.isPrimary);
-
-                // Try to set USD as default if primary is VES, because user said options are usually USD
                 const usd = currencies.find(c => c.code === 'USD');
                 const defaultCurrency = usd || primary || currencies[0];
 
                 form.setFieldValue('currencyId', defaultCurrency.id);
 
-                // Set Exchange Rate: Always attempt to set the USD Rate (Secondary)
-                const usdCurrency = currencies.find(c => c.code === 'USD');
-                if (usdCurrency) {
-                    form.setFieldValue('exchangeRate', usdCurrency.exchangeRate || 1);
+                // Set Exchange Rate: Attempt to set the current system rate
+                if (usd) {
+                    form.setFieldValue('exchangeRate', usd.exchangeRate || 1);
                 } else {
                     form.setFieldValue('exchangeRate', 1);
                 }
@@ -109,26 +111,26 @@ export const CreateExpenseModal = ({ open, onCancel, expense }: CreateExpenseMod
                 form.setFieldsValue({
                     date: dayjs(),
                     paymentMethod: 'CASH',
-                    category: 'OTROS'
+                    category: 'OTHERS'
                 });
             }
         }
     }, [open, expense, currencies, form]);
 
     const handleCurrencyChange = () => {
-        // Do nothing to the rate. Preserve the manually entered or default system rate.
+        // Exchange rate logic can be added here if needed to auto-update rate on currency change
     };
 
     const createExpenseMutation = useMutation({
         mutationFn: expensesApi.create,
         onSuccess: () => {
-            message.success('Gasto registrado exitosamente');
+            message.success('Expense registered successfully');
             queryClient.invalidateQueries({ queryKey: ['expenses'] });
             form.resetFields();
             onCancel();
         },
         onError: (error) => {
-            message.error('Error al registrar el gasto');
+            message.error('Error registering expense');
             console.error(error);
         }
     });
@@ -136,13 +138,13 @@ export const CreateExpenseModal = ({ open, onCancel, expense }: CreateExpenseMod
     const updateExpenseMutation = useMutation({
         mutationFn: ({ id, data }: { id: string; data: UpdateExpenseDto }) => expensesApi.update(id, data),
         onSuccess: () => {
-            message.success('Gasto actualizado exitosamente');
+            message.success('Expense updated successfully');
             queryClient.invalidateQueries({ queryKey: ['expenses'] });
             form.resetFields();
             onCancel();
         },
         onError: (error) => {
-            message.error('Error al actualizar el gasto');
+            message.error('Error updating expense');
             console.error(error);
         }
     });
@@ -193,7 +195,7 @@ export const CreateExpenseModal = ({ open, onCancel, expense }: CreateExpenseMod
         return () => window.removeEventListener('keydown', handleKeyDown, true);
     }, [open, form]);
 
-    // Calculate equivalent
+    // Calculate equivalent for preview
     const selectedCurrencyObj = currencies.find(c => c.id === selectedCurrencyId);
     let conversionPreview = null;
 
@@ -202,11 +204,11 @@ export const CreateExpenseModal = ({ open, onCancel, expense }: CreateExpenseMod
             const secondary = currencies.find(c => !c.isPrimary);
             if (secondary) {
                 const usdAmount = amount / exchangeRate;
-                conversionPreview = `Equivalente en Divisa: ${formatVenezuelanPrice(usdAmount, '$')}`;
+                conversionPreview = `Equivalent in Divisa: ${formatVenezuelanPrice(usdAmount, '$')}`;
             }
         } else {
             const vesAmount = amount * exchangeRate;
-            conversionPreview = `Equivalente en Bs: ${formatVenezuelanPrice(vesAmount, 'Bs.')}`;
+            conversionPreview = `Equivalent in Bs: ${formatVenezuelanPrice(vesAmount, 'Bs.')}`;
         }
     }
 
@@ -222,18 +224,18 @@ export const CreateExpenseModal = ({ open, onCancel, expense }: CreateExpenseMod
                 deductionAmount = amount / exchangeRate;
             }
         }
-        bankDeductionPreview = `Se descontarán ${formatVenezuelanPrice(deductionAmount, selectedBank.currency.symbol)} de la cuenta.`;
+        bankDeductionPreview = `${formatVenezuelanPrice(deductionAmount, selectedBank.currency.symbol)} will be deducted from account.`;
     }
 
     return (
         <Modal
-            title={expense ? "Editar Gasto" : "Registrar Nuevo Gasto"}
+            title={expense ? "Edit Expense" : "Register New Expense"}
             open={open}
             onCancel={onCancel}
             onOk={() => form.submit()}
             confirmLoading={loading}
-            okText={expense ? "Guardar Cambios (F9)" : "Registrar (F9)"}
-            cancelText="Cancelar"
+            okText={expense ? "Save Changes (F9)" : "Register (F9)"}
+            cancelText="Cancel"
             width={600}
         >
             <Form
@@ -243,16 +245,16 @@ export const CreateExpenseModal = ({ open, onCancel, expense }: CreateExpenseMod
             >
                 <Form.Item
                     name="description"
-                    label="Descripción del Gasto"
-                    rules={[{ required: true, message: 'La descripción es obligatoria' }]}
+                    label="Expense Description"
+                    rules={[{ required: true, message: 'Description is required' }]}
                 >
-                    <Input placeholder="Ej. Pago servicio internet" autoFocus />
+                    <Input placeholder="e.g., Internet service payment" autoFocus />
                 </Form.Item>
 
                 <Space style={{ display: 'flex', marginBottom: 16 }} align="start" size={16}>
                     <Form.Item
                         name="isTaxable"
-                        label="¿Es Gasto Fiscal (IVA)?"
+                        label="Fiscal Expense (VAT)?"
                         valuePropName="checked"
                     >
                         <Select
@@ -267,15 +269,15 @@ export const CreateExpenseModal = ({ open, onCancel, expense }: CreateExpenseMod
                                 }
                             }}
                             options={[
-                                { value: true, label: 'Sí (Con Factura)' },
-                                { value: false, label: 'No (Formal/Nota)' }
+                                { value: true, label: 'Yes (With Invoice)' },
+                                { value: false, label: 'No (Formal/Note)' }
                             ]}
                         />
                     </Form.Item>
 
                     <Form.Item
                         name="taxAmount"
-                        label="Monto del IVA"
+                        label="VAT Amount"
                         dependencies={['isTaxable']}
                     >
                         <InputNumber
@@ -295,17 +297,17 @@ export const CreateExpenseModal = ({ open, onCancel, expense }: CreateExpenseMod
                                 <>
                                     <Form.Item
                                         name="invoiceNumber"
-                                        label="Número Factura"
-                                        rules={[{ required: true, message: 'Requerido' }]}
+                                        label="Invoice Number"
+                                        rules={[{ required: true, message: 'Required' }]}
                                     >
-                                        <Input placeholder="Ej. 00123" />
+                                        <Input placeholder="e.g., 00123" />
                                     </Form.Item>
                                     <Form.Item
                                         name="invoiceControlNumber"
-                                        label="Número Control"
-                                        rules={[{ required: true, message: 'Requerido' }]}
+                                        label="Control Number"
+                                        rules={[{ required: true, message: 'Required' }]}
                                     >
-                                        <Input placeholder="Ej. 00-00123" />
+                                        <Input placeholder="e.g., 00-00123" />
                                     </Form.Item>
                                 </>
                             ) : null
@@ -316,7 +318,7 @@ export const CreateExpenseModal = ({ open, onCancel, expense }: CreateExpenseMod
                 <Space style={{ display: 'flex', marginBottom: 0 }} align="start" size={16}>
                     <Form.Item
                         name="currencyId"
-                        label="Moneda de Pago"
+                        label="Payment Currency"
                         rules={[{ required: true }]}
                         style={{ width: '140px' }}
                     >
@@ -331,22 +333,21 @@ export const CreateExpenseModal = ({ open, onCancel, expense }: CreateExpenseMod
 
                     <Form.Item
                         name="amount"
-                        label="Monto"
-                        rules={[{ required: true, message: 'Requerido' }]}
+                        label="Amount"
+                        rules={[{ required: true, message: 'Required' }]}
                         style={{ width: '140px' }}
                     >
                         <InputNumber
                             style={{ width: '100%' }}
                             min={0.01}
                             precision={2}
-
                         />
                     </Form.Item>
 
                     <Form.Item
                         name="exchangeRate"
-                        label="Tasa de Cambio"
-                        rules={[{ required: true, message: 'Requerido' }]}
+                        label="Exchange Rate"
+                        rules={[{ required: true, message: 'Required' }]}
                         style={{ width: '140px' }}
                         help={conversionPreview}
                     >
@@ -360,8 +361,8 @@ export const CreateExpenseModal = ({ open, onCancel, expense }: CreateExpenseMod
 
                 <Form.Item
                     name="date"
-                    label="Fecha"
-                    rules={[{ required: true, message: 'Seleccione la fecha' }]}
+                    label="Date"
+                    rules={[{ required: true, message: 'Please select a date' }]}
                 >
                     <DatePicker style={{ width: '100%' }} />
                 </Form.Item>
@@ -369,7 +370,7 @@ export const CreateExpenseModal = ({ open, onCancel, expense }: CreateExpenseMod
                 <Space style={{ display: 'flex' }} align="start" size={16}>
                     <Form.Item
                         name="category"
-                        label="Categoría"
+                        label="Category"
                         rules={[{ required: true }]}
                         style={{ width: '220px' }}
                     >
@@ -381,7 +382,7 @@ export const CreateExpenseModal = ({ open, onCancel, expense }: CreateExpenseMod
 
                     <Form.Item
                         name="paymentMethod"
-                        label="Método de Pago"
+                        label="Payment Method"
                         rules={[{ required: true }]}
                         style={{ width: '220px' }}
                     >
@@ -391,12 +392,12 @@ export const CreateExpenseModal = ({ open, onCancel, expense }: CreateExpenseMod
 
                 <Form.Item
                     name="bankAccountId"
-                    label={settings?.requireBankAccountForPayments ? "Cuenta Bancaria / Tesorería" : "Cuenta Bancaria / Tesorería (Opcional)"}
-                    rules={[{ required: settings?.requireBankAccountForPayments !== false, message: 'Seleccione una cuenta' }]}
+                    label={settings?.requireBankAccountForPayments ? "Bank Account / Treasury" : "Bank Account / Treasury (Optional)"}
+                    rules={[{ required: settings?.requireBankAccountForPayments !== false, message: 'Please select an account' }]}
                     help={bankDeductionPreview}
                 >
                     <Select
-                        placeholder="Seleccione cuenta bancaria (Transferencias, Pago Móvil, etc.)"
+                        placeholder="Select bank account (Transfers, Pago Móvil, etc.)"
                         allowClear
                         options={banks.map(b => ({
                             value: b.id,
@@ -407,14 +408,14 @@ export const CreateExpenseModal = ({ open, onCancel, expense }: CreateExpenseMod
 
                 <Form.Item
                     name="reference"
-                    label="Número de Referencia (Opcional)"
+                    label="Reference Number (Optional)"
                 >
-                    <Input placeholder="Ej. 12345678" />
+                    <Input placeholder="e.g., 12345678" />
                 </Form.Item>
 
                 <Form.Item
                     name="notes"
-                    label="Notas Adicionales"
+                    label="Additional Notes"
                 >
                     <Input.TextArea rows={2} />
                 </Form.Item>
@@ -422,4 +423,3 @@ export const CreateExpenseModal = ({ open, onCancel, expense }: CreateExpenseMod
         </Modal>
     );
 };
-

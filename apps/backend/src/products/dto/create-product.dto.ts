@@ -21,7 +21,7 @@ export enum ProductType {
 
 export class CreateProductDto {
   @ApiProperty({
-    description: 'Tipo de producto: PRODUCT o SERVICE',
+    description: 'Product type: PRODUCT, SERVICE, or COMPOSED',
     enum: ProductType,
     default: ProductType.PRODUCT,
   })
@@ -29,18 +29,18 @@ export class CreateProductDto {
   @IsEnum(ProductType)
   type?: ProductType;
 
-  @ApiProperty({ example: 'PROD-001', description: 'SKU del producto' })
-  @IsNotEmpty({ message: 'El SKU es requerido' })
+  @ApiProperty({ example: 'PROD-001', description: 'Product SKU' })
+  @IsNotEmpty({ message: 'SKU is required' })
   @IsString()
   sku: string;
 
-  @ApiProperty({ example: 'Martillo 16oz', description: 'Nombre del producto' })
-  @IsNotEmpty({ message: 'El nombre es requerido' })
+  @ApiProperty({ example: 'Hammer 16oz', description: 'Product name' })
+  @IsNotEmpty({ message: 'Name is required' })
   @IsString()
   name: string;
 
   @ApiProperty({
-    example: 'Martillo de acero con mango de fibra',
+    example: 'Steel hammer with fiberglass handle',
     required: false,
   })
   @IsOptional()
@@ -48,86 +48,86 @@ export class CreateProductDto {
   description?: string;
 
   @ApiProperty({
-    example: 'uuid-del-departamento',
-    description: 'ID de la categoría (departamento principal)',
+    example: 'uuid-of-department',
+    description: 'Category ID (main department)',
   })
-  @IsNotEmpty({ message: 'La categoría es requerida' })
+  @IsNotEmpty({ message: 'Category is required' })
   @IsUUID()
   categoryId: string;
 
   @ApiProperty({
-    example: 'uuid-del-subdepartamento',
+    example: 'uuid-of-subdepartment',
     required: false,
-    description: 'ID de la subcategoría (subdepartamento)',
+    description: 'Subcategory ID (sub-department)',
   })
   @IsOptional()
   @IsUUID()
   subcategoryId?: string;
 
-  @ApiProperty({ example: 'uuid-de-la-moneda', description: 'ID de la moneda' })
-  @IsNotEmpty({ message: 'La moneda es requerida' })
+  @ApiProperty({ example: 'uuid-of-currency', description: 'Currency ID' })
+  @IsNotEmpty({ message: 'Currency is required' })
   @IsUUID()
   currencyId: string;
 
   @ApiProperty({
     example: 10.5,
-    description: 'Precio de costo (Requerido para Productos)',
+    description: 'Cost price (Required for Products and Composed)',
   })
   @ValidateIf((o) => o.type !== ProductType.SERVICE)
   @Type(() => Number)
   @IsNumber()
-  @Min(0, { message: 'El precio de costo debe ser mayor o igual a 0' })
+  @Min(0, { message: 'Cost price must be greater than or equal to 0' })
   costPrice?: number;
 
-  @ApiProperty({ example: 15.0, description: 'Precio de venta normal' })
+  @ApiProperty({ example: 15.0, description: 'Normal sale price' })
   @Type(() => Number)
   @IsNumber()
-  @Min(0, { message: 'El precio de venta debe ser mayor o igual a 0' })
+  @Min(0, { message: 'Sale price must be greater than or equal to 0' })
   salePrice: number;
 
   @ApiProperty({
     example: 12.0,
     required: false,
-    description: 'Precio en oferta',
+    description: 'Offer price',
   })
   @IsOptional()
   @Type(() => Number)
   @IsNumber()
-  @Min(0, { message: 'El precio en oferta debe ser mayor o igual a 0' })
+  @Min(0, { message: 'Offer price must be greater than or equal to 0' })
   offerPrice?: number;
 
   @ApiProperty({
     example: 13.5,
     required: false,
-    description: 'Precio al mayor',
+    description: 'Wholesale price',
   })
   @IsOptional()
   @Type(() => Number)
   @IsNumber()
-  @Min(0, { message: 'El precio al mayor debe ser mayor o igual a 0' })
+  @Min(0, { message: 'Wholesale price must be greater than or equal to 0' })
   wholesalePrice?: number;
 
-  @ApiProperty({ example: 100, description: 'Stock inicial' })
+  @ApiProperty({ example: 100, description: 'Initial stock' })
   @IsOptional()
   @Type(() => Number)
   @IsNumber()
-  @Min(0, { message: 'El stock debe ser mayor o igual a 0' })
+  @Min(0, { message: 'Stock must be greater than or equal to 0' })
   stock?: number;
 
   @ApiProperty({
-    example: 'uuid-de-la-unidad',
-    description: 'ID de la unidad principal (Requerido para Productos)',
+    example: 'uuid-of-unit',
+    description: 'Main unit ID (Required for Products)',
   })
   @ValidateIf((o) => o.type !== ProductType.SERVICE)
-  @IsNotEmpty({ message: 'La unidad principal es requerida' })
+  @IsNotEmpty({ message: 'Main unit is required' })
   @IsUUID()
   unitId?: string;
 
-  // Unidad secundaria
+  // Secondary unit
   @ApiProperty({
-    example: 'uuid-de-la-unidad-secundaria',
+    example: 'uuid-of-secondary-unit',
     required: false,
-    description: 'ID de la unidad secundaria',
+    description: 'Secondary unit ID',
   })
   @IsOptional()
   @IsUUID()
@@ -136,30 +136,30 @@ export class CreateProductDto {
   @ApiProperty({
     example: 12,
     required: false,
-    description: 'Cantidad para conversión entre unidades',
+    description: 'Quantity for unit conversion',
   })
   @ValidateIf((o) => o.secondaryUnitId)
   @Type(() => Number)
   @IsNumber()
-  @Min(0.001, { message: 'Debe haber al menos 0.001 en la conversión' })
+  @Min(0.001, { message: 'Conversion quantity must be at least 0.001' })
   unitsPerSecondaryUnit?: number;
 
   @ApiProperty({
     example: 'primary_to_secondary',
     required: false,
     description:
-      'Dirección de conversión: primary_to_secondary (12 UND = 1 Caja) o secondary_to_primary (1 Rollo = 50 Metros)',
+      'Conversion direction: primary_to_secondary (12 UND = 1 Box) or secondary_to_primary (1 Roll = 50 Meters)',
     enum: ['primary_to_secondary', 'secondary_to_primary'],
   })
   @IsOptional()
   @IsString()
   conversionDirection?: string;
 
-  // Precios para unidad secundaria
+  // Secondary unit prices
   @ApiProperty({
     example: 100.0,
     required: false,
-    description: 'Precio de costo para unidad secundaria',
+    description: 'Cost price for secondary unit',
   })
   @IsOptional()
   @Type(() => Number)
@@ -170,7 +170,7 @@ export class CreateProductDto {
   @ApiProperty({
     example: 150.0,
     required: false,
-    description: 'Precio de venta para unidad secundaria',
+    description: 'Sale price for secondary unit',
   })
   @IsOptional()
   @Type(() => Number)
@@ -181,7 +181,7 @@ export class CreateProductDto {
   @ApiProperty({
     example: 120.0,
     required: false,
-    description: 'Precio en oferta para unidad secundaria',
+    description: 'Offer price for secondary unit',
   })
   @IsOptional()
   @Type(() => Number)
@@ -192,7 +192,7 @@ export class CreateProductDto {
   @ApiProperty({
     example: 135.0,
     required: false,
-    description: 'Precio al mayor para unidad secundaria',
+    description: 'Wholesale price for secondary unit',
   })
   @IsOptional()
   @Type(() => Number)
@@ -203,7 +203,7 @@ export class CreateProductDto {
   @ApiProperty({
     example: false,
     required: false,
-    description: 'Si el producto está exento de IVA',
+    description: 'Whether the product is tax exempt',
   })
   @IsOptional()
   isTaxExempt?: boolean;
@@ -211,7 +211,7 @@ export class CreateProductDto {
   @ApiProperty({
     example: ['https://example.com/image1.jpg'],
     required: false,
-    description: 'URLs de las imágenes del producto',
+    description: 'Product image URLs',
   })
   @IsOptional()
   @IsArray()
@@ -221,10 +221,11 @@ export class CreateProductDto {
   @ApiProperty({
     example: [{ componentProductId: 'uuid', quantity: 2 }],
     required: false,
-    description: 'Componentes del producto (solo para tipo COMPOSED)',
+    description: 'Product components (only for COMPOSED type)',
   })
   @IsOptional()
   @ValidateIf((o) => o.type === ProductType.COMPOSED)
   @Type(() => Object)
   components?: Array<{ componentProductId: string; quantity: number }>;
 }
+

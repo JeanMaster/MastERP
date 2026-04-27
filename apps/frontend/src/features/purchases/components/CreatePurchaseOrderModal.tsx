@@ -17,6 +17,11 @@ interface CreatePurchaseOrderModalProps {
     onSuccess: () => void;
 }
 
+/**
+ * CreatePurchaseOrderModal Component
+ * Workflow for drafting a new purchase order for a supplier.
+ * Features: Multi-currency support, product search with debouncing, and estimated total calculation.
+ */
 export const CreatePurchaseOrderModal: React.FC<CreatePurchaseOrderModalProps> = ({ visible, onCancel, onSuccess }) => {
     const [form] = Form.useForm();
     const [suppliers, setSuppliers] = useState<Supplier[]>([]);
@@ -38,26 +43,37 @@ export const CreatePurchaseOrderModal: React.FC<CreatePurchaseOrderModalProps> =
     }, [visible]);
 
     const loadCurrencies = async () => {
-        const data = await currenciesApi.getAll();
-        setCurrencies(data);
-        const primary = data.find(c => c.isPrimary);
-        if (primary) {
-            setSelectedCurrency(primary);
-            form.setFieldValue('currencyCode', primary.code);
+        try {
+            const data = await currenciesApi.getAll();
+            setCurrencies(data);
+            const primary = data.find(c => c.isPrimary);
+            if (primary) {
+                setSelectedCurrency(primary);
+                form.setFieldValue('currencyCode', primary.code);
+            }
+        } catch (error) {
+            console.error('Error loading currencies', error);
         }
     };
 
     const loadSuppliers = async () => {
-        const data = await suppliersApi.getAll(undefined, true);
-        setSuppliers(data);
+        try {
+            const data = await suppliersApi.getAll(undefined, true);
+            setSuppliers(data);
+        } catch (error) {
+            console.error('Error loading suppliers', error);
+        }
     };
 
+    /**
+     * Searches for active products to add to the order.
+     */
     const searchProducts = async (term: string) => {
         try {
             const data = await productsApi.getAll({ search: term, active: true });
             setProducts(data);
         } catch (error) {
-            console.error(error);
+            console.error('Error searching products', error);
         }
     };
 
@@ -70,7 +86,7 @@ export const CreatePurchaseOrderModal: React.FC<CreatePurchaseOrderModalProps> =
 
     const handleAddItem = (product: Product) => {
         if (selectedItems.find(item => item.productId === product.id)) {
-            message.warning('El producto ya está en la lista');
+            message.warning('Product is already in the list');
             return;
         }
 
@@ -83,9 +99,12 @@ export const CreatePurchaseOrderModal: React.FC<CreatePurchaseOrderModalProps> =
             subtotal: product.costPrice || 0,
         };
         setSelectedItems([...selectedItems, newItem]);
-        message.success('Producto agregado');
+        message.success('Product added');
     };
 
+    /**
+     * Updates an item's quantity or estimated cost in the order list.
+     */
     const updateItem = (productId: string, field: string, value: number) => {
         const updated = selectedItems.map(item => {
             if (item.productId === productId) {
@@ -106,12 +125,15 @@ export const CreatePurchaseOrderModal: React.FC<CreatePurchaseOrderModalProps> =
         return selectedItems.reduce((sum, item) => sum + item.subtotal, 0);
     };
 
+    /**
+     * Submits the purchase order data to the backend.
+     */
     const handleSubmit = async () => {
         try {
             const values = await form.validateFields();
 
             if (selectedItems.length === 0) {
-                message.error('Debe agregar al menos un producto');
+                message.error('Please add at least one product');
                 return;
             }
 
@@ -132,20 +154,20 @@ export const CreatePurchaseOrderModal: React.FC<CreatePurchaseOrderModalProps> =
             };
 
             await purchaseOrdersApi.create(orderData);
-            message.success('Pedido creado exitosamente');
+            message.success('Purchase order created successfully');
             onSuccess();
-        } catch (error) {
+        } catch (error: any) {
             console.error(error);
-            message.error('Error al crear el pedido');
+            message.error(error.response?.data?.message || 'Error creating purchase order');
         } finally {
             setLoading(false);
         }
     };
 
     const columns = [
-        { title: 'Producto', dataIndex: 'productName', key: 'name' },
+        { title: 'Product', dataIndex: 'productName', key: 'name' },
         {
-            title: 'Cantidad',
+            title: 'Quantity',
             key: 'quantity',
             render: (_: any, record: any) => (
                 <InputNumber
@@ -157,7 +179,7 @@ export const CreatePurchaseOrderModal: React.FC<CreatePurchaseOrderModalProps> =
             )
         },
         {
-            title: `Costo Est. (${selectedCurrency?.symbol || '$'})`,
+            title: `Est. Cost (${selectedCurrency?.symbol || '$'})`,
             key: 'cost',
             render: (_: any, record: any) => (
                 <InputNumber
@@ -185,24 +207,24 @@ export const CreatePurchaseOrderModal: React.FC<CreatePurchaseOrderModalProps> =
 
     return (
         <Modal
-            title="Nuevo Pedido a Proveedor"
+            title="New Purchase Order"
             open={visible}
             onCancel={onCancel}
             width={900}
             footer={[
-                <Button key="back" onClick={onCancel}>Cancelar</Button>,
+                <Button key="back" onClick={onCancel}>Cancel</Button>,
                 <Button key="submit" type="primary" loading={loading} onClick={handleSubmit}>
-                    Crear Pedido
+                    Create Order
                 </Button>
             ]}
         >
             <Form form={form} layout="vertical">
                 <Row gutter={16}>
                     <Col span={8}>
-                        <Form.Item name="supplierId" label="Proveedor" rules={[{ required: true }]}>
+                        <Form.Item name="supplierId" label="Supplier" rules={[{ required: true }]}>
                             <Select
                                 showSearch
-                                placeholder="Seleccionar proveedor"
+                                placeholder="Select supplier"
                                 optionFilterProp="children"
                             >
                                 {suppliers.map(s => (
@@ -212,21 +234,21 @@ export const CreatePurchaseOrderModal: React.FC<CreatePurchaseOrderModalProps> =
                         </Form.Item>
                     </Col>
                     <Col span={8}>
-                        <Form.Item name="orderDate" label="Fecha del Pedido" rules={[{ required: true }]}>
+                        <Form.Item name="orderDate" label="Order Date" rules={[{ required: true }]}>
                             <DatePicker style={{ width: '100%' }} />
                         </Form.Item>
                     </Col>
                     <Col span={8}>
-                        <Form.Item name="expectedDate" label="Fecha Estimada Recepción">
+                        <Form.Item name="expectedDate" label="Expected Delivery Date">
                             <DatePicker style={{ width: '100%' }} />
                         </Form.Item>
                     </Col>
                 </Row>
                 <Row gutter={16}>
                     <Col span={8}>
-                        <Form.Item name="currencyCode" label="Moneda" rules={[{ required: true }]}>
+                        <Form.Item name="currencyCode" label="Currency" rules={[{ required: true }]}>
                             <Select
-                                placeholder="Moneda"
+                                placeholder="Select currency"
                                 onChange={(val) => {
                                     const curr = currencies.find(c => c.code === val);
                                     if (curr) setSelectedCurrency(curr);
@@ -239,19 +261,19 @@ export const CreatePurchaseOrderModal: React.FC<CreatePurchaseOrderModalProps> =
                         </Form.Item>
                     </Col>
                     <Col span={16}>
-                        <Form.Item name="notes" label="Notas / Comentarios">
-                            <Input placeholder="Ej: Pago a contra entrega, urgente, etc." />
+                        <Form.Item name="notes" label="Notes / Comments">
+                            <Input placeholder="e.g. Urgent delivery, payment on arrival, etc." />
                         </Form.Item>
                     </Col>
                 </Row>
             </Form>
 
-            <Divider>Seleccionar Productos</Divider>
+            <Divider>Select Products</Divider>
 
             <div style={{ marginBottom: 16 }}>
                 <Select
                     showSearch
-                    placeholder="Buscar producto por SKU o nombre..."
+                    placeholder="Search product by SKU or Name..."
                     style={{ width: '100%' }}
                     defaultActiveFirstOption={false}
                     showArrow={false}
@@ -268,7 +290,7 @@ export const CreatePurchaseOrderModal: React.FC<CreatePurchaseOrderModalProps> =
                 >
                     {products.map(p => (
                         <Select.Option key={p.id} value={p.id}>
-                            {p.name} ({p.sku}) - Actual Stock: {p.stock}
+                            {p.name} ({p.sku}) - Current Stock: {p.stock}
                         </Select.Option>
                     ))}
                 </Select>
@@ -285,7 +307,7 @@ export const CreatePurchaseOrderModal: React.FC<CreatePurchaseOrderModalProps> =
                     return (
                         <Table.Summary.Row>
                             <Table.Summary.Cell index={0} colSpan={3} align="right">
-                                <Typography.Text strong>TOTAL ESTIMADO</Typography.Text>
+                                <Typography.Text strong>ESTIMATED TOTAL</Typography.Text>
                             </Table.Summary.Cell>
                             <Table.Summary.Cell index={1}>
                                 <Typography.Text type="success" strong>

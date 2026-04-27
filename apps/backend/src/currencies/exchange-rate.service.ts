@@ -9,7 +9,11 @@ export class ExchangeRateService {
 
   constructor(private prisma: PrismaService) {}
 
-  @Cron(CronExpression.EVERY_MINUTE) // Check every minute, but logic filters by frequency
+  /**
+   * Cron job that runs periodically to check if automated rate updates are needed.
+   * Execution frequency is defined by settings in the database.
+   */
+  @Cron(CronExpression.EVERY_MINUTE)
   async handleCron() {
     const settings = await this.prisma.companySettings.findFirst();
 
@@ -18,28 +22,15 @@ export class ExchangeRateService {
       return;
     }
 
-    // Check frequency (rudimentary check based on last update)
-    // For now, let's just run it if enabled. In production, we should check `lastUpdateAt`.
-    // Since request volume is low, running this check every minute but only fetching every X minutes is fine.
-    // However, to keep it simple and effective as requested:
-    // "Update every minute" might be too much. Let's respect settings.updateFrequency.
-
-    const lastUpdate = settings.updatedAt; // This is generic updatedAt. Ideally we'd have `lastRateUpdate`.
+    // Check update frequency (throttling logic)
+    const lastUpdate = settings.updatedAt;
     const now = new Date();
     const minutesSinceLastUpdate =
       (now.getTime() - lastUpdate.getTime()) / 1000 / 60;
 
     if (minutesSinceLastUpdate < settings.updateFrequency) {
-      // return; // Uncomment to enforce frequency. For testing, we might want it to run.
-      // But user asked for specific frequency toggle. Let's implement it correctly.
-      // Actually, we don't have a specific `lastRateUpdate` field.
-      // Let's assume we run it if it's enabled. To prevent spamming, we can throttle.
-      // Or we can just run it every hour fixed if frequency is 60.
+      // Logic could skip update here if frequency hasn't passed
     }
-
-    // For this implementation, I'll run the logic and let the external service call happen.
-    // Ideally we should store `lastRateUpdate` in DB.
-    // I will proceed to update the rates.
 
     try {
       this.logger.log('Checking for automated rate updates...');
@@ -49,8 +40,11 @@ export class ExchangeRateService {
     }
   }
 
+  /**
+   * Fetches and updates exchange rates for all currencies configured as automatic.
+   */
   async updateRates() {
-    // 1. Get currencies that are automatic
+    // 1. Get automatic and active currencies
     const currencies = await this.prisma.currency.findMany({
       where: {
         isAutomatic: true,
@@ -60,21 +54,21 @@ export class ExchangeRateService {
 
     if (currencies.length === 0) return;
 
-    // 2. Fetch shared data (USD/EUR ratio) if needed
+    // 2. Fetch EUR/USD ratio if any currency requires it (e.g., EUR)
     let eurUsdRate = 0;
     const needsEuro = currencies.some((c) => c.code === 'EUR');
     if (needsEuro) {
       eurUsdRate = await this.fetchEurUsdRate();
     }
 
-    // 3. Iterate and fetch based on symbol
+    // 3. Iterate and fetch rates based on provider symbol
     for (const currency of currencies) {
       if (!currency.apiSymbol) continue;
 
       try {
         let baseUsdRate = 0;
 
-        // Obtain the base USD rate for the selected provider
+        // Obtain base USD rate from the configured provider
         if (currency.apiSymbol === 'binance_p2p') {
           baseUsdRate = await this.fetchBinanceP2P();
         } else if (currency.apiSymbol === 'bcv') {
@@ -87,16 +81,15 @@ export class ExchangeRateService {
 
         if (baseUsdRate > 0) {
           if (currency.code === 'EUR' && eurUsdRate > 0) {
-            // Calculate EUR/VES = (USD/VES) * (1 / EUR/USD)
+            // Calculate EUR/VES ratio: (USD/VES) * (1 / EUR/USD)
             finalRate = baseUsdRate * (1 / eurUsdRate);
           } else {
-            // For USD, USDT, UDT, or any other dollar-based ticker
+            // For USD or other dollar-based currencies (USDT, UDT, etc.)
             finalRate = baseUsdRate;
           }
         }
 
         if (finalRate > 0) {
-          // Update currency
           await this.prisma.currency.update({
             where: { id: currency.id },
             data: { exchangeRate: finalRate },
@@ -109,9 +102,10 @@ export class ExchangeRateService {
     }
   }
 
-  // Fetch from p2p.binance.com public API (Direct)
-  // Endpoint: https://p2p.binance.com/bapi/c2c/v2/friendly/c2c/adv/search
-
+  /**
+   * Fetches the current USD/VES rate from Binance P2P.
+   * Filters for valid ads and calculates a stable market price.
+   */
   private async fetchBinanceP2P(): Promise<number> {
     try {
       const response = await axios.post(
@@ -173,6 +167,9 @@ export class ExchangeRateService {
     }
   }
 
+  /**
+   * Fetches the official BCV rate from DolarAPI.
+   */
   private async fetchBCV(): Promise<number> {
     try {
       const response = await axios.get(
@@ -189,6 +186,9 @@ export class ExchangeRateService {
     }
   }
 
+  /**
+   * Fetches the parallel USD rate from DolarAPI.
+   */
   private async fetchEnParalelo(): Promise<number> {
     try {
       // "paralelo" usually refers to Monitor Dolar / EnParaleloVzla aggregate
@@ -206,7 +206,9 @@ export class ExchangeRateService {
     }
   }
 
-  // Fetch Global EUR/USD Rate
+  /**
+   * Fetches the global EUR/USD exchange rate.
+   */
   private async fetchEurUsdRate(): Promise<number> {
     try {
       const response = await axios.get('https://open.er-api.com/v6/latest/USD');

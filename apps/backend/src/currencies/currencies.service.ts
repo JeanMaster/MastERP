@@ -13,19 +13,27 @@ import { Decimal } from '@prisma/client/runtime/library';
 export class CurrenciesService {
   constructor(private prisma: PrismaService) {}
 
+  /**
+   * Creates a new currency.
+   * Handles primary currency logic (only one can be primary).
+   * @param createCurrencyDto The data for the new currency.
+   * @returns The created currency record.
+   * @throws BadRequestException if manual secondary currency lacks an exchange rate.
+   * @throws ConflictException if name or code already exists.
+   */
   async create(createCurrencyDto: CreateCurrencyDto) {
-    // Validar lógica de moneda principal
+    // Validate primary currency logic
     if (createCurrencyDto.isPrimary) {
-      // Desmarcar cualquier otra moneda principal
+      // Unmark any other primary currency
       await this.prisma.currency.updateMany({
         where: { isPrimary: true },
         data: { isPrimary: false },
       });
     } else {
-      // Validar que tenga tasa de cambio si no es automática
+      // Validate exchange rate for manual secondary currencies
       if (!createCurrencyDto.isAutomatic && !createCurrencyDto.exchangeRate) {
         throw new BadRequestException(
-          'Las monedas secundarias manuales requieren tasa de cambio',
+          'Manual secondary currencies require an exchange rate',
         );
       }
     }
@@ -43,23 +51,28 @@ export class CurrenciesService {
     } catch (error) {
       if (error.code === 'P2002') {
         throw new ConflictException(
-          'Ya existe una moneda con ese nombre o código',
+          'A currency with this name or code already exists',
         );
       }
       throw error;
     }
   }
 
+  /**
+   * Retrieves all currencies, optionally filtered by active status.
+   * @param active Filter by active status.
+   * @returns A list of currencies with exchange rate as number.
+   */
   async findAll(active: boolean = true) {
     const currencies = await this.prisma.currency.findMany({
       where: { active },
       orderBy: [
-        { isPrimary: 'desc' }, // Principal primero
+        { isPrimary: 'desc' }, // Primary first
         { name: 'asc' },
       ],
     });
 
-    // Convertir Decimal a number
+    // Convert Decimal to number for frontend compatibility
     return currencies.map((currency) => ({
       ...currency,
       exchangeRate: currency.exchangeRate
@@ -68,13 +81,19 @@ export class CurrenciesService {
     }));
   }
 
+  /**
+   * Retrieves a single currency by its ID.
+   * @param id The ID of the currency.
+   * @returns The currency record with exchange rate as number.
+   * @throws NotFoundException if the currency is not found.
+   */
   async findOne(id: string) {
     const currency = await this.prisma.currency.findUnique({
       where: { id },
     });
 
     if (!currency) {
-      throw new NotFoundException(`Moneda con ID ${id} no encontrada`);
+      throw new NotFoundException(`Currency with ID ${id} not found`);
     }
 
     return {
@@ -85,12 +104,18 @@ export class CurrenciesService {
     };
   }
 
+  /**
+   * Updates an existing currency's information.
+   * @param id The ID of the currency to update.
+   * @param updateCurrencyDto The updated data.
+   * @returns The updated currency record.
+   */
   async update(id: string, updateCurrencyDto: UpdateCurrencyDto) {
     await this.findOne(id);
 
-    // Si se está marcando como principal
+    // If being marked as primary
     if (updateCurrencyDto.isPrimary === true) {
-      // Desmarcar cualquier otra moneda principal
+      // Unmark any other primary currency
       await this.prisma.currency.updateMany({
         where: {
           isPrimary: true,
@@ -100,7 +125,7 @@ export class CurrenciesService {
       });
     }
 
-    // Validar tasa de cambio
+    // Validate exchange rate requirements
     const isPrimary =
       updateCurrencyDto.isPrimary ?? (await this.findOne(id)).isPrimary;
     const isAutomatic =
@@ -115,7 +140,7 @@ export class CurrenciesService {
 
       if (!hasNewRate && !hasExistingRate) {
         throw new BadRequestException(
-          'Las monedas secundarias manuales requieren tasa de cambio',
+          'Manual secondary currencies require an exchange rate',
         );
       }
     }
@@ -142,17 +167,23 @@ export class CurrenciesService {
     } catch (error) {
       if (error.code === 'P2002') {
         throw new ConflictException(
-          'Ya existe una moneda con ese nombre o código',
+          'A currency with this name or code already exists',
         );
       }
       throw error;
     }
   }
 
+  /**
+   * Performs a soft delete by marking the currency as inactive.
+   * Prevents deleting the primary currency if others are active.
+   * @param id The ID of the currency to deactivate.
+   * @returns The updated currency record.
+   */
   async remove(id: string) {
     const currency = await this.findOne(id);
 
-    // No permitir eliminar la moneda principal si hay otras monedas
+    // Don't allow deleting the primary currency if others are active
     if (currency.isPrimary) {
       const count = await this.prisma.currency.count({
         where: { active: true },
@@ -160,7 +191,7 @@ export class CurrenciesService {
 
       if (count > 1) {
         throw new BadRequestException(
-          'No se puede eliminar la moneda principal. Primero marca otra moneda como principal.',
+          'Cannot delete the primary currency. Mark another currency as primary first.',
         );
       }
     }

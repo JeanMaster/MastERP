@@ -9,10 +9,15 @@ import { usePOSStore } from '../../../store/posStore';
 import { formatVenezuelanPrice } from '../../../utils/formatters';
 import { getRoundedPrice } from '../../../utils/rounding';
 
+/**
+ * POSRightPanel Component
+ * Catalog browser for the POS system.
+ * Allows navigating through hierarchical departments (Categories -> Subcategories) and selecting products.
+ * Includes visual feedback for stock levels and multi-currency pricing.
+ */
 export const POSRightPanel = () => {
     const { addItem, searchTerm, searchResults, setSearchTerm, setSearchResults } = usePOSStore();
     const isSearching = !!(searchTerm && searchTerm.length > 2);
-
 
     // Navigation State
     const [viewMode, setViewMode] = useState<'ROOT' | 'DEPT' | 'SUBDEPT'>('ROOT');
@@ -24,7 +29,7 @@ export const POSRightPanel = () => {
     const [products, setProducts] = useState<Product[]>([]);
     const [loading, setLoading] = useState(false);
 
-    // Initial Load: Get Department Tree
+    // Initial Load: Fetch department tree structure
     useEffect(() => {
         loadDepartments();
     }, []);
@@ -39,7 +44,9 @@ export const POSRightPanel = () => {
         }
     };
 
-    // Load Products for specific level
+    /**
+     * Loads products for a specific category or subcategory level.
+     */
     const loadProducts = async (deptId: string, subDeptId?: string) => {
         setLoading(true);
         try {
@@ -54,14 +61,10 @@ export const POSRightPanel = () => {
         }
     };
 
-    // Handlers
+    // Navigation Handlers
     const handleDeptClick = async (dept: Department) => {
         setCurrentDept(dept);
         setViewMode('DEPT');
-        // If we want to show products mixed with subdepts in Level 1 (Dept), we'd fetch here.
-        // For now, Level 1 shows SubDepts. Level 2 shows Products.
-        // User requested "load subdepartments and products of that department".
-        // So we will try to load products for this dept too, to mix them if needed.
         await loadProducts(dept.id);
     };
 
@@ -71,8 +74,10 @@ export const POSRightPanel = () => {
         await loadProducts(currentDept!.id, subDept.id);
     };
 
+    /**
+     * Handles product selection with comprehensive stock validation.
+     */
     const handleProductClick = (product: Product) => {
-        // Stock Validation
         const store = usePOSStore.getState();
         const existingItemsForThisProduct = store.cart.filter(item => item.product.id === product.id);
         const currentNormalizedQuantity = existingItemsForThisProduct.reduce((acc, item) =>
@@ -82,7 +87,7 @@ export const POSRightPanel = () => {
         const addedNormalizedQuantity = store.getNormalizedQuantity(1, product, false);
 
         if (product.type !== 'SERVICE' && (currentNormalizedQuantity + addedNormalizedQuantity) > Number(product.stock)) {
-            // Fallback: Try adding secondary unit if available
+            // Try secondary unit fallback (e.g. if adding a box fails, try a single unit)
             if (product.secondaryUnitId) {
                 const addedSecondaryNormalizedQuantity = store.getNormalizedQuantity(1, product, true);
                 if ((currentNormalizedQuantity + addedSecondaryNormalizedQuantity) <= Number(product.stock)) {
@@ -92,14 +97,14 @@ export const POSRightPanel = () => {
             }
 
             Modal.warning({
-                title: 'Stock insuficiente',
-                content: `${product.name} no tiene stock suficiente para agregar una unidad completa. Disponible: ${product.stock}`,
+                title: 'Insufficient Stock',
+                content: `${product.name} does not have enough stock. Available: ${product.stock}`,
             });
             return;
         }
 
         addItem(product, false);
-        // Explicitly clear search after adding to avoid visual artifacts
+        
         if (isSearching) {
             setSearchTerm('');
             setSearchResults([]);
@@ -116,11 +121,11 @@ export const POSRightPanel = () => {
         if (viewMode === 'SUBDEPT') {
             setViewMode('DEPT');
             setCurrentSubDept(null);
-            loadProducts(currentDept!.id); // Reload Level 1 products
+            loadProducts(currentDept!.id);
         } else if (viewMode === 'DEPT') {
             setViewMode('ROOT');
             setCurrentDept(null);
-            setProducts([]); // Clear products
+            setProducts([]);
         }
     };
 
@@ -132,7 +137,7 @@ export const POSRightPanel = () => {
                 bodyStyle={{ padding: '8px 6px', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', position: 'relative' }}
                 style={{ textAlign: 'center', height: 145, cursor: 'pointer', overflow: 'hidden', border: '1px solid #f0f0f0' }}
             >
-                {/* Product Thumbnail with Hover Preview */}
+                {/* Product Thumbnail with Preview */}
                 <Popover
                     content={
                         prod.images && prod.images.length > 0 ? (
@@ -143,7 +148,7 @@ export const POSRightPanel = () => {
                                 preview={false}
                             />
                         ) : (
-                            <div style={{ padding: '10px', color: '#888' }}>Sin imagen disponible</div>
+                            <div style={{ padding: '10px', color: '#888' }}>No image available</div>
                         )
                     }
                     title={prod.name}
@@ -201,19 +206,18 @@ export const POSRightPanel = () => {
         </Col>
     );
 
-    // Render Logic
     const renderContent = () => {
         if (loading) {
             return <div style={{ textAlign: 'center', padding: 20 }}><Spin /></div>;
         }
 
-        // 0. SEARCH MODE (Global)
+        // Global Search Mode
         if (searchTerm && searchTerm.length > 2) {
             if (searchResults.length === 0) {
                 return (
                     <Col span={24}>
                         <div style={{ textAlign: 'center', padding: 40, color: '#888' }}>
-                            <div style={{ fontSize: 16 }}>No se encontraron productos para "{searchTerm}"</div>
+                            <div style={{ fontSize: 16 }}>No products found for "{searchTerm}"</div>
                         </div>
                     </Col>
                 );
@@ -221,7 +225,6 @@ export const POSRightPanel = () => {
             return searchResults.map(renderProductCard);
         }
 
-        // VIEW: ROOT (Departments)
         if (viewMode === 'ROOT') {
             return departments.map(dept => (
                 <Col xs={12} sm={8} lg={8} key={dept.id}>
@@ -237,11 +240,8 @@ export const POSRightPanel = () => {
             ));
         }
 
-        // VIEW: DEPT (SubDepartments + Direct Products)
         if (viewMode === 'DEPT' && currentDept) {
-            // Show SubDepts (children) AND Products
             const subDepts = currentDept.children || [];
-
             const subDeptNodes = subDepts.map(sub => (
                 <Col xs={12} sm={8} lg={8} key={sub.id}>
                     <Card
@@ -254,37 +254,32 @@ export const POSRightPanel = () => {
                     </Card>
                 </Col>
             ));
-
             const productNodes = products.map(renderProductCard);
-
             return [...subDeptNodes, ...productNodes];
         }
 
-        // VIEW: SUBDEPT (Products only)
         if (viewMode === 'SUBDEPT') {
             return products.map(renderProductCard);
         }
     };
 
+    /**
+     * Internal Component: Price display tag with multi-currency support.
+     */
     const TagPrice = ({ product }: { product: Product }) => {
         const { calculatePriceInPrimary, calculatePriceInCurrency, preferredSecondaryCurrency, primaryCurrency, taxEnabled, taxRate, roundingEnabled, roundingFactor } = usePOSStore();
 
-        // 1. Calculate Price in Primary Currency (Bs)
         let rawPriceInPrimary = calculatePriceInPrimary(product, false);
-
-        // Add IVA if enabled and product is not exempt
         if (taxEnabled && !product.isTaxExempt) {
             rawPriceInPrimary = rawPriceInPrimary * (1 + taxRate / 100);
         }
 
         const priceInPrimary = getRoundedPrice(rawPriceInPrimary, roundingFactor, roundingEnabled);
 
-        // 2. Calculate Price in Preferred Secondary Currency
         const priceInSecondary = preferredSecondaryCurrency
             ? calculatePriceInCurrency(priceInPrimary, preferredSecondaryCurrency.id)
             : 0;
 
-        // 3. Original Price Info
         const originalSymbol = product.currency?.symbol || '$';
         const originalPrice = product.salePrice;
         const isOriginalSameAsPrimary = product.currencyId === primaryCurrency?.id;
@@ -292,7 +287,7 @@ export const POSRightPanel = () => {
 
         return (
             <div style={{ marginTop: 8, width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-                {/* Primary Currency (Prominent) */}
+                {/* Principal Price (VES) */}
                 <div
                     style={{
                         background: '#f6ffed',
@@ -315,21 +310,12 @@ export const POSRightPanel = () => {
 
                 {taxEnabled && (
                     <div style={{ fontSize: 9, color: product.isTaxExempt ? '#888' : '#52c41a', marginTop: -2, fontWeight: 'bold' }}>
-                        {product.isTaxExempt ? 'EXENTO' : 'IVA INCL.'}
+                        {product.isTaxExempt ? 'EXEMPT' : 'VAT INCL.'}
                     </div>
                 )}
 
-                {/* Secondary & Ref Prices Row */}
-                <div style={{
-                    display: 'flex',
-                    justifyContent: 'center',
-                    gap: 8,
-                    fontSize: 10,
-                    color: '#666',
-                    width: '100%',
-                    overflow: 'hidden'
-                }}>
-                    {/* Original Currency (Ref) */}
+                {/* Reference Prices */}
+                <div style={{ display: 'flex', justifyContent: 'center', gap: 8, fontSize: 10, color: '#666', width: '100%', overflow: 'hidden' }}>
                     {!isOriginalSameAsPrimary && (
                         <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                             Ref: <strong style={{ color: '#595959' }}>
@@ -337,13 +323,9 @@ export const POSRightPanel = () => {
                             </strong>
                         </span>
                     )}
-
-                    {/* Divider if both exist */}
                     {(!isOriginalSameAsPrimary && preferredSecondaryCurrency && priceInSecondary > 0 && !isOriginalSameAsSecondary) && (
                         <span style={{ color: '#ccc' }}>|</span>
                     )}
-
-                    {/* Secondary Currency */}
                     {preferredSecondaryCurrency && priceInSecondary > 0 && !isOriginalSameAsSecondary && (
                         <span style={{ color: '#1890ff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                             {preferredSecondaryCurrency.symbol} <strong>{priceInSecondary.toFixed(2)}</strong>
@@ -356,35 +338,35 @@ export const POSRightPanel = () => {
 
     return (
         <div style={{ height: '100%', display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {/* Navegación Superior */}
+            {/* Top Navigation Bar */}
             <div style={{ display: 'flex', gap: 10, alignItems: 'center', background: 'white', padding: 5, borderRadius: 4 }}>
                 <Button
                     icon={<ArrowLeftOutlined />}
                     onClick={handleBack}
                     disabled={viewMode === 'ROOT' && !isSearching}
                 >
-                    Regresar
+                    Back
                 </Button>
                 <div style={{ flex: 1, textAlign: 'center', fontWeight: 'bold' }}>
-                    {isSearching ? `Resultados para: "${searchTerm}"` : (
+                    {isSearching ? `Results for: "${searchTerm}"` : (
                         <>
-                            {viewMode === 'ROOT' && 'Departamentos'}
+                            {viewMode === 'ROOT' && 'Departments'}
                             {viewMode === 'DEPT' && currentDept?.name}
                             {viewMode === 'SUBDEPT' && `${currentDept?.name} > ${currentSubDept?.name}`}
                         </>
                     )}
                 </div>
                 <div style={{ display: 'flex', gap: 5 }}>
-                    <Button disabled>Más...</Button>
+                    <Button disabled>More...</Button>
                 </div>
             </div>
 
-            {/* Grid de Productos */}
+            {/* Catalog Grid */}
             <div style={{ flex: 1, overflowY: 'auto', paddingRight: 5 }}>
                 <Row gutter={[10, 10]}>
                     {renderContent()}
                     {!loading && viewMode !== 'ROOT' && products.length === 0 && (!currentDept?.children?.length) && (
-                        <div style={{ width: '100%', textAlign: 'center', color: '#999', padding: 20 }}>No hay items</div>
+                        <div style={{ width: '100%', textAlign: 'center', color: '#999', padding: 20 }}>No items found</div>
                     )}
                 </Row>
             </div>

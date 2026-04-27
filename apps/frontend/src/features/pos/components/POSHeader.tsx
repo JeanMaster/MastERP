@@ -6,12 +6,16 @@ import { cashRegisterApi } from '../../../services/cashRegisterApi';
 import { formatVenezuelanPrice, formatVenezuelanPriceOnly } from '../../../utils/formatters';
 import { ClientPurchaseHistoryCompact } from '../../../components/ClientPurchaseHistory';
 import { useAuth } from '../../auth/AuthProvider';
-
 import { useQuery } from '@tanstack/react-query';
 
 const { Header } = Layout;
 const { Title, Text } = Typography;
 
+/**
+ * POSHeader Component
+ * Displays real-time information at the top of the POS interface.
+ * Shows active customer details, current totals (multi-currency), system clock, and cash register session status.
+ */
 export const POSHeader = ({ onCajaClick }: { onCajaClick?: () => void }) => {
     const screens = Grid.useBreakpoint();
     const isMobile = !screens.lg;
@@ -19,12 +23,15 @@ export const POSHeader = ({ onCajaClick }: { onCajaClick?: () => void }) => {
     const { totals, activeCustomer, customerId, preferredSecondaryCurrency, currencies, primaryCurrency, nextInvoiceNumber, initialize } = usePOSStore();
     const [isRefreshing, setIsRefreshing] = useState(false);
 
-    // Fetch active session to check status
+    // Monitor the active cash register session
     const { data: activeSession } = useQuery({
         queryKey: ['activeSession'],
         queryFn: () => cashRegisterApi.getActiveSession()
     });
 
+    /**
+     * Refreshes local state and syncs exchange rates.
+     */
     const handleSync = async () => {
         setIsRefreshing(true);
         try {
@@ -33,19 +40,14 @@ export const POSHeader = ({ onCajaClick }: { onCajaClick?: () => void }) => {
             setIsRefreshing(false);
         }
     };
+
     const [currentTime, setCurrentTime] = useState(new Date());
     const [isFullscreen, setIsFullscreen] = useState(false);
 
     useEffect(() => {
-        const timer = setInterval(() => {
-            setCurrentTime(new Date());
-        }, 1000);
-
-        const handleFullscreenChange = () => {
-            setIsFullscreen(!!document.fullscreenElement);
-        };
+        const timer = setInterval(() => setCurrentTime(new Date()), 1000);
+        const handleFullscreenChange = () => setIsFullscreen(!!document.fullscreenElement);
         document.addEventListener('fullscreenchange', handleFullscreenChange);
-
         return () => {
             clearInterval(timer);
             document.removeEventListener('fullscreenchange', handleFullscreenChange);
@@ -56,9 +58,7 @@ export const POSHeader = ({ onCajaClick }: { onCajaClick?: () => void }) => {
         if (!document.fullscreenElement) {
             document.documentElement.requestFullscreen();
         } else {
-            if (document.exitFullscreen) {
-                document.exitFullscreen();
-            }
+            if (document.exitFullscreen) document.exitFullscreen();
         }
     };
 
@@ -75,23 +75,23 @@ export const POSHeader = ({ onCajaClick }: { onCajaClick?: () => void }) => {
             zIndex: 10
         }}>
             <Row style={{ width: '100%' }} align="middle" justify="space-between" gutter={[8, 8]}>
-                {/* Izquierda: Info Contextual */}
+                {/* Left Section: System Context & Customer */}
                 <Col xs={14} md={12}>
                     <Space size={isMobile ? "small" : "large"} wrap={!isMobile}>
                         {!isMobile && (
                             <>
                                 <Space direction="vertical" size={0}>
-                                    <Text type="secondary" style={{ fontSize: 10 }}>Fecha</Text>
+                                    <Text type="secondary" style={{ fontSize: 10 }}>Date</Text>
                                     <Text strong style={{ fontSize: 13 }}>{currentTime.toLocaleDateString()}</Text>
                                 </Space>
                                 <Space direction="vertical" size={0}>
-                                    <Text type="secondary" style={{ fontSize: 10 }}>Hora</Text>
+                                    <Text type="secondary" style={{ fontSize: 10 }}>Time</Text>
                                     <Text strong style={{ fontSize: 13 }}>{currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Text>
                                 </Space>
                             </>
                         )}
                         <Space direction="vertical" size={0}>
-                            <Text type="secondary" style={{ fontSize: 10 }}>Cliente</Text>
+                            <Text type="secondary" style={{ fontSize: 10 }}>Customer</Text>
                             <Space size={4}>
                                 <Text strong style={{ fontSize: isMobile ? 12 : 16 }}>{activeCustomer}</Text>
                                 {customerId && !isMobile && <ClientPurchaseHistoryCompact clientId={customerId} />}
@@ -99,23 +99,24 @@ export const POSHeader = ({ onCajaClick }: { onCajaClick?: () => void }) => {
                         </Space>
                         {!isMobile && (
                             <Space direction="vertical" size={0}>
-                                <Text type="secondary" style={{ fontSize: 10 }}>Factura</Text>
+                                <Text type="secondary" style={{ fontSize: 10 }}>Next Invoice</Text>
                                 <Text strong style={{ fontSize: 16, color: '#1890ff' }}>{nextInvoiceNumber}</Text>
                             </Space>
                         )}
 
+                        {/* Session Alerts */}
                         {(!activeSession || (activeSession.cashierId === user?.username && !activeSession.verifiedAt)) && (
                             <div style={{ marginLeft: isMobile ? 0 : 20, flex: 1 }}>
                                 <Alert
                                     message={
                                         !activeSession
-                                            ? (user?.role === 'ADMIN' ? "MODO ADMINISTRADOR" : "ADVERTENCIA: CAJA NO ABIERTA")
-                                            : "ARQUEO PENDIENTE"
+                                            ? (user?.role === 'ADMIN' ? "ADMIN MODE" : "WARNING: REGISTER NOT OPEN")
+                                            : "SESSION RECONCILIATION PENDING"
                                     }
                                     description={
                                         !activeSession
-                                            ? (user?.role === 'ADMIN' ? "Operando sin sesión de caja" : "SOLICITAR APERTURA")
-                                            : "Realice apertura"
+                                            ? (user?.role === 'ADMIN' ? "Operating without an active cash session" : "CONTACT MANAGER FOR OPENING")
+                                            : "Complete cash count"
                                     }
                                     type={user?.role === 'ADMIN' && !activeSession ? "info" : "warning"}
                                     showIcon
@@ -132,7 +133,7 @@ export const POSHeader = ({ onCajaClick }: { onCajaClick?: () => void }) => {
                     </Space>
                 </Col>
 
-                {/* Derecha: Totales */}
+                {/* Right Section: Multi-currency Totals & Quick Actions */}
                 <Col xs={10} md={12} style={{ textAlign: 'right' }}>
                     <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: isMobile ? 8 : 24 }}>
                         {!isMobile && (
@@ -142,15 +143,16 @@ export const POSHeader = ({ onCajaClick }: { onCajaClick?: () => void }) => {
                                     <Text style={{ fontSize: 16 }}>{formatVenezuelanPriceOnly(totals.subtotal)}</Text>
                                 </div>
                                 <div style={{ textAlign: 'right' }}>
-                                    <Text type="secondary" style={{ fontSize: 12, display: 'block' }}>I.V.A.</Text>
+                                    <Text type="secondary" style={{ fontSize: 12, display: 'block' }}>VAT (IVA)</Text>
                                     <Text style={{ fontSize: 16 }}>{formatVenezuelanPriceOnly(totals.tax)}</Text>
                                 </div>
                             </>
                         )}
 
+                        {/* Multi-currency Breakdown Popover */}
                         <Popover
                             placement="bottomRight"
-                            title="Otras Monedas"
+                            title="Currency Breakdown"
                             content={
                                 <div style={{ minWidth: 200 }}>
                                     <div style={{ padding: '8px 0', borderBottom: '1px solid #f0f0f0', marginBottom: 8 }}>
@@ -159,7 +161,7 @@ export const POSHeader = ({ onCajaClick }: { onCajaClick?: () => void }) => {
                                             <Text>{formatVenezuelanPrice(totals.subtotal, 'Bs')}</Text>
                                         </div>
                                         <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                            <Text type="secondary">I.V.A.:</Text>
+                                            <Text type="secondary">VAT (IVA):</Text>
                                             <Text>{formatVenezuelanPrice(totals.tax, 'Bs')}</Text>
                                         </div>
                                     </div>
@@ -186,7 +188,7 @@ export const POSHeader = ({ onCajaClick }: { onCajaClick?: () => void }) => {
                                             loading={isRefreshing}
                                             style={{ width: '100%' }}
                                         >
-                                            Sincronizar Tasas
+                                            Sync Exchange Rates
                                         </Button>
                                     </div>
                                 </div>
@@ -210,7 +212,7 @@ export const POSHeader = ({ onCajaClick }: { onCajaClick?: () => void }) => {
                             </div>
                         </Popover>
 
-                        <Tooltip title={isFullscreen ? "Salir de Pantalla Completa" : "Pantalla Completa (Modo Kiosco)"}>
+                        <Tooltip title={isFullscreen ? "Exit Fullscreen" : "Fullscreen (Kiosk Mode)"}>
                             <Button
                                 icon={isFullscreen ? <FullscreenExitOutlined /> : <FullscreenOutlined />}
                                 onClick={toggleFullscreen}
@@ -228,11 +230,11 @@ export const POSHeader = ({ onCajaClick }: { onCajaClick?: () => void }) => {
                                         size={isMobile ? "small" : "middle"}
                                         style={{ backgroundColor: '#722ed1', borderColor: '#722ed1' }}
                                     >
-                                        {!isMobile && 'Caja'}
+                                        {!isMobile && 'Register'}
                                     </Button>
                                 ) : (
                                     <Tag color="warning" icon={<SyncOutlined spin />}>
-                                        Cierre Pendiente
+                                        Closure Pending
                                     </Tag>
                                 )}
                                 <Button
@@ -241,9 +243,9 @@ export const POSHeader = ({ onCajaClick }: { onCajaClick?: () => void }) => {
                                     icon={<LogoutOutlined />}
                                     onClick={logout}
                                     size={isMobile ? "small" : "middle"}
-                                    title="Cerrar Sesión"
+                                    title="Logout"
                                 >
-                                    {!isMobile && 'Salir'}
+                                    {!isMobile && 'Exit'}
                                 </Button>
                             </Space>
                         )}

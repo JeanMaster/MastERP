@@ -5,10 +5,17 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { currenciesApi } from '../../services/currenciesApi';
 import type { Currency } from '../../services/currenciesApi';
 import { CurrencyFormModal } from './CurrencyFormModal';
+import { useTranslation } from 'react-i18next';
 
 const { useBreakpoint } = Grid;
 
+/**
+ * CurrenciesPage Component
+ * Management interface for system currencies and their exchange rates.
+ * Supports internationalization (i18n).
+ */
 export const CurrenciesPage = () => {
+    const { t } = useTranslation();
     const screens = useBreakpoint();
     const isMobile = !screens.lg;
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -26,11 +33,11 @@ export const CurrenciesPage = () => {
     const deleteMutation = useMutation({
         mutationFn: currenciesApi.delete,
         onSuccess: () => {
-            message.success('Moneda eliminada exitosamente');
+            message.success(t('currencies.delete_success'));
             queryClient.invalidateQueries({ queryKey: ['currencies'] });
         },
         onError: (error: any) => {
-            message.error(error.response?.data?.message || 'Error al eliminar moneda');
+            message.error(error.response?.data?.message || t('common.error'));
         },
     });
 
@@ -64,7 +71,7 @@ export const CurrenciesPage = () => {
 
     const columns = [
         {
-            title: 'Nombre',
+            title: t('currencies.name'),
             dataIndex: 'name',
             key: 'name',
             width: '25%',
@@ -76,32 +83,32 @@ export const CurrenciesPage = () => {
             ),
         },
         {
-            title: 'Código',
+            title: t('currencies.code'),
             dataIndex: 'code',
             key: 'code',
             width: '15%',
             render: (text: string) => <Tag color="blue">{text}</Tag>,
         },
         {
-            title: 'Símbolo',
+            title: t('currencies.symbol'),
             dataIndex: 'symbol',
             key: 'symbol',
             width: '10%',
         },
         {
-            title: 'Tipo',
+            title: t('currencies.type'),
             key: 'type',
             width: '15%',
             render: (_: any, record: Currency) => (
                 record.isPrimary ? (
-                    <Badge status="success" text="Principal" />
+                    <Badge status="success" text={t('currencies.primary')} />
                 ) : (
-                    <Badge status="default" text="Secundaria" />
+                    <Badge status="default" text={t('currencies.secondary')} />
                 )
             ),
         },
         {
-            title: 'Tasa de Cambio',
+            title: t('currencies.rate'),
             dataIndex: 'exchangeRate',
             key: 'exchangeRate',
             width: '15%',
@@ -120,7 +127,7 @@ export const CurrenciesPage = () => {
             },
         },
         {
-            title: 'Acciones',
+            title: t('common.actions'),
             key: 'actions',
             width: '20%',
             render: (_: any, record: Currency) => (
@@ -130,17 +137,17 @@ export const CurrenciesPage = () => {
                         icon={<EditOutlined />}
                         onClick={() => handleEdit(record)}
                     >
-                        Editar
+                        {t('currencies.edit')}
                     </Button>
                     <Popconfirm
-                        title="¿Eliminar moneda?"
-                        description="Esta acción no se puede deshacer"
+                        title={t('currencies.delete_confirm')}
+                        description={t('currencies.delete_desc')}
                         onConfirm={() => handleDelete(record.id)}
-                        okText="Eliminar"
-                        cancelText="Cancelar"
+                        okText={t('currencies.delete')}
+                        cancelText={t('common.cancel')}
                     >
                         <Button type="link" danger icon={<DeleteOutlined />}>
-                            Eliminar
+                            {t('currencies.delete')}
                         </Button>
                     </Popconfirm>
                 </Space>
@@ -150,11 +157,11 @@ export const CurrenciesPage = () => {
 
     return (
         <Card
-            title="Monedas"
+            title={t('currencies.title')}
             extra={
                 <Space direction={isMobile ? 'vertical' : 'horizontal'} style={{ width: isMobile ? '100%' : 'auto' }} align={isMobile ? 'end' : 'center'}>
                     <Input
-                        placeholder="Buscar moneda..."
+                        placeholder={t('currencies.search')}
                         prefix={<SearchOutlined />}
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
@@ -163,7 +170,7 @@ export const CurrenciesPage = () => {
                     <Space>
                         <Button icon={<ReloadOutlined />} onClick={() => queryClient.invalidateQueries({ queryKey: ['currencies'] })} />
                         <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}>
-                            {isMobile ? 'Nueva' : 'Nueva Moneda'}
+                            {isMobile ? t('common.edit') : t('currencies.new')}
                         </Button>
                     </Space>
                 </Space>

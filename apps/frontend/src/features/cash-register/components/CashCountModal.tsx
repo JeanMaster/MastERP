@@ -1,4 +1,3 @@
-
 import { Modal, InputNumber, Button, Table, Typography, Space, Statistic, Row, Col, message, Alert } from 'antd';
 import { SyncOutlined } from '@ant-design/icons';
 import { useState, useEffect } from 'react';
@@ -20,6 +19,10 @@ interface CashCountModalProps {
     onCancel?: () => void;
 }
 
+/**
+ * CashCountModal Component
+ * Handles the physical cash count process for session opening (verification) or closing.
+ */
 export const CashCountModal = ({ open, mode, sessionId, openingBalance, expectedBalance, onSuccess, onCancel }: CashCountModalProps) => {
     const navigate = useNavigate();
     const { logout } = useAuth();
@@ -55,12 +58,12 @@ export const CashCountModal = ({ open, mode, sessionId, openingBalance, expected
                 if (secondary && secondary.exchangeRate) {
                     setExchangeRate(Number(secondary.exchangeRate));
                 } else {
-                    message.warning('No se encontró tasa de cambio para USD. Se usará 0.');
+                    message.warning('No exchange rate found for USD. Using 0.');
                 }
             }
         } catch (error) {
             console.error(error);
-            message.error('Error al cargar datos de arqueo');
+            message.error('Error loading cash count data');
         } finally {
             setLoading(false);
         }
@@ -93,9 +96,9 @@ export const CashCountModal = ({ open, mode, sessionId, openingBalance, expected
         const baseAmount = mode === 'OPENING' ? openingBalance : (expectedBalance || 0);
         const diff = totalEquivalent - baseAmount;
 
-        // Si es apertura, el monto DEBE coincidir
+        // If opening, the amount MUST match
         if (mode === 'OPENING' && Math.abs(diff) > 0.01) {
-            message.error(`El monto no coincide (${diff > 0 ? '+' : ''}${diff.toFixed(2)} Bs). Por favor, verifique el efectivo o contacte al supervisor.`);
+            message.error(`The amount does not match (${diff > 0 ? '+' : ''}${diff.toFixed(2)} Bs). Please verify the cash or contact a supervisor.`);
             return;
         }
 
@@ -111,31 +114,31 @@ export const CashCountModal = ({ open, mode, sessionId, openingBalance, expected
                     items,
                     exchangeRate
                 });
-                message.success('Caja verificada correctamente');
+                message.success('Cash register verified successfully');
 
-                // Invalidar cache antes de navegar para evitar bucles con datos viejos
+                // Invalidate cache before navigating to avoid loops with old data
                 await queryClient.invalidateQueries({ queryKey: ['activeSession'] });
 
                 onSuccess();
                 navigate('/app/sales/pos');
             } else {
-                // Modo CIERRE: Solicitar autorización
+                // CLOSING Mode: Request authorization
                 await cashRegisterApi.requestClose(sessionId, {
                     actualBalance: totalEquivalent,
-                    closingNotes: `Arqueo de cierre realizado por el cajero. Varianza: ${diff.toFixed(2)} Bs.`,
+                    closingNotes: `Closing count performed by cashier. Variance: ${diff.toFixed(2)} Bs.`,
                     items,
                     exchangeRate
                 });
 
-                // Invalidar cache para reflejar cambio de estado
+                // Invalidate cache to reflect status change
                 await queryClient.invalidateQueries({ queryKey: ['activeSession'] });
 
                 setIsWaitingApproval(true);
                 onSuccess();
-                message.success('Solicitud de cierre enviada. El administrador debe autorizar el cierre.');
+                message.success('Closing request sent. The administrator must authorize the closure.');
             }
         } catch (error: any) {
-            message.error(error.message || 'Error en el proceso de arqueo');
+            message.error(error.message || 'Error in cash count process');
         } finally {
             setLoading(false);
         }
@@ -146,13 +149,13 @@ export const CashCountModal = ({ open, mode, sessionId, openingBalance, expected
             setLoading(true);
             const session = await cashRegisterApi.getSession(sessionId);
             if (session.status === 'CLOSED') {
-                message.success('Cierre autorizado. Saliendo...');
+                message.success('Closure authorized. Exiting...');
                 logout();
             } else {
-                message.info('El cierre aún no ha sido autorizado.');
+                message.info('The closure has not been authorized yet.');
             }
         } catch (error) {
-            message.error('Error al verificar el estado del cierre');
+            message.error('Error verifying closure status');
         } finally {
             setLoading(false);
         }
@@ -169,9 +172,9 @@ export const CashCountModal = ({ open, mode, sessionId, openingBalance, expected
                 size="small"
                 loading={loading}
                 columns={[
-                    { title: 'Denominación', dataIndex: 'label', key: 'label' },
+                    { title: 'Denomination', dataIndex: 'label', key: 'label' },
                     {
-                        title: 'Cantidad',
+                        title: 'Quantity',
                         key: 'qty',
                         render: (_: any, record: any) => (
                             <InputNumber
@@ -204,21 +207,21 @@ export const CashCountModal = ({ open, mode, sessionId, openingBalance, expected
     if (isWaitingApproval) {
         return (
             <Modal
-                title="Cierre en Proceso"
+                title="Closure in Progress"
                 open={open}
                 closable={false}
                 footer={[
                     <Button key="verify" type="primary" size="large" onClick={checkApprovalStatus} loading={loading}>
-                        Verificar Aprobación
+                        Verify Approval
                     </Button>
                 ]}
             >
                 <div style={{ textAlign: 'center', padding: '40px 0' }}>
                     <SyncOutlined spin style={{ fontSize: 48, color: '#faad14', marginBottom: 20 }} />
-                    <Title level={4}>Esperando confirmación...</Title>
+                    <Title level={4}>Waiting for confirmation...</Title>
                     <Text type="secondary">
-                        Su solicitud de cierre ha sido enviada al administrador.
-                        Mantenga esta ventana abierta y presione "Verificar Aprobación" cuando le informen que su arqueo fue autorizado.
+                        Your closing request has been sent to the administrator.
+                        Please keep this window open and click "Verify Approval" when you are informed that your count was authorized.
                     </Text>
                 </div>
             </Modal>
@@ -227,7 +230,7 @@ export const CashCountModal = ({ open, mode, sessionId, openingBalance, expected
 
     return (
         <Modal
-            title={mode === 'OPENING' ? "Arqueo de Apertura (Verificación de Efectivo)" : "Arqueo de Cierre de Caja"}
+            title={mode === 'OPENING' ? "Opening Cash Count (Cash Verification)" : "Cash Closure Count"}
             open={open}
             width={800}
             closable={mode === 'CLOSING'} // Allow cancel on closing if they want to keep selling
@@ -235,18 +238,18 @@ export const CashCountModal = ({ open, mode, sessionId, openingBalance, expected
             maskClosable={false}
             keyboard={false}
             footer={[
-                mode === 'CLOSING' && <Button key="cancel" onClick={onCancel}>Seguir Vendiendo</Button>,
+                mode === 'CLOSING' && <Button key="cancel" onClick={onCancel}>Continue Selling</Button>,
                 <Button key="submit" type="primary" size="large" onClick={handleSubmit} loading={loading}>
-                    {mode === 'OPENING' ? 'Confirmar Arqueo' : 'Solicitar Cierre de Caja'}
+                    {mode === 'OPENING' ? 'Confirm Count' : 'Request Cash Closure'}
                 </Button>
             ].filter(Boolean)}
         >
             <Space direction="vertical" style={{ width: '100%' }} size="large">
                 <Alert
-                    message={mode === 'OPENING' ? "Verificación Requerida" : "Arqueo de Cierre"}
+                    message={mode === 'OPENING' ? "Verification Required" : "Closing Count"}
                     description={mode === 'OPENING'
-                        ? "Por favor, cuente el efectivo físico para confirmar el monto de apertura."
-                        : "Cuente el efectivo final en caja para solicitar el cierre de su sesión."}
+                        ? "Please count the physical cash to confirm the opening amount."
+                        : "Count the final cash in drawer to request the session closure."}
                     type="warning"
                     showIcon
                 />
@@ -257,10 +260,10 @@ export const CashCountModal = ({ open, mode, sessionId, openingBalance, expected
                         {renderDenominationColumn('VES')}
                     </Col>
                     <Col span={12}>
-                        <Title level={5}>Dólares (USD)</Title>
+                        <Title level={5}>Dollars (USD)</Title>
                         {renderDenominationColumn('USD')}
                         <div style={{ marginTop: 10, textAlign: 'right' }}>
-                            <Text type="secondary">Tasa de Cambio: {exchangeRate.toFixed(2)} Bs/USD</Text>
+                            <Text type="secondary">Exchange Rate: {exchangeRate.toFixed(2)} Bs/USD</Text>
                         </div>
                     </Col>
                 </Row>
@@ -268,11 +271,11 @@ export const CashCountModal = ({ open, mode, sessionId, openingBalance, expected
                 <div style={{ background: '#f5f5f5', padding: 16, borderRadius: 8 }}>
                     <Row gutter={16}>
                         <Col span={8}>
-                            <Statistic title="Total Contado (Bs)" value={totalEquivalent} precision={2} prefix="Bs." />
+                            <Statistic title="Total Counted (Bs)" value={totalEquivalent} precision={2} prefix="Bs." />
                         </Col>
                         <Col span={8}>
                             <Statistic
-                                title={mode === 'OPENING' ? "Saldo Apertura (Sistema)" : "Saldo Esperado (Sistema)"}
+                                title={mode === 'OPENING' ? "Opening Balance (System)" : "Expected Balance (System)"}
                                 value={mode === 'OPENING' ? openingBalance : (expectedBalance || 0)}
                                 precision={2}
                                 prefix="Bs."
@@ -280,7 +283,7 @@ export const CashCountModal = ({ open, mode, sessionId, openingBalance, expected
                         </Col>
                         <Col span={8}>
                             <Statistic
-                                title="Diferencia"
+                                title="Difference"
                                 value={Math.round((totalEquivalent - (mode === 'OPENING' ? openingBalance : (expectedBalance || 0))) * 100) / 100}
                                 precision={2}
                                 prefix="Bs."

@@ -10,6 +10,11 @@ import dayjs from 'dayjs';
 
 const { Title } = Typography;
 
+/**
+ * PayrollPage Component
+ * Main overview for Payroll management.
+ * Displays a list of payroll periods (Weekly/Biweekly/Monthly), their processing status, and total amounts.
+ */
 export const PayrollPage = () => {
     const [isModalVisible, setIsModalVisible] = useState(false);
     const navigate = useNavigate();
@@ -21,47 +26,55 @@ export const PayrollPage = () => {
 
     const columns = [
         {
-            title: 'Periodo',
+            title: 'Period Name',
             dataIndex: 'name',
             key: 'name',
             render: (text: string) => <span style={{ fontWeight: 500 }}>{text}</span>
         },
         {
-            title: 'Desde',
+            title: 'From',
             dataIndex: 'startDate',
             key: 'startDate',
-            render: (date: string) => dayjs(date).format('DD/MM/YYYY')
+            render: (date: string) => dayjs(date).format('MM/DD/YYYY')
         },
         {
-            title: 'Hasta',
+            title: 'To',
             dataIndex: 'endDate',
             key: 'endDate',
-            render: (date: string) => dayjs(date).format('DD/MM/YYYY')
+            render: (date: string) => dayjs(date).format('MM/DD/YYYY')
         },
         {
-            title: 'Estado',
+            title: 'Status',
             key: 'status',
             dataIndex: 'status',
+            align: 'center' as const,
             render: (status: string) => {
-                const color = status === 'PAID' ? 'green' : status === 'PROCESSED' ? 'blue' : 'orange';
-                return <Tag color={color}>{status}</Tag>;
+                const colorMap: Record<string, string> = {
+                    PAID: 'green',
+                    PROCESSED: 'blue',
+                    DRAFT: 'orange',
+                    OPEN: 'cyan'
+                };
+                return <Tag color={colorMap[status] || 'default'}>{status}</Tag>;
             }
         },
         {
-            title: 'Total',
+            title: 'Total Amount',
             key: 'total',
             dataIndex: 'totalAmount',
+            align: 'right' as const,
             render: (amount: any) => <span>{amount ? Number(amount).toFixed(2) : '0.00'}</span>
         },
         {
-            title: 'Acciones',
+            title: 'Actions',
             key: 'actions',
+            width: 150,
             render: (_: any, record: PayrollPeriod) => (
                 <Button
                     icon={<UnorderedListOutlined />}
                     onClick={() => navigate(`/hr/payroll/${record.id}`)}
                 >
-                    Ver Detalles
+                    View Details
                 </Button>
             )
         }
@@ -69,10 +82,10 @@ export const PayrollPage = () => {
 
     return (
         <div style={{ padding: '24px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '24px' }}>
-                <Title level={2}>Nómina</Title>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '24px', alignItems: 'center' }}>
+                <Title level={2} style={{ margin: 0 }}>💰 Payroll History</Title>
                 <Button type="primary" icon={<PlusOutlined />} onClick={() => setIsModalVisible(true)}>
-                    Generar Nómina
+                    Generate New Payroll
                 </Button>
             </div>
 
@@ -82,6 +95,9 @@ export const PayrollPage = () => {
                     dataSource={periods}
                     rowKey="id"
                     loading={isLoading}
+                    pagination={{
+                        showTotal: (total) => `Total: ${total} periods`
+                    }}
                 />
             </Card>
 

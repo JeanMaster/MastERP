@@ -7,15 +7,16 @@ export class CompanySettingsService {
   constructor(private prisma: PrismaService) {}
 
   /**
-   * Obtener configuración de la empresa (singleton)
-   * Si no existe, crea una por defecto
+   * Retrieves the company settings (singleton pattern).
+   * If no settings record exists, creates a default one.
+   * @returns The company settings record.
    */
   async getSettings() {
     let settings = await this.prisma.companySettings.findFirst({
       include: { preferredSecondaryCurrency: true },
     });
 
-    // Si no existe, crear configuración por defecto
+    // Create default settings if none exist
     if (!settings) {
       settings = await this.prisma.companySettings.create({
         data: {
@@ -31,17 +32,17 @@ export class CompanySettingsService {
   }
 
   /**
-   * Actualizar configuración de la empresa
+   * Updates the company settings.
+   * @param dto The updated settings data.
+   * @returns The updated settings record.
    */
   async updateSettings(dto: UpdateCompanySettingsDto) {
-    // Obtener el único registro (o crearlo si no existe)
     const existing = await this.getSettings();
 
     if (!existing) {
-      throw new Error('Companía no configurada');
+      throw new Error('Company settings not configured');
     }
 
-    // Actualizar
     return this.prisma.companySettings.update({
       where: { id: existing.id },
       data: dto,

@@ -6,12 +6,17 @@ import dayjs from 'dayjs';
 export class StatsService {
   constructor(private prisma: PrismaService) { }
 
-  // Razones donde el producto vuelve al stock (producto vendible)
+  // Reasons why products return to stock (sellable condition)
   private readonly SELLABLE_RETURN_REASONS = ['ERROR', 'UNSATISFIED', 'OTHER'];
 
-  // Razones de ajuste de inventario que afectan COGS (pérdidas reales)
+  // Inventory adjustment reasons that affect COGS (real losses)
   private readonly LOSS_ADJUSTMENT_REASONS = ['DAMAGE', 'LOSS'];
 
+  /**
+   * Calculates the cross-rate factor between a target currency and the secondary reference currency.
+   * @param currencyCode The target currency code (e.g., 'VES', 'USD').
+   * @returns An object containing the cross-rate factor and the current reference rate.
+   */
   public async getCrossRateFactor(currencyCode: string = 'VES') {
     const companySettings = await this.prisma.companySettings.findFirst({
       include: { preferredSecondaryCurrency: true },
@@ -38,6 +43,15 @@ export class StatsService {
     return { factor, currentRefRate };
   }
 
+  /**
+   * Calculates net sales revalued to a target currency using modern economic revaluation models.
+   * Takes into account returns, exchanges, and multi-currency payments.
+   * @param dateFilter Prisma date filter object.
+   * @param currencyCode Target currency code.
+   * @param nominal If true, returns nominal values (historical) instead of revalued ones.
+   * @param allCurrenciesInput Optional list of currencies to avoid redundant queries.
+   * @returns The total net sales amount.
+   */
   public async calculateNetSalesRevalued(
     dateFilter: any,
     currencyCode: string = 'VES',
@@ -117,6 +131,11 @@ export class StatsService {
       : grossSalesTarget + totalAdjustmentsTarget;
   }
 
+  /**
+   * Retrieves summary statistics for the main dashboard.
+   * @param range Time range for sales trend ('7days', '30days', '1year', 'all').
+   * @returns Dashboard stats object.
+   */
   async getDashboardStats(range: string = '7days') {
     const today = dayjs().startOf('day').toDate();
     const monthStart = dayjs().startOf('month').toDate();
@@ -348,6 +367,12 @@ export class StatsService {
     };
   }
 
+  /**
+   * Generates an inventory report with stock valuation in a target currency.
+   * Includes low stock products and depletion forecasts.
+   * @param currencyCode Target currency code for valuation.
+   * @returns Inventory report object.
+   */
   async getInventoryReport(currencyCode: string = 'VES') {
     // Stock by department - get all active products with cost and currency info
     const products = await this.prisma.product.findMany({
@@ -375,7 +400,7 @@ export class StatsService {
     let totalValue = 0;
 
     products.forEach((p) => {
-      const deptName = p.category?.name || 'Sin Categoría';
+      const deptName = p.category?.name || 'Uncategorized';
       const existing = deptMap.get(deptName) || { units: 0, value: 0 };
 
       // Calculate Cost in Primary Currency
@@ -473,7 +498,7 @@ export class StatsService {
             dailySalesVelocity: actualVelocity,
             daysRemaining,
             unitsNeeded6Months: Math.ceil(actualVelocity * projectionDays),
-            category: p.category?.name || 'Sin Categoría',
+            category: p.category?.name || 'Uncategorized',
           },
         ];
       })
@@ -487,6 +512,14 @@ export class StatsService {
     };
   }
 
+  /**
+   * Generates a comprehensive financial report for a given date range.
+   * Includes revalued sales, COGS, expenses, and payment breakdown.
+   * @param currencyCode Target currency for the report.
+   * @param startDate Optional start date (ISO string).
+   * @param endDate Optional end date (ISO string).
+   * @returns Financial report object.
+   */
   async getFinanceReport(
     currencyCode: string = 'VES',
     startDate?: string,
@@ -871,6 +904,14 @@ export class StatsService {
     };
   }
 
+  /**
+   * Generates a Cost of Goods Sold (COGS) report.
+   * Analyzes profit margins and revalues costs at current replacement rates.
+   * @param currencyCode Target currency for the report.
+   * @param startDate Optional start date.
+   * @param endDate Optional end date.
+   * @returns COGS report object.
+   */
   async getCOGSReport(
     currencyCode: string = 'VES',
     startDate?: string,
@@ -1249,6 +1290,12 @@ export class StatsService {
     };
   }
 
+  /**
+   * Generates a balance report for the last 12 months.
+   * Includes income, expenses, purchases, and profit margins.
+   * @param currencyCode Target currency for the report.
+   * @returns List of monthly balance entries.
+   */
   async getBalanceReport(currencyCode: string = 'VES') {
     const balanceData: {
       month: string;
@@ -1480,6 +1527,15 @@ export class StatsService {
     return balanceData;
   }
 
+  /**
+   * Retrieves the top-selling products based on quantity or profit.
+   * @param startDate Optional start date.
+   * @param endDate Optional end date.
+   * @param sortBy Ranking criterion ('units' or 'profit').
+   * @param limit Number of products to return.
+   * @param currencyCode Target currency for profit calculation.
+   * @returns List of top products with performance metrics.
+   */
   async getTopProducts(
     startDate?: string,
     endDate?: string,
@@ -1622,13 +1678,20 @@ export class StatsService {
       }));
   }
 
+  /**
+   * Generates a tax report (VAT/IVA) for the given date range.
+   * Calculates tax debits, credits, and retentions.
+   * @param startDate Optional start date.
+   * @param endDate Optional end date.
+   * @returns Tax report summary.
+   */
   async getTaxReport(startDate?: string, endDate?: string) {
     const start = startDate ? dayjs(startDate).startOf('day').toDate() : dayjs().startOf('month').toDate();
     const end = endDate ? dayjs(endDate).endOf('day').toDate() : dayjs().endOf('day').toDate();
 
     const dateFilter = { gte: start, lte: end };
 
-    // 1. Débitos Fiscales (Ventas)
+    // 1. Tax Debits (Sales)
     const sales = await this.prisma.sale.findMany({
       where: { active: true, createdAt: dateFilter },
       select: { subtotal: true, tax: true, igtfAmount: true }
@@ -1638,7 +1701,7 @@ export class StatsService {
     const totalVatDebit = sales.reduce((sum, s) => sum + Number(s.tax), 0);
     const totalIgtfCollected = sales.reduce((sum, s) => sum + Number(s.igtfAmount), 0);
 
-    // 2. Retenciones Recibidas (Ventas)
+    // 2. Retentions Received (Sales)
     const retentionsReceived = await this.prisma.taxRetention.findMany({
       where: { 
         type: 'IVA', 
@@ -1650,7 +1713,7 @@ export class StatsService {
 
     const totalRetentionsReceived = retentionsReceived.reduce((sum, r) => sum + Number(r.amount), 0);
 
-    // 3. Créditos Fiscales (Compras)
+    // 3. Tax Credits (Purchases)
     const purchases = await this.prisma.purchase.findMany({
       where: { status: 'COMPLETED', createdAt: dateFilter },
       select: { subtotal: true, taxAmount: true }
@@ -1659,7 +1722,7 @@ export class StatsService {
     const totalPurchasesBase = purchases.reduce((sum, p) => sum + Number(p.subtotal), 0);
     const purchasesVatCredit = purchases.reduce((sum, p) => sum + Number(p.taxAmount), 0);
 
-    // 3.1 Créditos Fiscales de Gastos
+    // 3.1 Tax Credits from Expenses
     const expenses = await this.prisma.expense.findMany({
       where: { 
         isTaxable: true, 
@@ -1674,7 +1737,7 @@ export class StatsService {
     const totalVatCredit = purchasesVatCredit + expensesVatCredit;
     const totalFiscalBase = totalPurchasesBase + totalExpensesBase;
 
-    // 4. Retenciones Emitidas (Compras) - Aplicable solo si es Contribuyente Especial
+    // 4. Retentions Emitted (Purchases) - Applicable if Special Taxpayer
     const retentionsEmitted = await this.prisma.taxRetention.findMany({
       where: { 
         type: 'IVA', 
@@ -1686,7 +1749,7 @@ export class StatsService {
 
     const totalRetentionsEmitted = retentionsEmitted.reduce((sum, r) => sum + Number(r.amount), 0);
 
-    // Cálculo Final
+    // Final Calculation
     const rawBalance = totalVatDebit - totalVatCredit;
     const finalVatToPay = rawBalance - totalRetentionsReceived + totalRetentionsEmitted;
 
@@ -1716,7 +1779,10 @@ export class StatsService {
   }
 
   /**
-   * Libro de Ventas detallado
+   * Generates a detailed Sales Book (Libro de Ventas) for fiscal compliance.
+   * @param startDate Optional start date.
+   * @param endDate Optional end date.
+   * @returns List of fiscal sale rows.
    */
   async getLibroVentas(startDate?: string, endDate?: string) {
     const start = startDate ? dayjs(startDate).startOf('day').toDate() : dayjs().startOf('month').toDate();
@@ -1743,7 +1809,7 @@ export class StatsService {
       orderBy: { createdAt: 'asc' }
     });
 
-    // Formatear filas de ventas
+    // Format sale rows
     const saleRows = sales.map(s => {
       const retention = s.invoice?.retentions[0];
       return {
@@ -1755,7 +1821,7 @@ export class StatsService {
         controlNumber: s.controlNumber || s.invoice?.controlNumber || '',
         affectedDoc: '',
         totalWithVat: Number(s.total),
-        exemptAmount: 0, // Simplificado, podrías calcularlo x items
+        exemptAmount: 0, // Simplified, could calculate per item
         baseAmount: Number(s.subtotal),
         vatPercent: 16,
         vatAmount: Number(s.tax),
@@ -1765,7 +1831,7 @@ export class StatsService {
       };
     });
 
-    // Formatear filas de devoluciones (Notas de Crédito)
+    // Format return rows (Credit Notes)
     const returnRows = returns.map(r => ({
       id: r.id,
       date: r.createdAt,
@@ -1776,7 +1842,7 @@ export class StatsService {
       affectedDoc: r.originalSale.invoiceNumber,
       totalWithVat: -Number(r.refundAmount || 0),
       exemptAmount: 0,
-      baseAmount: -Number(r.refundAmount || 0) / 1.16, // Estimado si no hay desglose
+      baseAmount: -Number(r.refundAmount || 0) / 1.16, // Estimated if no breakdown
       vatPercent: 16,
       vatAmount: -(Number(r.refundAmount || 0) - (Number(r.refundAmount || 0) / 1.16)),
       vatRetained: 0,
@@ -1791,7 +1857,11 @@ export class StatsService {
   }
 
   /**
-   * Libro de Compras detallado (Compras + Gastos Gravados)
+   * Generates a detailed Purchases Book (Libro de Compras) for fiscal compliance.
+   * Includes taxable purchases and expenses.
+   * @param startDate Optional start date.
+   * @param endDate Optional end date.
+   * @returns List of fiscal purchase rows.
    */
   async getLibroCompras(startDate?: string, endDate?: string) {
     const start = startDate ? dayjs(startDate).startOf('day').toDate() : dayjs().startOf('month').toDate();
@@ -1836,7 +1906,7 @@ export class StatsService {
     const expenseRows = expenses.map(e => ({
       id: e.id,
       date: e.date,
-      rif: '', // Deberíamos capturarlo o dejarlo en blanco si es gasto genérico
+      rif: '', // Should be captured or left blank if generic expense
       name: e.description,
       invoiceNumber: e.invoiceNumber || '',
       controlNumber: e.invoiceControlNumber || '',
@@ -1856,6 +1926,13 @@ export class StatsService {
     };
   }
 
+  /**
+   * Generates an inflation impact report.
+   * Compares nominal values vs revalued values to calculate currency devaluation loss.
+   * @param startDate Optional start date.
+   * @param endDate Optional end date.
+   * @returns Inflation report data.
+   */
   async getInflationReport(startDate?: string, endDate?: string) {
     const dateFilter: any = {};
     if (startDate || endDate) {
@@ -2243,6 +2320,13 @@ export class StatsService {
     };
   }
 
+  /**
+   * Analyzes sales performance by day of the week.
+   * @param currencyCode Target currency for calculation.
+   * @param startDate Optional start date.
+   * @param endDate Optional end date.
+   * @returns Weekly performance statistics.
+   */
   async getWeeklyPerformance(
     currencyCode: string = 'VES',
     startDate?: string,
@@ -2291,13 +2375,13 @@ export class StatsService {
 
     // Initialize weekdays (0=Sunday, 1=Monday, ... 6=Saturday)
     const dayNames = [
-      'Domingo',
-      'Lunes',
-      'Martes',
-      'Miércoles',
-      'Jueves',
-      'Viernes',
-      'Sábado',
+      'Sunday',
+      'Monday',
+      'Tuesday',
+      'Wednesday',
+      'Thursday',
+      'Friday',
+      'Saturday',
     ];
     const performance: Record<
       number,
@@ -2353,6 +2437,13 @@ export class StatsService {
     });
   }
 
+  /**
+   * Analyzes sales performance by day of the month.
+   * @param currencyCode Target currency for calculation.
+   * @param startDate Optional start date.
+   * @param endDate Optional end date.
+   * @returns Daily performance statistics for the month.
+   */
   async getMonthlyDailyPerformance(
     currencyCode: string = 'VES',
     startDate?: string,
@@ -2459,6 +2550,13 @@ export class StatsService {
       };
     });
   }
+  /**
+   * Generates expense statistics broken down by category and date.
+   * @param currencyCode Target currency for calculation.
+   * @param startDate Optional start date.
+   * @param endDate Optional end date.
+   * @returns Expense report summary.
+   */
   async getExpenseStats(
     currencyCode: string = 'VES',
     startDate?: string,
@@ -2627,6 +2725,14 @@ export class StatsService {
     };
   }
 
+  /**
+   * Analyzes sales performance by hour of the day.
+   * @param currencyCode Target currency for calculation.
+   * @param startDate Optional start date.
+   * @param endDate Optional end date.
+   * @param includeSundays Whether to include Sundays in the analysis.
+   * @returns Hourly performance statistics.
+   */
   async getHourlyPerformance(
     currencyCode: string = 'VES',
     startDate?: string,
@@ -2866,6 +2972,11 @@ export class StatsService {
     return { totalInTarget, breakdown, typeBreakdown };
   }
 
+  /**
+   * Generates a products report with depletion forecast for ALL active products.
+   * @param currencyCode Target currency for valuation (if applicable).
+   * @returns List of products with inventory forecast metrics.
+   */
   async getProductsReport(currencyCode: string = 'VES') {
     // Depletion Forecast for ALL products based on last 180 days velocity
     const projectionDays = 180;
@@ -2916,7 +3027,7 @@ export class StatsService {
         dailySalesVelocity: Number(actualVelocity.toFixed(4)),
         daysRemaining: daysRemaining === Number.MAX_SAFE_INTEGER ? -1 : daysRemaining,
         unitsNeeded6Months: Math.ceil(actualVelocity * projectionDays),
-        category: p.category?.name || 'Sin Categoría',
+        category: p.category?.name || 'Uncategorized',
       };
     }).sort((a, b) => {
       // Sort by days remaining (ascending). Products with 0 velocity (-1 daysRemaining) go at the end
@@ -2928,6 +3039,12 @@ export class StatsService {
     return productsReport;
   }
 
+  /**
+   * Retrieves detailed statistics for a single product.
+   * @param productId Product ID.
+   * @param currencyCode Target currency for financial metrics.
+   * @returns Detailed product stats.
+   */
   async getProductStats(productId: string, currencyCode: string = 'VES') {
     const product = await this.prisma.product.findUnique({
       where: { id: productId },
@@ -3015,7 +3132,7 @@ export class StatsService {
         id: product.id,
         name: product.name,
         stock: Number(product.stock),
-        category: product.category?.name || 'Sin Categoría',
+        category: product.category?.name || 'Uncategorized',
         costInTarget: costInTarget,
         margin: Number(calculatedMargin.toFixed(2))
       },
@@ -3027,6 +3144,13 @@ export class StatsService {
     };
   }
 
+  /**
+   * Generates a purchases report broken down by supplier and date.
+   * @param currencyCode Target currency for valuation.
+   * @param startDate Optional start date.
+   * @param endDate Optional end date.
+   * @returns Purchases report summary.
+   */
   async getPurchasesReport(
     currencyCode: string = 'VES',
     startDate?: string,
@@ -3101,7 +3225,7 @@ export class StatsService {
       totalPurchases += valTarget;
 
       // Group by Supplier
-      const supplierName = p.supplier?.comercialName || p.supplier?.legalName || 'Proveedor Desconocido';
+      const supplierName = p.supplier?.comercialName || p.supplier?.legalName || 'Unknown Supplier';
       purchasesBySupplier[supplierName] =
         (purchasesBySupplier[supplierName] || 0) + valTarget;
 

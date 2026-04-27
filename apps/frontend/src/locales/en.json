@@ -1,0 +1,244 @@
+{
+  "common": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "actions": "Actions",
+    "search": "Search",
+    "loading": "Loading...",
+    "success": "Success",
+    "error": "Error",
+    "refresh": "Refresh",
+    "switch_theme": "Switch Theme",
+    "switch_lang": "Switch Language"
+  },
+  "menu": {
+    "dashboard": "Dashboard",
+    "inventory": {
+      "label": "Inventory",
+      "finished_products": "Finished Products",
+      "bundle_products": "Bundle Products",
+      "currencies": "Currencies & Rates",
+      "categories": "Categories / Departments",
+      "units": "Measurement Units",
+      "adjustments": "Inventory Adjustments",
+      "services": "Services Catalog"
+    },
+    "sales": {
+      "label": "Sales",
+      "pos": "Point of Sale (POS)",
+      "history": "Sales History",
+      "returns": "Exchanges & Returns",
+      "receivable": "Accounts Receivable",
+      "cash_drawer": "Cash Drawer",
+      "retentions": "Tax Retentions",
+      "customers": "Customers"
+    },
+    "marketing": {
+      "label": "Marketing Hub",
+      "control_center": "Control Center",
+      "social": "Social Hub (AI)",
+      "campaigns": "Bulk Campaigns",
+      "templates": "Message Templates",
+      "coupons": "Discount Coupons",
+      "settings": "Settings"
+    },
+    "purchases": {
+      "label": "Purchases",
+      "suppliers": "Suppliers",
+      "orders": "Purchase Orders",
+      "history": "Purchase History",
+      "payable": "Accounts Payable"
+    },
+    "expenses": "Business Expenses",
+    "hr": {
+      "label": "Human Resources",
+      "directory": "Employee Directory",
+      "payroll": "Payroll Periods"
+    },
+    "banks": "Banking / Cash",
+    "reports": "Advanced Reports",
+    "mercadolibre": "Mercado Libre Sync",
+    "settings": {
+      "label": "System Settings",
+      "business": "Business Profile",
+      "ai": "AI Intelligence Hub",
+      "dev": "Developer Options",
+      "general": "General Options",
+      "network": "Network & Connectivity",
+      "users": "User Management"
+    },
+    "logout": "Logout",
+    "sign_out": "Sign Out"
+  },
+  "currencies": {
+    "title": "Currencies",
+    "name": "Name",
+    "code": "Code",
+    "symbol": "Symbol",
+    "type": "Type",
+    "rate": "Exchange Rate",
+    "primary": "Primary",
+    "secondary": "Secondary",
+    "search": "Search currency...",
+    "new": "New Currency",
+    "edit": "Edit",
+    "delete": "Delete",
+    "delete_confirm": "Delete currency?",
+    "delete_desc": "This action cannot be undone",
+    "delete_success": "Currency deleted successfully"
+  },
+  "products": {
+    "composite": {
+      "title": "Composed Products (Recipes)",
+      "mobile_title": "🧩 Composed Products",
+      "sku": "SKU",
+      "name": "Name",
+      "components": "Components",
+      "recipe_cost": "Recipe Cost",
+      "sale_price": "Sale Price",
+      "category": "Category",
+      "search_placeholder": "Search recipe...",
+      "new_button": "New Recipe",
+      "delete_confirm": "Delete composed product?",
+      "delete_desc": "This action cannot be undone",
+      "delete_success": "Composed product deleted successfully",
+      "pagination_total": "{{rangeStart}}-{{rangeEnd}} of {{total}} recipes",
+      "components_count": "{{count}} Components"
+    },
+    "finished": {
+      "title": "Finished Products",
+      "search_placeholder": "Search product...",
+      "new_button": "New Product",
+      "new_short": "New",
+      "prices": "Prices",
+      "wholesale": "Wholesale",
+      "offer": "Offer",
+      "stock": "Stock",
+      "unit": "Unit",
+      "ml_status": "Mercado Libre",
+      "publish": "Publish",
+      "published": "Published and synced",
+      "ml_no_accounts": "Link an ML account first",
+      "delete_confirm": "Delete product?",
+      "delete_desc": "This action cannot be undone",
+      "delete_success": "Product deleted successfully",
+      "pagination_total": "{{rangeStart}}-{{rangeEnd}} of {{total}} products",
+      "combo_tag": "COMBO",
+      "combo_tooltip": "Composed Product (Combo)"
+    }
+  },
+  "price_checker": {
+    "title": "Price Checker",
+    "breadcrumb_start": "Start",
+    "back_to_login": "Back to Login",
+    "search_placeholder": "Scan barcode or type product name...",
+    "search_button": "Search",
+    "return": "Return",
+    "tax_exempt": "Tax Exempt",
+    "tax_included": "VAT Included",
+    "no_products": "No products found matching your search",
+    "no_categories": "No categories available",
+    "empty_category": "This category is currently empty",
+    "empty_subcategory": "No products in this sub-category"
+  },
+  "landing": {
+    "nav": {
+      "features": "Features",
+      "pricing": "Pricing",
+      "about": "About Us",
+      "sign_in": "Sign In",
+      "try_free": "Try for Free"
+    },
+    "hero": {
+      "title": "Elevate your business with intelligence",
+      "subtitle": "The cloud ERP that helps you manage inventory, sales and growth with AI.",
+      "cta": "Get Started Now"
+    },
+    "features": {
+      "title": "Engineered for Resilient Growth",
+      "inventory": "Smart Inventory",
+      "pos": "Modern POS",
+      "ai": "Business AI",
+      "items": {
+        "multi_currency": {
+          "title": "100% Multi-currency POS",
+          "desc": "Charge in local and foreign currencies on the same invoice. The system instantly recalculates change and equivalencies based on real-time rates."
+        },
+        "mercadolibre": {
+          "title": "Mercado Libre Integration",
+          "desc": "Sell in-store and publish on Mercado Libre simultaneously. Keep your inventory perfectly synced across all physical and digital channels."
+        },
+        "hr": {
+          "title": "Integrated HR & Payroll",
+          "desc": "Manage employee profiles, set base salaries, and generate fortnightly payroll with just two clicks. Automated digital payslips."
+        },
+        "analytics": {
+          "title": "Inflation-Adjusted Metrics",
+          "desc": "Our reports use historical exchange rates to isolate inflation, revealing true business growth and accurate year-end inventory projections."
+        }
+      }
+    },
+    "pricing": {
+      "title": "Simple and Transparent Pricing",
+      "badges": {
+        "popular": "MOST POPULAR"
+      },
+      "tiers": {
+        "starter": {
+          "name": "Starter",
+          "price": "Free",
+          "cta": "Get Started Free",
+          "features": [
+            "1 User (+Admin)",
+            "Basic Point of Sale",
+            "Unlimited Products",
+            "1 Active Currency"
+          ]
+        },
+        "professional": {
+          "name": "SME / Professional",
+          "price": "25",
+          "cta": "Try Premium",
+          "features": [
+            "Unlimited Users",
+            "Advanced Multi-currency POS",
+            "Full HR & Payroll Module",
+            "Multiple Cash Registers",
+            "Inflation-Adjusted Reports"
+          ]
+        },
+        "enterprise": {
+          "name": "Enterprise",
+          "price": "89",
+          "cta": "Contact Sales",
+          "features": [
+            "Everything in SME plan",
+            "Mercado Libre Synchronization",
+            "ML Inventory Projections",
+            "REST API Integration",
+            "24/7 Priority Support"
+          ]
+        }
+      }
+    },
+    "footer": {
+      "copyright": "© {{year}} MastERP Systems. All rights reserved.",
+      "mission": "Built with state-of-the-art technology to empower merchants and defeat economic instability."
+    }
+  },
+  "auth": {
+    "title": "Sign in to manage your business",
+    "username_placeholder": "Username",
+    "password_placeholder": "Password",
+    "username_required": "Please enter your username",
+    "password_required": "Please enter your password",
+    "sign_in": "Sign In",
+    "or": "OR",
+    "open_visor": "Open Price Checker",
+    "error_network": "Could not connect to server. Please check your network settings.",
+    "error_invalid": "Invalid username or password.",
+    "error_server": "A server error occurred while logging in."
+  }
+}

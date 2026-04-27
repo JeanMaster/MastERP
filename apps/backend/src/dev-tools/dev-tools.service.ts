@@ -11,18 +11,21 @@ const execAsync = promisify(exec);
 @Injectable()
 export class DevToolsService {
   constructor(private readonly prisma: PrismaService) {}
+
   /**
-   * Resetear la base de datos (SOLO PARA DESARROLLO)
+   * Resets the database by truncating all transactional tables (DEVELOPMENT ONLY).
+   * Preserves the admin user.
+   * @returns A success/failure result message.
    */
   async resetDatabase(): Promise<{ message: string; success: boolean }> {
     if (process.env.NODE_ENV === 'production') {
-      throw new Error('Esta operación no está permitida en producción');
+      throw new Error('This operation is not allowed in production');
     }
 
     try {
       console.log('Starting selective database cleanup...');
 
-      // List of tables to clear in order (to minimize constraint issues, though we use CASCADE)
+      // Tables to clear in dependency order (CASCADE handles FK constraints)
       const tables = [
         'purchase_payments',
         'purchase_items',
@@ -74,40 +77,40 @@ export class DevToolsService {
           },
         });
       } catch (e) {
-        console.error('Error clearing other users:', e);
+        console.error('Error clearing non-admin users:', e);
       }
 
-      // Ensure admin exists
+      // Ensure admin user exists with full permissions
       await this.ensureAdminExists();
 
       return {
         success: true,
         message:
-          'Base de datos limpiada exitosamente. El usuario admin ha sido preservado.',
+          'Database cleaned successfully. The admin user has been preserved.',
       };
     } catch (error) {
       console.error('Error during selective reset:', error);
 
-      // Fallback to force reset if manual cleanup fails completely
+      // Fallback to force reset if manual cleanup fails
       try {
         console.log('Falling back to force reset...');
         await execAsync('npx prisma db push --force-reset --accept-data-loss');
         await this.ensureAdminExists();
         return {
           success: true,
-          message: 'Reset forzado completado. Usuario admin recreado.',
+          message: 'Force reset completed. Admin user recreated.',
         };
       } catch (fallbackError) {
         throw new Error(
-          'Error crítico al resetear la base de datos: ' +
-            fallbackError.message,
+          'Critical error resetting database: ' + fallbackError.message,
         );
       }
     }
   }
 
   /**
-   * Garantiza que el usuario administrador exista con todos los permisos
+   * Ensures that the admin user exists with all permissions.
+   * Creates the user if missing, or updates permissions if it already exists.
    */
   private async ensureAdminExists() {
     try {
@@ -142,7 +145,7 @@ export class DevToolsService {
         });
         console.log('✅ Default admin user created');
       } else {
-        // Si existe, nos aseguramos que tenga todos los permisos
+        // Ensure admin has all permissions
         await (this.prisma as any).user.update({
           where: { username: 'admin' },
           data: { permissions: allPermissions },
@@ -154,12 +157,14 @@ export class DevToolsService {
       throw error;
     }
   }
+
   /**
-   * Reinicio financiero: Borra transacciones pero mantiene catálogos
+   * Performs a financial reset: clears transactions but keeps master data (products, clients, etc.).
+   * @returns A success/failure result message.
    */
   async financialReset(): Promise<{ message: string; success: boolean }> {
     if (process.env.NODE_ENV === 'production') {
-      throw new Error('Esta operación no está permitida en producción');
+      throw new Error('This operation is not allowed in production');
     }
 
     try {
@@ -194,7 +199,7 @@ export class DevToolsService {
         }
       }
 
-      // Resetear contadores de facturas
+      // Reset invoice counters
       try {
         await (this.prisma as any).invoiceCounter.updateMany({
           data: { currentNumber: 1 },
@@ -203,7 +208,7 @@ export class DevToolsService {
         console.warn('Could not reset invoice counters:', e.message);
       }
 
-      // Resetear saldos bancarios a 0
+      // Reset bank account balances to 0
       try {
         await (this.prisma as any).bankAccount.updateMany({
           data: { balance: 0 },
@@ -215,38 +220,35 @@ export class DevToolsService {
       return {
         success: true,
         message:
-          'Reinicio financiero completado. Se han borrado ventas, compras, gastos y movimientos de caja sin afectar catálogos.',
+          'Financial reset completed. Sales, purchases, expenses, and cash movements have been cleared without affecting master data.',
       };
     } catch (error) {
       console.error('Error during financial reset:', error);
-      throw new Error(
-        'Error al realizar el reinicio financiero: ' + error.message,
-      );
+      throw new Error('Error performing financial reset: ' + error.message);
     }
   }
 
   /**
-   * Respalda la base de datos generando un archivo SQL
+   * Generates a SQL backup of the database using pg_dump.
+   * @returns The path and filename of the generated backup file.
    */
   async backupDatabase(): Promise<{ path: string; filename: string }> {
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
     const filename = `backup-${timestamp}.sql`;
     const outputPath = `/tmp/${filename}`;
 
-    // Extraer credenciales de DATABASE_URL si es necesario, o confiar en el entorno
-    // Asumimos que pg_dump está instalado y disponible en el PATH
     const dbUrl = process.env.DATABASE_URL;
-    if (!dbUrl) throw new Error('DATABASE_URL no está definida');
+    if (!dbUrl) throw new Error('DATABASE_URL is not defined');
 
     try {
-      // Limpiar la URL de parámetros query que pg_dump no soporta (como ?schema=public)
+      // Remove query parameters that pg_dump doesn't support (e.g., ?schema=public)
       const cleanDbUrl = dbUrl.split('?')[0];
 
-      // Usamos pg_dump con flags para asegurar una restauración limpia:
-      // --clean: incluye comandos para borrar objetos antes de crearlos
-      // --if-exists: no falla si los objetos no existen
-      // --no-owner: evita errores de permisos de usuario
-      // --no-privileges: evita errores de permisos de sistema
+      // pg_dump flags:
+      // --clean: include DROP commands before CREATE
+      // --if-exists: don't fail if objects don't exist
+      // --no-owner: skip ownership commands to avoid permission errors
+      // --no-privileges: skip GRANT/REVOKE commands
       await execAsync(
         `pg_dump --clean --if-exists --no-owner --no-privileges "${cleanDbUrl}" > "${outputPath}"`,
       );
@@ -256,25 +258,27 @@ export class DevToolsService {
         filename: filename,
       };
     } catch (error) {
-      console.error('Error durante el backup:', error);
-      throw new Error('Error al generar el respaldo de la base de datos');
+      console.error('Error generating backup:', error);
+      throw new Error('Error generating database backup');
     }
   }
 
   /**
-   * Restaura la base de datos desde un archivo SQL
+   * Restores the database from an uploaded SQL file.
+   * @param file The uploaded SQL file (multer file object).
+   * @returns A success/failure result message.
    */
   async restoreDatabase(
     file: any,
   ): Promise<{ success: boolean; message: string }> {
     const dbUrl = process.env.DATABASE_URL;
-    if (!dbUrl) throw new Error('DATABASE_URL no está definida');
+    if (!dbUrl) throw new Error('DATABASE_URL is not defined');
 
     let filePath = file.path;
     let tempCreated = false;
 
     try {
-      // Si no hay path (memory storage), escribimos el buffer a un archivo temporal
+      // If no path (memory storage), write the buffer to a temp file
       if (!filePath && file.buffer) {
         const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
         const filename = `restore-${timestamp}.sql`;
@@ -284,35 +288,33 @@ export class DevToolsService {
       }
 
       if (!filePath) {
-        throw new Error(
-          'No se pudo determinar la ruta del archivo de respaldo',
-        );
+        throw new Error('Could not determine the path of the backup file');
       }
 
-      // Limpiar la URL de parámetros query (ej. ?schema=public)
+      // Remove query parameters from the URL
       const cleanDbUrl = dbUrl.split('?')[0];
 
-      // Ejecutar el archivo SQL
+      // Execute the SQL file
       await execAsync(`psql "${cleanDbUrl}" < "${filePath}"`);
 
-      // Asegurar que el admin existe tras restaurar (por si el backup es muy viejo)
+      // Ensure admin still exists after restore (in case the backup is outdated)
       await this.ensureAdminExists();
 
       return {
         success: true,
         message:
-          'Base de datos restaurada exitosamente. Se ha validado el acceso de administrador.',
+          'Database restored successfully. Administrator access has been validated.',
       };
     } catch (error) {
-      console.error('Error durante la restauración:', error);
-      throw new Error('Error al restaurar la base de datos: ' + error.message);
+      console.error('Error during database restore:', error);
+      throw new Error('Error restoring database: ' + error.message);
     } finally {
-      // Limpiar archivo temporal si fue creado por nosotros
+      // Clean up temp file if we created it
       if (tempCreated && filePath) {
         try {
           await unlink(filePath);
         } catch (e) {
-          console.error('Error eliminando archivo temporal:', e);
+          console.error('Error deleting temporary file:', e);
         }
       }
     }

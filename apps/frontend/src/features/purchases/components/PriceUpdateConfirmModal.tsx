@@ -29,6 +29,11 @@ interface PriceUpdateConfirmModalProps {
     loading?: boolean;
 }
 
+/**
+ * PriceUpdateConfirmModal Component
+ * Alerts the user when a purchase invoice contains cost changes for existing products.
+ * Suggests automatic sale price adjustments based on historical profit margins.
+ */
 export const PriceUpdateConfirmModal: React.FC<PriceUpdateConfirmModalProps> = ({
     visible,
     products,
@@ -39,13 +44,13 @@ export const PriceUpdateConfirmModal: React.FC<PriceUpdateConfirmModalProps> = (
 }) => {
     const columns = [
         {
-            title: 'Producto',
+            title: 'Product',
             dataIndex: 'productName',
             key: 'name',
             width: '25%',
         },
         {
-            title: 'Costo',
+            title: 'Cost',
             key: 'cost',
             width: '20%',
             render: (_: any, record: ProductWithCostChange) => (
@@ -58,13 +63,13 @@ export const PriceUpdateConfirmModal: React.FC<PriceUpdateConfirmModalProps> = (
                     </Text>
                     <Tag color={record.newCost > record.oldCost ? 'red' : 'green'} style={{ fontSize: 10 }}>
                         {record.newCost > record.oldCost ? '+' : ''}
-                        {(((record.newCost - record.oldCost) / record.oldCost) * 100).toFixed(1)}%
+                        {(((record.newCost - record.oldCost) / (record.oldCost || 1)) * 100).toFixed(1)}%
                     </Tag>
                 </Space>
             ),
         },
         {
-            title: 'Precio Normal',
+            title: 'Retail Price',
             key: 'salePrice',
             width: '18%',
             render: (_: any, record: ProductWithCostChange) => (
@@ -76,13 +81,13 @@ export const PriceUpdateConfirmModal: React.FC<PriceUpdateConfirmModalProps> = (
                         {currencySymbol} {record.suggestedSalePrice.toFixed(2)}
                     </Text>
                     <Tag color="blue" style={{ fontSize: 10 }}>
-                        {record.salePriceMargin.toFixed(0)}%
+                        {record.salePriceMargin.toFixed(0)}% Margin
                     </Tag>
                 </Space>
             ),
         },
         {
-            title: 'Precio Oferta',
+            title: 'Offer Price',
             key: 'offerPrice',
             width: '18%',
             render: (_: any, record: ProductWithCostChange) => {
@@ -96,14 +101,14 @@ export const PriceUpdateConfirmModal: React.FC<PriceUpdateConfirmModalProps> = (
                             {currencySymbol} {record.suggestedOfferPrice?.toFixed(2)}
                         </Text>
                         <Tag color="blue" style={{ fontSize: 10 }}>
-                            {record.offerPriceMargin?.toFixed(0)}%
+                            {record.offerPriceMargin?.toFixed(0)}% Margin
                         </Tag>
                     </Space>
                 );
             },
         },
         {
-            title: 'Precio Mayorista',
+            title: 'Wholesale Price',
             key: 'wholesalePrice',
             width: '19%',
             render: (_: any, record: ProductWithCostChange) => {
@@ -117,7 +122,7 @@ export const PriceUpdateConfirmModal: React.FC<PriceUpdateConfirmModalProps> = (
                             {currencySymbol} {record.suggestedWholesalePrice?.toFixed(2)}
                         </Text>
                         <Tag color="blue" style={{ fontSize: 10 }}>
-                            {record.wholesalePriceMargin?.toFixed(0)}%
+                            {record.wholesalePriceMargin?.toFixed(0)}% Margin
                         </Tag>
                     </Space>
                 );
@@ -131,21 +136,21 @@ export const PriceUpdateConfirmModal: React.FC<PriceUpdateConfirmModalProps> = (
                 <Space>
                     <WarningOutlined style={{ color: '#faad14', fontSize: 20 }} />
                     <Title level={4} style={{ margin: 0 }}>
-                        Cambio de Precio Detectado
+                        Price Change Detected
                     </Title>
                 </Space>
             }
             open={visible}
             onOk={onConfirm}
             onCancel={onCancel}
-            okText="Sí, actualizar precios"
-            cancelText="No, mantener precios actuales"
+            okText="Yes, update prices"
+            cancelText="No, keep current prices"
             width={900}
             confirmLoading={loading}
         >
             <Alert
-                message="Los siguientes productos tuvieron un cambio en su precio de costo"
-                description="¿Desea actualizar automáticamente los precios de venta usando los mismos márgenes de ganancia?"
+                message="Cost price changes detected for the following products"
+                description="Would you like to automatically update sale prices using existing profit margins?"
                 type="warning"
                 showIcon
                 style={{ marginBottom: 16 }}
@@ -162,8 +167,8 @@ export const PriceUpdateConfirmModal: React.FC<PriceUpdateConfirmModalProps> = (
 
             <div style={{ marginTop: 16, padding: 12, background: '#f0f2f5', borderRadius: 4 }}>
                 <Text type="secondary" style={{ fontSize: 12 }}>
-                    <strong>Nota:</strong> Los precios sugeridos mantienen el mismo porcentaje de margen que tenían anteriormente.
-                    Si selecciona "No", los precios de venta permanecerán sin cambios.
+                    <strong>Note:</strong> Suggested prices maintain the same margin percentage. 
+                    If you select "No", sale prices will remain unchanged despite the increased cost.
                 </Text>
             </div>
         </Modal>

@@ -3,16 +3,25 @@ import { Modal, Form, Input, DatePicker, message, Select } from 'antd';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { payrollApi } from '../services/payrollApi';
 
-
 interface Props {
     visible: boolean;
     onClose: () => void;
 }
 
+/**
+ * GeneratePayrollModal Component
+ * Wizard for initializing a new payroll processing cycle.
+ * It creates a time-bounded Period and automatically generates individual payment records for active employees based on the selected frequency.
+ */
 export const GeneratePayrollModal: React.FC<Props> = ({ visible, onClose }) => {
     const [form] = Form.useForm();
     const queryClient = useQueryClient();
 
+    /**
+     * Executes the payroll generation workflow:
+     * 1. Creates the Payroll Period metadata.
+     * 2. Triggers automatic calculation of payments for relevant employees.
+     */
     const generateMutation = useMutation({
         mutationFn: async (values: any) => {
             // 1. Create Period
@@ -22,7 +31,7 @@ export const GeneratePayrollModal: React.FC<Props> = ({ visible, onClose }) => {
                 endDate: values.dates[1].toISOString(),
             });
 
-            // 2. Generate Payments (Default for all active)
+            // 2. Generate Payments (Default for all active based on frequency)
             await payrollApi.generate({
                 payrollPeriodId: period.id,
                 frequency: values.frequency
@@ -31,17 +40,17 @@ export const GeneratePayrollModal: React.FC<Props> = ({ visible, onClose }) => {
             return period;
         },
         onSuccess: () => {
-            message.success('Nómina generada correctamente');
+            message.success('Payroll generated successfully');
             queryClient.invalidateQueries({ queryKey: ['payroll-periods'] });
             onClose();
             form.resetFields();
         },
         onError: (error: any) => {
-            message.error('Error al generar nómina: ' + (error.response?.data?.message || 'Error desconocido'));
+            message.error('Error generating payroll: ' + (error.response?.data?.message || 'Unknown error'));
         }
     });
 
-    // F9 Keyboard Shortcut
+    // F9 Keyboard Shortcut for quick submission
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
             if (!visible) return;
@@ -60,46 +69,50 @@ export const GeneratePayrollModal: React.FC<Props> = ({ visible, onClose }) => {
             const values = await form.validateFields();
             generateMutation.mutate(values);
         } catch (error) {
-            // validation error
+            // Validation failed
         }
     };
 
     return (
         <Modal
-            title="Generar Nueva Nómina"
+            title="Generate New Payroll"
             open={visible}
             onOk={handleOk}
             onCancel={onClose}
             confirmLoading={generateMutation.isPending}
+            okText="Generate Payroll (F9)"
         >
             <Form form={form} layout="vertical">
                 <Form.Item
                     name="name"
-                    label="Nombre del Periodo"
-                    rules={[{ required: true, message: 'Ej: Quincena 1 - Diciembre' }]}
-                    initialValue={`Quincena`}
+                    label="Period Name / Title"
+                    rules={[{ required: true, message: 'Example: 1st Fortnight - December' }]}
+                    initialValue={`Fortnight`}
                 >
-                    <Input placeholder="Ej: Quincena 1 - Diciembre 2025" />
+                    <Input placeholder="Example: 1st Fortnight - December 2025" />
                 </Form.Item>
 
-                <Form.Item name="frequency" label="Grupo de Pago (Opcional)">
-                    <Select placeholder="Generar para todos" allowClear>
-                        <Select.Option value="WEEKLY">Semanal (Solo empleados semanales)</Select.Option>
-                        <Select.Option value="BIWEEKLY">Quincenal (Solo empleados quincenales)</Select.Option>
-                        <Select.Option value="MONTHLY">Mensual (Solo empleados mensuales)</Select.Option>
+                <Form.Item name="frequency" label="Payment Group (Optional)">
+                    <Select placeholder="Generate for all active employees" allowClear>
+                        <Select.Option value="WEEKLY">Weekly Only</Select.Option>
+                        <Select.Option value="BIWEEKLY">Biweekly / Fortnightly Only</Select.Option>
+                        <Select.Option value="MONTHLY">Monthly Only</Select.Option>
                     </Select>
                 </Form.Item>
 
                 <Form.Item
                     name="dates"
-                    label="Rango de Fechas"
-                    rules={[{ required: true }]}
+                    label="Date Range"
+                    rules={[{ required: true, message: 'Please select start and end dates' }]}
                 >
-                    <DatePicker.RangePicker style={{ width: '100%' }} />
+                    <DatePicker.RangePicker style={{ width: '100%' }} format="MM/DD/YYYY" />
                 </Form.Item>
 
-                <div style={{ color: '#666', fontSize: '13px' }}>
-                    <p>ℹ️ Se generarán automáticamente los recibos para todos los empleados activos tomando el 50% de su sueldo base (Quincenal).</p>
+                <div style={{ color: '#666', fontSize: '13px', background: '#f5f5f5', padding: '12px', borderRadius: '4px' }}>
+                    <p style={{ margin: 0 }}>
+                        ℹ️ This will automatically generate payslips for all active employees in the selected group. 
+                        For Biweekly payrolls, it typically calculates 50% of the monthly base salary.
+                    </p>
                 </div>
             </Form>
         </Modal>

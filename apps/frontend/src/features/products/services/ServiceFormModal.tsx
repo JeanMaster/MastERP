@@ -1,7 +1,6 @@
-
 import { useEffect, useState } from 'react';
 import { Modal, Form, Input, InputNumber, Select, message, Row, Col } from 'antd';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { productsApi } from '../../../services/productsApi';
 import type { Product, CreateProductDto, UpdateProductDto } from '../../../services/productsApi';
 import { departmentsApi } from '../../../services/departmentsApi';
@@ -13,34 +12,30 @@ interface ServiceFormModalProps {
     onClose: () => void;
 }
 
+/**
+ * ServiceFormModal Component
+ * Simplified form for managing services (intangible products).
+ */
 export const ServiceFormModal = ({ open, service, onClose }: ServiceFormModalProps) => {
-    // We can just refetch if not present or use hooks, but reusing logic:
-    // Actually better to use hooks properly
-    // ...
-    // Let's copy the hook usage from ProductFormModal but simplified
-
-    // Fetch departments
-    // const { data: departments = [] } = ... (Instead of re-fetching, I'll just assume they are cached or fetch them)
-    // Actually, I should use the proper useQuery hook.
-
-    // ... rewriting correctly below
     return <ServiceFormModalContent open={open} service={service} onClose={onClose} />;
 };
 
-// Extracted for cleaner Hook usage
+/**
+ * Internal component to handle hook lifecycle properly.
+ */
 const ServiceFormModalContent = ({ open, service, onClose }: ServiceFormModalProps) => {
     const [form] = Form.useForm();
     const queryClient = useQueryClient();
     const [selectedCategory, setSelectedCategory] = useState<string | undefined>(undefined);
 
-    // Fetch departments
+    // Fetch categorization data
     const { data: departments = [] } = useQuery({
         queryKey: ['departments'],
         queryFn: departmentsApi.getAll,
         enabled: open,
     });
 
-    // Fetch currencies
+    // Fetch currencies for pricing
     const { data: currencies = [] } = useQuery({
         queryKey: ['currencies'],
         queryFn: currenciesApi.getAll,
@@ -54,13 +49,13 @@ const ServiceFormModalContent = ({ open, service, onClose }: ServiceFormModalPro
     const createMutation = useMutation({
         mutationFn: productsApi.create,
         onSuccess: () => {
-            message.success('Servicio creado exitosamente');
-            queryClient.invalidateQueries({ queryKey: ['services'] }); // Use 'services' key
+            message.success('Service created successfully');
+            queryClient.invalidateQueries({ queryKey: ['services'] });
             onClose();
             form.resetFields();
         },
         onError: (error: any) => {
-            message.error(error.response?.data?.message || 'Error al crear servicio');
+            message.error(error.response?.data?.message || 'Error creating service');
         },
     });
 
@@ -69,16 +64,17 @@ const ServiceFormModalContent = ({ open, service, onClose }: ServiceFormModalPro
         mutationFn: ({ id, dto }: { id: string; dto: UpdateProductDto }) =>
             productsApi.update(id, dto),
         onSuccess: () => {
-            message.success('Servicio actualizado exitosamente');
+            message.success('Service updated successfully');
             queryClient.invalidateQueries({ queryKey: ['services'] });
             onClose();
             form.resetFields();
         },
         onError: (error: any) => {
-            message.error(error.response?.data?.message || 'Error al actualizar servicio');
+            message.error(error.response?.data?.message || 'Error updating service');
         },
     });
 
+    // Load initial values or reset
     useEffect(() => {
         if (service) {
             setSelectedCategory(service.categoryId);
@@ -95,13 +91,12 @@ const ServiceFormModalContent = ({ open, service, onClose }: ServiceFormModalPro
         } else {
             setSelectedCategory(undefined);
             form.resetFields();
-            // Defaults
             if (currencies.length > 0) {
                 const primary = currencies.find(c => c.isPrimary);
                 if (primary) form.setFieldValue('currencyId', primary.id);
             }
         }
-    }, [service, form, currencies]);
+    }, [service, form, currencies, open]);
 
     // F9 Keyboard Shortcut
     useEffect(() => {
@@ -115,14 +110,14 @@ const ServiceFormModalContent = ({ open, service, onClose }: ServiceFormModalPro
         };
         window.addEventListener('keydown', handleKeyDown, true);
         return () => window.removeEventListener('keydown', handleKeyDown, true);
-    }, [open]);
+    }, [open, form]);
 
     const handleSubmit = async () => {
         try {
             const values = await form.validateFields();
             const dto: CreateProductDto = {
                 type: 'SERVICE',
-                sku: values.sku, // Still needed as unique key
+                sku: values.sku,
                 name: values.name,
                 description: values.description,
                 categoryId: values.categoryId,
@@ -131,7 +126,6 @@ const ServiceFormModalContent = ({ open, service, onClose }: ServiceFormModalPro
                 costPrice: values.costPrice || 0,
                 salePrice: values.salePrice,
                 stock: 0,
-                // Optional fields as null/undefined
             };
 
             if (service) {
@@ -151,50 +145,50 @@ const ServiceFormModalContent = ({ open, service, onClose }: ServiceFormModalPro
 
     return (
         <Modal
-            title={service ? 'Editar Servicio' : 'Nuevo Servicio'}
+            title={service ? 'Edit Service' : 'New Service'}
             open={open}
             onOk={handleSubmit}
             onCancel={onClose}
             confirmLoading={createMutation.isPending || updateMutation.isPending}
-            okText={service ? 'Actualizar (F9)' : 'Crear (F9)'}
-            cancelText="Cancelar"
+            okText={service ? 'Update (F9)' : 'Create (F9)'}
+            cancelText="Cancel"
             width={700}
         >
             <Form form={form} layout="vertical" style={{ marginTop: 20 }}>
                 <Row gutter={16}>
                     <Col span={12}>
                         <Form.Item
-                            label="Código (SKU)"
+                            label="Code (SKU)"
                             name="sku"
-                            rules={[{ required: true, message: 'Requerido' }]}
+                            rules={[{ required: true, message: 'Required' }]}
                         >
-                            <Input placeholder="Ej: SERV-001" />
+                            <Input placeholder="e.g., SERV-001" />
                         </Form.Item>
                     </Col>
                     <Col span={12}>
                         <Form.Item
-                            label="Nombre del Servicio"
+                            label="Service Name"
                             name="name"
-                            rules={[{ required: true, message: 'Requerido' }]}
+                            rules={[{ required: true, message: 'Required' }]}
                         >
-                            <Input placeholder="Ej: Mantenimiento PC" />
+                            <Input placeholder="e.g., PC Maintenance" />
                         </Form.Item>
                     </Col>
                 </Row>
 
-                <Form.Item label="Descripción" name="description">
-                    <Input.TextArea rows={2} placeholder="Detalles del servicio..." />
+                <Form.Item label="Description" name="description">
+                    <Input.TextArea rows={2} placeholder="Service details..." />
                 </Form.Item>
 
                 <Row gutter={16}>
                     <Col span={12}>
                         <Form.Item
-                            label="Categoría"
+                            label="Category"
                             name="categoryId"
-                            rules={[{ required: true, message: 'Requerido' }]}
+                            rules={[{ required: true, message: 'Required' }]}
                         >
                             <Select
-                                placeholder="Seleccionar"
+                                placeholder="Select category"
                                 onChange={handleCategoryChange}
                                 showSearch
                                 filterOption={(input, option) =>
@@ -208,9 +202,9 @@ const ServiceFormModalContent = ({ open, service, onClose }: ServiceFormModalPro
                         </Form.Item>
                     </Col>
                     <Col span={12}>
-                        <Form.Item label="Subcategoría" name="subcategoryId">
+                        <Form.Item label="Subcategory" name="subcategoryId">
                             <Select
-                                placeholder="Opcional"
+                                placeholder="Optional"
                                 allowClear
                                 disabled={!selectedCategory}
                                 options={subcategories.map(subcat => ({
@@ -225,9 +219,9 @@ const ServiceFormModalContent = ({ open, service, onClose }: ServiceFormModalPro
                 <Row gutter={16}>
                     <Col span={8}>
                         <Form.Item
-                            label="Costo (Técnico)"
+                            label="Cost (Technical)"
                             name="costPrice"
-                            rules={[{ required: true, message: 'Requerido' }, { type: 'number', min: 0 }]}
+                            rules={[{ required: true, message: 'Required' }, { type: 'number', min: 0 }]}
                         >
                             <InputNumber
                                 style={{ width: '100%' }}
@@ -239,9 +233,9 @@ const ServiceFormModalContent = ({ open, service, onClose }: ServiceFormModalPro
                     </Col>
                     <Col span={8}>
                         <Form.Item
-                            label="Precio de Venta"
+                            label="Sale Price"
                             name="salePrice"
-                            rules={[{ required: true, message: 'Requerido' }, { type: 'number', min: 0 }]}
+                            rules={[{ required: true, message: 'Required' }, { type: 'number', min: 0 }]}
                         >
                             <InputNumber
                                 style={{ width: '100%' }}
@@ -253,9 +247,9 @@ const ServiceFormModalContent = ({ open, service, onClose }: ServiceFormModalPro
                     </Col>
                     <Col span={8}>
                         <Form.Item
-                            label="Moneda"
+                            label="Currency"
                             name="currencyId"
-                            rules={[{ required: true, message: 'Requerido' }]}
+                            rules={[{ required: true, message: 'Required' }]}
                         >
                             <Select
                                 options={currencies.map(curr => ({
@@ -270,4 +264,3 @@ const ServiceFormModalContent = ({ open, service, onClose }: ServiceFormModalPro
         </Modal>
     );
 };
-import { useQuery } from '@tanstack/react-query';

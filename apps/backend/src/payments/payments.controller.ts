@@ -18,27 +18,40 @@ import { AuthGuard } from '@nestjs/passport';
 export class PaymentsController {
   constructor(private readonly paymentsService: PaymentsService) {}
 
+  /**
+   * Records a new payment for an invoice.
+   */
   @Post()
-  @ApiOperation({ summary: 'Registrar un pago contra una factura' })
+  @ApiOperation({ summary: 'Record a payment against an invoice' })
   create(@Body() createPaymentDto: CreatePaymentDto) {
     return this.paymentsService.createPayment(createPaymentDto);
   }
 
+  /**
+   * Retrieves all payments associated with a specific invoice.
+   */
   @Get('invoice/:id')
-  @ApiOperation({ summary: 'Obtener pagos de una factura' })
+  @ApiOperation({ summary: 'Get all payments for a specific invoice' })
   getByInvoice(@Param('id') id: string) {
     return this.paymentsService.getPaymentsByInvoice(id);
   }
 
+  /**
+   * Retrieves all payments in the system.
+   */
   @Get()
-  @ApiOperation({ summary: 'Obtener todos los pagos' })
+  @ApiOperation({ summary: 'List all payments' })
   getAll() {
     return this.paymentsService.getAllPayments();
   }
 
+  /**
+   * Deletes a payment record and reverts the invoice balance.
+   */
   @Delete(':id')
-  @ApiOperation({ summary: 'Eliminar un pago y revertir balance' })
+  @ApiOperation({ summary: 'Delete a payment and revert invoice balance' })
   remove(@Param('id') id: string) {
     return this.paymentsService.removePayment(id);
   }
 }
+

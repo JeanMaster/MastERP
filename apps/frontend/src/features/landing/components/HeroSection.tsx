@@ -1,23 +1,30 @@
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 
+/**
+ * HeroSection Component
+ * The primary value proposition section of the landing page.
+ * Highlights the main ERP benefits and provides a Call to Action (CTA) for new users.
+ * Supports internationalization (i18n).
+ */
 export const HeroSection = () => {
     const navigate = useNavigate();
+    const { t } = useTranslation();
 
     return (
         <section className="hero-section">
             <h1 className="hero-title">
-                El ERP del <span className="hero-title-highlight">Futuro.</span><br />
-                Creado para Economías Reales.
+                {t('landing.hero.title')}
             </h1>
             <p className="hero-subtitle">
-                Simplifica y optimiza tu negocio con la plataforma ERP más avanzada para Punto de Venta Multimoneda, Inteligencia de Inventario y Nómina. Blindado contra la inflación.
+                {t('landing.hero.subtitle')}
             </p>
             <div className="hero-actions">
                 <button className="btn-primary" onClick={() => navigate('/login')}>
-                    Empieza Ya - Gratis
+                    {t('landing.hero.cta')}
                 </button>
                 <button className="btn-secondary">
-                    Solicitar Demo
+                    {t('landing.nav.about')}
                 </button>
             </div>
         </section>

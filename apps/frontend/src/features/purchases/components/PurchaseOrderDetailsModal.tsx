@@ -9,15 +9,20 @@ interface PurchaseOrderDetailsModalProps {
     onClose: () => void;
 }
 
+/**
+ * PurchaseOrderDetailsModal Component
+ * Read-only view for a Purchase Order (PO).
+ * Displays the list of products requested from a supplier, along with estimated costs and order status.
+ */
 export const PurchaseOrderDetailsModal: React.FC<PurchaseOrderDetailsModalProps> = ({ visible, order, onClose }) => {
     if (!order) return null;
 
     const columns = [
-        { title: 'Producto', dataIndex: ['product', 'name'], key: 'product' },
+        { title: 'Product', dataIndex: ['product', 'name'], key: 'product' },
         { title: 'SKU', dataIndex: ['product', 'sku'], key: 'sku' },
-        { title: 'Cantidad', dataIndex: 'quantity', key: 'quantity' },
+        { title: 'Quantity', dataIndex: 'quantity', key: 'quantity' },
         {
-            title: 'Costo Est.',
+            title: 'Est. Cost',
             dataIndex: 'cost',
             key: 'cost',
             render: (cost: number) => `${order.currencyCode} ${Number(cost).toFixed(2)}`
@@ -32,27 +37,27 @@ export const PurchaseOrderDetailsModal: React.FC<PurchaseOrderDetailsModalProps>
 
     return (
         <Modal
-            title={`Detalles del Pedido #${order.id.slice(0, 8)}`}
+            title={`Purchase Order Details #${order.id.slice(0, 8)}`}
             open={visible}
             onCancel={onClose}
             width={800}
             footer={[
-                <Button key="close" onClick={onClose}>Cerrar</Button>
+                <Button key="close" onClick={onClose}>Close</Button>
             ]}
         >
             <Descriptions bordered size="small" column={2}>
-                <Descriptions.Item label="Proveedor">{order.supplier.comercialName}</Descriptions.Item>
-                <Descriptions.Item label="RIF">{order.supplier.rif || 'N/A'}</Descriptions.Item>
-                <Descriptions.Item label="Fecha">{dayjs(order.orderDate).format('DD/MM/YYYY')}</Descriptions.Item>
-                <Descriptions.Item label="Entrega Est.">{order.expectedDate ? dayjs(order.expectedDate).format('DD/MM/YYYY') : 'N/A'}</Descriptions.Item>
-                <Descriptions.Item label="Estado">
+                <Descriptions.Item label="Supplier">{order.supplier.comercialName}</Descriptions.Item>
+                <Descriptions.Item label="Tax ID (RIF)">{order.supplier.rif || 'N/A'}</Descriptions.Item>
+                <Descriptions.Item label="Order Date">{dayjs(order.orderDate).format('MM/DD/YYYY')}</Descriptions.Item>
+                <Descriptions.Item label="Est. Delivery">{order.expectedDate ? dayjs(order.expectedDate).format('MM/DD/YYYY') : 'N/A'}</Descriptions.Item>
+                <Descriptions.Item label="Status">
                     <Tag color={order.status === 'COMPLETED' ? 'green' : 'orange'}>{order.status}</Tag>
                 </Descriptions.Item>
-                <Descriptions.Item label="Moneda">{order.currencyCode}</Descriptions.Item>
-                <Descriptions.Item label="Notas" span={2}>{order.notes || 'Sin notas'}</Descriptions.Item>
+                <Descriptions.Item label="Currency">{order.currencyCode}</Descriptions.Item>
+                <Descriptions.Item label="Notes" span={2}>{order.notes || 'No notes'}</Descriptions.Item>
             </Descriptions>
 
-            <Divider orientation={"left" as any}>Artículos</Divider>
+            <Divider orientation={"left" as any}>Items</Divider>
 
             <Table
                 dataSource={order.items}
