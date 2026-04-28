@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Modal, Form, Input, InputNumber, Button, App, Row, Col, Typography } from 'antd';
+import { useTranslation } from 'react-i18next';
 import type { Invoice } from '../../../services/invoicesApi';
 import { paymentsApi } from '../../../services/paymentsApi';
 import { usePOSStore } from '../../../store/posStore';
@@ -20,6 +21,7 @@ export const RegisterPaymentModal: React.FC<RegisterPaymentModalProps> = ({
     onClose,
     onSuccess,
 }) => {
+    const { t } = useTranslation();
     const [form] = Form.useForm();
     const { message } = App.useApp();
     const [paymentAmount, setPaymentAmount] = useState<number | null>(null);
@@ -37,12 +39,12 @@ export const RegisterPaymentModal: React.FC<RegisterPaymentModalProps> = ({
 
     const handlePayment = async (method: string, currencyCode?: string) => {
         if (!invoice || !paymentAmount || paymentAmount <= 0) {
-            message.error('Ingrese un monto válido');
+            message.error(t('accounts_receivable.messages.invalid_amount'));
             return;
         }
 
         if (paymentAmount > Number(invoice.balance)) {
-            message.error('El monto excede el balance pendiente');
+            message.error(t('accounts_receivable.messages.exceeds_balance'));
             return;
         }
 
@@ -61,26 +63,26 @@ export const RegisterPaymentModal: React.FC<RegisterPaymentModalProps> = ({
                 notes: form.getFieldValue('notes'),
             });
 
-            message.success('Pago registrado exitosamente');
+            message.success(t('accounts_receivable.messages.success'));
             form.resetFields();
             setPaymentAmount(null);
             onSuccess();
         } catch (error: any) {
-            message.error(error.response?.data?.message || 'Error al registrar el pago');
+            message.error(error.response?.data?.message || t('accounts_receivable.messages.error'));
         }
     };
 
     const bsPaymentMethods = [
-        { key: 'CASH', label: 'Efectivo', emoji: '💵' },
-        { key: 'DEBIT', label: 'T. Débito', emoji: '💳' },
-        { key: 'CARD_CREDIT', label: 'T. Crédito', emoji: '💳' },
-        { key: 'MOBILE', label: 'Pago Móvil', emoji: '📱' },
-        { key: 'TRANSFER', label: 'Transferencia', emoji: '🏦' },
+        { key: 'CASH', label: t('pos.checkout.cash'), emoji: '💵' },
+        { key: 'DEBIT', label: t('pos.checkout.debit_card'), emoji: '💳' },
+        { key: 'CARD_CREDIT', label: t('pos.checkout.credit_card'), emoji: '💳' },
+        { key: 'MOBILE', label: t('pos.checkout.mobile_pay'), emoji: '📱' },
+        { key: 'TRANSFER', label: t('pos.checkout.transfer'), emoji: '🏦' },
     ];
 
     return (
         <Modal
-            title="Registrar Pago"
+            title={t('accounts_receivable.register_payment')}
             open={visible}
             onCancel={onClose}
             footer={null}
@@ -90,18 +92,18 @@ export const RegisterPaymentModal: React.FC<RegisterPaymentModalProps> = ({
                 <>
                     {/* Invoice Summary */}
                     <div style={{ marginBottom: 16, padding: 12, backgroundColor: '#f5f5f5', borderRadius: 4 }}>
-                        <p style={{ margin: 0 }}><strong>Cliente:</strong> {invoice.client?.name}</p>
-                        <p style={{ margin: 0 }}><strong>Factura:</strong> {invoice.number}</p>
-                        <p style={{ margin: 0 }}><strong>Total:</strong> {invoice.currencyCode === 'VES' ? 'Bs' : invoice.currencyCode}. {Number(invoice.total).toFixed(2)}</p>
-                        <p style={{ margin: 0 }}><strong>Pagado:</strong> {invoice.currencyCode === 'VES' ? 'Bs' : invoice.currencyCode}. {Number(invoice.paidAmount).toFixed(2)}</p>
+                        <p style={{ margin: 0 }}><strong>{t('common.customer') || 'Customer'}:</strong> {invoice.client?.name}</p>
+                        <p style={{ margin: 0 }}><strong>{t('common.invoice')}:</strong> {invoice.number}</p>
+                        <p style={{ margin: 0 }}><strong>{t('common.total')}:</strong> {invoice.currencyCode === 'VES' ? 'Bs' : invoice.currencyCode}. {Number(invoice.total).toFixed(2)}</p>
+                        <p style={{ margin: 0 }}><strong>{t('common.paid') || 'Paid'}:</strong> {invoice.currencyCode === 'VES' ? 'Bs' : invoice.currencyCode}. {Number(invoice.paidAmount).toFixed(2)}</p>
                         <p style={{ margin: 0, color: '#ff4d4f', fontSize: 16 }}>
-                            <strong>Balance Pendiente:</strong> {invoice.currencyCode === 'VES' ? 'Bs' : invoice.currencyCode}. {Number(invoice.balance).toFixed(2)}
+                            <strong>{t('common.balance')}:</strong> {invoice.currencyCode === 'VES' ? 'Bs' : invoice.currencyCode}. {Number(invoice.balance).toFixed(2)}
                         </p>
                     </div>
 
                     <Form form={form} layout="vertical">
                         {/* Amount Input */}
-                        <Form.Item label={`Monto a Pagar (${invoice.currencyCode})`}>
+                            <Form.Item label={`${t('accounts_receivable.amount_to_pay')} (${invoice.currencyCode})`}>
                             <InputNumber
                                 style={{ width: '100%' }}
                                 size="large"
@@ -115,14 +117,14 @@ export const RegisterPaymentModal: React.FC<RegisterPaymentModalProps> = ({
                             />
                             {invoice.currencyCode !== 'VES' && (
                                 <Text type="secondary" style={{ fontSize: '12px' }}>
-                                    Tasa congelada de la factura: {formatVenezuelanPrice(invoice.exchangeRate)} Bs/USD
+                                    {t('accounts_receivable.frozen_rate')}: {formatVenezuelanPrice(invoice.exchangeRate)} Bs/USD
                                 </Text>
                             )}
                         </Form.Item>
 
                         {/* Bs Payment Methods */}
                         <div style={{ marginBottom: 16 }}>
-                            <Text strong>Pagos en {primaryCurrency?.name || 'Bolívares'}</Text>
+                            <Text strong>{t('accounts_receivable.payments_in', { currency: primaryCurrency?.name || 'Bolívares' })}</Text>
                             <Row gutter={[8, 8]} style={{ marginTop: 8 }}>
                                 {bsPaymentMethods.map(method => (
                                     <Col span={8} key={method.key}>
@@ -150,7 +152,7 @@ export const RegisterPaymentModal: React.FC<RegisterPaymentModalProps> = ({
                         {/* Foreign Currency Payments */}
                         {foreignCurrencies.length > 0 && (
                             <div style={{ marginBottom: 16 }}>
-                                <Text strong>Pagos en Divisas</Text>
+                                <Text strong>{t('accounts_receivable.foreign_currency_payments')}</Text>
                                 <Row gutter={[8, 8]} style={{ marginTop: 8 }}>
                                     {foreignCurrencies.map(currency => (
                                         <Col span={8} key={currency.id}>
@@ -177,11 +179,11 @@ export const RegisterPaymentModal: React.FC<RegisterPaymentModalProps> = ({
                         )}
 
                         {/* Reference and Notes */}
-                        <Form.Item label="Referencia" name="reference">
+                        <Form.Item label={t('common.reference')} name="reference">
                             <Input placeholder="Ej: Ref. 123456789" />
                         </Form.Item>
 
-                        <Form.Item label="Notas" name="notes">
+                        <Form.Item label={t('common.notes')} name="notes">
                             <Input.TextArea rows={2} placeholder="Notas adicionales (opcional)" />
                         </Form.Item>
                     </Form>

@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { Table, Button, Space, Typography, Tag, Tooltip, Popconfirm, message } from 'antd';
+import { Table, Button, Space, Typography, Tag, Tooltip, Popconfirm, App } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, UserOutlined } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import { employeesApi } from '../services/employeesApi';
 import type { Employee } from '../services/employeesApi';
 import { EmployeeFormModal } from '../components/EmployeeFormModal';
@@ -14,6 +15,8 @@ const { Title } = Typography;
  * Allows creating, updating, and deactivating (soft-deleting) employee profiles, tracking their salary, position, and payment frequency.
  */
 export const EmployeesPage = () => {
+    const { t } = useTranslation();
+    const { message } = App.useApp();
     const [isModalVisible, setIsModalVisible] = useState(false);
     const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
     const queryClient = useQueryClient();
@@ -29,7 +32,7 @@ export const EmployeesPage = () => {
     const deleteMutation = useMutation({
         mutationFn: employeesApi.remove,
         onSuccess: () => {
-            message.success('Employee deactivated successfully');
+            message.success(t('hr.employees.messages.deactivate_success'));
             queryClient.invalidateQueries({ queryKey: ['employees'] });
         }
     });
@@ -50,7 +53,7 @@ export const EmployeesPage = () => {
 
     const columns = [
         {
-            title: 'Full Name',
+            title: t('hr.employees.table.full_name'),
             key: 'name',
             render: (_: any, record: Employee) => (
                 <Space>
@@ -60,35 +63,35 @@ export const EmployeesPage = () => {
             )
         },
         {
-            title: 'ID Number',
+            title: t('hr.employees.table.identification'),
             dataIndex: 'identification',
             key: 'identification',
         },
         {
-            title: 'Position',
+            title: t('hr.employees.table.position'),
             dataIndex: 'position',
             key: 'position',
         },
         {
-            title: 'Department',
+            title: t('hr.employees.table.department'),
             dataIndex: 'department',
             key: 'department',
         },
         {
-            title: 'Payment Frequency',
+            title: t('hr.employees.table.payment_frequency'),
             dataIndex: 'paymentFrequency',
             key: 'paymentFrequency',
             render: (freq: string) => {
                 const map: any = { 
-                    WEEKLY: 'Weekly', 
-                    BIWEEKLY: 'Biweekly', 
-                    MONTHLY: 'Monthly' 
+                    WEEKLY: t('hr.employees.frequencies.WEEKLY'), 
+                    BIWEEKLY: t('hr.employees.frequencies.BIWEEKLY'), 
+                    MONTHLY: t('hr.employees.frequencies.MONTHLY') 
                 };
                 return map[freq] || freq;
             }
         },
         {
-            title: 'Base Salary',
+            title: t('hr.employees.table.base_salary'),
             key: 'salary',
             align: 'right' as const,
             render: (_: any, record: Employee) => (
@@ -98,33 +101,33 @@ export const EmployeesPage = () => {
             )
         },
         {
-            title: 'Status',
+            title: t('hr.employees.table.status'),
             key: 'status',
             align: 'center' as const,
             render: (_: any, record: Employee) => (
                 <Tag color={record.isActive ? 'green' : 'red'}>
-                    {record.isActive ? 'Active' : 'Inactive'}
+                    {record.isActive ? t('users.active') : t('users.inactive')}
                 </Tag>
             )
         },
         {
-            title: 'Actions',
+            title: t('hr.employees.table.actions'),
             key: 'actions',
             width: 100,
             render: (_: any, record: Employee) => (
                 <Space>
-                    <Tooltip title="Edit">
+                    <Tooltip title={t('common.edit')}>
                         <Button
                             icon={<EditOutlined />}
                             onClick={() => handleEdit(record)}
                         />
                     </Tooltip>
                     <Popconfirm
-                        title="Deactivate employee profile?"
-                        description="This will mark the employee as inactive."
+                        title={t('hr.employees.messages.deactivate_confirm')}
+                        description={t('hr.employees.messages.deactivate_desc')}
                         onConfirm={() => handleDelete(record.id)}
-                        okText="Yes"
-                        cancelText="No"
+                        okText={t('common.yes')}
+                        cancelText={t('common.no')}
                     >
                         <Button icon={<DeleteOutlined />} danger disabled={!record.isActive} />
                     </Popconfirm>
@@ -136,9 +139,9 @@ export const EmployeesPage = () => {
     return (
         <div style={{ padding: '24px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '24px', alignItems: 'center' }}>
-                <Title level={2} style={{ margin: 0 }}>👥 Employee Management</Title>
+                <Title level={2} style={{ margin: 0 }}>👥 {t('hr.employees.title')}</Title>
                 <Button type="primary" icon={<PlusOutlined />} onClick={handleCreate}>
-                    Register New Employee
+                    {t('hr.employees.register_button')}
                 </Button>
             </div>
 
@@ -148,7 +151,7 @@ export const EmployeesPage = () => {
                 rowKey="id"
                 loading={isLoading}
                 pagination={{
-                    showTotal: (total) => `Total: ${total} employees`
+                    showTotal: (total) => t('hr.payroll.messages.total_periods', { total })
                 }}
             />
 

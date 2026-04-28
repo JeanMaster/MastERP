@@ -8,9 +8,9 @@ import {
     Modal,
     Form,
     Input,
-    message,
-    Popconfirm,
-    Tag
+    Tag,
+    App,
+    Popconfirm
 } from 'antd';
 import {
     PlusOutlined,
@@ -19,6 +19,7 @@ import {
     ShopOutlined,
     EnvironmentOutlined
 } from '@ant-design/icons';
+import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { cashRegisterApi, type CashRegister } from '../../services/cashRegisterApi';
 
@@ -29,6 +30,8 @@ const { Title, Text } = Typography;
  * Admin view to manage (create, edit, deactivate) physical cash registers.
  */
 export const RegistersManagement = () => {
+    const { t } = useTranslation();
+    const { message } = App.useApp();
     const queryClient = useQueryClient();
     const [isModalVisible, setIsModalVisible] = useState(false);
     const [editingRegister, setEditingRegister] = useState<CashRegister | null>(null);
@@ -44,7 +47,7 @@ export const RegistersManagement = () => {
     const createMutation = useMutation({
         mutationFn: (data: { name: string, location?: string }) => cashRegisterApi.createRegister(data),
         onSuccess: () => {
-            message.success('Cash register created successfully');
+            message.success(t('cash_register.success_create'));
             queryClient.invalidateQueries({ queryKey: ['cashRegisters'] });
             handleCancel();
         }
@@ -53,7 +56,7 @@ export const RegistersManagement = () => {
     const updateMutation = useMutation({
         mutationFn: ({ id, data }: { id: string, data: any }) => cashRegisterApi.updateRegister(id, data),
         onSuccess: () => {
-            message.success('Cash register updated successfully');
+            message.success(t('cash_register.success_update'));
             queryClient.invalidateQueries({ queryKey: ['cashRegisters'] });
             handleCancel();
         }
@@ -62,7 +65,7 @@ export const RegistersManagement = () => {
     const deleteMutation = useMutation({
         mutationFn: (id: string) => cashRegisterApi.deleteRegister(id),
         onSuccess: () => {
-            message.success('Cash register deleted successfully');
+            message.success(t('cash_register.success_delete'));
             queryClient.invalidateQueries({ queryKey: ['cashRegisters'] });
         }
     });
@@ -99,7 +102,7 @@ export const RegistersManagement = () => {
 
     const columns = [
         {
-            title: 'Register Name',
+            title: t('cash_register.register_name'),
             dataIndex: 'name',
             key: 'name',
             render: (text: string) => (
@@ -110,28 +113,28 @@ export const RegistersManagement = () => {
             )
         },
         {
-            title: 'Location',
+            title: t('expenses.location', { defaultValue: 'Location' }),
             dataIndex: 'location',
             key: 'location',
             render: (text: string) => (
                 <Space>
                     <EnvironmentOutlined style={{ color: '#8c8c8c' }} />
-                    <Text type="secondary">{text || 'Not specified'}</Text>
+                    <Text type="secondary">{text || t('common.not_specified', { defaultValue: 'Not specified' })}</Text>
                 </Space>
             )
         },
         {
-            title: 'Status',
+            title: t('cash_register.status'),
             dataIndex: 'isActive',
             key: 'isActive',
             render: (active: boolean) => (
                 <Tag color={active ? 'green' : 'red'}>
-                    {active ? 'ACTIVE' : 'INACTIVE'}
+                    {active ? t('users.active') : t('users.inactive')}
                 </Tag>
             )
         },
         {
-            title: 'Actions',
+            title: t('cash_register.actions'),
             key: 'actions',
             align: 'right' as const,
             render: (_: any, record: CashRegister) => (
@@ -142,11 +145,11 @@ export const RegistersManagement = () => {
                         type="text"
                     />
                     <Popconfirm
-                        title="Delete this register?"
-                        description="This action will mark the register as inactive."
+                        title={t('cash_register.delete_confirm')}
+                        description={t('products.delete_desc', { defaultValue: 'This action cannot be undone' })}
                         onConfirm={() => deleteMutation.mutate(record.id)}
-                        okText="Yes"
-                        cancelText="No"
+                        okText={t('common.yes', { defaultValue: 'Yes' })}
+                        cancelText={t('common.no', { defaultValue: 'No' })}
                     >
                         <Button
                             icon={<DeleteOutlined />}
@@ -162,14 +165,14 @@ export const RegistersManagement = () => {
     return (
         <div style={{ padding: 24 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-                <Title level={2}>⚙️ Cash Registers Management</Title>
+                <Title level={2}>⚙️ {t('cash_register.title')}</Title>
                 <Button
                     type="primary"
                     icon={<PlusOutlined />}
                     onClick={handleAdd}
                     size="large"
                 >
-                    New Register
+                    {t('cash_register.new')}
                 </Button>
             </div>
 
@@ -184,13 +187,13 @@ export const RegistersManagement = () => {
             </Card>
 
             <Modal
-                title={editingRegister ? "Edit Register" : "New Register"}
+                title={editingRegister ? t('cash_register.edit') : t('cash_register.new')}
                 open={isModalVisible}
                 onOk={handleSubmit}
                 onCancel={handleCancel}
                 confirmLoading={createMutation.isPending || updateMutation.isPending}
-                okText={editingRegister ? "Save" : "Create"}
-                cancelText="Cancel"
+                okText={editingRegister ? t('common.save', { defaultValue: 'Save' }) : t('common.create', { defaultValue: 'Create' })}
+                cancelText={t('common.cancel')}
             >
                 <Form
                     form={form}
@@ -199,14 +202,14 @@ export const RegistersManagement = () => {
                 >
                     <Form.Item
                         name="name"
-                        label="Register Name"
-                        rules={[{ required: true, message: 'Please enter the register name' }]}
+                        label={t('cash_register.register_name')}
+                        rules={[{ required: true, message: t('common.required') }]}
                     >
                         <Input placeholder="e.g., Main Register, Back Counter..." />
                     </Form.Item>
                     <Form.Item
                         name="location"
-                        label="Location"
+                        label={t('expenses.location', { defaultValue: 'Location' })}
                     >
                         <Input placeholder="e.g., Aisle 1, Main Entrance..." />
                     </Form.Item>

@@ -6,10 +6,12 @@ import { usePOSStore } from '../../../store/posStore';
 import { ReportCurrencySelector } from './ReportCurrencySelector';
 import { formatVenezuelanPriceOnly } from '../../../utils/formatters';
 import { Typography } from 'antd';
+import { useTranslation } from 'react-i18next';
 
 const { Text } = Typography;
 
 export const InventoryReports = () => {
+    const { t } = useTranslation();
     const [report, setReport] = useState<InventoryReport | null>(null);
     const [loading, setLoading] = useState(true);
     const { primaryCurrency, currencies } = usePOSStore();
@@ -27,7 +29,9 @@ export const InventoryReports = () => {
     }, [primaryCurrency]);
 
     useEffect(() => {
-        fetchReport();
+        if (selectedCurrency) {
+            fetchReport();
+        }
     }, [selectedCurrency]);
 
     const fetchReport = async () => {
@@ -51,24 +55,24 @@ export const InventoryReports = () => {
     }
 
     if (!report) {
-        return <Empty description="Error al cargar reporte de inventario" />;
+        return <Empty description={t('common.error')} />;
     }
 
     const deptColumns = [
         {
-            title: 'Departamento',
+            title: t('common.department'),
             dataIndex: 'department',
             key: 'department',
         },
         {
-            title: 'Unidades',
+            title: t('common.units'),
             dataIndex: 'units',
             key: 'units',
             align: 'right' as const,
             sorter: (a: any, b: any) => a.units - b.units,
         },
         {
-            title: 'Valor Total',
+            title: t('common.total_value'),
             dataIndex: 'value',
             key: 'value',
             align: 'right' as const,
@@ -78,35 +82,35 @@ export const InventoryReports = () => {
     ];
 
     const depletionColumns = [
-        { title: 'Producto', dataIndex: 'name', key: 'name' },
-        { title: 'Categoría', dataIndex: 'category', key: 'category' },
-        { title: 'Stock', dataIndex: 'stock', key: 'stock', align: 'right' as const },
+        { title: t('common.product'), dataIndex: 'name', key: 'name' },
+        { title: t('common.category'), dataIndex: 'category', key: 'category' },
+        { title: t('common.stock'), dataIndex: 'stock', key: 'stock', align: 'right' as const },
         {
-            title: 'Venta Diaria (Prom. 180d)',
+            title: t('reports.inventory.velocity'),
             dataIndex: 'dailySalesVelocity',
             key: 'velocity',
             align: 'right' as const,
             render: (v: number) => v.toFixed(2)
         },
         {
-            title: 'Días Restantes',
+            title: t('reports.inventory.days_left'),
             dataIndex: 'daysRemaining',
             key: 'daysRemaining',
             align: 'right' as const,
             sorter: (a: any, b: any) => a.daysRemaining - b.daysRemaining,
             render: (d: number) => (
                 <span style={{ color: d <= 7 ? '#ff4d4f' : d <= 14 ? '#faad14' : '#52c41a', fontWeight: 'bold' }}>
-                    {d} días
+                    {d} {t('common.days')}
                 </span>
             )
         },
         {
-            title: 'Necesario (6 Meses)',
+            title: t('reports.inventory.needed_6m'),
             dataIndex: 'unitsNeeded6Months',
             key: 'needed',
             align: 'right' as const,
             render: (n: number) => (
-                <Tooltip title="Unidades proyectadas necesarias para los próximos 180 días">
+                <Tooltip title={t('reports.inventory.needed_6m_tooltip')}>
                     <Text strong>{n}</Text>
                 </Tooltip>
             )
@@ -115,17 +119,17 @@ export const InventoryReports = () => {
 
     const lowStockColumns = [
         {
-            title: 'Producto',
+            title: t('common.product'),
             dataIndex: 'name',
             key: 'name',
         },
         {
-            title: 'Categoría',
+            title: t('common.category'),
             dataIndex: ['category', 'name'],
             key: 'category',
         },
         {
-            title: 'Stock Actual',
+            title: t('common.stock'),
             dataIndex: 'stock',
             key: 'stock',
             align: 'right' as const,
@@ -147,7 +151,7 @@ export const InventoryReports = () => {
                         <Tooltip
                             title={
                                 <div>
-                                    <div style={{ marginBottom: 4, fontWeight: 'bold' }}>Moneda del Reporte:</div>
+                                    <div style={{ marginBottom: 4, fontWeight: 'bold' }}>{t('reports.inventory.currency_selector_title')}</div>
                                     <ReportCurrencySelector
                                         value={selectedCurrency}
                                         onChange={setSelectedCurrency}
@@ -159,7 +163,7 @@ export const InventoryReports = () => {
                                 <Statistic
                                     title={
                                         <span>
-                                            Valor Total de Inventario <DollarOutlined style={{ fontSize: 12, marginLeft: 4 }} />
+                                            {t('reports.inventory.total_value')} <DollarOutlined style={{ fontSize: 12, marginLeft: 4 }} />
                                         </span>
                                     }
                                     value={report.totalInventoryValue}
@@ -172,10 +176,10 @@ export const InventoryReports = () => {
                         </Tooltip>
                     </Card>
                 </Col>
-                <Col xs={24} sm={12} lg={8}>
+                <Col xs={24} sm={12} lg={6}>
                     <Card>
                         <Statistic
-                            title="Departamentos"
+                            title={t('reports.inventory.departments')}
                             value={report.stockByDepartment.length}
                             valueStyle={{ color: '#52c41a' }}
                             styles={{ content: { color: '#52c41a' } }}
@@ -186,39 +190,28 @@ export const InventoryReports = () => {
                 <Col xs={24} sm={12} lg={6}>
                     <Card>
                         <Statistic
-                            title="Departamentos"
-                            value={report.stockByDepartment.length}
-                            valueStyle={{ color: '#52c41a' }}
-                            styles={{ content: { color: '#52c41a' } }}
-                            suffix={<ShopOutlined />}
-                        />
-                    </Card>
-                </Col>
-                <Col xs={24} sm={12} lg={6}>
-                    <Card>
-                        <Statistic
-                            title="Stock Bajo (Crítico)"
+                            title={t('reports.inventory.low_stock')}
                             value={report.lowStockProducts.length}
                             valueStyle={{ color: '#faad14' }}
                             styles={{ content: { color: '#faad14' } }}
                             suffix={<WarningOutlined />}
                         />
                         <div style={{ marginTop: 8, fontSize: 10, color: '#666' }}>
-                            Unidades {'<'} 10
+                            {t('common.units')} {'<'} 10
                         </div>
                     </Card>
                 </Col>
                 <Col xs={24} sm={12} lg={6}>
                     <Card>
                         <Statistic
-                            title="Próximos a Agotarse"
+                            title={t('reports.inventory.near_depletion')}
                             value={report.depletionForecast.length}
                             valueStyle={{ color: '#ff4d4f' }}
                             styles={{ content: { color: '#ff4d4f' } }}
                             suffix={<WarningOutlined />}
                         />
                         <div style={{ marginTop: 8, fontSize: 10, color: '#666' }}>
-                            Se agotan en ≤ 20 días
+                            {t('reports.inventory.depletion_notice')}
                         </div>
                     </Card>
                 </Col>
@@ -226,9 +219,9 @@ export const InventoryReports = () => {
 
             {/* Depletion Forecast */}
             <Card
-                title="Pronóstico de Agotamiento (Basado en Ventas)"
+                title={t('reports.inventory.forecast_title')}
                 style={{ marginBottom: 16 }}
-                extra={<span style={{ fontSize: 12, color: '#666' }}>Productos que se agotarán pronto según ritmo de venta real</span>}
+                extra={<span style={{ fontSize: 12, color: '#666' }}>{t('reports.inventory.forecast_desc')}</span>}
             >
                 <Table
                     dataSource={report.depletionForecast}
@@ -243,7 +236,7 @@ export const InventoryReports = () => {
             </Card>
 
             {/* Stock by Department */}
-            <Card title="Stock por Departamento" style={{ marginBottom: 16 }}>
+            <Card title={t('reports.inventory.stock_by_dept')} style={{ marginBottom: 16 }}>
                 <Table
                     dataSource={report.stockByDepartment}
                     columns={deptColumns}
@@ -253,7 +246,7 @@ export const InventoryReports = () => {
             </Card>
 
             {/* Low Stock Products */}
-            <Card title="Productos con Stock Bajo">
+            <Card title={t('reports.inventory.low_stock_title')}>
                 <Table
                     dataSource={report.lowStockProducts}
                     columns={lowStockColumns}

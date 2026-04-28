@@ -4,12 +4,13 @@ import { useQuery } from '@tanstack/react-query';
 import { statsApi } from '../../../services/statsApi';
 import { usePOSStore } from '../../../store/posStore';
 import { formatVenezuelanPrice } from '../../../utils/formatters';
+import { useTranslation } from 'react-i18next';
 import {
   Bar,
   XAxis,
   YAxis,
   CartesianGrid,
-  Tooltip,
+  Tooltip as RechartsTooltip,
   ResponsiveContainer,
   Legend,
   Line,
@@ -25,6 +26,7 @@ interface ProductDetailsModalProps {
 }
 
 export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({ productId, visible, onClose }) => {
+    const { t } = useTranslation();
     const { primaryCurrency } = usePOSStore();
     
     const { data: stats, isLoading } = useQuery({
@@ -35,7 +37,7 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({ produc
 
     return (
         <Modal
-            title={stats?.product?.name || "Detalles del Producto"}
+            title={stats?.product?.name || t('reports.products.details_title')}
             open={visible}
             onCancel={onClose}
             footer={null}
@@ -52,7 +54,7 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({ produc
                         <Col span={6}>
                             <Card size="small">
                                 <Statistic 
-                                    title="Stock Actual" 
+                                    title={t('common.stock')} 
                                     value={stats.product.stock} 
                                 />
                             </Card>
@@ -60,7 +62,7 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({ produc
                         <Col span={6}>
                             <Card size="small">
                                 <Statistic 
-                                    title="Costo Base" 
+                                    title={t('common.cost')} 
                                     value={formatVenezuelanPrice(stats.product.costInTarget, primaryCurrency?.symbol)} 
                                 />
                             </Card>
@@ -68,7 +70,7 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({ produc
                         <Col span={6}>
                             <Card size="small">
                                 <Statistic 
-                                    title="Margen Ganancia" 
+                                    title={t('common.margin')} 
                                     value={`${stats.product.margin}%`} 
                                 />
                             </Card>
@@ -76,7 +78,7 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({ produc
                         <Col span={6}>
                             <Card size="small">
                                 <Statistic 
-                                    title={`Ingresos (6M)`} 
+                                    title={t('reports.products.revenue_6m')} 
                                     value={formatVenezuelanPrice(stats.metrics.totalRevenue6Months, primaryCurrency?.symbol)} 
                                 />
                             </Card>
@@ -84,7 +86,7 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({ produc
                     </Row>
                     
                     <div style={{ marginTop: 24 }}>
-                        <Title level={5}>Evolución de Ventas (6 Meses)</Title>
+                        <Title level={5}>{t('reports.products.evolution_title')}</Title>
                         <Card size="small">
                             <div style={{ height: 300, width: '100%' }}>
                                 <ResponsiveContainer>
@@ -93,15 +95,15 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({ produc
                                         <XAxis dataKey="month" />
                                         <YAxis yAxisId="left" orientation="left" stroke="#8884d8" />
                                         <YAxis yAxisId="right" orientation="right" stroke="#82ca9d" />
-                                        <Tooltip 
+                                        <RechartsTooltip 
                                             formatter={(value: any, name: string) => {
-                                                if (name === 'Ingresos') return formatVenezuelanPrice(value, primaryCurrency?.symbol);
-                                                return [value, 'Unidades Vendidas'];
+                                                if (name === t('common.revenue')) return formatVenezuelanPrice(value, primaryCurrency?.symbol);
+                                                return [value, t('common.units_sold')];
                                             }}
                                         />
                                         <Legend />
-                                        <Bar yAxisId="left" dataKey="unitsSold" name="Unidades" fill="#8884d8" barSize={30} />
-                                        <Line yAxisId="right" type="monotone" dataKey="revenue" name="Ingresos" stroke="#82ca9d" strokeWidth={3} />
+                                        <Bar yAxisId="left" dataKey="unitsSold" name={t('common.units')} fill="#8884d8" barSize={30} />
+                                        <Line yAxisId="right" type="monotone" dataKey="revenue" name={t('common.revenue')} stroke="#82ca9d" strokeWidth={3} />
                                     </ComposedChart>
                                 </ResponsiveContainer>
                             </div>
@@ -109,7 +111,7 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({ produc
                     </div>
                 </div>
             ) : (
-                <Text type="danger">Error al cargar datos del producto.</Text>
+                <Text type="danger">{t('common.error')}</Text>
             )}
         </Modal>
     );

@@ -19,6 +19,7 @@ import {
     ClearOutlined
 } from '@ant-design/icons';
 import { useQuery } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import { inventoryAdjustmentsApi, type InventoryAdjustment } from '../../services/inventoryAdjustmentsApi';
 import { productsApi } from '../../services/productsApi';
 import dayjs from 'dayjs';
@@ -27,24 +28,25 @@ import { CreateAdjustmentModal } from './components/CreateAdjustmentModal';
 const { Title, Text } = Typography;
 const { RangePicker } = DatePicker;
 
-const reasonLabels: Record<string, string> = {
-    DAMAGE: '🔨 Damage',
-    LOSS: '📉 Loss',
-    ERROR: '❌ Correction',
-    INITIAL: '📦 Initial Stock',
-    RETURN: '↩️ Return',
-    TRANSFER: '↔️ Transfer',
-    OTHER: '📝 Other'
-};
-
 /**
  * InventoryAdjustmentsPage Component
  * Management view for manual inventory adjustments (stock counts, damage reports, loss corrections).
  * Provides filters by product, adjustment type, and date range.
  */
 export const InventoryAdjustmentsPage = () => {
+    const { t } = useTranslation();
     const [isModalVisible, setIsModalVisible] = useState(false);
     const [filters, setFilters] = useState<any>({});
+
+    const reasonLabels: Record<string, string> = {
+        DAMAGE: t('adjustments.reasons.DAMAGE'),
+        LOSS: t('adjustments.reasons.LOSS'),
+        ERROR: t('adjustments.reasons.ERROR'),
+        INITIAL: t('adjustments.reasons.INITIAL'),
+        RETURN: t('adjustments.reasons.RETURN'),
+        TRANSFER: t('adjustments.reasons.TRANSFER'),
+        OTHER: t('adjustments.reasons.OTHER')
+    };
 
     const { data: adjustments = [], refetch } = useQuery({
         queryKey: ['inventory-adjustments', filters],
@@ -84,7 +86,7 @@ export const InventoryAdjustmentsPage = () => {
 
     const columns = [
         {
-            title: 'Date',
+            title: t('adjustments.date'),
             dataIndex: 'createdAt',
             key: 'date',
             width: 150,
@@ -98,7 +100,7 @@ export const InventoryAdjustmentsPage = () => {
             )
         },
         {
-            title: 'Product',
+            title: t('adjustments.product'),
             key: 'product',
             render: (_: any, record: InventoryAdjustment) => (
                 <div>
@@ -108,7 +110,7 @@ export const InventoryAdjustmentsPage = () => {
             )
         },
         {
-            title: 'Type',
+            title: t('adjustments.type'),
             dataIndex: 'type',
             key: 'type',
             width: 120,
@@ -120,13 +122,13 @@ export const InventoryAdjustmentsPage = () => {
                         icon={isIncrease ? <ArrowUpOutlined /> : <ArrowDownOutlined />}
                         color={isIncrease ? 'success' : 'error'}
                     >
-                        {isIncrease ? 'Increase' : 'Decrease'}
+                        {isIncrease ? t('adjustments.increase') : t('adjustments.decrease')}
                     </Tag>
                 );
             }
         },
         {
-            title: 'Quantity',
+            title: t('adjustments.quantity'),
             dataIndex: 'quantity',
             key: 'quantity',
             width: 100,
@@ -141,7 +143,7 @@ export const InventoryAdjustmentsPage = () => {
             }
         },
         {
-            title: 'Stock Change',
+            title: t('adjustments.stock_change'),
             key: 'stock',
             width: 150,
             align: 'center' as const,
@@ -154,7 +156,7 @@ export const InventoryAdjustmentsPage = () => {
             )
         },
         {
-            title: 'Reason',
+            title: t('adjustments.reason'),
             dataIndex: 'reason',
             key: 'reason',
             width: 120,
@@ -163,14 +165,14 @@ export const InventoryAdjustmentsPage = () => {
             )
         },
         {
-            title: 'Notes',
+            title: t('adjustments.notes'),
             dataIndex: 'notes',
             key: 'notes',
             ellipsis: true,
             render: (notes: string) => notes || '-'
         },
         {
-            title: 'Performed By',
+            title: t('adjustments.performed_by'),
             dataIndex: 'performedBy',
             key: 'performedBy',
             width: 130
@@ -179,13 +181,13 @@ export const InventoryAdjustmentsPage = () => {
 
     return (
         <div style={{ padding: 24 }}>
-            <Title level={2}>📦 Inventory Adjustments</Title>
+            <Title level={2}>📦 {t('adjustments.title')}</Title>
 
             <Card style={{ marginBottom: 16 }}>
                 <Row gutter={[16, 16]}>
                     <Col xs={24} sm={12} md={6}>
                         <Select
-                            placeholder="Filter by product"
+                            placeholder={t('adjustments.search_product')}
                             showSearch
                             allowClear
                             style={{ width: '100%' }}
@@ -200,19 +202,19 @@ export const InventoryAdjustmentsPage = () => {
                     </Col>
                     <Col xs={24} sm={12} md={4}>
                         <Select
-                            placeholder="Type"
+                            placeholder={t('adjustments.type')}
                             allowClear
                             style={{ width: '100%' }}
                             value={filters.type}
                             onChange={(value) => handleFilterChange('type', value)}
                         >
-                            <Select.Option value="INCREASE">↑ Increase</Select.Option>
-                            <Select.Option value="DECREASE">↓ Decrease</Select.Option>
+                            <Select.Option value="INCREASE">↑ {t('adjustments.increase')}</Select.Option>
+                            <Select.Option value="DECREASE">↓ {t('adjustments.decrease')}</Select.Option>
                         </Select>
                     </Col>
                     <Col xs={24} sm={12} md={5}>
                         <Select
-                            placeholder="Reason"
+                            placeholder={t('adjustments.reason')}
                             allowClear
                             style={{ width: '100%' }}
                             value={filters.reason}
@@ -238,7 +240,7 @@ export const InventoryAdjustmentsPage = () => {
                                 icon={<ClearOutlined />}
                                 onClick={handleClearFilters}
                             >
-                                Clear
+                                {t('adjustments.clear_filters')}
                             </Button>
                             <Button
                                 icon={<ReloadOutlined />}
@@ -250,14 +252,14 @@ export const InventoryAdjustmentsPage = () => {
             </Card>
 
             <Card
-                title="Adjustment History"
+                title={t('adjustments.history')}
                 extra={
                     <Button
                         type="primary"
                         icon={<PlusOutlined />}
                         onClick={() => setIsModalVisible(true)}
                     >
-                        New Adjustment
+                        {t('adjustments.new')}
                     </Button>
                 }
             >
@@ -267,7 +269,7 @@ export const InventoryAdjustmentsPage = () => {
                     rowKey="id"
                     pagination={{
                         pageSize: 15,
-                        showTotal: (total) => `Total: ${total} adjustments`
+                        showTotal: (total) => t('adjustments.total_count', { total })
                     }}
                 />
             </Card>

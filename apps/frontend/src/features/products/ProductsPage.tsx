@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Card, Table, Button, Space, Input, message, Popconfirm, Tag, Tooltip, Image, Grid } from 'antd';
+import { Card, Table, Button, Space, Input, App, Popconfirm, Tag, Tooltip, Image, Grid } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined, ReloadOutlined, PictureOutlined, ShopOutlined, CloudUploadOutlined, CheckCircleOutlined, CloseCircleOutlined, EyeOutlined } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { productsApi } from '../../services/productsApi';
@@ -18,6 +18,7 @@ import { useTranslation } from 'react-i18next';
  */
 export const ProductsPage = () => {
     const { t } = useTranslation();
+    const { message } = App.useApp();
     const screens = Grid.useBreakpoint();
     const isMobile = !screens.lg;
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -171,7 +172,7 @@ export const ProductsPage = () => {
             ),
         },
         {
-            title: 'Curr.',
+            title: t('products.finished.currency'),
             key: 'currency',
             width: '8%',
             render: (_: any, record: Product) => (
@@ -179,7 +180,7 @@ export const ProductsPage = () => {
             ),
         },
         {
-            title: t('products.composite.recipe_cost'),
+            title: t('products.finished.cost_price'),
             key: 'costPrice',
             width: '10%',
             render: (_: any, record: Product) => (

@@ -6,6 +6,7 @@ import { purchasesApi } from '../../services/purchasesApi';
 import type { Purchase } from '../../services/purchasesApi';
 import { formatVenezuelanNumber, formatDate } from '../../utils/formatters';
 import { RegisterPurchasePaymentModal } from './components/RegisterPurchasePaymentModal';
+import { useTranslation } from 'react-i18next';
 
 /**
  * AccountsPayablePage Component
@@ -13,6 +14,7 @@ import { RegisterPurchasePaymentModal } from './components/RegisterPurchasePayme
  * Tracks invoice balances, due dates, and allows registering payments.
  */
 export const AccountsPayablePage = () => {
+    const { t } = useTranslation();
     const [searchTerm, setSearchTerm] = useState('');
     const [paymentModalOpen, setPaymentModalOpen] = useState(false);
     const [selectedPurchase, setSelectedPurchase] = useState<Purchase | null>(null);
@@ -41,25 +43,25 @@ export const AccountsPayablePage = () => {
 
     const columns = [
         {
-            title: 'Date',
+            title: t('accounts_payable.table.date'),
             dataIndex: 'invoiceDate',
             key: 'invoiceDate',
             render: (date: string) => formatDate(date),
             width: 100,
         },
         {
-            title: 'Supplier',
+            title: t('accounts_payable.table.supplier'),
             dataIndex: ['supplier', 'comercialName'],
             key: 'supplier',
         },
         {
-            title: 'Invoice #',
+            title: t('accounts_payable.table.invoice'),
             dataIndex: 'invoiceNumber',
             key: 'invoiceNumber',
-            render: (text: string) => text || <span style={{ color: '#ccc' }}>N/A</span>
+            render: (text: string) => text || <span style={{ color: '#ccc' }}>{t('accounts_payable.table.na')}</span>
         },
         {
-            title: 'Total',
+            title: t('accounts_payable.table.total'),
             dataIndex: 'total',
             key: 'total',
             align: 'right' as const,
@@ -69,7 +71,7 @@ export const AccountsPayablePage = () => {
             }
         },
         {
-            title: 'Paid',
+            title: t('accounts_payable.table.paid'),
             dataIndex: 'paidAmount',
             key: 'paidAmount',
             align: 'right' as const,
@@ -83,7 +85,7 @@ export const AccountsPayablePage = () => {
             }
         },
         {
-            title: 'Balance',
+            title: t('accounts_payable.table.balance'),
             dataIndex: 'balance',
             key: 'balance',
             align: 'right' as const,
@@ -97,34 +99,34 @@ export const AccountsPayablePage = () => {
             }
         },
         {
-            title: 'Due Date',
+            title: t('accounts_payable.table.due_date'),
             dataIndex: 'dueDate',
             key: 'dueDate',
             render: (date: string) => date ? formatDate(date) : '-',
         },
         {
-            title: 'Status',
+            title: t('accounts_payable.table.status'),
             dataIndex: 'paymentStatus',
             key: 'paymentStatus',
             render: (status: string) => {
                 let color = 'default';
                 let text = 'Unknown';
                 switch (status) {
-                    case 'PAID': color = 'success'; text = 'Paid'; break;
-                    case 'PARTIAL': color = 'warning'; text = 'Partial'; break;
-                    case 'UNPAID': color = 'error'; text = 'Pending'; break;
+                    case 'PAID': color = 'success'; text = t('accounts_payable.status.paid'); break;
+                    case 'PARTIAL': color = 'warning'; text = t('accounts_payable.status.partial'); break;
+                    case 'UNPAID': color = 'error'; text = t('accounts_payable.status.pending'); break;
                 }
                 return <Tag color={color}>{text}</Tag>;
             }
         },
         {
-            title: 'Actions',
+            title: t('accounts_payable.table.actions'),
             key: 'actions',
             align: 'center' as const,
             render: (_: any, record: Purchase) => (
                 <Space>
                     {record.paymentStatus !== 'PAID' && (
-                        <Tooltip title="Register Payment">
+                        <Tooltip title={t('accounts_payable.register_payment')}>
                             <Button
                                 type="primary"
                                 size="small"
@@ -141,7 +143,7 @@ export const AccountsPayablePage = () => {
     const tabItems = [
         {
             key: '1',
-            label: 'Pending Invoices',
+            label: t('accounts_payable.tabs.pending'),
             children: (
                 <Table
                     columns={columns}
@@ -154,7 +156,7 @@ export const AccountsPayablePage = () => {
         },
         {
             key: '2',
-            label: 'Payment History',
+            label: t('accounts_payable.tabs.history'),
             children: (
                 <Table
                     columns={columns}
@@ -170,10 +172,10 @@ export const AccountsPayablePage = () => {
     return (
         <div className="fade-in">
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
-                <h1>Accounts Payable</h1>
+                <h1>{t('accounts_payable.title')}</h1>
                 <Space>
                     <Input
-                        placeholder="Search supplier, invoice..."
+                        placeholder={t('accounts_payable.search_placeholder')}
                         prefix={<SearchOutlined />}
                         value={searchTerm}
                         onChange={e => setSearchTerm(e.target.value)}

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Modal, Form, Select, DatePicker, Input, Button, Table, InputNumber, message, Divider, Row, Col, Typography } from 'antd';
 import { DeleteOutlined } from '@ant-design/icons';
+import { useTranslation } from 'react-i18next';
 import dayjs from 'dayjs';
 import { suppliersApi } from '../../../services/suppliersApi';
 import type { Supplier } from '../../../services/suppliersApi';
@@ -23,6 +24,7 @@ interface CreatePurchaseOrderModalProps {
  * Features: Multi-currency support, product search with debouncing, and estimated total calculation.
  */
 export const CreatePurchaseOrderModal: React.FC<CreatePurchaseOrderModalProps> = ({ visible, onCancel, onSuccess }) => {
+    const { t } = useTranslation();
     const [form] = Form.useForm();
     const [suppliers, setSuppliers] = useState<Supplier[]>([]);
     const [currencies, setCurrencies] = useState<Currency[]>([]);
@@ -86,7 +88,7 @@ export const CreatePurchaseOrderModal: React.FC<CreatePurchaseOrderModalProps> =
 
     const handleAddItem = (product: Product) => {
         if (selectedItems.find(item => item.productId === product.id)) {
-            message.warning('Product is already in the list');
+            message.warning(t('common.product_already_in_list', { defaultValue: 'Product is already in the list' }));
             return;
         }
 
@@ -99,7 +101,7 @@ export const CreatePurchaseOrderModal: React.FC<CreatePurchaseOrderModalProps> =
             subtotal: product.costPrice || 0,
         };
         setSelectedItems([...selectedItems, newItem]);
-        message.success('Product added');
+        message.success(t('common.product_added', { defaultValue: 'Product added' }));
     };
 
     /**
@@ -133,7 +135,7 @@ export const CreatePurchaseOrderModal: React.FC<CreatePurchaseOrderModalProps> =
             const values = await form.validateFields();
 
             if (selectedItems.length === 0) {
-                message.error('Please add at least one product');
+                message.error(t('common.add_at_least_one_product', { defaultValue: 'Please add at least one product' }));
                 return;
             }
 
@@ -154,20 +156,20 @@ export const CreatePurchaseOrderModal: React.FC<CreatePurchaseOrderModalProps> =
             };
 
             await purchaseOrdersApi.create(orderData);
-            message.success('Purchase order created successfully');
+            message.success(t('common.success_create_order', { defaultValue: 'Purchase order created successfully' }));
             onSuccess();
         } catch (error: any) {
             console.error(error);
-            message.error(error.response?.data?.message || 'Error creating purchase order');
+            message.error(error.response?.data?.message || t('common.error_create_order', { defaultValue: 'Error creating purchase order' }));
         } finally {
             setLoading(false);
         }
     };
 
     const columns = [
-        { title: 'Product', dataIndex: 'productName', key: 'name' },
+        { title: t('common.product', { defaultValue: 'Product' }), dataIndex: 'productName', key: 'name' },
         {
-            title: 'Quantity',
+            title: t('common.quantity'),
             key: 'quantity',
             render: (_: any, record: any) => (
                 <InputNumber
@@ -179,7 +181,7 @@ export const CreatePurchaseOrderModal: React.FC<CreatePurchaseOrderModalProps> =
             )
         },
         {
-            title: `Est. Cost (${selectedCurrency?.symbol || '$'})`,
+            title: `${t('common.est_cost', { defaultValue: 'Est. Cost' })} (${selectedCurrency?.symbol || '$'})`,
             key: 'cost',
             render: (_: any, record: any) => (
                 <InputNumber
@@ -192,7 +194,7 @@ export const CreatePurchaseOrderModal: React.FC<CreatePurchaseOrderModalProps> =
             )
         },
         {
-            title: 'Total',
+            title: t('common.total'),
             key: 'total',
             render: (_: any, record: any) => (record.quantity * record.cost).toFixed(2)
         },
@@ -207,24 +209,24 @@ export const CreatePurchaseOrderModal: React.FC<CreatePurchaseOrderModalProps> =
 
     return (
         <Modal
-            title="New Purchase Order"
+            title={t('common.new_purchase_order', { defaultValue: 'New Purchase Order' })}
             open={visible}
             onCancel={onCancel}
             width={900}
             footer={[
-                <Button key="back" onClick={onCancel}>Cancel</Button>,
+                <Button key="back" onClick={onCancel}>{t('common.cancel')}</Button>,
                 <Button key="submit" type="primary" loading={loading} onClick={handleSubmit}>
-                    Create Order
+                    {t('common.create_order', { defaultValue: 'Create Order' })}
                 </Button>
             ]}
         >
             <Form form={form} layout="vertical">
                 <Row gutter={16}>
                     <Col span={8}>
-                        <Form.Item name="supplierId" label="Supplier" rules={[{ required: true }]}>
+                        <Form.Item name="supplierId" label={t('common.supplier', { defaultValue: 'Supplier' })} rules={[{ required: true }]}>
                             <Select
                                 showSearch
-                                placeholder="Select supplier"
+                                placeholder={t('common.select_supplier', { defaultValue: 'Select supplier' })}
                                 optionFilterProp="children"
                             >
                                 {suppliers.map(s => (
@@ -234,21 +236,21 @@ export const CreatePurchaseOrderModal: React.FC<CreatePurchaseOrderModalProps> =
                         </Form.Item>
                     </Col>
                     <Col span={8}>
-                        <Form.Item name="orderDate" label="Order Date" rules={[{ required: true }]}>
+                        <Form.Item name="orderDate" label={t('common.order_date', { defaultValue: 'Order Date' })} rules={[{ required: true }]}>
                             <DatePicker style={{ width: '100%' }} />
                         </Form.Item>
                     </Col>
                     <Col span={8}>
-                        <Form.Item name="expectedDate" label="Expected Delivery Date">
+                        <Form.Item name="expectedDate" label={t('common.expected_delivery_date', { defaultValue: 'Expected Delivery Date' })}>
                             <DatePicker style={{ width: '100%' }} />
                         </Form.Item>
                     </Col>
                 </Row>
                 <Row gutter={16}>
                     <Col span={8}>
-                        <Form.Item name="currencyCode" label="Currency" rules={[{ required: true }]}>
+                        <Form.Item name="currencyCode" label={t('common.currency')} rules={[{ required: true }]}>
                             <Select
-                                placeholder="Select currency"
+                                placeholder={t('common.select_currency', { defaultValue: 'Select currency' })}
                                 onChange={(val) => {
                                     const curr = currencies.find(c => c.code === val);
                                     if (curr) setSelectedCurrency(curr);
@@ -261,19 +263,19 @@ export const CreatePurchaseOrderModal: React.FC<CreatePurchaseOrderModalProps> =
                         </Form.Item>
                     </Col>
                     <Col span={16}>
-                        <Form.Item name="notes" label="Notes / Comments">
-                            <Input placeholder="e.g. Urgent delivery, payment on arrival, etc." />
+                        <Form.Item name="notes" label={t('common.notes', { defaultValue: 'Notes / Comments' })}>
+                            <Input placeholder={t('common.purchase_notes_placeholder', { defaultValue: 'e.g. Urgent delivery, payment on arrival, etc.' })} />
                         </Form.Item>
                     </Col>
                 </Row>
             </Form>
 
-            <Divider>Select Products</Divider>
+            <Divider>{t('common.select_products', { defaultValue: 'Select Products' })}</Divider>
 
             <div style={{ marginBottom: 16 }}>
                 <Select
                     showSearch
-                    placeholder="Search product by SKU or Name..."
+                    placeholder={t('common.search_product_placeholder', { defaultValue: 'Search product by SKU or Name...' })}
                     style={{ width: '100%' }}
                     defaultActiveFirstOption={false}
                     showArrow={false}
@@ -290,7 +292,7 @@ export const CreatePurchaseOrderModal: React.FC<CreatePurchaseOrderModalProps> =
                 >
                     {products.map(p => (
                         <Select.Option key={p.id} value={p.id}>
-                            {p.name} ({p.sku}) - Current Stock: {p.stock}
+                            {p.name} ({p.sku}) - {t('common.current_stock', { defaultValue: 'Current Stock' })}: {p.stock}
                         </Select.Option>
                     ))}
                 </Select>
@@ -307,7 +309,7 @@ export const CreatePurchaseOrderModal: React.FC<CreatePurchaseOrderModalProps> =
                     return (
                         <Table.Summary.Row>
                             <Table.Summary.Cell index={0} colSpan={3} align="right">
-                                <Typography.Text strong>ESTIMATED TOTAL</Typography.Text>
+                                <Typography.Text strong>{t('common.estimated_total', { defaultValue: 'ESTIMATED TOTAL' })}</Typography.Text>
                             </Table.Summary.Cell>
                             <Table.Summary.Cell index={1}>
                                 <Typography.Text type="success" strong>

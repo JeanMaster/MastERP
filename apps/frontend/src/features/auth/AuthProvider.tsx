@@ -2,7 +2,8 @@ import { createContext, useContext, useState, useEffect } from 'react';
 import type { ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { message } from 'antd';
+import { App } from 'antd';
+import { useTranslation } from 'react-i18next';
 
 // Hardcoded for now, should match backend
 
@@ -28,6 +29,8 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
+    const { t } = useTranslation();
+    const { message } = App.useApp();
     const [user, setUser] = useState<User | null>(null);
     const [token, setToken] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
@@ -52,7 +55,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         localStorage.setItem('token', newToken);
         localStorage.setItem('user', JSON.stringify(newUser));
         axios.defaults.headers.common['Authorization'] = `Bearer ${newToken}`;
-        message.success(`Bienvenido, ${newUser.name}`);
+        message.success(t('auth.welcome', { name: newUser.name }));
         navigate('/app');
     };
 

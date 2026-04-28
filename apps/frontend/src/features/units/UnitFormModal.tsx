@@ -3,6 +3,7 @@ import { Modal, Form, Input, message } from 'antd';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { unitsApi } from '../../services/unitsApi';
 import type { Unit, CreateUnitDto, UpdateUnitDto } from '../../services/unitsApi';
+import { useTranslation } from 'react-i18next';
 
 interface UnitFormModalProps {
     open: boolean;
@@ -15,6 +16,7 @@ interface UnitFormModalProps {
  * Modal form for creating or editing measurement units.
  */
 export const UnitFormModal = ({ open, unit, onClose }: UnitFormModalProps) => {
+    const { t } = useTranslation();
     const [form] = Form.useForm();
     const queryClient = useQueryClient();
 
@@ -22,13 +24,13 @@ export const UnitFormModal = ({ open, unit, onClose }: UnitFormModalProps) => {
     const createMutation = useMutation({
         mutationFn: unitsApi.create,
         onSuccess: () => {
-            message.success('Unit created successfully');
+            message.success(t('units.success_create'));
             queryClient.invalidateQueries({ queryKey: ['units'] });
             onClose();
             form.resetFields();
         },
         onError: (error: any) => {
-            message.error(error.response?.data?.message || 'Error creating unit');
+            message.error(error.response?.data?.message || t('common.error'));
         },
     });
 
@@ -37,13 +39,13 @@ export const UnitFormModal = ({ open, unit, onClose }: UnitFormModalProps) => {
         mutationFn: ({ id, dto }: { id: string; dto: UpdateUnitDto }) =>
             unitsApi.update(id, dto),
         onSuccess: () => {
-            message.success('Unit updated successfully');
+            message.success(t('units.success_update'));
             queryClient.invalidateQueries({ queryKey: ['units'] });
             onClose();
             form.resetFields();
         },
         onError: (error: any) => {
-            message.error(error.response?.data?.message || 'Error updating unit');
+            message.error(error.response?.data?.message || t('common.error'));
         },
     });
 
@@ -93,29 +95,29 @@ export const UnitFormModal = ({ open, unit, onClose }: UnitFormModalProps) => {
 
     return (
         <Modal
-            title={unit ? 'Edit Unit' : 'New Unit'}
+            title={unit ? t('units.edit') : t('units.new')}
             open={open}
             onOk={handleSubmit}
             onCancel={onClose}
             confirmLoading={createMutation.isPending || updateMutation.isPending}
-            okText={unit ? 'Update (F9)' : 'Create (F9)'}
-            cancelText="Cancel"
+            okText={unit ? `${t('common.save')} (F9)` : `${t('common.add')} (F9)`}
+            cancelText={t('common.cancel')}
         >
             <Form form={form} layout="vertical" style={{ marginTop: 20 }}>
                 <Form.Item
-                    label="Name"
+                    label={t('units.name')}
                     name="name"
-                    rules={[{ required: true, message: 'Name is required' }]}
+                    rules={[{ required: true, message: t('units.name_required') }]}
                 >
-                    <Input placeholder="e.g., Box, Roll, Kilogram" />
+                    <Input placeholder={t('units.name_placeholder')} />
                 </Form.Item>
 
                 <Form.Item
-                    label="Abbreviation"
+                    label={t('units.abbreviation')}
                     name="abbreviation"
-                    rules={[{ required: true, message: 'Abbreviation is required' }]}
+                    rules={[{ required: true, message: t('units.abbreviation_required') }]}
                 >
-                    <Input placeholder="e.g., BOX, RLL, KG" maxLength={10} />
+                    <Input placeholder={t('units.abbreviation_placeholder')} maxLength={10} />
                 </Form.Item>
             </Form>
         </Modal>

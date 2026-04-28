@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { formatVenezuelanPrice } from '../../utils/formatters';
-import { Card, Table, Button, Space, Input, message, Popconfirm, Tag, Tooltip, Grid, Popover, Image } from 'antd';
+import { Card, Table, Button, Space, Input, App, Popconfirm, Tag, Tooltip, Grid, Popover, Image } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined, ReloadOutlined, PictureOutlined, NodeIndexOutlined } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { productsApi } from '../../services/productsApi';
@@ -16,6 +16,7 @@ import { useTranslation } from 'react-i18next';
  */
 export const CompositeProductsPage = () => {
     const { t } = useTranslation();
+    const { message } = App.useApp();
     const screens = Grid.useBreakpoint();
     const isMobile = !screens.lg;
     const [isModalOpen, setIsModalOpen] = useState(false);

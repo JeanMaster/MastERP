@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Card, Table, Button, Space, Input, message, Popconfirm, Tag, Grid } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined, ReloadOutlined } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -13,6 +14,7 @@ const { useBreakpoint } = Grid;
  * Management interface for measurement units (e.g., Kg, Units, Meters).
  */
 export const UnitsPage = () => {
+    const { t } = useTranslation();
     const screens = useBreakpoint();
     const isMobile = !screens.lg;
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -30,11 +32,11 @@ export const UnitsPage = () => {
     const deleteMutation = useMutation({
         mutationFn: unitsApi.delete,
         onSuccess: () => {
-            message.success('Unit deleted successfully');
+            message.success(t('units.success_delete'));
             queryClient.invalidateQueries({ queryKey: ['units'] });
         },
         onError: (error: any) => {
-            message.error(error.response?.data?.message || 'Error deleting unit');
+            message.error(error.response?.data?.message || t('units.error_delete'));
         },
     });
 
@@ -65,20 +67,20 @@ export const UnitsPage = () => {
 
     const columns = [
         {
-            title: 'Name',
+            title: t('units.name'),
             dataIndex: 'name',
             key: 'name',
             width: '40%',
         },
         {
-            title: 'Abbreviation',
+            title: t('units.abbreviation'),
             dataIndex: 'abbreviation',
             key: 'abbreviation',
             width: '30%',
             render: (text: string) => <Tag color="blue">{text}</Tag>,
         },
         {
-            title: 'Actions',
+            title: t('units.actions'),
             key: 'actions',
             width: '30%',
             render: (_: any, record: Unit) => (
@@ -88,17 +90,17 @@ export const UnitsPage = () => {
                         icon={<EditOutlined />}
                         onClick={() => handleEdit(record)}
                     >
-                        Edit
+                        {t('common.edit')}
                     </Button>
                     <Popconfirm
-                        title="Delete unit?"
-                        description="This action cannot be undone"
+                        title={t('units.delete_confirm')}
+                        description={t('units.delete_desc')}
                         onConfirm={() => handleDelete(record.id)}
-                        okText="Delete"
-                        cancelText="Cancel"
+                        okText={t('common.delete')}
+                        cancelText={t('common.cancel')}
                     >
                         <Button type="link" danger icon={<DeleteOutlined />}>
-                            Delete
+                            {t('common.delete')}
                         </Button>
                     </Popconfirm>
                 </Space>
@@ -108,11 +110,11 @@ export const UnitsPage = () => {
 
     return (
         <Card
-            title="Measurement Units"
+            title={t('units.title')}
             extra={
                 <Space direction={isMobile ? 'vertical' : 'horizontal'} style={{ width: isMobile ? '100%' : 'auto' }} align={isMobile ? 'end' : 'center'}>
                     <Input
-                        placeholder="Search unit..."
+                        placeholder={t('units.search_placeholder')}
                         prefix={<SearchOutlined />}
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
@@ -121,7 +123,7 @@ export const UnitsPage = () => {
                     <Space>
                         <Button icon={<ReloadOutlined />} onClick={() => queryClient.invalidateQueries({ queryKey: ['units'] })} />
                         <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}>
-                            {isMobile ? 'New' : 'New Unit'}
+                            {isMobile ? t('common.new') : t('units.new')}
                         </Button>
                     </Space>
                 </Space>

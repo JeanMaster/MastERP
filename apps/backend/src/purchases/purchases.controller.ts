@@ -23,7 +23,7 @@ export class PurchasesController {
   /**
    * Registers a payment for an existing purchase.
    */
-  @Post('payment')
+  @Post('payments')
   @ApiOperation({ summary: 'Register a payment for a purchase' })
   @ApiResponse({ status: 201, description: 'Payment registered successfully' })
   registerPayment(@Body() dto: any) {

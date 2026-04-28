@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Card, Table, Button, Input, Space, message, Popconfirm, Tooltip, Grid, Row, Col, Typography } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined, WhatsAppOutlined, InstagramOutlined, FacebookOutlined, TwitterOutlined, ReloadOutlined } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -14,6 +15,7 @@ import type { ColumnsType } from 'antd/es/table';
  * Allows listing, searching, editing, and contacting clients via social media/WhatsApp.
  */
 export const ClientsPage = () => {
+    const { t } = useTranslation();
     const screens = Grid.useBreakpoint();
     const isMobile = !screens.lg;
     const [search, setSearch] = useState('');
@@ -31,11 +33,11 @@ export const ClientsPage = () => {
     const deleteMutation = useMutation({
         mutationFn: clientsApi.delete,
         onSuccess: () => {
-            message.success('Client deleted successfully');
+            message.success(t('clients.success_delete'));
             queryClient.invalidateQueries({ queryKey: ['clients'] });
         },
         onError: () => {
-            message.error('Error deleting client');
+            message.error(t('clients.error_delete'));
         },
     });
 
@@ -67,24 +69,24 @@ export const ClientsPage = () => {
             cleanPhone = '58' + cleanPhone;
         }
 
-        const msg = encodeURIComponent(`Hello ${name}, we are contacting you from MastERP...`);
+        const msg = encodeURIComponent(t('clients.whatsapp_msg', { name }));
         return `https://wa.me/${cleanPhone}/?text=${msg}`;
     };
 
     const columns: ColumnsType<Client> = [
         {
-            title: 'ID/RIF',
+            title: t('clients.id'),
             dataIndex: 'id',
             key: 'id',
             width: 150,
         },
         {
-            title: 'Name',
+            title: t('clients.name'),
             dataIndex: 'name',
             key: 'name',
         },
         {
-            title: 'Phone',
+            title: t('clients.phone'),
             dataIndex: 'phone',
             key: 'phone',
             width: 150,
@@ -92,7 +94,7 @@ export const ClientsPage = () => {
                 <Space>
                     {phone}
                     {record.hasWhatsapp && phone && (
-                        <Tooltip title="Send WhatsApp">
+                        <Tooltip title={t('clients.send_whatsapp')}>
                             <WhatsAppOutlined
                                 style={{ color: '#25D366', cursor: 'pointer', fontSize: 16 }}
                                 onClick={() => window.open(formatWhatsAppUrl(phone, record.name), '_blank')}
@@ -103,18 +105,18 @@ export const ClientsPage = () => {
             ),
         },
         {
-            title: 'Email',
+            title: t('clients.email'),
             dataIndex: 'email',
             key: 'email',
         },
         {
-            title: 'Social Media',
+            title: t('clients.social_media'),
             key: 'social',
             width: 120,
             render: (_, record: Client) => (
                 <Space>
                     {record.social1 && (
-                        <Tooltip title={`Instagram: ${record.social1}`}>
+                        <Tooltip title={t('clients.instagram_tooltip', { handle: record.social1 })}>
                             <InstagramOutlined
                                 style={{ color: '#E1306C', cursor: 'pointer' }}
                                 onClick={() => window.open(`https://instagram.com/${record.social1}`, '_blank')}
@@ -122,7 +124,7 @@ export const ClientsPage = () => {
                         </Tooltip>
                     )}
                     {record.social2 && (
-                        <Tooltip title={`Facebook: ${record.social2}`}>
+                        <Tooltip title={t('clients.facebook_tooltip', { handle: record.social2 })}>
                             <FacebookOutlined
                                 style={{ color: '#4267B2', cursor: 'pointer' }}
                                 onClick={() => window.open(`https://facebook.com/${record.social2}`, '_blank')}
@@ -130,7 +132,7 @@ export const ClientsPage = () => {
                         </Tooltip>
                     )}
                     {record.social3 && (
-                        <Tooltip title={`Twitter/X: ${record.social3}`}>
+                        <Tooltip title={t('clients.twitter_tooltip', { handle: record.social3 })}>
                             <TwitterOutlined
                                 style={{ color: '#1DA1F2', cursor: 'pointer' }}
                                 onClick={() => window.open(`https://x.com/${record.social3}`, '_blank')}
@@ -141,7 +143,7 @@ export const ClientsPage = () => {
             ),
         },
         {
-            title: 'Actions',
+            title: t('clients.actions'),
             key: 'actions',
             width: 150,
             fixed: isMobile ? false : ('right' as const),
@@ -154,11 +156,11 @@ export const ClientsPage = () => {
                         onClick={() => handleEdit(record)}
                     />
                     <Popconfirm
-                        title="Delete client?"
-                        description="This action will mark the client as inactive."
+                        title={t('clients.delete_confirm')}
+                        description={t('clients.delete_desc')}
                         onConfirm={() => handleDelete(record.id)}
-                        okText="Yes"
-                        cancelText="No"
+                        okText={t('common.yes')}
+                        cancelText={t('common.no')}
                     >
                         <Button
                             type="text"
@@ -176,7 +178,7 @@ export const ClientsPage = () => {
             <Card>
                 <Row justify="space-between" align="middle" gutter={[16, 16]} style={{ marginBottom: 24 }}>
                     <Col xs={24} md={12}>
-                        <Typography.Title level={isMobile ? 3 : 2} style={{ margin: 0 }}>👥 Clients Management</Typography.Title>
+                        <Typography.Title level={isMobile ? 3 : 2} style={{ margin: 0 }}>👥 {t('clients.title')}</Typography.Title>
                     </Col>
                     <Col xs={24} md={12} style={{ textAlign: 'right' }}>
                         <Space wrap={isMobile}>
@@ -190,7 +192,7 @@ export const ClientsPage = () => {
                                 onClick={() => setIsModalOpen(true)}
                                 block={isMobile}
                             >
-                                {isMobile ? 'New' : 'New Client'}
+                                {isMobile ? t('common.add') : t('clients.new')}
                             </Button>
                         </Space>
                     </Col>
@@ -198,7 +200,7 @@ export const ClientsPage = () => {
 
                 <div style={{ marginBottom: 16 }}>
                     <Input
-                        placeholder="Search by name, ID/RIF or email"
+                        placeholder={t('clients.search_placeholder')}
                         prefix={<SearchOutlined />}
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
@@ -219,7 +221,7 @@ export const ClientsPage = () => {
                         showSizeChanger: true,
                         pageSizeOptions: ['10', '20', '50', '100'],
                         size: isMobile ? 'small' : 'default',
-                        showTotal: (total) => `Total: ${total} clients`,
+                        showTotal: (total) => t('clients.total_count', { total }),
                     }}
                 />
             </Card>

@@ -14,6 +14,7 @@ import {
     Grid,
     Alert
 } from 'antd';
+import { useTranslation } from 'react-i18next';
 import {
     ReloadOutlined,
     DownloadOutlined,
@@ -53,6 +54,7 @@ export const SalesReports = () => {
     const [newPaymentMethod, setNewPaymentMethod] = useState<string>('');
     const [pageSize, setPageSize] = useState<number>(10);
     const queryClient = useQueryClient();
+    const { t } = useTranslation();
 
     /**
      * Updates the payment method for a specific sale record.
@@ -61,12 +63,12 @@ export const SalesReports = () => {
         mutationFn: (variables: { id: string, method: string }) =>
             salesApi.updatePaymentMethod(variables.id, variables.method),
         onSuccess: () => {
-            message.success('Payment method updated');
+            message.success(t('sales_history.messages.update_payment_success'));
             setIsEditPaymentModalOpen(false);
             queryClient.invalidateQueries({ queryKey: ['sales-reports'] });
         },
         onError: () => {
-            message.error('Error updating payment method');
+            message.error(t('sales_history.messages.update_payment_error'));
         }
     });
 
@@ -85,21 +87,21 @@ export const SalesReports = () => {
     const deleteSaleMutation = useMutation({
         mutationFn: (id: string) => salesApi.remove(id),
         onSuccess: () => {
-            message.success('Sale deleted and stock restored');
+            message.success(t('sales_history.messages.delete_success'));
             queryClient.invalidateQueries({ queryKey: ['sales-reports'] });
         },
         onError: () => {
-            message.error('Error deleting sale');
+            message.error(t('sales_history.messages.delete_error'));
         }
     });
 
     const handleDeleteSale = (sale: Sale) => {
         Modal.confirm({
-            title: 'Delete Sale?',
-            content: `This action will void invoice ${sale.invoiceNumber}, restore product stock, and if it was the last sale, allow the invoice number to be reused.`,
-            okText: 'Yes, Delete',
+            title: t('sales_history.messages.delete_confirm_title'),
+            content: t('sales_history.messages.delete_confirm_content', { invoice: sale.invoiceNumber }),
+            okText: t('sales_history.filters.apply'),
             okType: 'danger',
-            cancelText: 'No',
+            cancelText: t('sales_history.messages.delete_confirm_no', { defaultValue: 'No' }),
             onOk: () => deleteSaleMutation.mutate(sale.id)
         });
     };
@@ -161,11 +163,10 @@ export const SalesReports = () => {
 
     const columns = [
         {
-            title: 'Invoice #',
+            title: t('sales_history.table.invoice'),
             dataIndex: 'invoiceNumber',
             key: 'invoiceNumber',
-            width: 120,
-            fixed: 'left' as const,
+            width: 110,
             render: (invoiceNumber: string, record: Sale) => (
                 <Button
                     type="link"
@@ -181,70 +182,70 @@ export const SalesReports = () => {
             sorter: (a: Sale, b: Sale) => a.invoiceNumber.localeCompare(b.invoiceNumber)
         },
         {
-            title: 'Date',
+            title: t('sales_history.table.date'),
             dataIndex: 'date',
             key: 'date',
-            width: 150,
-            render: (date: string) => dayjs(date).format('MM/DD/YYYY HH:mm'),
+            width: 140,
+            render: (date: string) => <span style={{ fontSize: '12px' }}>{dayjs(date).format('MM/DD/YYYY HH:mm')}</span>,
             sorter: (a: Sale, b: Sale) => dayjs(a.date).unix() - dayjs(b.date).unix()
         },
         {
-            title: 'Customer',
+            title: t('sales_history.table.customer'),
             dataIndex: 'client',
             key: 'client',
-            width: 160,
-            render: (client: any) => client?.name || 'Walk-in Customer'
+            width: 140,
+            render: (client: any) => <span style={{ fontSize: '12px' }}>{client?.name || t('sales_history.table.walk_in')}</span>
         },
         {
-            title: 'Items',
+            title: t('sales_history.table.items'),
             key: 'products',
+            width: 190,
             render: (_: any, record: Sale) => (
                 <div style={{ maxWidth: '100%' }}>
                     {record.items.slice(0, 3).map(item => (
-                        <div key={item.id} style={{ fontSize: '12px', lineHeight: '1.4', whiteSpace: 'normal' }}>
+                        <div key={item.id} style={{ fontSize: '11px', lineHeight: '1.2', whiteSpace: 'normal', marginBottom: '2px' }}>
                             • {item.product.name} x{item.quantity}
                         </div>
                     ))}
                     {record.items.length > 3 && (
                         <Text type="secondary" style={{ fontSize: '11px' }}>
-                            +{record.items.length - 3} more...
+                            +{record.items.length - 3} {t('sales_history.table.more')}
                         </Text>
                     )}
                 </div>
             )
         },
         {
-            title: 'Paid Amt (Nominal)',
+            title: t('sales_history.table.paid_amt'),
             dataIndex: 'total',
             key: 'nominalTotal',
-            width: 150,
+            width: 120,
             align: 'right' as const,
             render: (value: number) => (
-                <Text style={{ fontSize: '14px', color: '#595959' }}>
+                <Text style={{ fontSize: '13px', color: '#595959' }}>
                     {formatVenezuelanPrice(value)}
                 </Text>
             ),
             sorter: (a: Sale, b: Sale) => (a.total || 0) - (b.total || 0)
         },
         {
-            title: 'Revalued Total',
+            title: t('sales_history.table.revalued_total'),
             dataIndex: 'revaluedTotal',
             key: 'total',
-            width: 150,
+            width: 120,
             align: 'right' as const,
             render: (value: number | null | undefined, record: Sale) => (
-                <Text strong style={{ color: '#1890ff', fontSize: '14px' }}>
+                <Text strong style={{ color: '#1890ff', fontSize: '13px' }}>
                     {formatVenezuelanPrice(value ?? record.total ?? 0)}
                 </Text>
             ),
             sorter: (a: Sale, b: Sale) => (a.revaluedTotal || a.total || 0) - (b.revaluedTotal || b.total || 0)
         },
         {
-            title: 'Actions',
+            title: t('sales_history.table.actions'),
             key: 'actions',
-            width: 130,
+            width: 110,
             align: 'center' as const,
-            fixed: isMobile ? false : ('right' as const),
             render: (_: any, record: Sale) => (
                 <Space>
                     <Button
@@ -256,7 +257,7 @@ export const SalesReports = () => {
                             setNewPaymentMethod(record.paymentMethod.split(',')[0]);
                             setIsEditPaymentModalOpen(true);
                         }}
-                        title="Edit Payment Method"
+                        title={t('sales_history.table.edit_payment')}
                     />
                     <Button
                         type="text"
@@ -266,7 +267,7 @@ export const SalesReports = () => {
                             e.stopPropagation();
                             handleDeleteSale(record);
                         }}
-                        title="Delete Sale"
+                        title={t('sales_history.table.delete_sale')}
                     />
                     <Button
                         type="text"
@@ -276,7 +277,7 @@ export const SalesReports = () => {
                             setSelectedSale(record);
                             setIsInvoiceModalOpen(true);
                         }}
-                        title="Reprint Invoice"
+                        title={t('sales_history.table.reprint')}
                         style={{ color: '#1890ff' }}
                     />
                 </Space>
@@ -289,8 +290,8 @@ export const SalesReports = () => {
             <div style={{ marginBottom: 24 }}>
                 <Row justify="space-between" align="middle" gutter={[16, 16]}>
                     <Col xs={24} md={12}>
-                        <Title level={isMobile ? 3 : 2} style={{ margin: 0 }}>📊 Sales Reports</Title>
-                        <Text type="secondary">Visualize and analyze your sales performance</Text>
+                        <Title level={isMobile ? 3 : 2} style={{ margin: 0 }}>{t('sales_history.reports_title')}</Title>
+                        <Text type="secondary">{t('sales_history.reports_subtitle')}</Text>
                     </Col>
                     <Col xs={24} md={12} style={{ textAlign: isMobile ? 'left' : 'right' }}>
                         <Space wrap>
@@ -300,14 +301,14 @@ export const SalesReports = () => {
                                 onClick={() => refetch()}
                                 block={isMobile}
                             >
-                                Refresh
+                                {t('sales_history.refresh')}
                             </Button>
                             <Button
                                 icon={<DownloadOutlined />}
                                 disabled={sales.length === 0}
                                 block={isMobile}
                             >
-                                Export
+                                {t('sales_history.export')}
                             </Button>
                         </Space>
                     </Col>
@@ -319,7 +320,7 @@ export const SalesReports = () => {
                 <Col xs={12} lg={4}>
                     <Card size="small">
                         <Statistic
-                            title="Total Sales"
+                            title={t('sales_history.stats.total_sales')}
                             value={totalSalesCount}
                             prefix={<ShoppingOutlined />}
                             valueStyle={{ color: '#1890ff', fontSize: isMobile ? 18 : 22 }}
@@ -329,7 +330,7 @@ export const SalesReports = () => {
                 <Col xs={12} lg={5}>
                     <Card size="small">
                         <Statistic
-                            title="Adjusted Gross Revenue"
+                            title={t('sales_history.stats.adjusted_revenue')}
                             value={totalAdjustedRevenue}
                             precision={2}
                             prefix={<DollarOutlined />}
@@ -341,7 +342,7 @@ export const SalesReports = () => {
                 <Col xs={12} lg={5}>
                     <Card size="small" style={{ border: '1px solid #d9d9d9' }}>
                         <Statistic
-                            title="Real Nominal Revenue"
+                            title={t('sales_history.stats.nominal_revenue')}
                             value={summary.nominalRevenue || 0}
                             precision={2}
                             prefix={<ShoppingOutlined style={{ opacity: 0.7 }} />}
@@ -353,7 +354,7 @@ export const SalesReports = () => {
                 <Col xs={12} lg={5}>
                     <Card size="small">
                         <Statistic
-                            title="Total Discounts"
+                            title={t('sales_history.stats.total_discounts')}
                             value={totalDiscount}
                             precision={2}
                             prefix={<DollarOutlined />}
@@ -365,7 +366,7 @@ export const SalesReports = () => {
                 <Col xs={12} lg={5}>
                     <Card size="small">
                         <Statistic
-                            title="Average Ticket"
+                            title={t('sales_history.stats.average_ticket')}
                             value={averageTicket}
                             precision={2}
                             prefix={<DollarOutlined />}
@@ -378,11 +379,11 @@ export const SalesReports = () => {
 
             {!isMobile && (
                 <Alert
-                    message="Returns and Inflation Adjustment Guide"
+                    message={t('sales_history.guide.title')}
                     description={
                         <Space direction="vertical" size={2}>
-                            <Text>• <Text strong>Real Nominal Revenue</Text> is the exact amount collected on the day of sale. <Text strong style={{ color: '#cf1322' }}>Use the 'Paid Amt' data for refunds.</Text></Text>
-                            <Text>• <Text strong>Adjusted Gross Revenue</Text> revalues historical sales to today's rate for inflation-adjusted growth analysis.</Text>
+                            <Text>• <Text strong>{t('sales_history.stats.nominal_revenue')}</Text> {t('sales_history.guide.nominal_desc')} <Text strong style={{ color: '#cf1322' }}>{t('sales_history.guide.refund_warning')}</Text></Text>
+                            <Text>• <Text strong>{t('sales_history.stats.adjusted_revenue')}</Text> {t('sales_history.guide.adjusted_desc')}</Text>
                         </Space>
                     }
                     type="info"
@@ -391,23 +392,23 @@ export const SalesReports = () => {
                 />
             )}
 
-            <Card title="Filters" style={{ marginBottom: 16 }} size={isMobile ? 'small' : 'default'}>
+            <Card title={t('sales_history.filters.title')} style={{ marginBottom: 16 }} size={isMobile ? 'small' : 'default'}>
                 <Row gutter={[16, 16]}>
                     <Col xs={24} md={8}>
-                        <Text strong>Date Range:</Text>
+                        <Text strong>{t('sales_history.filters.date_range')}:</Text>
                         <RangePicker
                             style={{ width: '100%', marginTop: 8 }}
                             value={dateRange}
                             onChange={handleDateRangeChange}
                             format="MM/DD/YYYY"
-                            placeholder={['Start Date', 'End Date']}
+                            placeholder={[t('sales_history.filters.start_date'), t('sales_history.filters.end_date')]}
                         />
                     </Col>
                     <Col xs={12} md={4}>
-                        <Text strong>Customer:</Text>
+                        <Text strong>{t('sales_history.filters.customer')}:</Text>
                         <Select
                             style={{ width: '100%', marginTop: 8 }}
-                            placeholder="All Customers"
+                            placeholder={t('sales_history.filters.all_customers')}
                             allowClear
                             onChange={(value) => handleFilterChange('clientId', value)}
                             value={filters.clientId}
@@ -415,10 +416,10 @@ export const SalesReports = () => {
                         />
                     </Col>
                     <Col xs={12} md={4}>
-                        <Text strong>Product:</Text>
+                        <Text strong>{t('sales_history.filters.product')}:</Text>
                         <Select
                             style={{ width: '100%', marginTop: 8 }}
-                            placeholder="All Products"
+                            placeholder={t('sales_history.filters.all_products')}
                             allowClear
                             onChange={(value) => handleFilterChange('productId', value)}
                             value={filters.productId}
@@ -426,23 +427,23 @@ export const SalesReports = () => {
                         />
                     </Col>
                     <Col xs={12} md={4}>
-                        <Text strong>Payment:</Text>
+                        <Text strong>{t('sales_history.filters.payment')}:</Text>
                         <Select
                             style={{ width: '100%', marginTop: 8 }}
-                            placeholder="All Methods"
+                            placeholder={t('sales_history.filters.all_methods')}
                             allowClear
                             onChange={(value) => handleFilterChange('paymentMethod', value)}
                             value={filters.paymentMethod}
                         >
-                            <Select.Option value="CASH">Cash</Select.Option>
-                            <Select.Option value="DEBIT">Debit Card</Select.Option>
-                            <Select.Option value="CREDIT">Credit Card</Select.Option>
-                            <Select.Option value="TRANSFER">Transfer</Select.Option>
-                            <Select.Option value="MOBILE">Mobile Payment</Select.Option>
+                            <Select.Option value="CASH">{t('pos.checkout.cash', { defaultValue: 'Cash' })}</Select.Option>
+                            <Select.Option value="DEBIT">{t('pos.checkout.debit_card', { defaultValue: 'Debit Card' })}</Select.Option>
+                            <Select.Option value="CREDIT">{t('pos.checkout.credit_card', { defaultValue: 'Credit Card' })}</Select.Option>
+                            <Select.Option value="TRANSFER">{t('pos.checkout.transfer', { defaultValue: 'Transfer' })}</Select.Option>
+                            <Select.Option value="MOBILE">{t('pos.checkout.mobile_pay', { defaultValue: 'Mobile Payment' })}</Select.Option>
                         </Select>
                     </Col>
                     <Col xs={12} md={4}>
-                        <Text strong>Min Amount:</Text>
+                        <Text strong>{t('sales_history.filters.min_amount')}:</Text>
                         <InputNumber
                             style={{ width: '100%', marginTop: 8 }}
                             placeholder="0.00"
@@ -454,8 +455,8 @@ export const SalesReports = () => {
                 </Row>
                 <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 16 }}>
                     <Space>
-                        <Button onClick={handleResetFilters}>Clear All</Button>
-                        <Button type="primary" onClick={() => refetch()} loading={isLoading}>Apply Filters</Button>
+                        <Button onClick={handleResetFilters}>{t('sales_history.filters.clear')}</Button>
+                        <Button type="primary" onClick={() => refetch()} loading={isLoading}>{t('sales_history.filters.apply')}</Button>
                     </Space>
                 </div>
             </Card>
@@ -474,8 +475,8 @@ export const SalesReports = () => {
                         size: isMobile ? 'small' : 'default',
                         responsive: true
                     }}
-                    scroll={{ x: 900 }}
-                    size={isMobile ? 'small' : 'middle'}
+                    scroll={{ x: 'max-content' }}
+                    size="small"
                 />
             </Card>
 
@@ -492,30 +493,29 @@ export const SalesReports = () => {
             />
 
             <Modal
-                title="Edit Payment Method"
+                title={t('sales_history.messages.edit_payment_title')}
                 open={isEditPaymentModalOpen}
                 onCancel={() => setIsEditPaymentModalOpen(false)}
                 onOk={handleEditPayment}
                 confirmLoading={updatePaymentSchema.isPending}
             >
-                <Text>Select the new payment method for invoice <Text strong>{selectedSale?.invoiceNumber}</Text>:</Text>
+                <Text>{t('sales_history.messages.select_new_method', { invoice: selectedSale?.invoiceNumber })}</Text>
                 <Select
                     style={{ width: '100%', marginTop: 16 }}
                     value={newPaymentMethod}
                     onChange={setNewPaymentMethod}
                 >
-                    <Select.Option value="CASH">Cash (Bs)</Select.Option>
-                    <Select.Option value="DEBIT">Debit Card</Select.Option>
-                    <Select.Option value="CREDIT">Credit Card</Select.Option>
-                    <Select.Option value="TRANSFER">Transfer</Select.Option>
-                    <Select.Option value="MOBILE">Mobile Payment</Select.Option>
-                    <Select.Option value="CURRENCY_USD">Cash USD</Select.Option>
-                    <Select.Option value="CURRENCY_EUR">Cash EUR</Select.Option>
+                    <Select.Option value="CASH">{t('pos.checkout.cash', { defaultValue: 'Cash (Bs)' })}</Select.Option>
+                    <Select.Option value="DEBIT">{t('pos.checkout.debit_card', { defaultValue: 'Debit Card' })}</Select.Option>
+                    <Select.Option value="CREDIT">{t('pos.checkout.credit_card', { defaultValue: 'Credit Card' })}</Select.Option>
+                    <Select.Option value="TRANSFER">{t('pos.checkout.transfer', { defaultValue: 'Transfer' })}</Select.Option>
+                    <Select.Option value="MOBILE">{t('pos.checkout.mobile_pay', { defaultValue: 'Mobile Payment' })}</Select.Option>
+                    <Select.Option value="CURRENCY_USD">{t('pos.checkout.currency_prefix', { defaultValue: 'Cash' })} USD</Select.Option>
+                    <Select.Option value="CURRENCY_EUR">{t('pos.checkout.currency_prefix', { defaultValue: 'Cash' })} EUR</Select.Option>
                 </Select>
                 <div style={{ marginTop: 12 }}>
                     <Text type="warning" style={{ fontSize: 12 }}>
-                        Note: This action only updates the reporting label. 
-                        The original cash register movements will not be automatically updated.
+                        {t('sales_history.messages.edit_payment_note')}
                     </Text>
                 </div>
             </Modal>

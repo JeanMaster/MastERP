@@ -5,6 +5,7 @@ import {
     SaveOutlined,
     ReloadOutlined,
 } from '@ant-design/icons';
+import { useTranslation } from 'react-i18next';
 
 const { Text } = Typography;
 
@@ -61,6 +62,7 @@ interface POSFooterProps {
  * Contains global keyboard shortcut buttons and the main Checkout (Totalize) button.
  */
 export const POSFooter = ({ onClientClick, onCheckoutClick, onCajaClick, onCouponClick }: POSFooterProps) => {
+    const { t } = useTranslation();
     const screens = Grid.useBreakpoint();
     const isMobile = !screens.lg;
 
@@ -78,13 +80,13 @@ export const POSFooter = ({ onClientClick, onCheckoutClick, onCajaClick, onCoupo
             <div style={{ display: 'flex', gap: isMobile ? 5 : 10, flexWrap: 'wrap' }}>
                 <FunctionKey
                     fKey="F3"
-                    label={isMobile ? "" : "Customer"}
+                    label={isMobile ? "" : t('pos.header.customer')}
                     icon={<UserOutlined />}
                     onClick={onClientClick}
                 />
                 <FunctionKey
                     fKey="F2"
-                    label={isMobile ? "" : "Coupon"}
+                    label={isMobile ? "" : t('pos.footer.coupons')}
                     icon={<ShoppingCartOutlined />}
                     onClick={onCouponClick}
                 />
@@ -92,11 +94,15 @@ export const POSFooter = ({ onClientClick, onCheckoutClick, onCajaClick, onCoupo
                     <>
                         <FunctionKey
                             fKey="F10"
-                            label="Register"
+                            label={t('pos.header.register')}
                             icon={<SaveOutlined />}
                             onClick={onCajaClick}
                         />
-                        <FunctionKey fKey="F11" label="Reload" icon={<ReloadOutlined />} />
+                        <FunctionKey 
+                            fKey="F11" 
+                            label={t('common.reload') || 'Reload'} 
+                            icon={<ReloadOutlined />} 
+                        />
                     </>
                 )}
             </div>
@@ -118,13 +124,13 @@ export const POSFooter = ({ onClientClick, onCheckoutClick, onCajaClick, onCoupo
                 onClick={onCheckoutClick}
             >
                 <ShoppingCartOutlined style={{ fontSize: isMobile ? 20 : 24 }} />
-                <span>{isMobile ? "Pay" : "F9 Checkout"}</span>
+                <span>{isMobile ? t('pos.footer.process') : `F9 ${t('pos.footer.checkout')}`}</span>
             </Button>
 
             {!isMobile && (
                 <FunctionKey
                     fKey="DEL"
-                    label="Reset"
+                    label={t('pos.footer.clear')}
                     icon={<ReloadOutlined />}
                     color="#fff1f0"
                     onClick={() => {

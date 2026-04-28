@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Card, Table, Button, Space, Input, message, Popconfirm, Grid, Row, Col, Statistic } from 'antd';
+import { Card, Table, Button, Space, Input, App, Popconfirm, Grid, Row, Col, Statistic } from 'antd';
+import { useTranslation } from 'react-i18next';
 import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined, ReloadOutlined, BankOutlined, HistoryOutlined, SwapOutlined } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { banksApi } from '../../services/banksApi';
@@ -17,6 +18,8 @@ const { useBreakpoint } = Grid;
  * Manages bank accounts, vault, and liquidity.
  */
 export const BanksPage = () => {
+    const { t } = useTranslation();
+    const { message } = App.useApp();
     const screens = useBreakpoint();
     const isMobile = !screens.lg;
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -36,25 +39,25 @@ export const BanksPage = () => {
     const deleteMutation = useMutation({
         mutationFn: banksApi.delete,
         onSuccess: () => {
-            message.success('Account deleted');
+            message.success(t('banks.messages.success_delete'));
             queryClient.invalidateQueries({ queryKey: ['banks'] });
         },
         onError: () => {
-            message.error('Error deleting account');
+            message.error(t('banks.messages.error_delete'));
         },
     });
 
     const columns = [
         {
-            title: 'Bank / Resource',
+            title: t('banks.table.bank_resource'),
             dataIndex: 'bankName',
             key: 'bankName',
             render: (text: string, record: BankAccount) => {
                 const types: Record<string, string> = {
-                    'CHECKING': 'Checking Account',
-                    'SAVINGS': 'Savings Account',
-                    'CASH_VAULT': 'Vault / Cash',
-                    'MOBILE_PAYMENT': 'Mobile Payment / Wallet'
+                    'CHECKING': t('banks.table.checking'),
+                    'SAVINGS': t('banks.table.savings'),
+                    'CASH_VAULT': t('banks.table.cash_vault'),
+                    'MOBILE_PAYMENT': t('banks.table.mobile_payment')
                 };
                 return (
                     <Space>
@@ -68,12 +71,12 @@ export const BanksPage = () => {
             }
         },
         {
-            title: 'Account Number',
+            title: t('banks.table.account_number'),
             dataIndex: 'accountNumber',
             key: 'accountNumber',
         },
         {
-            title: 'Holder',
+            title: t('banks.table.holder'),
             dataIndex: 'holderName',
             key: 'holderName',
             render: (text: string, record: BankAccount) => (
@@ -84,7 +87,7 @@ export const BanksPage = () => {
             )
         },
         {
-            title: 'Real Balance',
+            title: t('banks.table.real_balance'),
             dataIndex: 'balance',
             key: 'balance',
             align: 'right' as const,
@@ -95,7 +98,7 @@ export const BanksPage = () => {
             )
         },
         {
-            title: 'In Transit (POS)',
+            title: t('banks.table.in_transit'),
             dataIndex: 'pendingLiquidation',
             key: 'pendingLiquidation',
             align: 'right' as const,
@@ -114,14 +117,14 @@ export const BanksPage = () => {
                                 setIsLiquidateOpen(true);
                             }}
                         >
-                            Liquidate Batch
+                            {t('banks.actions.liquidate_batch')}
                         </Button>
                     </Space>
                 ) : <span style={{ color: '#ccc' }}>-</span>
             )
         },
         {
-            title: 'Actions',
+            title: t('banks.table.actions'),
             key: 'actions',
             align: 'center' as const,
             render: (_: any, record: BankAccount) => (
@@ -129,7 +132,7 @@ export const BanksPage = () => {
                     <Button
                         type="text"
                         icon={<HistoryOutlined />}
-                        title="View History"
+                        title={t('banks.actions.view_history')}
                         onClick={() => {
                             setSelectedBank(record);
                             setIsHistoryOpen(true);
@@ -138,7 +141,7 @@ export const BanksPage = () => {
                     <Button
                         type="text"
                         icon={<SwapOutlined />}
-                        title="Register Movement"
+                        title={t('banks.actions.register_movement')}
                         onClick={() => {
                             setSelectedBank(record);
                             setIsMovementOpen(true);
@@ -147,20 +150,20 @@ export const BanksPage = () => {
                     <Button
                         type="text"
                         icon={<EditOutlined />}
-                        title="Edit Account"
+                        title={t('banks.actions.edit_account')}
                         onClick={() => {
                             setEditingBank(record);
                             setIsModalOpen(true);
                         }}
                     />
                     <Popconfirm
-                        title="Delete account?"
-                        description="This action cannot be undone."
+                        title={t('banks.messages.delete_confirm_title')}
+                        description={t('banks.messages.delete_confirm_desc')}
                         onConfirm={() => deleteMutation.mutate(record.id)}
-                        okText="Yes"
-                        cancelText="No"
+                        okText={t('common.yes')}
+                        cancelText={t('common.no')}
                     >
-                        <Button type="text" danger icon={<DeleteOutlined />} title="Delete Account" />
+                        <Button type="text" danger icon={<DeleteOutlined />} title={t('banks.actions.delete_account')} />
                     </Popconfirm>
                 </Space>
             ),
@@ -182,10 +185,10 @@ export const BanksPage = () => {
                 marginBottom: 16,
                 gap: isMobile ? 12 : 0
             }}>
-                <h1 style={{ margin: 0, fontSize: isMobile ? '1.5rem' : '2rem' }}>Treasury & Liquidity</h1>
+                <h1 style={{ margin: 0, fontSize: isMobile ? '1.5rem' : '2rem' }}>{t('banks.title')}</h1>
                 <Space direction={isMobile ? 'vertical' : 'horizontal'} style={{ width: isMobile ? '100%' : 'auto' }} align={isMobile ? 'end' : 'center'}>
                     <Input
-                        placeholder="Search bank, holder..."
+                        placeholder={t('banks.search_placeholder')}
                         prefix={<SearchOutlined />}
                         value={searchTerm}
                         onChange={e => setSearchTerm(e.target.value)}
@@ -197,7 +200,7 @@ export const BanksPage = () => {
                             onClick={() => queryClient.invalidateQueries({ queryKey: ['banks'] })}
                         />
                         <Button type="primary" icon={<PlusOutlined />} onClick={() => setIsModalOpen(true)}>
-                            {isMobile ? 'New Resource' : 'New Resource / Vault'}
+                            {isMobile ? t('banks.new_resource_mobile') : t('banks.new_resource')}
                         </Button>
                     </Space>
                 </Space>
@@ -207,7 +210,7 @@ export const BanksPage = () => {
                 <Col xs={24} sm={6}>
                     <Card style={{ backgroundColor: '#f0f5ff' }}>
                         <Statistic
-                            title="Total in Banks"
+                            title={t('banks.total_banks')}
                             value={banks.filter(b => ['CHECKING', 'SAVINGS'].includes(b.accountType)).reduce((acc, b) => acc + Number(b.balance), 0)}
                             precision={2}
                             prefix="Bs."
@@ -218,7 +221,7 @@ export const BanksPage = () => {
                 <Col xs={24} sm={6}>
                     <Card style={{ backgroundColor: '#fffbe6' }}>
                         <Statistic
-                            title="Total in Transit"
+                            title={t('banks.total_transit')}
                             value={banks.reduce((acc, b) => acc + Number(b.pendingLiquidation || 0), 0)}
                             precision={2}
                             prefix="Bs."
@@ -229,7 +232,7 @@ export const BanksPage = () => {
                 <Col xs={24} sm={6}>
                     <Card style={{ backgroundColor: '#f6ffed' }}>
                         <Statistic
-                            title="Total in Vault"
+                            title={t('banks.total_vault')}
                             value={banks.filter(b => b.accountType === 'CASH_VAULT').reduce((acc, b) => acc + Number(b.balance), 0)}
                             precision={2}
                             prefix="Bs."
@@ -240,7 +243,7 @@ export const BanksPage = () => {
                 <Col xs={24} sm={6}>
                     <Card style={{ backgroundColor: '#fff7e6', borderColor: '#ffa940', borderWidth: 2 }}>
                         <Statistic
-                            title="Liquidity (Consolidated)"
+                            title={t('banks.liquidity_consolidated')}
                             value={banks.reduce((acc, b) => acc + Number(b.balance) + Number(b.pendingLiquidation || 0), 0)}
                             precision={2}
                             prefix="Bs."

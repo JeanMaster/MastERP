@@ -13,6 +13,7 @@ import {
     Modal,
     Grid
 } from 'antd';
+import { useTranslation } from 'react-i18next';
 import {
     PlusOutlined,
     ReloadOutlined,
@@ -39,6 +40,7 @@ const { Title, Text } = Typography;
 export const ReturnsPage = () => {
     const screens = Grid.useBreakpoint();
     const isMobile = !screens.lg;
+    const { t } = useTranslation();
     const [filters, setFilters] = useState<ReturnFilters>({});
     const [dateRange, setDateRange] = useState<[dayjs.Dayjs, dayjs.Dayjs] | null>(null);
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -77,8 +79,8 @@ export const ReturnsPage = () => {
      */
     const handleApprove = async (id: string) => {
         Modal.confirm({
-            title: 'Approve Return?',
-            content: 'The request will be marked as approved and ready for final processing.',
+            title: t('returns.messages.approve_title'),
+            content: t('returns.messages.approve_content'),
             onOk: async () => {
                 await returnsApi.approve(id, 'Manager'); 
                 refetch();
@@ -91,16 +93,16 @@ export const ReturnsPage = () => {
      */
     const handleReject = async (id: string) => {
         Modal.confirm({
-            title: 'Reject Return Request?',
+            title: t('returns.messages.reject_title'),
             content: (
                 <div>
-                    <p>Please enter the reason for rejection:</p>
+                    <p>{t('returns.messages.reject_prompt')}</p>
                     <Input.TextArea id="rejectReason" rows={3} />
                 </div>
             ),
             onOk: async () => {
                 const reason = (document.getElementById('rejectReason') as HTMLTextAreaElement)?.value;
-                await returnsApi.reject(id, reason || 'No reason specified');
+                await returnsApi.reject(id, reason || t('common.no_reason', { defaultValue: 'No reason specified' }));
                 refetch();
             }
         });
@@ -111,8 +113,8 @@ export const ReturnsPage = () => {
      */
     const handleProcess = async (id: string) => {
         Modal.confirm({
-            title: 'Process Return?',
-            content: 'This will update the inventory stock and finalize the refund/exchange.',
+            title: t('returns.messages.process_title'),
+            content: t('returns.messages.process_content'),
             onOk: async () => {
                 await returnsApi.process(id);
                 refetch();
@@ -122,10 +124,10 @@ export const ReturnsPage = () => {
 
     const getStatusTag = (status: string) => {
         const statusConfig: Record<string, { color: string; icon: any; label: string }> = {
-            PENDING: { color: 'orange', icon: <ExclamationCircleOutlined />, label: 'Pending' },
-            APPROVED: { color: 'blue', icon: <CheckCircleOutlined />, label: 'Approved' },
-            REJECTED: { color: 'red', icon: <CloseCircleOutlined />, label: 'Rejected' },
-            COMPLETED: { color: 'green', icon: <CheckCircleOutlined />, label: 'Completed' }
+            PENDING: { color: 'orange', icon: <ExclamationCircleOutlined />, label: t('returns.status_pending') },
+            APPROVED: { color: 'blue', icon: <CheckCircleOutlined />, label: t('returns.status_approved') },
+            REJECTED: { color: 'red', icon: <CloseCircleOutlined />, label: t('returns.status_rejected') },
+            COMPLETED: { color: 'green', icon: <CheckCircleOutlined />, label: t('returns.status_completed') }
         };
 
         const config = statusConfig[status] || statusConfig.PENDING;
@@ -138,9 +140,9 @@ export const ReturnsPage = () => {
 
     const getTypeTag = (type: string) => {
         const labels: Record<string, string> = {
-            REFUND: 'Refund',
-            EXCHANGE_SAME: 'Direct Exchange',
-            EXCHANGE_DIFFERENT: 'Product Swap'
+            REFUND: t('returns.type_refund_short'),
+            EXCHANGE_SAME: t('returns.type_exchange_same_short'),
+            EXCHANGE_DIFFERENT: t('returns.type_exchange_different_short')
         };
         const colors: Record<string, string> = {
             REFUND: 'purple',
@@ -153,33 +155,33 @@ export const ReturnsPage = () => {
 
     const columns = [
         {
-            title: 'CN #',
+            title: t('returns.table.cn_number'),
             dataIndex: 'creditNoteNumber',
             key: 'creditNoteNumber',
             width: 120,
             render: (text: string) => <Text strong style={{ color: '#1890ff' }}>{text}</Text>
         },
         {
-            title: 'Invoice',
+            title: t('returns.table.invoice'),
             key: 'invoice',
             width: 120,
             render: (_: any, record: Return) => record.originalSale.invoiceNumber
         },
         {
-            title: 'Customer',
+            title: t('returns.table.customer'),
             key: 'client',
             width: 150,
-            render: (_: any, record: Return) => record.originalSale.client?.name || 'Walk-in Customer'
+            render: (_: any, record: Return) => record.originalSale.client?.name || t('common.walk_in_customer', { defaultValue: 'Walk-in Customer' })
         },
         {
-            title: 'Type',
+            title: t('returns.table.type'),
             dataIndex: 'returnType',
             key: 'returnType',
             width: 130,
             render: (type: string) => getTypeTag(type)
         },
         {
-            title: 'Refund Amt',
+            title: t('returns.table.refund_amt'),
             dataIndex: 'refundAmount',
             key: 'refundAmount',
             width: 120,
@@ -187,21 +189,21 @@ export const ReturnsPage = () => {
             render: (amount: number) => formatVenezuelanPrice(amount)
         },
         {
-            title: 'Status',
+            title: t('returns.table.status'),
             dataIndex: 'status',
             key: 'status',
             width: 110,
             render: (status: string) => getStatusTag(status)
         },
         {
-            title: 'Date',
+            title: t('returns.table.date'),
             dataIndex: 'createdAt',
             key: 'createdAt',
             width: 110,
             render: (date: string) => dayjs(date).format('MM/DD/YYYY')
         },
         {
-            title: 'Actions',
+            title: t('returns.table.actions'),
             key: 'actions',
             width: 180,
             render: (_: any, record: Return) => (
@@ -211,7 +213,7 @@ export const ReturnsPage = () => {
                         size="small"
                         icon={<EyeOutlined />}
                         onClick={() => handleViewDetails(record)}
-                        title="View detail"
+                        title={t('returns.table.view_detail')}
                     />
                     {record.status === 'PENDING' && (
                         <>
@@ -221,7 +223,7 @@ export const ReturnsPage = () => {
                                 icon={<CheckCircleOutlined />}
                                 onClick={() => handleApprove(record.id)}
                             >
-                                Approve
+                                {t('returns.table.approve')}
                             </Button>
                             <Button
                                 danger
@@ -229,7 +231,7 @@ export const ReturnsPage = () => {
                                 icon={<CloseCircleOutlined />}
                                 onClick={() => handleReject(record.id)}
                             >
-                                Reject
+                                {t('returns.table.reject')}
                             </Button>
                         </>
                     )}
@@ -239,7 +241,7 @@ export const ReturnsPage = () => {
                             size="small"
                             onClick={() => handleProcess(record.id)}
                         >
-                            Process
+                            {t('returns.table.process')}
                         </Button>
                     )}
                 </Space>
@@ -249,7 +251,7 @@ export const ReturnsPage = () => {
 
     return (
         <div style={{ padding: isMobile ? '8px' : '24px' }}>
-            <Title level={isMobile ? 3 : 2}>📦 Returns & Exchanges</Title>
+            <Title level={isMobile ? 3 : 2}>{t('returns.title')}</Title>
 
             <Card style={{ marginBottom: 16 }}>
                 <Space direction="vertical" style={{ width: '100%' }} size="middle">
@@ -258,30 +260,30 @@ export const ReturnsPage = () => {
                             value={dateRange}
                             onChange={handleDateRangeChange}
                             format="MM/DD/YYYY"
-                            placeholder={['Start Date', 'End Date']}
+                            placeholder={[t('returns.filters.start_date'), t('returns.filters.end_date')]}
                             style={{ width: isMobile ? '100%' : 'auto' }}
                         />
                         <Space style={{ width: isMobile ? '100%' : 'auto' }}>
                             <Select
                                 style={{ flex: 1, minWidth: isMobile ? 0 : 120 }}
-                                placeholder="Status"
+                                placeholder={t('returns.filters.status')}
                                 allowClear
                                 onChange={(value) => setFilters(prev => ({ ...prev, status: value }))}
                             >
-                                <Select.Option value="PENDING">Pending</Select.Option>
-                                <Select.Option value="APPROVED">Approved</Select.Option>
-                                <Select.Option value="REJECTED">Rejected</Select.Option>
-                                <Select.Option value="COMPLETED">Completed</Select.Option>
+                                <Select.Option value="PENDING">{t('returns.status_pending')}</Select.Option>
+                                <Select.Option value="APPROVED">{t('returns.status_approved')}</Select.Option>
+                                <Select.Option value="REJECTED">{t('returns.status_rejected')}</Select.Option>
+                                <Select.Option value="COMPLETED">{t('returns.status_completed')}</Select.Option>
                             </Select>
                             <Select
                                 style={{ flex: 1, minWidth: isMobile ? 0 : 120 }}
-                                placeholder="Type"
+                                placeholder={t('returns.filters.type')}
                                 allowClear
                                 onChange={(value) => setFilters(prev => ({ ...prev, returnType: value }))}
                             >
-                                <Select.Option value="REFUND">Refund</Select.Option>
-                                <Select.Option value="EXCHANGE_SAME">Same Product</Select.Option>
-                                <Select.Option value="EXCHANGE_DIFFERENT">Product Swap</Select.Option>
+                                <Select.Option value="REFUND">{t('returns.type_refund_short')}</Select.Option>
+                                <Select.Option value="EXCHANGE_SAME">{t('returns.type_exchange_same_short')}</Select.Option>
+                                <Select.Option value="EXCHANGE_DIFFERENT">{t('returns.type_exchange_different_short')}</Select.Option>
                             </Select>
                             <Button
                                 icon={<ReloadOutlined />}
@@ -299,7 +301,7 @@ export const ReturnsPage = () => {
                         onClick={() => setIsCreateModalOpen(true)}
                         block={isMobile}
                     >
-                        {isMobile ? 'New' : 'New Return Request'}
+                        {isMobile ? t('common.new') : t('returns.new_request_full')}
                     </Button>
                 </Space>
             </Card>
@@ -320,7 +322,7 @@ export const ReturnsPage = () => {
                             pageSize: 20,
                             showSizeChanger: true,
                             size: isMobile ? 'small' : 'default',
-                            showTotal: (total) => `Total: ${total} entries`
+                            showTotal: (total) => `${t('common.total', { defaultValue: 'Total' })}: ${total} ${t('common.entries', { defaultValue: 'entries' })}`
                         }}
                     />
                 )}

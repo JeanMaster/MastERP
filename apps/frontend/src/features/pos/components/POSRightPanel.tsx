@@ -8,6 +8,7 @@ import type { Product } from '../../../services/productsApi';
 import { usePOSStore } from '../../../store/posStore';
 import { formatVenezuelanPrice } from '../../../utils/formatters';
 import { getRoundedPrice } from '../../../utils/rounding';
+import { useTranslation } from 'react-i18next';
 
 /**
  * POSRightPanel Component
@@ -16,6 +17,7 @@ import { getRoundedPrice } from '../../../utils/rounding';
  * Includes visual feedback for stock levels and multi-currency pricing.
  */
 export const POSRightPanel = () => {
+    const { t } = useTranslation();
     const { addItem, searchTerm, searchResults, setSearchTerm, setSearchResults } = usePOSStore();
     const isSearching = !!(searchTerm && searchTerm.length > 2);
 
@@ -97,8 +99,8 @@ export const POSRightPanel = () => {
             }
 
             Modal.warning({
-                title: 'Insufficient Stock',
-                content: `${product.name} does not have enough stock. Available: ${product.stock}`,
+                title: t('pos.cart.insufficient_stock'),
+                content: `${product.name} ${t('pos.catalog.not_enough_stock', { defaultValue: 'does not have enough stock.' })} ${t('pos.cart.stock')}: ${product.stock}`,
             });
             return;
         }
@@ -148,7 +150,7 @@ export const POSRightPanel = () => {
                                 preview={false}
                             />
                         ) : (
-                            <div style={{ padding: '10px', color: '#888' }}>No image available</div>
+                            <div style={{ padding: '10px', color: '#888' }}>{t('pos.catalog.no_image')}</div>
                         )
                     }
                     title={prod.name}
@@ -217,7 +219,7 @@ export const POSRightPanel = () => {
                 return (
                     <Col span={24}>
                         <div style={{ textAlign: 'center', padding: 40, color: '#888' }}>
-                            <div style={{ fontSize: 16 }}>No products found for "{searchTerm}"</div>
+                            <div style={{ fontSize: 16 }}>{t('pos.catalog.no_items_search', { defaultValue: 'No products found for' })} "{searchTerm}"</div>
                         </div>
                     </Col>
                 );
@@ -310,7 +312,7 @@ export const POSRightPanel = () => {
 
                 {taxEnabled && (
                     <div style={{ fontSize: 9, color: product.isTaxExempt ? '#888' : '#52c41a', marginTop: -2, fontWeight: 'bold' }}>
-                        {product.isTaxExempt ? 'EXEMPT' : 'VAT INCL.'}
+                        {product.isTaxExempt ? t('pos.cart.exempt') : t('pos.cart.vat_incl')}
                     </div>
                 )}
 
@@ -345,19 +347,19 @@ export const POSRightPanel = () => {
                     onClick={handleBack}
                     disabled={viewMode === 'ROOT' && !isSearching}
                 >
-                    Back
+                    {t('pos.catalog.back')}
                 </Button>
                 <div style={{ flex: 1, textAlign: 'center', fontWeight: 'bold' }}>
-                    {isSearching ? `Results for: "${searchTerm}"` : (
+                    {isSearching ? t('pos.catalog.results_for', { term: searchTerm }) : (
                         <>
-                            {viewMode === 'ROOT' && 'Departments'}
+                            {viewMode === 'ROOT' && t('pos.catalog.departments')}
                             {viewMode === 'DEPT' && currentDept?.name}
                             {viewMode === 'SUBDEPT' && `${currentDept?.name} > ${currentSubDept?.name}`}
                         </>
                     )}
                 </div>
                 <div style={{ display: 'flex', gap: 5 }}>
-                    <Button disabled>More...</Button>
+                    <Button disabled>{t('pos.catalog.more')}</Button>
                 </div>
             </div>
 
@@ -366,7 +368,7 @@ export const POSRightPanel = () => {
                 <Row gutter={[10, 10]}>
                     {renderContent()}
                     {!loading && viewMode !== 'ROOT' && products.length === 0 && (!currentDept?.children?.length) && (
-                        <div style={{ width: '100%', textAlign: 'center', color: '#999', padding: 20 }}>No items found</div>
+                        <div style={{ width: '100%', textAlign: 'center', color: '#999', padding: 20 }}>{t('pos.catalog.no_items')}</div>
                     )}
                 </Row>
             </div>

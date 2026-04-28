@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
-import { Table, Button, Space, Modal, Form, Input, DatePicker, InputNumber, Switch, message, Tag, Typography, Select } from 'antd';
+import { Table, Button, Space, Modal, Form, Input, DatePicker, InputNumber, Switch, Tag, Typography, Select, App } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, PercentageOutlined, DollarOutlined } from '@ant-design/icons';
 import { marketingApi } from '../../services/marketingApi';
 import dayjs from 'dayjs';
+import { useTranslation } from 'react-i18next';
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -13,6 +14,8 @@ const { Option } = Select;
  * Allows defining global usage limits, expiration dates, minimum purchase requirements, and tier-based restrictions.
  */
 export default function CouponsManager() {
+  const { t } = useTranslation();
+  const { message } = App.useApp();
   const [coupons, setCoupons] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalVisible, setIsModalVisible] = useState(false);
@@ -44,7 +47,7 @@ export default function CouponsManager() {
       setCoupons(data);
     } catch (error) {
       console.error(error);
-      message.error('Error loading coupon codes');
+      message.error(t('marketing.coupons.messages.load_error'));
     } finally {
       setLoading(false);
     }
@@ -84,10 +87,10 @@ export default function CouponsManager() {
   const handleDelete = async (id: string) => {
     try {
       await marketingApi.deleteCoupon(id);
-      message.success('Coupon deleted successfully');
+      message.success(t('marketing.coupons.messages.delete_success'));
       fetchCoupons();
     } catch (error) {
-       message.error('Error deleting coupon. It may have historical usage data.');
+       message.error(t('marketing.coupons.messages.delete_error'));
     }
   };
 
@@ -102,28 +105,28 @@ export default function CouponsManager() {
 
       if (isEditing && editingId) {
         await marketingApi.updateCoupon(editingId, payload);
-        message.success('Coupon updated successfully');
+        message.success(t('marketing.coupons.messages.update_success'));
       } else {
         await marketingApi.createCoupon(payload);
-        message.success('Coupon created successfully');
+        message.success(t('marketing.coupons.messages.create_success'));
       }
       setIsModalVisible(false);
       fetchCoupons();
     } catch (error) {
       console.error(error);
-      message.error('Error saving the coupon code');
+      message.error(t('marketing.coupons.messages.save_error'));
     }
   };
 
   const columns = [
     {
-      title: 'Code',
+      title: t('marketing.coupons.table.code'),
       dataIndex: 'code',
       key: 'code',
       render: (text: string) => <Text strong style={{ letterSpacing: '1px' }}>{text}</Text>
     },
     {
-      title: 'Discount Type',
+      title: t('marketing.coupons.table.discount_type'),
       dataIndex: 'discountType',
       key: 'discountType',
       render: (type: string, record: any) => (
@@ -133,39 +136,42 @@ export default function CouponsManager() {
       )
     },
     {
-      title: 'Usage',
+      title: t('marketing.coupons.table.usage'),
       key: 'usage',
       render: (_: any, record: any) => (
         <Text>
-          {record.usedCount} {record.usageLimit ? `/ ${record.usageLimit}` : ''} redemptions
+          {t('marketing.coupons.usage_text', { 
+            used: record.usedCount, 
+            limit: record.usageLimit ? `/ ${record.usageLimit}` : '' 
+          })}
         </Text>
       )
     },
     {
-      title: 'Applicable Tiers',
+      title: t('marketing.coupons.table.applicable_tiers'),
       dataIndex: 'targetTiers',
       key: 'targetTiers',
       render: (tiers: string[]) => (
-        tiers && tiers.length > 0 ? tiers.map(t => <Tag key={t}>{t}</Tag>) : <Tag color="default">All Customers</Tag>
+        tiers && tiers.length > 0 ? tiers.map(t => <Tag key={t}>{t}</Tag>) : <Tag color="default">{t('marketing.coupons.all_customers')}</Tag>
       )
     },
     {
-      title: 'Status',
+      title: t('marketing.coupons.table.status'),
       dataIndex: 'isActive',
       key: 'isActive',
       align: 'center' as const,
       render: (active: boolean) => (
-        <Tag color={active ? 'success' : 'default'}>{active ? 'Active' : 'Inactive'}</Tag>
+        <Tag color={active ? 'success' : 'default'}>{active ? t('users.active') : t('users.inactive')}</Tag>
       )
     },
     {
-      title: 'Actions',
+      title: t('marketing.coupons.table.actions'),
       key: 'actions',
       width: 100,
       render: (_: any, record: any) => (
         <Space>
-          <Button icon={<EditOutlined />} onClick={() => handleEdit(record)} title="Edit coupon" />
-          <Button danger icon={<DeleteOutlined />} onClick={() => handleDelete(record.id)} title="Delete coupon" />
+          <Button icon={<EditOutlined />} onClick={() => handleEdit(record)} title={t('common.edit')} />
+          <Button danger icon={<DeleteOutlined />} onClick={() => handleDelete(record.id)} title={t('common.delete')} />
         </Space>
       )
     }
@@ -175,11 +181,11 @@ export default function CouponsManager() {
     <div style={{ padding: '4px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
         <div>
-          <Title level={3} style={{ margin: 0 }}>🎟️ Promotional Coupon Codes</Title>
-          <Text type="secondary">Manage marketing campaigns and discount codes.</Text>
+          <Title level={3} style={{ margin: 0 }}>🎟️ {t('marketing.coupons.title')}</Title>
+          <Text type="secondary">{t('marketing.coupons.subtitle')}</Text>
         </div>
         <Button type="primary" icon={<PlusOutlined />} onClick={handleAddNew} size="large">
-          Create New Coupon (F9)
+          {t('marketing.coupons.new_button')}
         </Button>
       </div>
 
@@ -190,74 +196,74 @@ export default function CouponsManager() {
         loading={loading}
         pagination={{ 
             pageSize: 10,
-            showTotal: (total) => `Total: ${total} coupons`
+            showTotal: (total) => `${t('users.total')}: ${total}`
         }}
         bordered
       />
 
       <Modal
-        title={isEditing ? 'Edit Coupon Code' : 'Generate New Coupon Code'}
+        title={isEditing ? t('marketing.coupons.modal.edit_title') : t('marketing.coupons.modal.new_title')}
         open={isModalVisible}
         onCancel={() => setIsModalVisible(false)}
         onOk={() => form.submit()}
-        okText="Save Coupon (F9)"
+        okText={t('marketing.coupons.modal.save_button')}
         width={750}
       >
         <Form form={form} layout="vertical" onFinish={handleSave} style={{ marginTop: 20 }}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-            <Form.Item label="Promotional Code" name="code" rules={[{ required: true, message: 'Please enter a code' }]}>
-              <Input placeholder="e.g., XMAS2025" style={{ textTransform: 'uppercase', fontWeight: 'bold' }} />
+            <Form.Item label={t('marketing.coupons.modal.code_label')} name="code" rules={[{ required: true, message: t('marketing.coupons.modal.code_required') }]}>
+              <Input placeholder={t('marketing.coupons.modal.code_placeholder')} style={{ textTransform: 'uppercase', fontWeight: 'bold' }} />
             </Form.Item>
 
-            <Form.Item label="Status" name="isActive" valuePropName="checked">
-               <Switch checkedChildren="Active" unCheckedChildren="Inactive" />
+            <Form.Item label={t('cash_register.status')} name="isActive" valuePropName="checked">
+               <Switch checkedChildren={t('users.active')} unCheckedChildren={t('users.inactive')} />
             </Form.Item>
           </div>
 
-          <Form.Item label="Campaign Description (Optional)" name="description">
-            <Input.TextArea rows={2} placeholder="Example: Holiday season flash sale promotion." />
+          <Form.Item label={t('marketing.coupons.modal.description_label')} name="description">
+            <Input.TextArea rows={2} placeholder={t('marketing.coupons.modal.description_placeholder')} />
           </Form.Item>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-            <Form.Item label="Discount Calculation" name="discountType" rules={[{ required: true, message: 'Required' }]}>
+            <Form.Item label={t('marketing.coupons.modal.discount_calc')} name="discountType" rules={[{ required: true, message: t('common.required') }]}>
               <Select>
-                <Option value="PERCENTAGE">Percentage (%)</Option>
-                <Option value="FIXED_AMOUNT">Fixed Dollar Amount ($)</Option>
+                <Option value="PERCENTAGE">{t('marketing.coupons.modal.percentage')}</Option>
+                <Option value="FIXED_AMOUNT">{t('marketing.coupons.modal.fixed_amount')}</Option>
               </Select>
             </Form.Item>
 
-            <Form.Item label="Discount Value" name="discountValue" rules={[{ required: true, message: 'Required' }]}>
+            <Form.Item label={t('marketing.coupons.modal.discount_value')} name="discountValue" rules={[{ required: true, message: t('common.required') }]}>
               <InputNumber style={{ width: '100%' }} min={0.01} step={0.01} placeholder="0.00" />
             </Form.Item>
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-             <Form.Item label="Global Usage Limit" name="usageLimit" tooltip="Leave empty for unlimited redemptions">
-               <InputNumber style={{ width: '100%' }} min={1} placeholder="Unlimited" />
+             <Form.Item label={t('marketing.coupons.modal.global_limit')} name="usageLimit" tooltip={t('marketing.coupons.modal.limit_tooltip')}>
+               <InputNumber style={{ width: '100%' }} min={1} placeholder={t('marketing.coupons.unlimited')} />
              </Form.Item>
-             <Form.Item label="Minimum Purchase Required ($)" name="minPurchaseAmount">
+             <Form.Item label={t('marketing.coupons.modal.min_purchase')} name="minPurchaseAmount">
                <InputNumber style={{ width: '100%' }} min={0.01} step={1} placeholder="0.00" />
              </Form.Item>
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-             <Form.Item label="Valid From (Start Date)" name="startDate">
+             <Form.Item label={t('marketing.coupons.modal.valid_from')} name="startDate">
                <DatePicker style={{ width: '100%' }} showTime format="MM/DD/YYYY HH:mm:ss" />
              </Form.Item>
-             <Form.Item label="Expires On (End Date)" name="endDate">
+             <Form.Item label={t('marketing.coupons.modal.expires_on')} name="endDate">
                <DatePicker style={{ width: '100%' }} showTime format="MM/DD/YYYY HH:mm:ss" />
              </Form.Item>
           </div>
 
-          <Title level={5} style={{ marginTop: 24, marginBottom: 16 }}>Usage Constraints</Title>
+          <Title level={5} style={{ marginTop: 24, marginBottom: 16 }}>{t('marketing.coupons.modal.constraints_title')}</Title>
 
           <div style={{ border: '1px solid #f0f0f0', padding: 20, borderRadius: 12, background: '#fafafa' }}>
-            <Form.Item label="Limit to 1 usage per Customer" name="isSingleUsePerClient" valuePropName="checked" tooltip="Prevents a single customer from using this code multiple times.">
+            <Form.Item label={t('marketing.coupons.modal.single_use')} name="isSingleUsePerClient" valuePropName="checked" tooltip={t('marketing.coupons.modal.single_use_tooltip')}>
               <Switch />
             </Form.Item>
 
-            <Form.Item label="Target Customer Tiers" name="targetTiers" tooltip="If empty, the coupon applies to all customer tiers.">
-               <Select mode="multiple" placeholder="Select applicable tiers">
+            <Form.Item label={t('marketing.coupons.modal.target_tiers')} name="targetTiers" tooltip={t('marketing.coupons.modal.target_tiers_tooltip')}>
+               <Select mode="multiple" placeholder={t('common.select_placeholder', { defaultValue: 'Select...' })}>
                  <Option value="VIP">VIP</Option>
                  <Option value="GOLD">Gold</Option>
                  <Option value="SILVER">Silver</Option>
@@ -265,8 +271,8 @@ export default function CouponsManager() {
                </Select>
             </Form.Item>
 
-            <Form.Item label="Restrict by Department (Optional)" name="applicableDepartments" tooltip="If empty, it applies to the entire store inventory.">
-                <Select mode="tags" placeholder="Apply to all departments" disabled />
+            <Form.Item label={t('marketing.coupons.modal.department_restrict')} name="applicableDepartments" tooltip={t('marketing.coupons.modal.department_tooltip')}>
+                <Select mode="tags" placeholder={t('marketing.coupons.all_customers')} disabled />
             </Form.Item>
           </div>
         </Form>

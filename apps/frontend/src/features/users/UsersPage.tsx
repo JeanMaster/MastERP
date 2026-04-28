@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { Card, Table, Button, Tag, Space, Modal, message, Grid, Typography } from 'antd';
+import { Card, Table, Button, Tag, Space, Modal, Grid, Typography, App } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, UserOutlined } from '@ant-design/icons';
+import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { usersApi } from '../../services/usersApi';
 import { UserFormModal } from './components/UserFormModal';
@@ -14,6 +15,8 @@ const { Title, Text } = Typography;
  * Allows creating, editing, and deleting user accounts while protecting critical system accounts like 'admin'.
  */
 export const UsersPage = () => {
+    const { t } = useTranslation();
+    const { message } = App.useApp();
     const screens = useBreakpoint();
     const isMobile = !screens.lg;
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -31,18 +34,18 @@ export const UsersPage = () => {
     const deleteMutation = useMutation({
         mutationFn: (id: string) => usersApi.remove(id),
         onSuccess: () => {
-            message.success('User account deleted successfully');
+            message.success(t('users.success_delete'));
             queryClient.invalidateQueries({ queryKey: ['users'] });
         },
-        onError: () => message.error('Failed to delete user')
+        onError: () => message.error(t('users.error_delete'))
     });
 
     const handleDelete = (id: string) => {
         Modal.confirm({
-            title: 'Delete user account?',
-            content: 'This action is permanent and cannot be undone.',
-            okText: 'Yes, Delete',
-            cancelText: 'Cancel',
+            title: t('users.delete_title'),
+            content: t('users.delete_content'),
+            okText: t('users.delete_ok'),
+            cancelText: t('common.cancel'),
             okButtonProps: { danger: true },
             onOk: () => deleteMutation.mutate(id)
         });
@@ -60,7 +63,7 @@ export const UsersPage = () => {
 
     const columns = [
         {
-            title: 'Username',
+            title: t('users.username'),
             dataIndex: 'username',
             key: 'username',
             render: (text: string) => (
@@ -71,12 +74,12 @@ export const UsersPage = () => {
             ),
         },
         {
-            title: 'Full Name',
+            title: t('users.name'),
             dataIndex: 'name',
             key: 'name',
         },
         {
-            title: 'Security Role',
+            title: t('users.role'),
             dataIndex: 'role',
             key: 'role',
             render: (role: string) => {
@@ -86,22 +89,22 @@ export const UsersPage = () => {
                     CASHIER: 'green',
                     USER: 'blue'
                 };
-                return <Tag color={colors[role] || 'blue'}>{role}</Tag>;
+                return <Tag color={colors[role] || 'blue'}>{t(`users.roles.${role.toLowerCase()}`)}</Tag>;
             }
         },
         {
-            title: 'Account Status',
+            title: t('users.status'),
             dataIndex: 'isActive',
             key: 'isActive',
             align: 'center' as const,
             render: (isActive: boolean) => (
                 <Tag color={isActive ? 'success' : 'default'}>
-                    {isActive ? 'Active' : 'Inactive'}
+                    {isActive ? t('users.active') : t('users.inactive')}
                 </Tag>
             )
         },
         {
-            title: 'Actions',
+            title: t('users.actions'),
             key: 'actions',
             width: 120,
             render: (_: any, record: any) => (
@@ -109,14 +112,14 @@ export const UsersPage = () => {
                     <Button
                         icon={<EditOutlined />}
                         onClick={() => handleEdit(record)}
-                        title="Edit User"
+                        title={t('users.edit')}
                     />
                     <Button
                         danger
                         icon={<DeleteOutlined />}
                         onClick={() => handleDelete(record.id)}
                         disabled={record.username === 'admin'} // Protect system administrator
-                        title={record.username === 'admin' ? "System Admin cannot be deleted" : "Delete User"}
+                        title={record.username === 'admin' ? t('users.admin_delete_error') : t('users.delete_title')}
                     />
                 </Space>
             )
@@ -127,11 +130,11 @@ export const UsersPage = () => {
         <div style={{ padding: isMobile ? 8 : 24 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
                 <div>
-                    <Title level={2} style={{ margin: 0 }}>👤 User Management</Title>
-                    <Text type="secondary">Control system access levels and security permissions.</Text>
+                    <Title level={2} style={{ margin: 0 }}>👤 {t('users.title')}</Title>
+                    <Text type="secondary">{t('users.subtitle')}</Text>
                 </div>
                 <Button type="primary" icon={<PlusOutlined />} onClick={handleCreate} size="large">
-                    {isMobile ? 'Add' : 'Register New User'}
+                    {isMobile ? t('common.add') : t('users.new')}
                 </Button>
             </div>
 
@@ -143,7 +146,7 @@ export const UsersPage = () => {
                     loading={isLoading}
                     scroll={{ x: 'max-content' }}
                     pagination={{
-                        showTotal: (total) => `Total: ${total} users`
+                        showTotal: (total) => t('users.total_count', { total })
                     }}
                 />
             </Card>

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Modal, Form, Input, InputNumber, DatePicker, Select, message, Space } from 'antd';
+import { Modal, Form, Input, InputNumber, DatePicker, Select, App, Space } from 'antd';
+import { useTranslation } from 'react-i18next';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import dayjs from 'dayjs';
 import { expensesApi, type UpdateExpenseDto, type Expense } from '../../../services/expensesApi';
@@ -41,6 +42,8 @@ const PAYMENT_METHODS = [
  * Modal to create or edit an operative expense record.
  */
 export const CreateExpenseModal = ({ open, onCancel, expense }: CreateExpenseModalProps) => {
+    const { t } = useTranslation();
+    const { message } = App.useApp();
     const [form] = Form.useForm();
     const queryClient = useQueryClient();
     const [loading, setLoading] = useState(false);
@@ -124,13 +127,13 @@ export const CreateExpenseModal = ({ open, onCancel, expense }: CreateExpenseMod
     const createExpenseMutation = useMutation({
         mutationFn: expensesApi.create,
         onSuccess: () => {
-            message.success('Expense registered successfully');
+            message.success(t('expenses.messages.success_register'));
             queryClient.invalidateQueries({ queryKey: ['expenses'] });
             form.resetFields();
             onCancel();
         },
         onError: (error) => {
-            message.error('Error registering expense');
+            message.error(t('expenses.messages.error_register'));
             console.error(error);
         }
     });
@@ -138,13 +141,13 @@ export const CreateExpenseModal = ({ open, onCancel, expense }: CreateExpenseMod
     const updateExpenseMutation = useMutation({
         mutationFn: ({ id, data }: { id: string; data: UpdateExpenseDto }) => expensesApi.update(id, data),
         onSuccess: () => {
-            message.success('Expense updated successfully');
+            message.success(t('expenses.messages.success_update'));
             queryClient.invalidateQueries({ queryKey: ['expenses'] });
             form.resetFields();
             onCancel();
         },
         onError: (error) => {
-            message.error('Error updating expense');
+            message.error(t('expenses.messages.error_update'));
             console.error(error);
         }
     });
@@ -204,11 +207,11 @@ export const CreateExpenseModal = ({ open, onCancel, expense }: CreateExpenseMod
             const secondary = currencies.find(c => !c.isPrimary);
             if (secondary) {
                 const usdAmount = amount / exchangeRate;
-                conversionPreview = `Equivalent in Divisa: ${formatVenezuelanPrice(usdAmount, '$')}`;
+                conversionPreview = t('expenses.conversion.equivalent_divisa', { amount: formatVenezuelanPrice(usdAmount, '$') });
             }
         } else {
             const vesAmount = amount * exchangeRate;
-            conversionPreview = `Equivalent in Bs: ${formatVenezuelanPrice(vesAmount, 'Bs.')}`;
+            conversionPreview = t('expenses.conversion.equivalent_ves', { amount: formatVenezuelanPrice(vesAmount, 'Bs.') });
         }
     }
 
@@ -224,18 +227,18 @@ export const CreateExpenseModal = ({ open, onCancel, expense }: CreateExpenseMod
                 deductionAmount = amount / exchangeRate;
             }
         }
-        bankDeductionPreview = `${formatVenezuelanPrice(deductionAmount, selectedBank.currency.symbol)} will be deducted from account.`;
+        bankDeductionPreview = t('expenses.conversion.bank_deduction', { amount: formatVenezuelanPrice(deductionAmount, selectedBank.currency.symbol) });
     }
 
     return (
         <Modal
-            title={expense ? "Edit Expense" : "Register New Expense"}
+            title={expense ? t('expenses.edit_expense') : t('expenses.register_new')}
             open={open}
             onCancel={onCancel}
             onOk={() => form.submit()}
             confirmLoading={loading}
-            okText={expense ? "Save Changes (F9)" : "Register (F9)"}
-            cancelText="Cancel"
+            okText={expense ? t('expenses.save_changes') : t('expenses.register')}
+            cancelText={t('common.cancel')}
             width={600}
         >
             <Form
@@ -245,20 +248,20 @@ export const CreateExpenseModal = ({ open, onCancel, expense }: CreateExpenseMod
             >
                 <Form.Item
                     name="description"
-                    label="Expense Description"
-                    rules={[{ required: true, message: 'Description is required' }]}
+                    label={t('expenses.description')}
+                    rules={[{ required: true, message: t('expenses.description_req') }]}
                 >
-                    <Input placeholder="e.g., Internet service payment" autoFocus />
+                    <Input placeholder={t('expenses.description_placeholder')} autoFocus />
                 </Form.Item>
 
                 <Space style={{ display: 'flex', marginBottom: 16 }} align="start" size={16}>
                     <Form.Item
                         name="isTaxable"
-                        label="Fiscal Expense (VAT)?"
+                        label={t('expenses.is_taxable')}
                         valuePropName="checked"
                     >
                         <Select
-                            placeholder="Fiscal?"
+                            placeholder={t('expenses.fiscal_placeholder')}
                             style={{ width: '150px' }}
                             onChange={(val) => {
                                 if (!val) form.setFieldValue('taxAmount', 0);
@@ -269,15 +272,15 @@ export const CreateExpenseModal = ({ open, onCancel, expense }: CreateExpenseMod
                                 }
                             }}
                             options={[
-                                { value: true, label: 'Yes (With Invoice)' },
-                                { value: false, label: 'No (Formal/Note)' }
+                                { value: true, label: t('expenses.yes_with_invoice') },
+                                { value: false, label: t('expenses.no_formal_note') }
                             ]}
                         />
                     </Form.Item>
 
                     <Form.Item
                         name="taxAmount"
-                        label="VAT Amount"
+                        label={t('expenses.vat_amount')}
                         dependencies={['isTaxable']}
                     >
                         <InputNumber
@@ -297,15 +300,15 @@ export const CreateExpenseModal = ({ open, onCancel, expense }: CreateExpenseMod
                                 <>
                                     <Form.Item
                                         name="invoiceNumber"
-                                        label="Invoice Number"
-                                        rules={[{ required: true, message: 'Required' }]}
+                                        label={t('expenses.invoice_number')}
+                                        rules={[{ required: true, message: t('expenses.required') }]}
                                     >
                                         <Input placeholder="e.g., 00123" />
                                     </Form.Item>
                                     <Form.Item
                                         name="invoiceControlNumber"
-                                        label="Control Number"
-                                        rules={[{ required: true, message: 'Required' }]}
+                                        label={t('expenses.control_number')}
+                                        rules={[{ required: true, message: t('expenses.required') }]}
                                     >
                                         <Input placeholder="e.g., 00-00123" />
                                     </Form.Item>
@@ -318,7 +321,7 @@ export const CreateExpenseModal = ({ open, onCancel, expense }: CreateExpenseMod
                 <Space style={{ display: 'flex', marginBottom: 0 }} align="start" size={16}>
                     <Form.Item
                         name="currencyId"
-                        label="Payment Currency"
+                        label={t('expenses.payment_currency')}
                         rules={[{ required: true }]}
                         style={{ width: '140px' }}
                     >
@@ -333,8 +336,8 @@ export const CreateExpenseModal = ({ open, onCancel, expense }: CreateExpenseMod
 
                     <Form.Item
                         name="amount"
-                        label="Amount"
-                        rules={[{ required: true, message: 'Required' }]}
+                        label={t('expenses.amount')}
+                        rules={[{ required: true, message: t('expenses.required') }]}
                         style={{ width: '140px' }}
                     >
                         <InputNumber
@@ -346,8 +349,8 @@ export const CreateExpenseModal = ({ open, onCancel, expense }: CreateExpenseMod
 
                     <Form.Item
                         name="exchangeRate"
-                        label="Exchange Rate"
-                        rules={[{ required: true, message: 'Required' }]}
+                        label={t('expenses.exchange_rate')}
+                        rules={[{ required: true, message: t('expenses.required') }]}
                         style={{ width: '140px' }}
                         help={conversionPreview}
                     >
@@ -361,8 +364,8 @@ export const CreateExpenseModal = ({ open, onCancel, expense }: CreateExpenseMod
 
                 <Form.Item
                     name="date"
-                    label="Date"
-                    rules={[{ required: true, message: 'Please select a date' }]}
+                    label={t('expenses.date')}
+                    rules={[{ required: true, message: t('expenses.date_req') }]}
                 >
                     <DatePicker style={{ width: '100%' }} />
                 </Form.Item>
@@ -370,34 +373,34 @@ export const CreateExpenseModal = ({ open, onCancel, expense }: CreateExpenseMod
                 <Space style={{ display: 'flex' }} align="start" size={16}>
                     <Form.Item
                         name="category"
-                        label="Category"
+                        label={t('expenses.category')}
                         rules={[{ required: true }]}
                         style={{ width: '220px' }}
                     >
                         <Select
-                            options={EXPENSE_CATEGORIES.map(c => ({ value: c, label: c }))}
+                            options={EXPENSE_CATEGORIES.map(c => ({ value: c, label: t(`expenses.categories.${c}`) }))}
                             showSearch
                         />
                     </Form.Item>
 
                     <Form.Item
                         name="paymentMethod"
-                        label="Payment Method"
+                        label={t('expenses.payment_method')}
                         rules={[{ required: true }]}
                         style={{ width: '220px' }}
                     >
-                        <Select options={PAYMENT_METHODS} />
+                        <Select options={PAYMENT_METHODS.map(m => ({ value: m.value, label: t(`expenses.payment_methods.${m.value}`) }))} />
                     </Form.Item>
                 </Space>
 
                 <Form.Item
                     name="bankAccountId"
-                    label={settings?.requireBankAccountForPayments ? "Bank Account / Treasury" : "Bank Account / Treasury (Optional)"}
-                    rules={[{ required: settings?.requireBankAccountForPayments !== false, message: 'Please select an account' }]}
+                    label={settings?.requireBankAccountForPayments ? t('expenses.bank_account') : t('expenses.bank_account_optional')}
+                    rules={[{ required: settings?.requireBankAccountForPayments !== false, message: t('expenses.bank_account_req') }]}
                     help={bankDeductionPreview}
                 >
                     <Select
-                        placeholder="Select bank account (Transfers, Pago Móvil, etc.)"
+                        placeholder={t('expenses.bank_account_placeholder')}
                         allowClear
                         options={banks.map(b => ({
                             value: b.id,
@@ -408,14 +411,14 @@ export const CreateExpenseModal = ({ open, onCancel, expense }: CreateExpenseMod
 
                 <Form.Item
                     name="reference"
-                    label="Reference Number (Optional)"
+                    label={t('expenses.reference_optional')}
                 >
-                    <Input placeholder="e.g., 12345678" />
+                    <Input placeholder={t('expenses.reference_placeholder')} />
                 </Form.Item>
 
                 <Form.Item
                     name="notes"
-                    label="Additional Notes"
+                    label={t('expenses.additional_notes')}
                 >
                     <Input.TextArea rows={2} />
                 </Form.Item>

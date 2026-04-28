@@ -15,11 +15,12 @@ i18n
       es: { translation: esTranslation },
     },
     fallbackLng: 'es',
+    lng: localStorage.getItem('i18nextLng') || 'es', // Default to Spanish unless user explicitly switched
     interpolation: {
-      escapeValue: false, // React already safes from xss
+      escapeValue: false,
     },
     detection: {
-      order: ['localStorage', 'navigator'],
+      order: ['localStorage'],
       caches: ['localStorage'],
     },
   });

@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
-import { Modal, Form, InputNumber, Input, message, Alert, Descriptions } from 'antd';
+import { Modal, Form, InputNumber, Input, App, Alert, Descriptions } from 'antd';
+import { useTranslation } from 'react-i18next';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { banksApi } from '../../../services/banksApi';
 import type { BankAccount } from '../../../services/banksApi';
@@ -16,19 +17,21 @@ interface LiquidateBatchModalProps {
  * Confirms the liquidation of a POS batch, moving funds from "in transit" to "real balance".
  */
 export const LiquidateBatchModal = ({ open, bankAccount, onClose }: LiquidateBatchModalProps) => {
+    const { t } = useTranslation();
+    const { message } = App.useApp();
     const [form] = Form.useForm();
     const queryClient = useQueryClient();
 
     const liquidateMutation = useMutation({
         mutationFn: banksApi.liquidatePos,
         onSuccess: () => {
-            message.success('Liquidation processed successfully');
+            message.success(t('banks.messages.liquidation_success'));
             queryClient.invalidateQueries({ queryKey: ['banks'] });
             onClose();
             form.resetFields();
         },
         onError: (error: any) => {
-            message.error(error.response?.data?.message || 'Error processing liquidation');
+            message.error(error.response?.data?.message || t('banks.messages.liquidation_error'));
         }
     });
 
@@ -63,41 +66,41 @@ export const LiquidateBatchModal = ({ open, bankAccount, onClose }: LiquidateBat
 
     return (
         <Modal
-            title="Confirm POS Batch Liquidation"
+            title={t('banks.liquidate.title')}
             open={open}
             onOk={handleSubmit}
             onCancel={onClose}
             confirmLoading={liquidateMutation.isPending}
-            okText="Process Liquidation (F9)"
-            cancelText="Cancel"
+            okText={t('banks.liquidate.process_btn')}
+            cancelText={t('common.cancel')}
             width={500}
         >
             <div style={{ marginTop: 16 }}>
                 <Alert
-                    message="Liquidation Process"
-                    description="Confirming this will move the in-transit balance to the real account balance. An automatic expense will be recorded for the bank commission."
+                    message={t('banks.liquidate.process_title')}
+                    description={t('banks.liquidate.process_desc')}
                     type="info"
                     showIcon
                     style={{ marginBottom: 20 }}
                 />
 
                 <Descriptions bordered column={1} size="small" style={{ marginBottom: 20 }}>
-                    <Descriptions.Item label="In-Transit Amount">
+                    <Descriptions.Item label={t('banks.liquidate.in_transit_amount')}>
                         <span style={{ fontWeight: 'bold', color: '#1890ff' }}>
                             {bankAccount.currency.symbol} {formatVenezuelanPrice(pendingAmount)}
                         </span>
                     </Descriptions.Item>
-                    <Descriptions.Item label="Destination Account">
+                    <Descriptions.Item label={t('banks.liquidate.dest_account')}>
                         {bankAccount.bankName} - {bankAccount.accountNumber}
                     </Descriptions.Item>
                 </Descriptions>
 
                 <Form form={form} layout="vertical" initialValues={{ commissionAmount: 0 }}>
                     <Form.Item
-                        label="Bank Commission (Deduction)"
+                        label={t('banks.liquidate.commission_label')}
                         name="commissionAmount"
-                        rules={[{ required: true, message: 'Please enter the commission (can be 0)' }]}
-                        help="This amount will be subtracted from the total and recorded as an Expense."
+                        rules={[{ required: true, message: t('banks.liquidate.commission_req') }]}
+                        help={t('banks.liquidate.commission_help')}
                     >
                         <InputNumber
                             style={{ width: '100%' }}
@@ -109,10 +112,10 @@ export const LiquidateBatchModal = ({ open, bankAccount, onClose }: LiquidateBat
                     </Form.Item>
 
                     <Form.Item
-                        label="Notes / Reference"
+                        label={t('common.notes')}
                         name="notes"
                     >
-                        <Input.TextArea placeholder="e.g., Batch #1234 - POS Settlement" rows={2} />
+                        <Input.TextArea placeholder={t('banks.liquidate.notes_placeholder')} rows={2} />
                     </Form.Item>
                 </Form>
             </div>

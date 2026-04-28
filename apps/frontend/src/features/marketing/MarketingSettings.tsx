@@ -1,8 +1,9 @@
 import { useEffect } from 'react';
-import { Card, Form, InputNumber, Button, message, Divider, Alert, Row, Col, Typography } from 'antd';
+import { Card, Form, InputNumber, Button, Divider, Alert, Row, Col, Typography, App } from 'antd';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { marketingApi } from '../../services/marketingApi';
 import { SaveOutlined, TrophyOutlined, SettingOutlined } from '@ant-design/icons';
+import { useTranslation } from 'react-i18next';
 
 const { Title, Text } = Typography;
 
@@ -12,6 +13,8 @@ const { Title, Text } = Typography;
  * Defines spending thresholds for VIP/Gold/Silver tiers and point-to-currency conversion rates.
  */
 export const MarketingSettings = () => {
+    const { t } = useTranslation();
+    const { message } = App.useApp();
     const [form] = Form.useForm();
     const queryClient = useQueryClient();
 
@@ -26,12 +29,12 @@ export const MarketingSettings = () => {
     const mutation = useMutation({
         mutationFn: marketingApi.updateConfig,
         onSuccess: () => {
-            message.success('Marketing and Loyalty configuration updated');
+            message.success(t('marketing.success_update'));
             queryClient.invalidateQueries({ queryKey: ['marketing-config'] });
             queryClient.invalidateQueries({ queryKey: ['marketing-stats'] });
         },
         onError: () => {
-            message.error('Failed to update configuration');
+            message.error(t('marketing.error_update'));
         }
     });
 
@@ -85,16 +88,16 @@ export const MarketingSettings = () => {
                     <Row gutter={24}>
                         <Col span={12}>
                             <Form.Item 
-                                label="VIP (Diamond) Threshold - USD" 
+                                label={t('marketing.vip_threshold')} 
                                 name="tierVipThreshold"
-                                tooltip="Minimum lifetime spend to reach Diamond status"
+                                tooltip={t('marketing.vip_tooltip')}
                             >
                                 <InputNumber style={{ width: '100%' }} prefix="$" min={0} size="large" />
                             </Form.Item>
                         </Col>
                         <Col span={12}>
                             <Form.Item 
-                                label="Gold Tier Threshold - USD" 
+                                label={t('marketing.gold_threshold')} 
                                 name="tierGoldThreshold"
                             >
                                 <InputNumber style={{ width: '100%' }} prefix="$" min={0} size="large" />
@@ -105,7 +108,7 @@ export const MarketingSettings = () => {
                     <Row gutter={24}>
                         <Col span={12}>
                             <Form.Item 
-                                label="Silver Tier Threshold - USD" 
+                                label={t('marketing.silver_threshold')} 
                                 name="tierSilverThreshold"
                             >
                                 <InputNumber style={{ width: '100%' }} prefix="$" min={0} size="large" />
@@ -113,41 +116,41 @@ export const MarketingSettings = () => {
                         </Col>
                         <Col span={12}>
                             <Form.Item 
-                                label="Inactivity Period (Churn) - Days" 
+                                label={t('marketing.churn_days')} 
                                 name="churnDays"
-                                tooltip="Days without a purchase before a customer is flagged as 'Inactive' or at risk of churn."
+                                tooltip={t('marketing.churn_tooltip')}
                             >
-                                <InputNumber style={{ width: '100%' }} suffix="days" min={1} size="large" />
+                                <InputNumber style={{ width: '100%' }} suffix={t('common.days', { defaultValue: 'days' })} min={1} size="large" />
                             </Form.Item>
                         </Col>
                     </Row>
 
-                    <Divider orientation={"left" as any}><TrophyOutlined style={{ color: '#faad14' }} /> Loyalty Rewards Program (Points)</Divider>
+                    <Divider orientation={"left" as any}><TrophyOutlined style={{ color: '#faad14' }} /> {t('marketing.loyalty_divider')}</Divider>
                     
                     <Row gutter={24}>
                         <Col span={8}>
                             <Form.Item 
-                                label="Earning Rate (Points per $1)" 
+                                label={t('marketing.earning_rate')} 
                                 name="pointsPerUSD"
-                                tooltip="The amount of points a customer earns for every $1 spent (or local currency equivalent)."
+                                tooltip={t('marketing.earning_tooltip')}
                             >
                                 <InputNumber style={{ width: '100%' }} min={0} step={0.1} size="large" />
                             </Form.Item>
                         </Col>
                         <Col span={8}>
                             <Form.Item 
-                                label="Point Value (in USD)" 
+                                label={t('marketing.point_value')} 
                                 name="valuePerPoint"
-                                tooltip="The monetary value of a single point when redeemed at checkout."
+                                tooltip={t('marketing.point_value_tooltip')}
                             >
                                 <InputNumber style={{ width: '100%' }} min={0} step={0.001} precision={4} size="large" />
                             </Form.Item>
                         </Col>
                         <Col span={8}>
                             <Form.Item 
-                                label="Max Redemption Limit (%)" 
+                                label={t('marketing.max_redemption')} 
                                 name="maxRedemptionPercentage"
-                                tooltip="Maximum percentage of the transaction total that can be paid using points."
+                                tooltip={t('marketing.max_redemption_tooltip')}
                             >
                                 <InputNumber style={{ width: '100%' }} min={1} max={100} suffix="%" size="large" />
                             </Form.Item>
@@ -157,8 +160,8 @@ export const MarketingSettings = () => {
                     <Row gutter={24} style={{ marginTop: 16 }}>
                         <Col span={24}>
                             <Alert
-                                message="Loyalty Program Mechanics"
-                                description="Points are calculated automatically during each checkout session. Cashiers can apply accumulated points as a payment method based on the conversion values defined above."
+                                message={t('marketing.mechanics_alert')}
+                                description={t('marketing.mechanics_desc')}
                                 type="success"
                                 showIcon
                                 style={{ borderRadius: '8px' }}
@@ -177,7 +180,7 @@ export const MarketingSettings = () => {
                             onClick={handleSubmit}
                             style={{ height: 50, padding: '0 40px', borderRadius: '8px' }}
                         >
-                            Save Marketing Options (F9)
+                            {t('marketing.save_button')}
                         </Button>
                     </div>
                 </Form>

@@ -3,6 +3,7 @@ import { formatVenezuelanPrice } from '../../../utils/formatters';
 import dayjs from 'dayjs';
 
 const { Text } = Typography;
+import { useTranslation } from 'react-i18next';
 
 interface ReturnDetailsModalProps {
     open: boolean;
@@ -16,13 +17,14 @@ interface ReturnDetailsModalProps {
  * Shows the original invoice reference, returned items, and if applicable, the replacement items and financial balance.
  */
 export const ReturnDetailsModal = ({ open, onClose, record }: ReturnDetailsModalProps) => {
+    const { t } = useTranslation();
     if (!record) return null;
 
     const getTypeTag = (type: string) => {
         const labels: Record<string, string> = {
-            REFUND: 'Refund',
-            EXCHANGE_SAME: 'Direct Exchange',
-            EXCHANGE_DIFFERENT: 'Product Swap'
+            REFUND: t('returns.type_refund_short'),
+            EXCHANGE_SAME: t('returns.type_exchange_same_short'),
+            EXCHANGE_DIFFERENT: t('returns.type_exchange_different_short')
         };
         const colors: Record<string, string> = {
             REFUND: 'purple',
@@ -34,10 +36,10 @@ export const ReturnDetailsModal = ({ open, onClose, record }: ReturnDetailsModal
 
     const getStatusTag = (status: string) => {
         const labels: Record<string, string> = {
-            PENDING: 'Pending',
-            APPROVED: 'Approved',
-            REJECTED: 'Rejected',
-            COMPLETED: 'Completed'
+            PENDING: t('returns.status_pending'),
+            APPROVED: t('returns.status_approved'),
+            REJECTED: t('returns.status_rejected'),
+            COMPLETED: t('returns.status_completed')
         };
         const colors: Record<string, string> = {
             PENDING: 'orange',
@@ -50,7 +52,7 @@ export const ReturnDetailsModal = ({ open, onClose, record }: ReturnDetailsModal
 
     const itemsColumns = [
         {
-            title: 'Product',
+            title: t('common.product'),
             key: 'product',
             render: (_: any, r: any) => (
                 <div>
@@ -61,21 +63,21 @@ export const ReturnDetailsModal = ({ open, onClose, record }: ReturnDetailsModal
             )
         },
         {
-            title: 'Qty',
+            title: t('common.qty_short'),
             dataIndex: 'quantity',
             key: 'quantity',
             width: 80,
             render: (qty: any) => Number(qty)
         },
         {
-            title: 'Unit Price',
+            title: t('common.unit_price'),
             dataIndex: 'unitPrice',
             key: 'unitPrice',
             align: 'right' as const,
             render: (val: any) => formatVenezuelanPrice(Number(val))
         },
         {
-            title: 'Total',
+            title: t('common.total'),
             dataIndex: 'total',
             key: 'total',
             align: 'right' as const,
@@ -86,7 +88,7 @@ export const ReturnDetailsModal = ({ open, onClose, record }: ReturnDetailsModal
     const replacementColumns = [
         ...itemsColumns.filter(col => col.key !== 'unitPrice'),
         {
-            title: 'Replacement Price',
+            title: t('returns.modal.replacement_items'),
             dataIndex: 'unitPrice',
             key: 'unitPrice',
             align: 'right' as const,
@@ -100,25 +102,25 @@ export const ReturnDetailsModal = ({ open, onClose, record }: ReturnDetailsModal
 
     return (
         <Modal
-            title={`Return Details: ${record.creditNoteNumber}`}
+            title={t('returns.modal.detail_title', { number: record.creditNoteNumber })}
             open={open}
             onCancel={onClose}
             footer={null}
             width={800}
         >
             <Descriptions bordered size="small" column={2}>
-                <Descriptions.Item label="Original Invoice">{record.originalSale?.invoiceNumber}</Descriptions.Item>
-                <Descriptions.Item label="Date Created">{dayjs(record.createdAt).format('MM/DD/YYYY HH:mm')}</Descriptions.Item>
-                <Descriptions.Item label="Customer">{record.originalSale?.client?.name || 'Walk-in'}</Descriptions.Item>
-                <Descriptions.Item label="Type">{getTypeTag(record.returnType)}</Descriptions.Item>
-                <Descriptions.Item label="Status">{getStatusTag(record.status)}</Descriptions.Item>
-                <Descriptions.Item label="Requested By">{record.requestedBy || '-'}</Descriptions.Item>
-                <Descriptions.Item label="Reason & Notes" span={2}>
-                    <Tag>{record.reason}</Tag> {record.notes || 'No additional notes provided'}
+                <Descriptions.Item label={t('returns.table.invoice')}>{record.originalSale?.invoiceNumber}</Descriptions.Item>
+                <Descriptions.Item label={t('returns.table.date')}>{dayjs(record.createdAt).format('MM/DD/YYYY HH:mm')}</Descriptions.Item>
+                <Descriptions.Item label={t('returns.table.customer')}>{record.originalSale?.client?.name || t('common.walk_in_customer')}</Descriptions.Item>
+                <Descriptions.Item label={t('returns.table.type')}>{getTypeTag(record.returnType)}</Descriptions.Item>
+                <Descriptions.Item label={t('returns.table.status')}>{getStatusTag(record.status)}</Descriptions.Item>
+                <Descriptions.Item label={t('returns.modal.requested_by', { defaultValue: 'Requested By' })}>{record.requestedBy || '-'}</Descriptions.Item>
+                <Descriptions.Item label={`${t('returns.modal.reason')} & ${t('common.notes')}`} span={2}>
+                    <Tag>{record.reason}</Tag> {record.notes || t('common.no_notes', { defaultValue: 'No additional notes provided' })}
                 </Descriptions.Item>
             </Descriptions>
 
-            <Divider orientation={"left" as any}>Returned Items</Divider>
+            <Divider orientation={"left" as any}>{t('returns.modal.invoice_items')}</Divider>
             <Table
                 dataSource={record.items || []}
                 columns={itemsColumns}
@@ -127,7 +129,7 @@ export const ReturnDetailsModal = ({ open, onClose, record }: ReturnDetailsModal
                 size="small"
                 summary={() => (
                     <Table.Summary.Row>
-                        <Table.Summary.Cell index={0} colSpan={3} align="right"><strong>Returned Total:</strong></Table.Summary.Cell>
+                        <Table.Summary.Cell index={0} colSpan={3} align="right"><strong>{t('returns.modal.refund_amount')}:</strong></Table.Summary.Cell>
                         <Table.Summary.Cell index={1} align="right"><strong>{formatVenezuelanPrice(totalDevuelto)}</strong></Table.Summary.Cell>
                     </Table.Summary.Row>
                 )}
@@ -135,7 +137,7 @@ export const ReturnDetailsModal = ({ open, onClose, record }: ReturnDetailsModal
 
             {record.replacementItems && record.replacementItems.length > 0 && (
                 <>
-                    <Divider orientation={"left" as any}>Replacement Items (Exchange)</Divider>
+                    <Divider orientation={"left" as any}>{t('returns.modal.selected_replacement')}</Divider>
                     <Table
                         dataSource={record.replacementItems}
                         columns={replacementColumns}
@@ -144,7 +146,7 @@ export const ReturnDetailsModal = ({ open, onClose, record }: ReturnDetailsModal
                         size="small"
                         summary={() => (
                             <Table.Summary.Row>
-                                <Table.Summary.Cell index={0} colSpan={3} align="right"><strong>Replacement Total:</strong></Table.Summary.Cell>
+                                <Table.Summary.Cell index={0} colSpan={3} align="right"><strong>{t('returns.modal.replacement_total')}:</strong></Table.Summary.Cell>
                                 <Table.Summary.Cell index={1} align="right"><strong>{formatVenezuelanPrice(totalCambio)}</strong></Table.Summary.Cell>
                             </Table.Summary.Row>
                         )}
@@ -153,14 +155,14 @@ export const ReturnDetailsModal = ({ open, onClose, record }: ReturnDetailsModal
                     <div style={{ marginTop: 16, textAlign: 'right', padding: '12px', background: '#f5f5f5', borderRadius: 6 }}>
                         {difference > 0 ? (
                             <Text type="success" strong style={{ fontSize: 16 }}>
-                                Balance in favor of Customer: {formatVenezuelanPrice(difference)}
+                                {t('returns.modal.balance_favor')} {formatVenezuelanPrice(difference)}
                             </Text>
                         ) : difference < 0 ? (
                             <Text type="danger" strong style={{ fontSize: 16 }}>
-                                Customer pays difference: {formatVenezuelanPrice(Math.abs(difference))}
+                                {t('returns.modal.balance_paid')} {formatVenezuelanPrice(Math.abs(difference))}
                             </Text>
                         ) : (
-                            <Text type="secondary" strong style={{ fontSize: 16 }}>Even exchange (0.00 difference)</Text>
+                            <Text type="secondary" strong style={{ fontSize: 16 }}>{t('returns.modal.even_exchange')}</Text>
                         )}
                     </div>
                 </>
@@ -168,9 +170,9 @@ export const ReturnDetailsModal = ({ open, onClose, record }: ReturnDetailsModal
 
             {record.returnType === 'REFUND' && (
                 <div style={{ marginTop: 16, textAlign: 'right', padding: '12px', background: '#f5f5f5', borderRadius: 6 }}>
-                    <Text strong>Refunded Amount: {formatVenezuelanPrice(Number(record.refundAmount))}</Text>
+                    <Text strong>{t('returns.modal.refunded_amount')}: {formatVenezuelanPrice(Number(record.refundAmount))}</Text>
                     <br />
-                    <Text type="secondary">Method: {record.refundMethod}</Text>
+                    <Text type="secondary">{t('returns.modal.method')}: {record.refundMethod}</Text>
                 </div>
             )}
         </Modal>

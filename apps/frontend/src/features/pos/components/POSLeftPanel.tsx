@@ -10,6 +10,7 @@ import { QuantityModal } from './QuantityModal';
 import { DiscountModal } from './DiscountModal';
 import { PriceModal } from './PriceModal';
 import { DeleteOutlined, PercentageOutlined, NumberOutlined, DollarOutlined, ExclamationCircleOutlined, WarningOutlined, SyncOutlined } from '@ant-design/icons';
+import { useTranslation } from 'react-i18next';
 
 /**
  * POSLeftPanel Component
@@ -17,6 +18,7 @@ import { DeleteOutlined, PercentageOutlined, NumberOutlined, DollarOutlined, Exc
  * Includes complex stock validation and multi-currency price calculations.
  */
 export const POSLeftPanel = () => {
+    const { t } = useTranslation();
     const screens = Grid.useBreakpoint();
     const isMobile = !screens.lg;
     const {
@@ -75,9 +77,9 @@ export const POSLeftPanel = () => {
 
             if (product.type !== 'SERVICE' && product.stock === 0) {
                 Modal.warning({
-                    title: 'Out of Stock',
+                    title: t('pos.cart.out_of_stock'),
                     icon: <WarningOutlined style={{ color: '#ff4d4f' }} />,
-                    content: `${product.name} has no available inventory.`,
+                    content: t('pos.cart.out_of_stock_desc', { name: product.name }),
                 });
                 return;
             }
@@ -100,9 +102,9 @@ export const POSLeftPanel = () => {
                 }
 
                 Modal.warning({
-                    title: 'Insufficient Stock',
+                    title: t('pos.cart.insufficient_stock'),
                     icon: <WarningOutlined style={{ color: '#faad14' }} />,
-                    content: `Unable to add another full unit. You already have ${currentNormalizedQuantity.toFixed(3)} units in cart. Available stock: ${product.stock}`,
+                    content: t('pos.cart.insufficient_stock_desc', { qty: currentNormalizedQuantity.toFixed(3), stock: product.stock }),
                 });
                 return;
             }
@@ -129,8 +131,8 @@ export const POSLeftPanel = () => {
                 case 'F6':
                     e.preventDefault();
                     Modal.confirm({
-                        title: 'Remove item?',
-                        content: 'The product will be removed from the cart.',
+                        title: t('pos.cart.remove_confirm_title'),
+                        content: t('pos.cart.remove_confirm_desc'),
                         onOk: () => removeItem(selectedItemId),
                     });
                     break;
@@ -153,7 +155,7 @@ export const POSLeftPanel = () => {
 
     const columns = [
         {
-            title: 'Qty',
+            title: t('pos.cart.qty'),
             dataIndex: 'quantity',
             key: 'quantity',
             width: 70,
@@ -165,7 +167,7 @@ export const POSLeftPanel = () => {
             )
         },
         {
-            title: 'Description',
+            title: t('pos.cart.description'),
             dataIndex: 'product',
             key: 'product',
             render: (product: any, record: CartItem) => (
@@ -173,10 +175,10 @@ export const POSLeftPanel = () => {
                     <span style={{ fontWeight: 'bold' }}>{product.name}</span>
                     {record.isSecondaryUnit && <div style={{ fontSize: 10, color: '#888' }}>({product.secondaryUnit?.name || 'Sec.'})</div>}
                     <div style={{ display: 'flex', gap: 4, marginTop: 2 }}>
-                        {product.isTaxExempt && <Tag color="default" style={{ fontSize: 9, margin: 0 }}>EXEMPT</Tag>}
+                        {product.isTaxExempt && <Tag color="default" style={{ fontSize: 9, margin: 0 }}>{t('pos.cart.exempt')}</Tag>}
                         {record.discount > 0 && (
                             <span style={{ fontSize: 11, color: 'green' }}>
-                                Disc: {record.discountPercent}% (-{formatVenezuelanPriceOnly(record.discount, 2, false)})
+                                {t('pos.cart.discount')}: {record.discountPercent}% (-{formatVenezuelanPriceOnly(record.discount, 2, false)})
                             </span>
                         )}
                     </div>
@@ -184,7 +186,7 @@ export const POSLeftPanel = () => {
             )
         },
         !isMobile ? {
-            title: 'Stock',
+            title: t('pos.cart.stock'),
             key: 'stock',
             width: 70,
             align: 'center' as const,
@@ -214,7 +216,7 @@ export const POSLeftPanel = () => {
             }
         } : null,
         {
-            title: 'Total',
+            title: t('pos.cart.total'),
             dataIndex: 'total',
             key: 'total',
             width: 90,
@@ -264,7 +266,7 @@ export const POSLeftPanel = () => {
                 showSearch
                 searchValue={searchTerm}
                 value={null}
-                placeholder="Scan barcode or search product..."
+                placeholder={t('pos.cart.search_placeholder')}
                 defaultActiveFirstOption={false}
                 suffixIcon={null}
                 filterOption={false}
@@ -308,7 +310,7 @@ export const POSLeftPanel = () => {
                     size="small"
                     scroll={{ y: isMobile ? 'calc(100vh - 430px)' : 'calc(100vh - 300px)' }}
                     rowKey={(record) => record.product.id}
-                    locale={{ emptyText: 'Cart is empty' }}
+                    locale={{ emptyText: t('pos.cart.empty') }}
                     rowClassName={(record) => record.product.id === selectedItemId ? 'pos-row-selected' : 'pos-row'}
                     onRow={(record) => ({
                         onClick: () => selectItem(record.product.id),
@@ -324,7 +326,7 @@ export const POSLeftPanel = () => {
                     disabled={!selectedItemId}
                     onClick={() => setIsQuantityModalOpen(true)}
                 >
-                    {isMobile ? "Qty" : "F4 Qty"}
+                    {isMobile ? t('pos.cart.qty') : `F4 ${t('pos.cart.qty')}`}
                 </Button>
                 <Button
                     size={isMobile ? "middle" : "small"}
@@ -332,7 +334,7 @@ export const POSLeftPanel = () => {
                     disabled={!selectedItemId}
                     onClick={() => setIsPriceModalOpen(true)}
                 >
-                    {isMobile ? "Price" : "F5 Price"}
+                    {isMobile ? t('common.price') : `F5 ${t('common.price')}`}
                 </Button>
                 <Button
                     size={isMobile ? "middle" : "small"}
@@ -341,13 +343,13 @@ export const POSLeftPanel = () => {
                     disabled={!selectedItemId}
                     onClick={() => {
                         Modal.confirm({
-                            title: 'Remove item?',
-                            content: 'The product will be removed from the cart.',
+                            title: t('pos.cart.remove_confirm_title'),
+                            content: t('pos.cart.remove_confirm_desc'),
                             onOk: () => removeItem(selectedItemId!),
                         });
                     }}
                 >
-                    {isMobile ? "Delete" : "F6 Delete"}
+                    {isMobile ? t('common.delete') : `F6 ${t('common.delete')}`}
                 </Button>
                 <Button
                     size={isMobile ? "middle" : "small"}
@@ -355,7 +357,7 @@ export const POSLeftPanel = () => {
                     disabled={!selectedItemId}
                     onClick={() => setIsDiscountModalOpen(true)}
                 >
-                    {isMobile ? "Disc" : "F7 Disc"}
+                    {isMobile ? t('common.discount') : `F7 ${t('common.discount')}`}
                 </Button>
                 <Button
                     size={isMobile ? "middle" : "small"}
@@ -363,7 +365,7 @@ export const POSLeftPanel = () => {
                     disabled={!selectedItemId}
                     onClick={toggleSelectedItemUnit}
                 >
-                    {isMobile ? "Alt" : "F8 Alt Unit"}
+                    {isMobile ? "Alt" : `F8 ${t('pos.footer.unit', { defaultValue: 'Alt Unit' })}`}
                 </Button>
             </div>
 
@@ -372,7 +374,7 @@ export const POSLeftPanel = () => {
                 {taxEnabled && (
                     <>
                         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 2 }}>
-                            <span style={{ color: '#aaa', fontSize: 13 }}>Taxable Base</span>
+                            <span style={{ color: '#aaa', fontSize: 13 }}>{t('pos.cart.taxable_base')}</span>
                             <span
                                 style={{ fontSize: 14, color: '#fff' }}
                                 title={formatVenezuelanPriceOnly(totals.subtotal || 0, 2, false)}
@@ -381,7 +383,7 @@ export const POSLeftPanel = () => {
                             </span>
                         </div>
                         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5 }}>
-                            <span style={{ color: '#aaa', fontSize: 13 }}>VAT ({taxRate}%)</span>
+                            <span style={{ color: '#aaa', fontSize: 13 }}>{t('pos.cart.vat')} ({taxRate}%)</span>
                             <span
                                 style={{ fontSize: 14, color: '#fff' }}
                                 title={formatVenezuelanPriceOnly(totals.tax || 0, 2, false)}
@@ -394,7 +396,7 @@ export const POSLeftPanel = () => {
 
                 {!taxEnabled && (
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5 }}>
-                        <span style={{ color: 'white' }}>Sub Total</span>
+                        <span style={{ color: 'white' }}>{t('pos.cart.subtotal')}</span>
                         <strong
                             style={{ fontSize: 16, color: 'white' }}
                             title={formatVenezuelanPriceOnly(totals.subtotal || 0, 2, false)}
@@ -405,14 +407,14 @@ export const POSLeftPanel = () => {
                 )}
 
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5 }}>
-                    <span style={{ color: 'white' }}>Discount</span>
+                    <span style={{ color: 'white' }}>{t('pos.cart.discount')}</span>
                     <strong style={{ fontSize: 16, color: 'orange' }}>
                         {(totals.discount || 0).toFixed(2)}
                     </strong>
                 </div>
 
                 <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid #555', marginTop: 5, paddingTop: 5 }}>
-                    <span style={{ color: 'white', fontSize: 16, fontWeight: 'bold' }}>TOTAL</span>
+                    <span style={{ color: 'white', fontSize: 16, fontWeight: 'bold' }}>{t('pos.cart.grand_total')}</span>
                     <div style={{ textAlign: 'right' }}>
                         <strong
                             style={{ fontSize: 24, color: 'yellow' }}
@@ -434,7 +436,7 @@ export const POSLeftPanel = () => {
                 </div>
 
                 <div style={{ fontSize: 11, color: '#aaa', marginTop: 5, textAlign: 'right' }}>
-                    Items Count: {totals.itemsCount}
+                    {t('pos.cart.items_count')}: {totals.itemsCount}
                 </div>
             </Card>
 
@@ -454,8 +456,8 @@ export const POSLeftPanel = () => {
 
                             if (selectedCartItem.product.type !== 'SERVICE' && (normalizedQty + otherNormalizedQty) > selectedCartItem.product.stock) {
                                 Modal.warning({
-                                    title: 'Insufficient Stock',
-                                    content: `The requested quantity exceeds available stock (${selectedCartItem.product.stock}).`
+                                    title: t('pos.cart.insufficient_stock'),
+                                    content: t('pos.cart.insufficient_stock_simple', { defaultValue: 'The requested quantity exceeds available stock ({{stock}}).', stock: selectedCartItem.product.stock })
                                 });
                                 return;
                             }
@@ -474,8 +476,8 @@ export const POSLeftPanel = () => {
                         onOk={(percent) => {
                             if (percent > 30) {
                                 Modal.error({
-                                    title: 'Excessive Discount',
-                                    content: 'Maximum allowed discount is 30%.'
+                                    title: t('pos.cart.excessive_discount'),
+                                    content: t('pos.cart.excessive_discount_desc')
                                 });
                                 return;
                             }
@@ -487,8 +489,8 @@ export const POSLeftPanel = () => {
 
                             if (finalPrice < costInPrimary) {
                                 Modal.error({
-                                    title: 'Price Below Cost',
-                                    content: `A ${percent}% discount results in a price (${finalPrice.toFixed(2)}) lower than product cost (${costInPrimary.toFixed(2)}). Operation not permitted.`
+                                    title: t('pos.cart.price_below_cost'),
+                                    content: t('pos.cart.price_below_cost_desc', { price: finalPrice.toFixed(2), cost: costInPrimary.toFixed(2) })
                                 });
                                 return;
                             }

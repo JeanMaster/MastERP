@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Modal, Form, Input, InputNumber, Button, App, Select, Divider, Typography } from 'antd';
+import { useTranslation } from 'react-i18next';
 import type { Invoice } from '../../../services/invoicesApi';
 import { taxRetentionsApi } from '../../../services/taxRetentionsApi';
 
@@ -18,6 +19,7 @@ export const RegisterRetentionModal: React.FC<RegisterRetentionModalProps> = ({
     onClose,
     onSuccess,
 }) => {
+    const { t } = useTranslation();
     const [form] = Form.useForm();
     const { message } = App.useApp();
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -58,7 +60,7 @@ export const RegisterRetentionModal: React.FC<RegisterRetentionModalProps> = ({
         if (!invoice) return;
 
         if (values.amount > Number(invoice.balance)) {
-            message.warning('El monto de la retención excede el saldo pendiente de la factura.');
+            message.warning(t('tax_retention.messages.exceeds_balance'));
         }
 
         try {
@@ -69,10 +71,10 @@ export const RegisterRetentionModal: React.FC<RegisterRetentionModalProps> = ({
                 voucherDate: new Date(values.voucherDate),
             });
 
-            message.success('Retención registrada exitosamente');
+            message.success(t('tax_retention.messages.success'));
             onSuccess();
         } catch (error: any) {
-            message.error(error.response?.data?.message || 'Error al registrar la retención');
+            message.error(error.response?.data?.message || t('tax_retention.messages.error'));
         } finally {
             setIsSubmitting(false);
         }
@@ -80,7 +82,7 @@ export const RegisterRetentionModal: React.FC<RegisterRetentionModalProps> = ({
 
     return (
         <Modal
-            title="Registrar Retención de Impuesto"
+            title={t('tax_retention.modal_title')}
             open={visible}
             onCancel={onClose}
             footer={null}
@@ -94,18 +96,18 @@ export const RegisterRetentionModal: React.FC<RegisterRetentionModalProps> = ({
                     onValuesChange={handleCalculateAmount}
                 >
                     <div style={{ marginBottom: 24, padding: 16, border: '1px solid #d9d9d9', borderRadius: 8, backgroundColor: '#fafafa' }}>
-                        <Title level={5} style={{ marginTop: 0 }}>Resumen de Factura</Title>
+                        <Title level={5} style={{ marginTop: 0 }}>{t('tax_retention.invoice_summary')}</Title>
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                            <Text type="secondary">Factura:</Text>
+                            <Text type="secondary">{t('common.invoice')}:</Text>
                             <Text strong>{invoice.number}</Text>
                             
-                            <Text type="secondary">Base Imponible:</Text>
+                            <Text type="secondary">{t('common.taxable_base')}:</Text>
                             <Text>Bs. {Number(invoice.subtotal).toLocaleString('de-DE', { minimumFractionDigits: 2 })}</Text>
                             
-                            <Text type="secondary">IVA:</Text>
+                            <Text type="secondary">{t('common.tax')}:</Text>
                             <Text>Bs. {Number(invoice.tax).toLocaleString('de-DE', { minimumFractionDigits: 2 })}</Text>
                             
-                            <Text type="secondary">Saldo Pendiente:</Text>
+                            <Text type="secondary">{t('common.balance') || 'Pending Balance'}:</Text>
                             <Text style={{ color: '#ff4d4f' }}>Bs. {Number(invoice.balance).toLocaleString('de-DE', { minimumFractionDigits: 2 })}</Text>
                         </div>
                     </div>
@@ -113,7 +115,7 @@ export const RegisterRetentionModal: React.FC<RegisterRetentionModalProps> = ({
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                         <Form.Item
                             name="type"
-                            label="Tipo de Impuesto"
+                            label={t('tax_retention.type')}
                             rules={[{ required: true }]}
                         >
                             <Select>
@@ -125,8 +127,8 @@ export const RegisterRetentionModal: React.FC<RegisterRetentionModalProps> = ({
 
                         <Form.Item
                             name="voucherNumber"
-                            label="Número de Comprobante"
-                            rules={[{ required: true, message: 'Requerido' }]}
+                            label={t('tax_retention.voucher_number')}
+                            rules={[{ required: true, message: t('common.required') }]}
                         >
                             <Input placeholder="YYYYMMXXXXXXXX" />
                         </Form.Item>
@@ -135,7 +137,7 @@ export const RegisterRetentionModal: React.FC<RegisterRetentionModalProps> = ({
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px' }}>
                         <Form.Item
                             name="baseAmount"
-                            label="Base Imponible"
+                            label={t('common.taxable_base')}
                             rules={[{ required: true }]}
                         >
                             <InputNumber style={{ width: '100%' }} precision={2} />
@@ -143,7 +145,7 @@ export const RegisterRetentionModal: React.FC<RegisterRetentionModalProps> = ({
 
                         <Form.Item
                             name="retentionPercent"
-                            label="Porcentaje (%)"
+                            label={t('tax_retention.percent')}
                             rules={[{ required: true }]}
                         >
                             <Select>
@@ -158,7 +160,7 @@ export const RegisterRetentionModal: React.FC<RegisterRetentionModalProps> = ({
 
                         <Form.Item
                             name="amount"
-                            label="Monto Retenido"
+                            label={t('tax_retention.retained_amount')}
                             rules={[{ required: true }]}
                         >
                             <InputNumber 
@@ -172,9 +174,9 @@ export const RegisterRetentionModal: React.FC<RegisterRetentionModalProps> = ({
                     <Divider style={{ margin: '12px 0' }} />
                     
                     <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-                        <Button onClick={onClose}>Cancelar</Button>
+                        <Button onClick={onClose}>{t('common.cancel')}</Button>
                         <Button type="primary" htmlType="submit" loading={isSubmitting}>
-                            Registrar Comprobante
+                            {t('tax_retention.register_voucher')}
                         </Button>
                     </div>
                 </Form>

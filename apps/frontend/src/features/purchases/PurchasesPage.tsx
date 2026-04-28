@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Table, Button, Tag, Row, Col, Card, App, Grid, Typography, Space } from 'antd';
 import { PlusOutlined, EyeOutlined, ReloadOutlined } from '@ant-design/icons';
+import { useTranslation } from 'react-i18next';
 import dayjs from 'dayjs';
 import { purchasesApi } from '../../services/purchasesApi';
 import type { Purchase } from '../../services/purchasesApi';
@@ -13,6 +14,7 @@ import { PurchaseDetailsModal } from './components/PurchaseDetailsModal';
  * Lists all registered purchase invoices from suppliers.
  */
 export const PurchasesPage: React.FC = () => {
+    const { t } = useTranslation();
     const screens = Grid.useBreakpoint();
     const isMobile = !screens.lg;
     const { message } = App.useApp();
@@ -32,7 +34,7 @@ export const PurchasesPage: React.FC = () => {
             const data = await purchasesApi.getAll();
             setPurchases(data);
         } catch (error) {
-            message.error('Error loading purchase history');
+            message.error(t('purchases.messages.load_error'));
         } finally {
             setLoading(false);
         }
@@ -45,31 +47,31 @@ export const PurchasesPage: React.FC = () => {
 
     const columns = [
         {
-            title: 'Date',
+            title: t('purchases.table.date'),
             dataIndex: 'invoiceDate',
             key: 'date',
             render: (date: string) => dayjs(date).format('DD/MM/YYYY'),
             sorter: (a: Purchase, b: Purchase) => dayjs(a.invoiceDate).unix() - dayjs(b.invoiceDate).unix(),
         },
         {
-            title: 'Supplier',
+            title: t('purchases.table.supplier'),
             dataIndex: ['supplier', 'comercialName'],
             key: 'supplier',
         },
         {
-            title: 'Invoice #',
+            title: t('purchases.table.invoice_number'),
             dataIndex: 'invoiceNumber',
             key: 'invoiceNumber',
             render: (text: string) => text || 'N/A',
         },
         {
-            title: 'Items',
+            title: t('purchases.table.items'),
             dataIndex: 'items',
             key: 'items',
             render: (items: any[]) => items.length,
         },
         {
-            title: 'Total',
+            title: t('purchases.table.total'),
             dataIndex: 'total',
             key: 'total',
             render: (total: number, record: Purchase) => (
@@ -77,17 +79,17 @@ export const PurchasesPage: React.FC = () => {
             ),
         },
         {
-            title: 'Status',
+            title: t('purchases.table.status'),
             dataIndex: 'status',
             key: 'status',
             render: (status: string) => (
                 <Tag color={status === 'COMPLETED' ? 'green' : 'orange'}>
-                    {status === 'COMPLETED' ? 'Completed' : status}
+                    {status === 'COMPLETED' ? t('purchases.completed') : status}
                 </Tag>
             ),
         },
         {
-            title: 'Actions',
+            title: t('purchases.table.actions'),
             key: 'actions',
             width: 80,
             fixed: isMobile ? false : ('right' as const),
@@ -106,7 +108,7 @@ export const PurchasesPage: React.FC = () => {
             <Card>
                 <Row justify="space-between" align="middle" gutter={[16, 16]} style={{ marginBottom: 24 }}>
                     <Col xs={24} md={12}>
-                        <Typography.Title level={isMobile ? 3 : 2} style={{ margin: 0 }}>📦 Purchase Reception</Typography.Title>
+                        <Typography.Title level={isMobile ? 3 : 2} style={{ margin: 0 }}>📦 {t('purchases.title')}</Typography.Title>
                     </Col>
                     <Col xs={24} md={12} style={{ textAlign: isMobile ? 'left' : 'right' }}>
                         <Space wrap={isMobile}>
@@ -117,7 +119,7 @@ export const PurchasesPage: React.FC = () => {
                                 onClick={() => setModalVisible(true)}
                                 block={isMobile}
                             >
-                                Register Purchase
+                                {t('purchases.register_button')}
                             </Button>
                         </Space>
                     </Col>

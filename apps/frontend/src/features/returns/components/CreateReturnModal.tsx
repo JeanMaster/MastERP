@@ -17,6 +17,7 @@ import {
     Checkbox
 } from 'antd';
 import { SearchOutlined, CloseCircleOutlined } from '@ant-design/icons';
+import { useTranslation } from 'react-i18next';
 import { usePOSStore } from '../../../store/posStore';
 import { salesApi, type Sale } from '../../../services/salesApi';
 import { returnsApi, type CreateReturnDto, type CreateReturnItemDto } from '../../../services/returnsApi';
@@ -47,6 +48,7 @@ interface SelectedItem extends CreateReturnItemDto {
  * 3. Define Return Type (Refund/Exchange) -> 4. Select Replacement (Optional) -> 5. Review & Submit.
  */
 export const CreateReturnModal = ({ open, onCancel, onSuccess }: CreateReturnModalProps) => {
+    const { t } = useTranslation();
     const { roundingEnabled, roundingFactor } = usePOSStore();
     const [currentStep, setCurrentStep] = useState(0);
     const [invoiceNumber, setInvoiceNumber] = useState('');
@@ -88,7 +90,7 @@ export const CreateReturnModal = ({ open, onCancel, onSuccess }: CreateReturnMod
      */
     const handleSearchInvoice = async () => {
         if (!invoiceNumber.trim()) {
-            message.error('Please enter an invoice number');
+            message.error(t('returns.messages.error_enter_invoice'));
             return;
         }
 
@@ -98,7 +100,7 @@ export const CreateReturnModal = ({ open, onCancel, onSuccess }: CreateReturnMod
             const foundSale = sales.find(s => s.invoiceNumber === invoiceNumber.trim());
 
             if (!foundSale) {
-                message.error('Invoice not found');
+                message.error(t('returns.messages.error_invoice_not_found'));
                 setSale(null);
                 return;
             }
@@ -108,13 +110,13 @@ export const CreateReturnModal = ({ open, onCancel, onSuccess }: CreateReturnMod
             const daysDiff = Math.floor((today.getTime() - saleDate.getTime()) / (1000 * 60 * 60 * 24));
 
             if (daysDiff > 30) {
-                message.warning('This invoice is over 30 days old. Check return policy eligibility.');
+                message.warning(t('returns.messages.warning_old_invoice'));
             }
 
             setSale(foundSale);
             setCurrentStep(1);
         } catch (error) {
-            message.error('Error searching for invoice');
+            message.error(t('returns.messages.error_searching_invoice'));
             console.error(error);
         } finally {
             setLoading(false);
@@ -124,7 +126,7 @@ export const CreateReturnModal = ({ open, onCancel, onSuccess }: CreateReturnMod
     const handleItemSelection = (checked: boolean, item: any) => {
         if (checked) {
             if (!item.product) {
-                message.error('Product data not available');
+                message.error(t('common.product_data_unavailable'));
                 return;
             }
 
@@ -162,7 +164,7 @@ export const CreateReturnModal = ({ open, onCancel, onSuccess }: CreateReturnMod
             setReplacementSearchResults(results);
         } catch (error) {
             console.error('Error searching products:', error);
-            message.error('Error searching products');
+            message.error(t('common.error_searching_products'));
         } finally {
             setIsSearchingProducts(false);
         }
@@ -170,7 +172,7 @@ export const CreateReturnModal = ({ open, onCancel, onSuccess }: CreateReturnMod
 
     const addReplacementItem = (product: any) => {
         if (replacementItems.some(i => i.productId === product.id)) {
-            message.warning('Product already added');
+            message.warning(t('common.product_already_added'));
             return;
         }
 
@@ -217,7 +219,7 @@ export const CreateReturnModal = ({ open, onCancel, onSuccess }: CreateReturnMod
 
     const handleNext = () => {
         if (currentStep === 1 && selectedItems.length === 0) {
-            message.error('Please select at least one item to return');
+            message.error(t('returns.messages.error_select_item'));
             return;
         }
         setCurrentStep(currentStep + 1);
@@ -259,11 +261,11 @@ export const CreateReturnModal = ({ open, onCancel, onSuccess }: CreateReturnMod
         setLoading(true);
         try {
             await returnsApi.create(dto);
-            message.success('Return request created successfully');
+            message.success(t('returns.messages.success_create'));
             resetModal();
             onSuccess();
         } catch (error: any) {
-            message.error(error.response?.data?.message || 'Error creating return request');
+            message.error(error.response?.data?.message || t('returns.messages.error_create'));
             console.error(error);
         } finally {
             setLoading(false);
@@ -272,7 +274,7 @@ export const CreateReturnModal = ({ open, onCancel, onSuccess }: CreateReturnMod
 
     const itemsColumns = [
         {
-            title: 'Product',
+            title: t('common.product'),
             key: 'product',
             render: (_: any, record: any) => (
                 <div>
@@ -282,28 +284,28 @@ export const CreateReturnModal = ({ open, onCancel, onSuccess }: CreateReturnMod
             )
         },
         {
-            title: 'Orig. Qty',
+            title: t('returns.modal.orig_qty'),
             dataIndex: 'quantity',
             key: 'originalQty',
             width: 100,
             render: (qty: number) => Number(qty).toFixed(0)
         },
         {
-            title: 'Unit Price',
+            title: t('common.unit_price'),
             dataIndex: 'unitPrice',
             key: 'unitPrice',
             width: 100,
             render: (price: number) => formatVenezuelanPrice(Number(price))
         },
         {
-            title: 'Total',
+            title: t('common.total'),
             dataIndex: 'total',
             key: 'total',
             width: 100,
             render: (total: number) => formatVenezuelanPrice(Number(total))
         },
         {
-            title: 'Select',
+            title: t('common.select'),
             key: 'select',
             width: 80,
             render: (_: any, record: any) => (
@@ -318,7 +320,7 @@ export const CreateReturnModal = ({ open, onCancel, onSuccess }: CreateReturnMod
     const selectedItemsColumns = [
         ...itemsColumns.filter(col => col.key !== 'select'),
         {
-            title: 'Return Qty',
+            title: t('returns.modal.return_qty'),
             key: 'returnQty',
             width: 120,
             render: (_: any, record: SelectedItem) => (
@@ -335,12 +337,12 @@ export const CreateReturnModal = ({ open, onCancel, onSuccess }: CreateReturnMod
 
     const steps = [
         {
-            title: 'Find Invoice',
+            title: t('returns.modal.step_find'),
             content: (
                 <div style={{ padding: '20px 0' }}>
                     <Space.Compact style={{ width: '100%' }}>
                         <Input
-                            placeholder="Invoice number (e.g., FAC-00000001)"
+                            placeholder={t('returns.modal.invoice_placeholder')}
                             value={invoiceNumber}
                             onChange={(e) => setInvoiceNumber(e.target.value)}
                             onPressEnter={handleSearchInvoice}
@@ -353,20 +355,20 @@ export const CreateReturnModal = ({ open, onCancel, onSuccess }: CreateReturnMod
                             loading={loading}
                             size="large"
                         >
-                            Search
+                            {t('returns.modal.search')}
                         </Button>
                     </Space.Compact>
 
                     {sale && (
                         <Alert
-                            message="Invoice Found"
+                            message={t('returns.modal.invoice_found')}
                             description={
                                 <div style={{ marginTop: 10 }}>
-                                    <p><strong>Invoice:</strong> {sale.invoiceNumber}</p>
-                                    <p><strong>Date:</strong> {dayjs(sale.date).format('MM/DD/YYYY HH:mm')}</p>
-                                    <p><strong>Customer:</strong> {sale.client?.name || 'Walk-in Customer'}</p>
-                                    <p><strong>Total:</strong> {formatVenezuelanPrice(Number(sale.total))}</p>
-                                    <p><strong>Items:</strong> {sale.items.length}</p>
+                                    <p><strong>{t('common.invoice')}:</strong> {sale.invoiceNumber}</p>
+                                    <p><strong>{t('common.date')}:</strong> {dayjs(sale.date).format('MM/DD/YYYY HH:mm')}</p>
+                                    <p><strong>{t('common.customer')}:</strong> {sale.client?.name || t('common.walk_in_customer')}</p>
+                                    <p><strong>{t('common.total')}:</strong> {formatVenezuelanPrice(Number(sale.total))}</p>
+                                    <p><strong>{t('common.items')}:</strong> {sale.items.length}</p>
                                 </div>
                             }
                             type="success"
@@ -378,10 +380,10 @@ export const CreateReturnModal = ({ open, onCancel, onSuccess }: CreateReturnMod
             )
         },
         {
-            title: 'Select Items',
+            title: t('returns.modal.step_select'),
             content: (
                 <div>
-                    <Title level={5}>Invoice Items</Title>
+                    <Title level={5}>{t('returns.modal.invoice_items')}</Title>
                     <Table
                         dataSource={sale?.items || []}
                         columns={itemsColumns}
@@ -392,7 +394,7 @@ export const CreateReturnModal = ({ open, onCancel, onSuccess }: CreateReturnMod
 
                     {selectedItems.length > 0 && (
                         <div style={{ marginTop: 20 }}>
-                            <Title level={5}>Items selected for return</Title>
+                            <Title level={5}>{t('returns.modal.selected_items')}</Title>
                             <Table
                                 dataSource={selectedItems}
                                 columns={selectedItemsColumns}
@@ -406,55 +408,55 @@ export const CreateReturnModal = ({ open, onCancel, onSuccess }: CreateReturnMod
             )
         },
         {
-            title: 'Return Options',
+            title: t('returns.modal.step_options'),
             content: (
                 <div>
                     <Form layout="vertical">
-                        <Form.Item label="Return Type">
+                        <Form.Item label={t('returns.modal.type')}>
                             <Radio.Group value={returnType} onChange={(e) => setReturnType(e.target.value)}>
                                 <Space direction="vertical">
-                                    <Radio value="REFUND">Refund (Return money)</Radio>
-                                    <Radio value="EXCHANGE_SAME">Exchange for same product</Radio>
-                                    <Radio value="EXCHANGE_DIFFERENT">Swap for different product</Radio>
+                                    <Radio value="REFUND">{t('returns.type_refund')}</Radio>
+                                    <Radio value="EXCHANGE_SAME">{t('returns.type_exchange_same')}</Radio>
+                                    <Radio value="EXCHANGE_DIFFERENT">{t('returns.type_exchange_different')}</Radio>
                                 </Space>
                             </Radio.Group>
                         </Form.Item>
 
-                        <Form.Item label="Reason for Return">
+                        <Form.Item label={t('returns.modal.reason')}>
                             <Select value={reason} onChange={setReason}>
-                                <Select.Option value="DEFECTIVE">Defective product</Select.Option>
-                                <Select.Option value="UNSATISFIED">Customer unsatisfied</Select.Option>
-                                <Select.Option value="ERROR">Sale error</Select.Option>
-                                <Select.Option value="EXPIRED">Expired product</Select.Option>
-                                <Select.Option value="OTHER">Other</Select.Option>
+                                <Select.Option value="DEFECTIVE">{t('returns.modal.reason_defective')}</Select.Option>
+                                <Select.Option value="UNSATISFIED">{t('returns.modal.reason_unsatisfied')}</Select.Option>
+                                <Select.Option value="ERROR">{t('returns.modal.reason_error')}</Select.Option>
+                                <Select.Option value="EXPIRED">{t('returns.modal.reason_expired')}</Select.Option>
+                                <Select.Option value="OTHER">{t('common.other')}</Select.Option>
                             </Select>
                         </Form.Item>
 
-                        <Form.Item label="Product Condition">
+                        <Form.Item label={t('returns.modal.condition')}>
                             <Select value={condition} onChange={setCondition}>
-                                <Select.Option value="EXCELLENT">Excellent (Resalable)</Select.Option>
-                                <Select.Option value="GOOD">Good</Select.Option>
-                                <Select.Option value="DEFECTIVE">Defective</Select.Option>
-                                <Select.Option value="DAMAGED">Damaged/Broken</Select.Option>
+                                <Select.Option value="EXCELLENT">{t('returns.modal.cond_excellent')}</Select.Option>
+                                <Select.Option value="GOOD">{t('returns.modal.cond_good')}</Select.Option>
+                                <Select.Option value="DEFECTIVE">{t('returns.modal.cond_defective')}</Select.Option>
+                                <Select.Option value="DAMAGED">{t('returns.modal.cond_damaged')}</Select.Option>
                             </Select>
                         </Form.Item>
 
                         {returnType === 'REFUND' && (
-                            <Form.Item label="Refund Method">
+                            <Form.Item label={t('returns.modal.refund_method')}>
                                 <Select value={refundMethod} onChange={setRefundMethod}>
-                                    <Select.Option value="CASH">Cash</Select.Option>
-                                    <Select.Option value="TRANSFER">Bank Transfer</Select.Option>
-                                    <Select.Option value="CREDIT_NOTE">Store Credit Note</Select.Option>
+                                    <Select.Option value="CASH">{t('common.cash')}</Select.Option>
+                                    <Select.Option value="TRANSFER">{t('common.transfer')}</Select.Option>
+                                    <Select.Option value="CREDIT_NOTE">{t('common.credit_note')}</Select.Option>
                                 </Select>
                             </Form.Item>
                         )}
 
-                        <Form.Item label="Additional Notes">
+                        <Form.Item label={t('common.notes')}>
                             <TextArea
                                 rows={3}
                                 value={notes}
                                 onChange={(e) => setNotes(e.target.value)}
-                                placeholder="Details about the return request..."
+                                placeholder={t('returns.modal.notes_placeholder')}
                             />
                         </Form.Item>
                     </Form>
@@ -462,13 +464,13 @@ export const CreateReturnModal = ({ open, onCancel, onSuccess }: CreateReturnMod
             )
         },
         {
-            title: 'Exchange Products',
+            title: t('returns.modal.step_exchange'),
             content: (
                 <div>
-                    <Title level={5}>Search for replacement products</Title>
+                    <Title level={5}>{t('returns.modal.search_replacement')}</Title>
                     <Select
                         showSearch
-                        placeholder="Search by Name or SKU..."
+                        placeholder={t('common.search_placeholder')}
                         value={replacementSearch}
                         onSearch={handleSearchProducts}
                         onChange={(value) => {
@@ -489,16 +491,16 @@ export const CreateReturnModal = ({ open, onCancel, onSuccess }: CreateReturnMod
 
                     {replacementItems.length > 0 && (
                         <div>
-                            <Title level={5}>Selected Replacement Items</Title>
+                            <Title level={5}>{t('returns.modal.selected_replacement')}</Title>
                             <Table
                                 dataSource={replacementItems}
                                 rowKey="productId"
                                 pagination={false}
                                 size="small"
                                 columns={[
-                                    { title: 'Product', key: 'product', render: (_, r) => <div><strong>{r.productName}</strong><br /><small>{r.productSku}</small></div> },
+                                    { title: t('common.product'), key: 'product', render: (_, r) => <div><strong>{r.productName}</strong><br /><small>{r.productSku}</small></div> },
                                     {
-                                        title: 'Price',
+                                        title: t('common.price'),
                                         key: 'price',
                                         width: 140,
                                         render: (_, r) => (
@@ -514,7 +516,7 @@ export const CreateReturnModal = ({ open, onCancel, onSuccess }: CreateReturnMod
                                         )
                                     },
                                     {
-                                        title: 'Qty.',
+                                        title: t('common.qty_short'),
                                         key: 'qty',
                                         render: (_, r) => (
                                             <InputNumber
@@ -525,7 +527,7 @@ export const CreateReturnModal = ({ open, onCancel, onSuccess }: CreateReturnMod
                                             />
                                         )
                                     },
-                                    { title: 'Total', key: 'total', render: (_, r) => formatVenezuelanPrice(r.total) },
+                                    { title: t('common.total'), key: 'total', render: (_, r) => formatVenezuelanPrice(r.total) },
                                     {
                                         title: '',
                                         key: 'actions',
@@ -542,14 +544,14 @@ export const CreateReturnModal = ({ open, onCancel, onSuccess }: CreateReturnMod
                             />
 
                             <div style={{ marginTop: 10, textAlign: 'right' }}>
-                                <Text strong>Balance in favor of Customer: </Text>
+                                <Text strong>{t('returns.modal.balance_favor')}</Text>
                                 <Text strong style={{ color: '#52c41a' }}>
                                     {formatVenezuelanPrice(
                                         Math.max(0, selectedItems.reduce((sum, i) => sum + i.total, 0) - replacementItems.reduce((sum, i) => sum + i.total, 0))
                                     )}
                                 </Text>
                                 <br />
-                                <Text strong>Balance to be paid by Customer: </Text>
+                                <Text strong>{t('returns.modal.balance_paid')}</Text>
                                 <Text strong style={{ color: '#f5222d' }}>
                                     {formatVenezuelanPrice(
                                         Math.max(0, replacementItems.reduce((sum, i) => sum + i.total, 0) - selectedItems.reduce((sum, i) => sum + i.total, 0))
@@ -562,36 +564,36 @@ export const CreateReturnModal = ({ open, onCancel, onSuccess }: CreateReturnMod
             )
         },
         {
-            title: 'Review',
+            title: t('common.review'),
             content: (
                 <div>
                     <Alert
-                        message="Return Summary"
+                        message={t('returns.modal.summary')}
                         description={
                             <div style={{ marginTop: 10 }}>
-                                <p><strong>Invoice:</strong> {sale?.invoiceNumber}</p>
-                                <p><strong>Type:</strong> {
-                                    returnType === 'REFUND' ? 'Refund' :
-                                        returnType === 'EXCHANGE_SAME' ? 'Same Product Exchange' :
-                                            'Product Swap'
+                                <p><strong>{t('common.invoice')}:</strong> {sale?.invoiceNumber}</p>
+                                <p><strong>{t('common.type')}:</strong> {
+                                    returnType === 'REFUND' ? t('returns.type_refund_short') :
+                                        returnType === 'EXCHANGE_SAME' ? t('returns.type_exchange_same_short') :
+                                            t('returns.type_exchange_different_short')
                                 }</p>
-                                <p><strong>Items to return:</strong> {selectedItems.length}</p>
-                                <p><strong>Refund Amount:</strong> {formatVenezuelanPrice(
+                                <p><strong>{t('returns.modal.items_to_return')}:</strong> {selectedItems.length}</p>
+                                <p><strong>{t('returns.modal.refund_amount')}:</strong> {formatVenezuelanPrice(
                                     selectedItems.reduce((sum, item) => sum + item.total, 0)
                                 )}</p>
                                 {returnType === 'EXCHANGE_DIFFERENT' && (
                                     <>
-                                        <p><strong>Replacement Items:</strong> {replacementItems.length}</p>
-                                        <p><strong>Replacement Total:</strong> {formatVenezuelanPrice(
+                                        <p><strong>{t('returns.modal.replacement_items')}:</strong> {replacementItems.length}</p>
+                                        <p><strong>{t('returns.modal.replacement_total')}:</strong> {formatVenezuelanPrice(
                                             replacementItems.reduce((sum, item) => sum + item.total, 0)
                                         )}</p>
                                     </>
                                 )}
                                 {returnType === 'REFUND' && (
-                                    <p><strong>Refund Method:</strong> {
-                                        refundMethod === 'CASH' ? 'Cash' :
-                                            refundMethod === 'TRANSFER' ? 'Bank Transfer' :
-                                                'Credit Note'
+                                    <p><strong>{t('returns.modal.refund_method')}:</strong> {
+                                        refundMethod === 'CASH' ? t('common.cash') :
+                                            refundMethod === 'TRANSFER' ? t('common.transfer') :
+                                                t('common.credit_note')
                                     }</p>
                                 )}
                             </div>
@@ -613,27 +615,27 @@ export const CreateReturnModal = ({ open, onCancel, onSuccess }: CreateReturnMod
 
     return (
         <Modal
-            title="Create New Return"
+            title={t('returns.modal.create_title')}
             open={open}
             onCancel={handleCancel}
             width={900}
             footer={
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <Button onClick={handleCancel}>Cancel</Button>
+                    <Button onClick={handleCancel}>{t('common.cancel')}</Button>
                     <Space>
                         {currentStep > 0 && (
                             <Button onClick={() => setCurrentStep(currentStep - 1)}>
-                                Back
+                                {t('common.back')}
                             </Button>
                         )}
                         {currentStep < filteredSteps.length - 1 && (
                             <Button type="primary" onClick={handleNext}>
-                                Next
+                                {t('common.next')}
                             </Button>
                         )}
                         {currentStep === filteredSteps.length - 1 && (
                             <Button type="primary" onClick={handleSubmit} loading={loading}>
-                                Create Return Request
+                                {t('returns.new_request_full')}
                             </Button>
                         )}
                     </Space>

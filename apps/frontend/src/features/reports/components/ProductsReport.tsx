@@ -5,10 +5,12 @@ import { SearchOutlined } from '@ant-design/icons';
 import { statsApi } from '../../../services/statsApi';
 import { ProductDetailsModal } from './ProductDetailsModal';
 import { usePOSStore } from '../../../store/posStore';
+import { useTranslation } from 'react-i18next';
 
 const { Title, Text } = Typography;
 
 export const ProductsReport = () => {
+    const { t } = useTranslation();
     const { primaryCurrency } = usePOSStore();
     const [searchText, setSearchText] = useState('');
     const [selectedProduct, setSelectedProduct] = useState<string | null>(null);
@@ -27,7 +29,7 @@ export const ProductsReport = () => {
 
     const columns = [
         {
-            title: 'Producto / Ítem',
+            title: t('common.product'),
             dataIndex: 'name',
             key: 'name',
             render: (text: string, record: any) => (
@@ -38,35 +40,35 @@ export const ProductsReport = () => {
             ),
         },
         {
-            title: 'Categoría',
+            title: t('common.category'),
             dataIndex: 'category',
             key: 'category',
         },
         {
-            title: 'Stock Actual',
+            title: t('common.stock'),
             dataIndex: 'stock',
             key: 'stock',
             render: (val: number) => <Text strong>{val}</Text>,
         },
         {
-            title: 'Velocidad (Unid/Día)',
+            title: t('reports.inventory.velocity'),
             dataIndex: 'dailySalesVelocity',
             key: 'dailySalesVelocity',
             render: (val: number) => val > 0 ? val.toFixed(2) : '-',
         },
         {
-            title: 'Días Restantes',
+            title: t('reports.inventory.days_left'),
             dataIndex: 'daysRemaining',
             key: 'daysRemaining',
             render: (val: number) => {
-                if (val === -1) return <Tag>Sin ventas</Tag>;
-                if (val < 10) return <Tag color="error">{val} días</Tag>;
-                if (val < 30) return <Tag color="warning">{val} días</Tag>;
-                return <Tag color="success">{val} días</Tag>;
+                if (val === -1) return <Tag>{t('reports.products.no_sales')}</Tag>;
+                if (val < 10) return <Tag color="error">{val} {t('common.days')}</Tag>;
+                if (val < 30) return <Tag color="warning">{val} {t('common.days')}</Tag>;
+                return <Tag color="success">{val} {t('common.days')}</Tag>;
             },
         },
         {
-            title: 'Proyección 6 Meses',
+            title: t('reports.inventory.needed_6m'),
             dataIndex: 'unitsNeeded6Months',
             key: 'unitsNeeded6Months',
             render: (val: number) => val > 0 ? val : '-',
@@ -77,9 +79,9 @@ export const ProductsReport = () => {
         <Card>
             <Space direction="vertical" style={{ width: '100%' }} size="large">
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <Title level={4} style={{ margin: 0 }}>Rendimiento de Productos y Proyección</Title>
+                    <Title level={4} style={{ margin: 0 }}>{t('reports.products.title')}</Title>
                     <Input 
-                        placeholder="Buscar producto o categoría..." 
+                        placeholder={t('reports.products.search_placeholder')} 
                         prefix={<SearchOutlined />} 
                         value={searchText}
                         onChange={e => setSearchText(e.target.value)}

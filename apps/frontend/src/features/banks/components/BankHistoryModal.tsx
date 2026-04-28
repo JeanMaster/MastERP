@@ -1,5 +1,6 @@
 import { Modal, Table, Tag, Typography } from 'antd';
 import { useQuery } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import { banksApi, type BankAccount, type BankMovement } from '../../../services/banksApi';
 import dayjs from 'dayjs';
 
@@ -16,6 +17,8 @@ interface BankHistoryModalProps {
  * Displays the movement history for a specific bank account.
  */
 export const BankHistoryModal = ({ open, bankAccount, onClose }: BankHistoryModalProps) => {
+    const { t } = useTranslation();
+    
     const { data: history = [], isLoading } = useQuery({
         queryKey: ['bank-history', bankAccount?.id],
         queryFn: () => banksApi.getHistory(bankAccount!.id),
@@ -24,43 +27,43 @@ export const BankHistoryModal = ({ open, bankAccount, onClose }: BankHistoryModa
 
     const columns = [
         {
-            title: 'Date',
+            title: t('banks.history.date'),
             dataIndex: 'createdAt',
             key: 'createdAt',
             render: (date: string) => dayjs(date).format('MM/DD/YYYY HH:mm'),
         },
         {
-            title: 'Type',
+            title: t('banks.history.type'),
             dataIndex: 'type',
             key: 'type',
             render: (type: string) => (
                 <Tag color={type === 'IN' ? 'green' : 'red'}>
-                    {type === 'IN' ? 'INCOME' : 'OUTCOME'}
+                    {type === 'IN' ? t('banks.history.income') : t('banks.history.outcome')}
                 </Tag>
             ),
         },
         {
-            title: 'Category',
+            title: t('banks.history.category'),
             dataIndex: 'category',
             key: 'category',
             render: (cat: string) => {
                 const labels: Record<string, string> = {
-                    'SALE_TRANSFER': 'Sales Transfer',
-                    'EXPENSE': 'Expense',
-                    'INJECTION': 'Capital Injection',
-                    'ADJUSTMENT': 'Adjustment',
-                    'TRANSFER': 'Transfer'
+                    'SALE_TRANSFER': t('banks.history.categories.sale_transfer'),
+                    'EXPENSE': t('banks.movements.categories.expense'),
+                    'INJECTION': t('banks.movements.categories.injection'),
+                    'ADJUSTMENT': t('banks.movements.categories.adjustment'),
+                    'TRANSFER': t('banks.movements.categories.transfer')
                 };
                 return labels[cat] || cat;
             }
         },
         {
-            title: 'Description',
+            title: t('banks.history.description'),
             dataIndex: 'description',
             key: 'description',
         },
         {
-            title: 'Amount',
+            title: t('banks.history.amount'),
             dataIndex: 'amount',
             key: 'amount',
             align: 'right' as const,
@@ -71,7 +74,7 @@ export const BankHistoryModal = ({ open, bankAccount, onClose }: BankHistoryModa
             ),
         },
         {
-            title: 'Ref',
+            title: t('banks.history.reference'),
             dataIndex: 'reference',
             key: 'reference',
         },
@@ -79,7 +82,7 @@ export const BankHistoryModal = ({ open, bankAccount, onClose }: BankHistoryModa
 
     return (
         <Modal
-            title={`History: ${bankAccount?.bankName} - ${bankAccount?.accountNumber}`}
+            title={`${t('banks.history.title')}: ${bankAccount?.bankName} - ${bankAccount?.accountNumber}`}
             open={open}
             onCancel={onClose}
             footer={null}

@@ -13,7 +13,7 @@ import {
     Empty,
     Alert,
     Tabs,
-    message
+    App
 } from 'antd';
 import {
     PlusOutlined,
@@ -29,6 +29,7 @@ import {
     InboxOutlined,
     UndoOutlined
 } from '@ant-design/icons';
+import { useTranslation } from 'react-i18next';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { cashRegisterApi, type CashSession, type CashMovement, type CashRegister } from '../../services/cashRegisterApi';
 import { formatVenezuelanPrice } from '../../utils/formatters';
@@ -45,6 +46,8 @@ import { RegistersManagement } from './RegistersManagement';
 const { Title, Text } = Typography;
 
 export const CashRegisterPage = () => {
+    const { t } = useTranslation();
+    const { message } = App.useApp();
     const queryClient = useQueryClient();
     const navigate = useNavigate();
     const { user } = useAuth();
@@ -204,42 +207,33 @@ export const CashRegisterPage = () => {
     };
 
     const getMovementTypeLabel = (type: string) => {
-        const labels: Record<string, string> = {
-            SALE: 'Sale',
-            EXPENSE: 'Expense',
-            DEPOSIT: 'Cash Withdrawal',
-            WITHDRAWAL: 'Cash Deposit',
-            OPENING: 'Opening',
-            CLOSING: 'Closing',
-            ADJUSTMENT: 'Cash Adjustment',
-            CHANGE: 'Change Given'
-        };
-        return labels[type] || type;
+        return t(`cash_register.types.${type}`, { defaultValue: type });
     };
 
     const i18nPaymentMethod = (method: string) => {
+        // Map to existing expenses payment methods if possible, or common labels
         const labels: Record<string, string> = {
-            CASH: 'Cash Bs',
+            CASH: t('expenses.payment_methods.CASH'),
             CURRENCY_USD: 'Cash $',
-            DEBIT: 'Debit Card',
-            MOBILE: 'Mobile Payment',
-            TRANSFER: 'Transfer',
-            CREDIT: 'Credit',
-            CURRENCY_UDT: 'Other'
+            DEBIT: t('expenses.payment_methods.DEBIT'),
+            MOBILE: t('expenses.payment_methods.PAGO_MOVIL'),
+            TRANSFER: t('expenses.payment_methods.TRANSFER'),
+            CREDIT: t('expenses.payment_methods.CREDIT'),
+            CURRENCY_UDT: t('expenses.payment_methods.OTHERS')
         };
         return labels[method] || method;
     };
 
     const movementsColumns = [
         {
-            title: 'Time',
+            title: t('cash_register.time'),
             dataIndex: 'createdAt',
             key: 'time',
             width: 80,
             render: (date: string) => dayjs(date).format('HH:mm')
         },
         {
-            title: 'Type',
+            title: t('cash_register.type'),
             dataIndex: 'type',
             key: 'type',
             width: 120,
@@ -251,12 +245,12 @@ export const CashRegisterPage = () => {
             )
         },
         {
-            title: 'Description',
+            title: t('cash_register.description'),
             dataIndex: 'description',
             key: 'description'
         },
         {
-            title: 'Amount',
+            title: t('cash_register.amount'),
             dataIndex: 'amount',
             key: 'amount',
             width: 140,
@@ -291,7 +285,7 @@ export const CashRegisterPage = () => {
 
     const historyColumns = [
         {
-            title: 'Date',
+            title: t('cash_register.date'),
             key: 'date',
             width: 150,
             render: (_: any, record: CashSession) => (
@@ -304,20 +298,20 @@ export const CashRegisterPage = () => {
             )
         },
         {
-            title: 'Responsible',
+            title: t('cash_register.responsible'),
             key: 'user',
             width: 120,
             render: (_: any, record: CashSession) => (
                 <div>
                     <div>{record.openedBy}</div>
                     {record.closedBy && record.closedBy !== record.openedBy && (
-                        <div style={{ fontSize: 11, color: '#888' }}>Closed by: {record.closedBy}</div>
+                        <div style={{ fontSize: 11, color: '#888' }}>{t('cash_register.closed_by', { defaultValue: 'Closed by' })}: {record.closedBy}</div>
                     )}
                 </div>
             )
         },
         {
-            title: 'Opening',
+            title: t('cash_register.opening_balance'),
             dataIndex: 'openingBalance',
             key: 'opening',
             width: 100,
@@ -325,7 +319,7 @@ export const CashRegisterPage = () => {
             render: (amount: number) => formatVenezuelanPrice(Number(amount))
         },
         {
-            title: 'Expected',
+            title: t('cash_register.expected'),
             dataIndex: 'expectedBalance',
             key: 'expected',
             width: 100,
@@ -333,7 +327,7 @@ export const CashRegisterPage = () => {
             render: (amount: number) => formatVenezuelanPrice(Number(amount || 0))
         },
         {
-            title: 'Actual',
+            title: t('cash_register.actual'),
             dataIndex: 'actualBalance',
             key: 'actual',
             width: 100,
@@ -341,7 +335,7 @@ export const CashRegisterPage = () => {
             render: (amount: number) => formatVenezuelanPrice(Number(amount || 0))
         },
         {
-            title: 'Variance',
+            title: t('cash_register.variance'),
             dataIndex: 'variance',
             key: 'variance',
             width: 100,
@@ -361,11 +355,11 @@ export const CashRegisterPage = () => {
     const getStatusTag = (status: string) => {
         switch (status) {
             case 'OPEN':
-                return <Tag color="green" style={{ fontSize: 13, padding: '2px 8px' }}>● OPEN</Tag>;
+                return <Tag color="green" style={{ fontSize: 13, padding: '2px 8px' }}>● {t('cash_register.open')}</Tag>;
             case 'AWAITING_CLOSE':
-                return <Tag color="warning" style={{ fontSize: 13, padding: '2px 8px' }}>● AWAITING CLOSE</Tag>;
+                return <Tag color="warning" style={{ fontSize: 13, padding: '2px 8px' }}>● {t('cash_register.awaiting_close')}</Tag>;
             case 'CLOSED':
-                return <Tag color="default" style={{ fontSize: 13, padding: '2px 8px' }}>● CLOSED</Tag>;
+                return <Tag color="default" style={{ fontSize: 13, padding: '2px 8px' }}>● {t('cash_register.closed')}</Tag>;
             default:
                 return <Tag>{status}</Tag>;
         }
@@ -384,18 +378,18 @@ export const CashRegisterPage = () => {
     const handleApproveClose = async (sessionId: string) => {
         try {
             await cashRegisterApi.approveClose(sessionId, user?.username || 'Admin');
-            message.success('Cash close authorized successfully');
+            message.success(t('cash_register.authorize_success'));
             refetch();
             refetchHistory();
             refetchRegisters();
         } catch (error: any) {
-            message.error(error.message || 'Error authorizing close');
+            message.error(error.message || t('cash_register.authorize_error', { defaultValue: 'Error authorizing close' }));
         }
     };
 
     const registerColumns = [
         {
-            title: 'Cash Register Name',
+            title: t('cash_register.register_name'),
             dataIndex: 'name',
             key: 'name',
             render: (text: string, record: CashRegister) => (
@@ -406,23 +400,23 @@ export const CashRegisterPage = () => {
             )
         },
         {
-            title: 'Status',
+            title: t('cash_register.status'),
             key: 'status',
             render: (_: any, record: CashRegister) => (
                 record.activeSession
                     ? getStatusTag(record.activeSession.status)
-                    : <Tag color="default">● CLOSED</Tag>
+                    : <Tag color="default">● {t('cash_register.closed')}</Tag>
             )
         },
         {
-            title: 'Responsible',
+            title: t('cash_register.responsible'),
             key: 'manager',
             render: (_: any, record: CashRegister) => (
                 record.activeSession?.cashierId || record.activeSession?.openedBy || '-'
             )
         },
         {
-            title: 'Cash in Drawer',
+            title: t('cash_register.cash_in_drawer'),
             key: 'balance',
             align: 'right' as const,
             render: (_: any, record: CashRegister) => (
@@ -432,7 +426,7 @@ export const CashRegisterPage = () => {
             )
         },
         {
-            title: 'Actions',
+            title: t('cash_register.actions'),
             key: 'actions',
             align: 'right' as const,
             render: (_: any, record: CashRegister) => (
@@ -443,7 +437,7 @@ export const CashRegisterPage = () => {
                             icon={<PlusOutlined />}
                             onClick={() => handleOpenRegister(record.id)}
                         >
-                            Open
+                            {t('cash_register.open')}
                         </Button>
                     ) : (
                         <>
@@ -451,7 +445,7 @@ export const CashRegisterPage = () => {
                                 icon={<EyeOutlined />}
                                 onClick={() => handleSelectRegister(record.id)}
                             >
-                                View Details
+                                {t('cash_register.view_details')}
                             </Button>
                             <Button
                                 type="primary"
@@ -462,7 +456,7 @@ export const CashRegisterPage = () => {
                                     setIsTransferToTreasuryOpen(true);
                                 }}
                             >
-                                Treasury
+                                {t('cash_register.treasury')}
                             </Button>
                             <Button
                                 danger
@@ -473,7 +467,7 @@ export const CashRegisterPage = () => {
                                     setIsCloseModalVisible(true);
                                 }}
                             >
-                                Close
+                                {t('cash_register.close')}
                             </Button>
                         </>
                     )}
@@ -483,15 +477,15 @@ export const CashRegisterPage = () => {
     ];
 
     const renderCashCountTable = (counts: any[]) => {
-        if (!counts || counts.length === 0) return <Empty description="No cash breakdown reported" image={Empty.PRESENTED_IMAGE_SIMPLE} />;
+        if (!counts || counts.length === 0) return <Empty description={t('cash_register.no_breakdown')} image={Empty.PRESENTED_IMAGE_SIMPLE} />;
 
         const vesItems = counts.filter(c => c.currencyCode === 'VES');
         const usdItems = counts.filter(c => c.currencyCode === 'USD');
 
         const columns = [
-            { title: 'Denomination', dataIndex: 'value', key: 'value', render: (val: any, record: any) => `${Number(val).toFixed(2)} ${record.currencyCode}` },
-            { title: 'Quantity', dataIndex: 'quantity', key: 'quantity', align: 'center' as const },
-            { title: 'Subtotal', dataIndex: 'total', key: 'total', align: 'right' as const, render: (val: any, record: any) => `${Number(val).toFixed(2)} ${record.currencyCode}` },
+            { title: t('cash_register.denomination'), dataIndex: 'value', key: 'value', render: (val: any, record: any) => `${Number(val).toFixed(2)} ${record.currencyCode}` },
+            { title: t('cash_register.quantity'), dataIndex: 'quantity', key: 'quantity', align: 'center' as const },
+            { title: t('cash_register.subtotal'), dataIndex: 'total', key: 'total', align: 'right' as const, render: (val: any, record: any) => `${Number(val).toFixed(2)} ${record.currencyCode}` },
         ];
 
         return (
@@ -543,19 +537,19 @@ export const CashRegisterPage = () => {
                         onClick={() => setRegisterId('')}
                         style={{ marginBottom: 16 }}
                     >
-                        Back to Registers Panel
+                        {t('cash_register.back_to_panel')}
                     </Button>
 
                     {activeSession.status === 'AWAITING_CLOSE' ? (
                         <Alert
-                            message={<Title level={4} style={{ margin: 0, color: '#856404' }}>📢 {activeSession.register.name.toUpperCase()} REQUESTS CLOSE</Title>}
+                            message={<Title level={4} style={{ margin: 0, color: '#856404' }}>📢 {activeSession.register.name.toUpperCase()} {t('cash_register.requests_close')}</Title>}
                             description={
                                 <Space direction="vertical" style={{ width: '100%' }}>
-                                    <Text>The cashier has completed the count and requests to close the session. Review the amounts before authorizing.</Text>
+                                    <Text>{t('cash_register.close_request_desc')}</Text>
                                     <div style={{ marginTop: 8 }}>
-                                        <Text strong>Counted by Cashier: {formatVenezuelanPrice(Number(activeSession.actualBalance))}</Text>
+                                        <Text strong>{t('cash_register.counted_by_cashier')}: {formatVenezuelanPrice(Number(activeSession.actualBalance))}</Text>
                                         <br />
-                                        <Text type="secondary">Reported variance: {formatVenezuelanPrice(Number(activeSession.variance))}</Text>
+                                        <Text type="secondary">{t('cash_register.reported_variance')}: {formatVenezuelanPrice(Number(activeSession.variance))}</Text>
                                     </div>
                                     <Button
                                         type="primary"
@@ -563,7 +557,7 @@ export const CashRegisterPage = () => {
                                         style={{ marginTop: 12, backgroundColor: '#52c41a', borderColor: '#52c41a' }}
                                         onClick={() => handleApproveClose(activeSession.id)}
                                     >
-                                        Authorize Cash Close
+                                        {t('cash_register.authorize_button')}
                                     </Button>
                                 </Space>
                             }
@@ -573,7 +567,7 @@ export const CashRegisterPage = () => {
                         />
                     ) : (
                         <Alert
-                            message={`Session started: ${dayjs(activeSession.openedAt).format('MM/DD/YYYY HH:mm')}`}
+                            message={`${t('cash_register.session_started')}: ${dayjs(activeSession.openedAt).format('MM/DD/YYYY HH:mm')}`}
                             type="info"
                             showIcon
                             style={{ marginBottom: 16 }}
@@ -585,7 +579,7 @@ export const CashRegisterPage = () => {
                         <Col xs={24} sm={12} md={6}>
                             <Card>
                                 <Statistic
-                                    title="Opening"
+                                    title={t('cash_register.opening_balance')}
                                     value={Number(activeSession.openingBalance)}
                                     precision={2}
                                     prefix="Bs."
@@ -596,7 +590,7 @@ export const CashRegisterPage = () => {
                         <Col xs={24} sm={12} md={6}>
                             <Card>
                                 <Statistic
-                                    title="Total Sales"
+                                    title={t('cash_register.total_sales')}
                                     value={activeSession.sales?.reduce((acc, curr) => acc + Number(curr.total), 0) || 0}
                                     precision={2}
                                     prefix="Bs."
@@ -607,7 +601,7 @@ export const CashRegisterPage = () => {
                         <Col xs={24} sm={12} md={6}>
                             <Card>
                                 <Statistic
-                                    title="Expenses / Withdrawals"
+                                    title={t('cash_register.expenses_withdrawals')}
                                     value={summary.expenses + summary.deposits}
                                     precision={2}
                                     prefix="Bs."
@@ -618,7 +612,7 @@ export const CashRegisterPage = () => {
                         <Col xs={24} sm={12} md={6}>
                             <Card style={{ borderColor: '#1890ff', borderWidth: 2 }}>
                                 <Statistic
-                                    title="Cash in Drawer (Expected)"
+                                    title={t('cash_register.expected_cash')}
                                     value={summary.expected}
                                     precision={2}
                                     prefix="Bs."
@@ -629,7 +623,7 @@ export const CashRegisterPage = () => {
                     </Row>
 
                     {/* Payment Pillar Breakdown */}
-                    <Card title="Payment Method Summary" style={{ marginBottom: 24 }}>
+                    <Card title={t('cash_register.payment_method_summary')} style={{ marginBottom: 24 }}>
                         <Row gutter={[16, 16]}>
                             {Object.entries(summary.methodsBreakdown).map(([method, amount]) => (
                                 amount > 0 && (
@@ -655,7 +649,7 @@ export const CashRegisterPage = () => {
                                 icon={<DollarOutlined />}
                                 onClick={() => setIsAddMovementOpen(true)}
                             >
-                                Register Movement
+                                {t('cash_register.register_movement')}
                             </Button>
                             <Button
                                 type="primary"
@@ -663,13 +657,13 @@ export const CashRegisterPage = () => {
                                 style={{ backgroundColor: '#722ed1', borderColor: '#722ed1' }}
                                 onClick={() => setIsTransferToTreasuryOpen(true)}
                             >
-                                Transfer to Treasury
+                                {t('cash_register.transfer_to_treasury')}
                             </Button>
                             <Button
                                 icon={<ReloadOutlined />}
                                 onClick={() => refetch()}
                             >
-                                Update
+                                {t('cash_register.update')}
                             </Button>
                             <Button
                                 danger
@@ -677,25 +671,25 @@ export const CashRegisterPage = () => {
                                 icon={<LogoutOutlined />}
                                 onClick={() => setIsCloseModalVisible(true)}
                             >
-                                Close Cash
+                                {t('cash_register.close_cash')}
                             </Button>
                         </Space>
                     </Card>
 
                     {/* Reported Cash Details */}
                     {activeSession?.cashCounts && activeSession.cashCounts.length > 0 && (
-                        <Card title={<Space><InboxOutlined /> Cash Count Reported by Cashier</Space>} style={{ marginBottom: 24 }}>
+                        <Card title={<Space><InboxOutlined /> {t('cash_register.cash_count_reported')}</Space>} style={{ marginBottom: 24 }}>
                             <Tabs
                                 type="card"
                                 items={[
                                     {
                                         key: 'closing',
-                                        label: 'Closing Count',
+                                        label: t('cash_register.closing_count'),
                                         children: renderCashCountTable(activeSession.cashCounts.filter(c => c.type === 'CLOSING'))
                                     },
                                     {
                                         key: 'verification',
-                                        label: 'Opening Count',
+                                        label: t('cash_register.opening_count'),
                                         children: renderCashCountTable(activeSession.cashCounts.filter(c => c.type === 'VERIFICATION'))
                                     }
                                 ].filter(item => {
@@ -714,7 +708,7 @@ export const CashRegisterPage = () => {
                             items={[
                                 {
                                     key: 'movements',
-                                    label: <Space><HistoryOutlined /> General Movements</Space>,
+                                    label: <Space><HistoryOutlined /> {t('cash_register.movements_tab')}</Space>,
                                     children: (
                                         <Table
                                             dataSource={activeSession.movements}
@@ -727,32 +721,32 @@ export const CashRegisterPage = () => {
                                 },
                                 {
                                     key: 'sales',
-                                    label: <Space><ShopOutlined /> Sales Details</Space>,
+                                    label: <Space><ShopOutlined /> {t('cash_register.sales_tab')}</Space>,
                                     children: (
                                         <Table
                                             dataSource={activeSession.sales}
                                             columns={[
                                                 {
-                                                    title: 'Invoice',
+                                                    title: t('cash_register.invoice'),
                                                     dataIndex: 'invoiceNumber',
                                                     key: 'invoice',
                                                     render: (text: string) => <Text strong>{text}</Text>
                                                 },
                                                 {
-                                                    title: 'Time',
+                                                    title: t('cash_register.time'),
                                                     dataIndex: 'date',
                                                     key: 'time',
                                                     render: (date: string) => dayjs(date).format('HH:mm')
                                                 },
                                                 {
-                                                    title: 'Total Amount',
+                                                    title: t('cash_register.amount'),
                                                     dataIndex: 'total',
                                                     key: 'total',
                                                     align: 'right',
                                                     render: (total: number) => formatVenezuelanPrice(Number(total))
                                                 },
                                                 {
-                                                    title: 'Payment Methods',
+                                                    title: t('cash_register.payment_method_summary'),
                                                     dataIndex: 'paymentMethod',
                                                     key: 'methods',
                                                     render: (methods: string) => {
@@ -790,7 +784,7 @@ export const CashRegisterPage = () => {
         if (user?.role === 'ADMIN') {
             return (
                 <Card
-                    title={<Title level={4} style={{ margin: 0 }}>📊 Cash Registers Dashboard</Title>}
+                    title={<Title level={4} style={{ margin: 0 }}>📊 {t('cash_register.dashboard_title')}</Title>}
                     extra={<Button icon={<ReloadOutlined />} onClick={() => refetchRegisters()} />}
                 >
                     <Table
@@ -807,7 +801,7 @@ export const CashRegisterPage = () => {
         return (
             <Card>
                 <Empty
-                    description="No active session"
+                    description={t('cash_register.no_active_session', { defaultValue: 'No active session' })}
                     image={Empty.PRESENTED_IMAGE_SIMPLE}
                 >
                     <Button
@@ -816,7 +810,7 @@ export const CashRegisterPage = () => {
                         icon={<PlusOutlined />}
                         onClick={() => setIsOpenModalVisible(true)}
                     >
-                        Open Cash
+                        {t('cash_register.open_cash', { defaultValue: 'Open Cash' })}
                     </Button>
                 </Empty>
             </Card>
@@ -826,12 +820,12 @@ export const CashRegisterPage = () => {
     return (
         <div style={{ padding: 24 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-                <Title level={2}>🏦 Cashier</Title>
+                <Title level={2}>🏦 {t('menu.cash_register')}</Title>
                 {activeSession && (
                     <Space>
                         {getStatusTag(activeSession.status)}
                         <Text type="secondary">
-                            {activeSession.register.name} | Opened by: <strong>{activeSession.openedBy}</strong>
+                            {activeSession.register.name} | {t('cash_register.opened_by', { defaultValue: 'Opened by' })}: <strong>{activeSession.openedBy}</strong>
                         </Text>
                     </Space>
                 )}
@@ -843,14 +837,14 @@ export const CashRegisterPage = () => {
                 items={[
                     {
                         key: 'current',
-                        label: 'Control Panel',
+                        label: t('cash_register.control_panel', { defaultValue: 'Control Panel' }),
                         children: renderCurrentTab()
                     },
                     {
                         key: 'history',
                         label: (
                             <span>
-                                <HistoryOutlined /> Global History
+                                <HistoryOutlined /> {t('cash_register.history_tab', { defaultValue: 'Global History' })}
                             </span>
                         ),
                         children: (
@@ -868,13 +862,13 @@ export const CashRegisterPage = () => {
                                         },
                                         expandedRowRender: (record: CashSession) => (
                                             <div style={{ padding: '0 24px' }}>
-                                                <Title level={5}>Cash Session: {record.register.name}</Title>
+                                                <Title level={5}>{t('menu.cash_register')}: {record.register.name}</Title>
                                                 <Tabs
                                                     size="small"
                                                     items={[
                                                         {
                                                             key: 'movements',
-                                                            label: 'General Movements',
+                                                            label: t('cash_register.movements_tab'),
                                                             children: (
                                                                 <Table
                                                                     dataSource={record.movements}
@@ -887,14 +881,14 @@ export const CashRegisterPage = () => {
                                                         },
                                                         {
                                                             key: 'sales',
-                                                            label: 'Sales Details',
+                                                            label: t('cash_register.sales_tab'),
                                                             children: (
                                                                 <Table
                                                                     dataSource={record.sales}
                                                                     columns={[
-                                                                        { title: 'Invoice', dataIndex: 'invoiceNumber', key: 'invoice' },
-                                                                        { title: 'Total Amount', dataIndex: 'total', key: 'total', align: 'right', render: (total: number) => formatVenezuelanPrice(Number(total)) },
-                                                                        { title: 'Payment Method', dataIndex: 'paymentMethod', key: 'methods', render: (m) => i18nPaymentMethod(m.split(':')[0]) }
+                                                                        { title: t('cash_register.invoice'), dataIndex: 'invoiceNumber', key: 'invoice' },
+                                                                        { title: t('cash_register.amount'), dataIndex: 'total', key: 'total', align: 'right', render: (total: number) => formatVenezuelanPrice(Number(total)) },
+                                                                        { title: t('cash_register.payment_method'), dataIndex: 'paymentMethod', key: 'methods', render: (m) => i18nPaymentMethod(m.split(':')[0]) }
                                                                     ]}
                                                                     rowKey="id"
                                                                     pagination={false}
@@ -907,7 +901,7 @@ export const CashRegisterPage = () => {
 
                                                 {record.cashCounts && record.cashCounts.length > 0 && (
                                                     <div style={{ marginTop: 24 }}>
-                                                        <Title level={5}>Reported Cash Count</Title>
+                                                        <Title level={5}>{t('cash_register.cash_count_reported')}</Title>
                                                         {renderCashCountTable(record.cashCounts.filter(c => c.type === 'CLOSING'))}
                                                     </div>
                                                 )}
@@ -920,13 +914,13 @@ export const CashRegisterPage = () => {
                                                 icon={<EyeOutlined />}
                                                 onClick={(e) => onExpand(record, e)}
                                             >
-                                                {expanded ? 'Hide' : 'View details'}
+                                                {expanded ? t('common.hide', { defaultValue: 'Hide' }) : t('cash_register.view_details')}
                                             </Button>
                                         )
                                     }}
                                     pagination={{
                                         pageSize: 10,
-                                        showTotal: (total) => `Total: ${total} sessions`
+                                        showTotal: (total) => t('cash_register.total_sessions', { total, defaultValue: `Total: ${total} sessions` })
                                     }}
                                 />
                             </Card>
@@ -936,7 +930,7 @@ export const CashRegisterPage = () => {
                         key: 'config',
                         label: (
                             <span>
-                                <SettingOutlined /> Registers Management
+                                <SettingOutlined /> {t('cash_register.title')}
                             </span>
                         ),
                         children: <RegistersManagement />

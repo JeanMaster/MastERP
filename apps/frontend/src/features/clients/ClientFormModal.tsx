@@ -4,6 +4,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { clientsApi } from '../../services/clientsApi';
 import type { Client, CreateClientDto } from '../../services/clientsApi';
 import { WhatsAppOutlined, InstagramOutlined, FacebookOutlined, TwitterOutlined } from '@ant-design/icons';
+import { useTranslation } from 'react-i18next';
 import dayjs from 'dayjs';
 
 interface ClientFormModalProps {
@@ -20,6 +21,7 @@ const { Option } = Select;
  * Handles the logic for splitting/combining ID prefixes (V, E, J, G) common in Venezuela.
  */
 export const ClientFormModal = ({ open, client, onClose }: ClientFormModalProps) => {
+    const { t } = useTranslation();
     const [form] = Form.useForm();
     const queryClient = useQueryClient();
     const isEditing = !!client;
@@ -28,12 +30,12 @@ export const ClientFormModal = ({ open, client, onClose }: ClientFormModalProps)
     const createMutation = useMutation({
         mutationFn: clientsApi.create,
         onSuccess: () => {
-            message.success('Client created successfully');
+            message.success(t('clients.success_create'));
             queryClient.invalidateQueries({ queryKey: ['clients'] });
             handleClose();
         },
         onError: (error: any) => {
-            message.error(error.response?.data?.message || 'Error creating client');
+            message.error(error.response?.data?.message || t('clients.error_delete'));
         },
     });
 
@@ -42,12 +44,12 @@ export const ClientFormModal = ({ open, client, onClose }: ClientFormModalProps)
         mutationFn: ({ id, data }: { id: string; data: CreateClientDto }) =>
             clientsApi.update(id, data),
         onSuccess: () => {
-            message.success('Client updated successfully');
+            message.success(t('clients.success_update'));
             queryClient.invalidateQueries({ queryKey: ['clients'] });
             handleClose();
         },
         onError: (error: any) => {
-            message.error(error.response?.data?.message || 'Error updating client');
+            message.error(error.response?.data?.message || t('clients.error_delete'));
         },
     });
 
@@ -121,13 +123,13 @@ export const ClientFormModal = ({ open, client, onClose }: ClientFormModalProps)
 
     return (
         <Modal
-            title={isEditing ? 'Edit Client' : 'New Client'}
+            title={isEditing ? t('clients.edit') : t('clients.new')}
             open={open}
             onOk={handleSubmit}
             onCancel={handleClose}
             confirmLoading={createMutation.isPending || updateMutation.isPending}
-            okText={isEditing ? 'Update (F9)' : 'Create (F9)'}
-            cancelText="Cancel"
+            okText={isEditing ? `${t('common.save')} (F9)` : `${t('common.add')} (F9)`}
+            cancelText={t('common.cancel')}
             width={700}
             centered
         >
@@ -139,25 +141,25 @@ export const ClientFormModal = ({ open, client, onClose }: ClientFormModalProps)
                 <Row gutter={16} align="middle">
                     <Col span={6}>
                         <Form.Item
-                            label="Type"
+                            label={t('common.type')}
                             name="idPrefix"
-                            rules={[{ required: true, message: 'Required' }]}
+                            rules={[{ required: true, message: t('common.error') }]}
                         >
                             <Select disabled={isEditing}>
-                                <Option value="V">V (Person)</Option>
-                                <Option value="E (Foreigner)">E</Option>
-                                <Option value="J (Company)">J</Option>
-                                <Option value="G (Gov)">G</Option>
+                                <Option value="V">V ({t('common.person')})</Option>
+                                <Option value="E">E</Option>
+                                <Option value="J">J</Option>
+                                <Option value="G">G</Option>
                             </Select>
                         </Form.Item>
                     </Col>
                     <Col span={18}>
                         <Form.Item
-                            label="Document / ID (RIF)"
+                            label={t('clients.id')}
                             name="idNumber"
                             rules={[
-                                { required: true, message: 'Number is required' },
-                                { pattern: /^\d+$/, message: 'Only numbers' }
+                                { required: true, message: t('common.error') },
+                                { pattern: /^\d+$/, message: t('common.error') }
                             ]}
                         >
                             <Input placeholder="12345678" disabled={isEditing} />
@@ -166,24 +168,24 @@ export const ClientFormModal = ({ open, client, onClose }: ClientFormModalProps)
                 </Row>
 
                 <Form.Item
-                    label="Full Name / Company Name"
+                    label={t('clients.name')}
                     name="name"
-                    rules={[{ required: true, message: 'Name is required' }]}
+                    rules={[{ required: true, message: t('common.error') }]}
                 >
                     <Input placeholder="John Doe / Example Corp S.A." />
                 </Form.Item>
 
                 <Form.Item
-                    label="Address"
+                    label={t('common.address')}
                     name="address"
                 >
-                    <Input.TextArea rows={2} placeholder="Main Ave, Central Bldg..." />
+                    <Input.TextArea rows={2} placeholder={t('common.address') + '...'} />
                 </Form.Item>
 
                 <Row gutter={16}>
                     <Col span={12}>
                         <Form.Item
-                            label="Phone"
+                            label={t('clients.phone')}
                             name="phone"
                             style={{ marginBottom: 0 }}
                         >
@@ -193,13 +195,13 @@ export const ClientFormModal = ({ open, client, onClose }: ClientFormModalProps)
                                 </Form.Item>
                             } />
                         </Form.Item>
-                        <div style={{ fontSize: 11, color: '#888', marginBottom: 15 }}>Check if this number has WhatsApp</div>
+                        <div style={{ fontSize: 11, color: '#888', marginBottom: 15 }}>{t('clients.send_whatsapp')}?</div>
                     </Col>
                     <Col span={12}>
                         <Form.Item
-                            label="Email"
+                            label={t('clients.email')}
                             name="email"
-                            rules={[{ type: 'email', message: 'Invalid email' }]}
+                            rules={[{ type: 'email', message: t('common.error') }]}
                         >
                             <Input placeholder="client@email.com" />
                         </Form.Item>
@@ -209,7 +211,7 @@ export const ClientFormModal = ({ open, client, onClose }: ClientFormModalProps)
                 <Row gutter={16}>
                     <Col span={12}>
                         <Form.Item
-                            label="Birth Date"
+                            label={t('common.birth_date')}
                             name="birthDate"
                         >
                             <DatePicker 
@@ -221,7 +223,7 @@ export const ClientFormModal = ({ open, client, onClose }: ClientFormModalProps)
                     </Col>
                 </Row>
 
-                <Divider style={{ margin: '15px 0' }}>Social Media (Optional)</Divider>
+                <Divider style={{ margin: '15px 0' }}>{t('clients.social_media')} ({t('common.optional')})</Divider>
 
                 <Row gutter={16}>
                     <Col span={8}>

@@ -1,9 +1,10 @@
 import { useEffect } from 'react';
-import { Modal, Form, Input, InputNumber, Select, message, Row, Col, Switch, Space, Typography } from 'antd';
+import { Modal, Form, Input, InputNumber, Select, App, Row, Col, Switch, Space, Typography } from 'antd';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { banksApi } from '../../../services/banksApi';
 import type { BankAccount, UpdateBankAccountDto } from '../../../services/banksApi';
 import { currenciesApi } from '../../../services/currenciesApi';
+import { useTranslation } from 'react-i18next';
 
 const { Text } = Typography;
 
@@ -18,6 +19,8 @@ interface BankFormModalProps {
  * Modal to create or edit a bank account or cash vault.
  */
 export const BankFormModal = ({ open, bankAccount, onClose }: BankFormModalProps) => {
+    const { t } = useTranslation();
+    const { message } = App.useApp();
     const [form] = Form.useForm();
     const queryClient = useQueryClient();
 
@@ -31,13 +34,13 @@ export const BankFormModal = ({ open, bankAccount, onClose }: BankFormModalProps
     const createMutation = useMutation({
         mutationFn: banksApi.create,
         onSuccess: () => {
-            message.success('Bank account created successfully');
+            message.success(t('banks.success_create'));
             queryClient.invalidateQueries({ queryKey: ['banks'] });
             onClose();
             form.resetFields();
         },
         onError: (error: any) => {
-            message.error(error.response?.data?.message || 'Error creating account');
+            message.error(error.response?.data?.message || t('common.error'));
         },
     });
 
@@ -45,13 +48,13 @@ export const BankFormModal = ({ open, bankAccount, onClose }: BankFormModalProps
         mutationFn: ({ id, dto }: { id: string; dto: UpdateBankAccountDto }) =>
             banksApi.update(id, dto),
         onSuccess: () => {
-            message.success('Bank account updated successfully');
+            message.success(t('banks.success_update'));
             queryClient.invalidateQueries({ queryKey: ['banks'] });
             onClose();
             form.resetFields();
         },
         onError: (error: any) => {
-            message.error(error.response?.data?.message || 'Error updating account');
+            message.error(error.response?.data?.message || t('common.error'));
         },
     });
 
@@ -105,38 +108,38 @@ export const BankFormModal = ({ open, bankAccount, onClose }: BankFormModalProps
 
     return (
         <Modal
-            title={bankAccount ? 'Edit Bank Account' : 'New Bank Account'}
+            title={bankAccount ? t('banks.edit') : t('banks.new')}
             open={open}
             onOk={handleSubmit}
             onCancel={onClose}
             confirmLoading={createMutation.isPending || updateMutation.isPending}
-            okText={bankAccount ? 'Update (F9)' : 'Create (F9)'}
-            cancelText="Cancel"
+            okText={bankAccount ? `${t('common.save')} (F9)` : `${t('common.add')} (F9)`}
+            cancelText={t('common.cancel')}
             width={700}
         >
             <Form form={form} layout="vertical" style={{ marginTop: 20 }}>
                 <Row gutter={16}>
                     <Col span={12}>
                         <Form.Item
-                            label="Bank Name"
+                            label={t('common.bank')}
                             name="bankName"
-                            rules={[{ required: true, message: 'Required' }]}
+                            rules={[{ required: true, message: t('common.error') }]}
                         >
-                            <Input placeholder="e.g., Chase, Banesco" />
+                            <Input placeholder={t('banks.placeholders.bank_name')} />
                         </Form.Item>
                     </Col>
                     <Col span={12}>
                         <Form.Item
-                            label="Account Type"
+                            label={t('common.account_type')}
                             name="accountType"
-                            rules={[{ required: true, message: 'Required' }]}
+                            rules={[{ required: true, message: t('common.error') }]}
                         >
                             <Select
                                 options={[
-                                    { value: 'CHECKING', label: 'Checking Account' },
-                                    { value: 'SAVINGS', label: 'Savings Account' },
-                                    { value: 'CASH_VAULT', label: 'Vault / Cash Balance' },
-                                    { value: 'MOBILE_PAYMENT', label: 'Mobile Payment / Wallet' },
+                                    { value: 'CHECKING', label: t('banks.account_types.checking') },
+                                    { value: 'SAVINGS', label: t('banks.account_types.savings') },
+                                    { value: 'CASH_VAULT', label: t('banks.account_types.vault') },
+                                    { value: 'MOBILE_PAYMENT', label: t('banks.account_types.mobile') },
                                 ]}
                             />
                         </Form.Item>
@@ -146,11 +149,11 @@ export const BankFormModal = ({ open, bankAccount, onClose }: BankFormModalProps
                 <Row gutter={16}>
                     <Col span={24}>
                         <Form.Item
-                            label="Account Number"
+                            label={t('banks.account_number')}
                             name="accountNumber"
-                            rules={[{ required: true, message: 'Required' }]}
+                            rules={[{ required: true, message: t('common.error') }]}
                         >
-                            <Input placeholder="0134-...." />
+                            <Input placeholder={t('banks.placeholders.account_number')} />
                         </Form.Item>
                     </Col>
                 </Row>
@@ -158,20 +161,20 @@ export const BankFormModal = ({ open, bankAccount, onClose }: BankFormModalProps
                 <Row gutter={16}>
                     <Col span={12}>
                         <Form.Item
-                            label="Holder Name"
+                            label={t('banks.holder_name')}
                             name="holderName"
-                            rules={[{ required: true, message: 'Required' }]}
+                            rules={[{ required: true, message: t('common.error') }]}
                         >
-                            <Input placeholder="Name of the account holder" />
+                            <Input placeholder={t('banks.holder_name')} />
                         </Form.Item>
                     </Col>
                     <Col span={12}>
                         <Form.Item
-                            label="Holder ID (Tax ID/SSN)"
+                            label={t('banks.holder_id')}
                             name="holderId"
-                            rules={[{ required: true, message: 'Required' }]}
+                            rules={[{ required: true, message: t('common.error') }]}
                         >
-                            <Input placeholder="V-12345678" />
+                            <Input placeholder={t('banks.placeholders.holder_id')} />
                         </Form.Item>
                     </Col>
                 </Row>
@@ -179,9 +182,9 @@ export const BankFormModal = ({ open, bankAccount, onClose }: BankFormModalProps
                 <Row gutter={16}>
                     <Col span={12}>
                         <Form.Item
-                            label="Currency"
+                            label={t('common.currency')}
                             name="currencyId"
-                            rules={[{ required: true, message: 'Required' }]}
+                            rules={[{ required: true, message: t('common.error') }]}
                         >
                             <Select
                                 options={currencies.map(c => ({
@@ -194,7 +197,7 @@ export const BankFormModal = ({ open, bankAccount, onClose }: BankFormModalProps
                     {!bankAccount && (
                         <Col span={12}>
                             <Form.Item
-                                label="Initial Balance"
+                                label={t('banks.initial_balance')}
                                 name="initialBalance"
                                 rules={[{ type: 'number', min: 0 }]}
                             >
@@ -215,9 +218,9 @@ export const BankFormModal = ({ open, bankAccount, onClose }: BankFormModalProps
                                 </Col>
                                 <Col flex="auto">
                                     <Space direction="vertical" size={0}>
-                                        <Text strong>Receive POS Liquidations</Text>
+                                        <Text strong>{t('banks.pos_settings.liquidation_title')}</Text>
                                         <Text type="secondary" style={{ fontSize: '12px' }}>
-                                            If enabled, card payments from the POS will be sent to this account as "In Transit Balance".
+                                            {t('banks.pos_settings.liquidation_desc')}
                                         </Text>
                                     </Space>
                                 </Col>
@@ -235,9 +238,9 @@ export const BankFormModal = ({ open, bankAccount, onClose }: BankFormModalProps
                                 </Col>
                                 <Col flex="auto">
                                     <Space direction="vertical" size={0}>
-                                        <Text strong>Enable Mobile Payment</Text>
+                                        <Text strong>{t('banks.pos_settings.mobile_title')}</Text>
                                         <Text type="secondary" style={{ fontSize: '12px' }}>
-                                            Enable to receive mobile payments (Pago Móvil) in the POS.
+                                            {t('banks.pos_settings.mobile_desc')}
                                         </Text>
                                     </Space>
                                 </Col>

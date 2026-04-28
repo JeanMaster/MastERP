@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Card, Table, Button, Space, Input, message, Popconfirm, Tag, Grid } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined, ReloadOutlined } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import { departmentsApi } from '../../services/departmentsApi';
 import type { Department } from '../../services/departmentsApi';
 import { DepartmentFormModal } from './DepartmentFormModal';
@@ -14,6 +15,7 @@ const { useBreakpoint } = Grid;
  * Displays data in a hierarchical tree structure (2 levels deep).
  */
 export const DepartmentsPage = () => {
+    const { t } = useTranslation();
     const screens = useBreakpoint();
     const isMobile = !screens.lg;
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -31,11 +33,11 @@ export const DepartmentsPage = () => {
     const deleteMutation = useMutation({
         mutationFn: departmentsApi.delete,
         onSuccess: () => {
-            message.success('Department deleted successfully');
+            message.success(t('departments.success_delete'));
             queryClient.invalidateQueries({ queryKey: ['departments'] });
         },
         onError: (error: any) => {
-            message.error(error.response?.data?.message || 'Error deleting department');
+            message.error(error.response?.data?.message || t('departments.error_delete'));
         },
     });
 
@@ -87,29 +89,29 @@ export const DepartmentsPage = () => {
 
     const columns = [
         {
-            title: 'Name',
+            title: t('departments.name'),
             dataIndex: 'name',
             key: 'name',
             width: '30%',
         },
         {
-            title: 'Description',
+            title: t('departments.description'),
             dataIndex: 'description',
             key: 'description',
             width: '35%',
         },
         {
-            title: 'Type',
+            title: t('departments.type'),
             key: 'type',
             width: '15%',
             render: (_: any, record: Department) => (
                 <Tag color={record.parentId ? 'blue' : 'green'}>
-                    {record.parentId ? 'Sub-department' : 'Main'}
+                    {record.parentId ? t('departments.sub_department') : t('departments.main')}
                 </Tag>
             ),
         },
         {
-            title: 'Actions',
+            title: t('departments.actions'),
             key: 'actions',
             width: '20%',
             render: (_: any, record: Department) => (
@@ -119,17 +121,17 @@ export const DepartmentsPage = () => {
                         icon={<EditOutlined />}
                         onClick={() => handleEdit(record)}
                     >
-                        Edit
+                        {t('common.edit')}
                     </Button>
                     <Popconfirm
-                        title="Delete department?"
-                        description="This action cannot be undone"
+                        title={t('departments.delete_confirm')}
+                        description={t('departments.delete_desc')}
                         onConfirm={() => handleDelete(record.id)}
-                        okText="Delete"
-                        cancelText="Cancel"
+                        okText={t('common.delete')}
+                        cancelText={t('common.cancel')}
                     >
                         <Button type="link" danger icon={<DeleteOutlined />}>
-                            Delete
+                            {t('common.delete')}
                         </Button>
                     </Popconfirm>
                 </Space>
@@ -139,11 +141,11 @@ export const DepartmentsPage = () => {
 
     return (
         <Card
-            title="Departments"
+            title={t('departments.title')}
             extra={
                 <Space direction={isMobile ? 'vertical' : 'horizontal'} style={{ width: isMobile ? '100%' : 'auto' }} align={isMobile ? 'end' : 'center'}>
                     <Input
-                        placeholder="Search department..."
+                        placeholder={t('departments.search_placeholder')}
                         prefix={<SearchOutlined />}
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
@@ -152,7 +154,7 @@ export const DepartmentsPage = () => {
                     <Space>
                         <Button icon={<ReloadOutlined />} onClick={() => queryClient.invalidateQueries({ queryKey: ['departments'] })} />
                         <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}>
-                            {isMobile ? 'New' : 'New Department'}
+                            {isMobile ? t('common.new') : t('departments.new')}
                         </Button>
                     </Space>
                 </Space>

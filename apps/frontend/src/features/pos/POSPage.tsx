@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
-import { Layout, Typography, Spin, message, Alert, Tabs, Grid, Card, Space, Button, Empty } from 'antd';
+import { Layout, Typography, Spin, Alert, Tabs, Grid, Card, Space, Button, Empty, App } from 'antd';
+import { useTranslation } from 'react-i18next';
 import { ShoppingCartOutlined, AppstoreOutlined, ShopOutlined } from '@ant-design/icons';
 import { POSHeader } from './components/POSHeader';
 import { POSLeftPanel } from './components/POSLeftPanel';
@@ -28,6 +29,8 @@ const { useBreakpoint } = Grid;
  * Orchestrates product selection, cart management, checkout, and cash register session lifecycle.
  */
 export const POSPage = () => {
+    const { t } = useTranslation();
+    const { message } = App.useApp();
     const screens = useBreakpoint();
     const isMobile = !screens.lg;
     const navigate = useNavigate();
@@ -87,14 +90,14 @@ export const POSPage = () => {
         if (!isSessionLoading && !isFetching && !redirectedRef.current) {
             if (!activeSession) {
                 if (user?.role === 'CASHIER') {
-                    message.error('NO CASH REGISTER ASSIGNED. PLEASE CONTACT THE ADMINISTRATOR.', 0);
+                    message.error(t('pos.messages.no_register_assigned'), 0);
                 } else {
-                    message.info('Operating in Admin Mode (No active cash session).', 5);
+                    message.info(t('pos.messages.admin_mode_info'), 5);
                 }
             } else {
                 const isAssignedCashier = activeSession.cashierId === user?.username;
                 if (isAssignedCashier && !activeSession.verifiedAt) {
-                    message.warning(`Hello ${user?.name}, you must perform the Opening Cash Count before processing sales.`, 10);
+                    message.warning(t('pos.messages.welcome_cash_count', { name: user?.name }), 10);
                 }
             }
         }
@@ -104,12 +107,12 @@ export const POSPage = () => {
      * Handles cash register management logic (Opening/Closing counts).
      */
     const handleCajaClick = async () => {
-        const hide = message.loading('Syncing cash register state...', 0);
+        const hide = message.loading(t('pos.messages.syncing_state'), 0);
         try {
             const { data: freshSession } = await refetchSession();
 
             if (!freshSession) {
-                message.error('REGISTER NOT OPEN');
+                message.error(t('pos.messages.register_not_open'));
                 return;
             }
 
@@ -121,7 +124,7 @@ export const POSPage = () => {
                 setIsSummaryOpen(true);
             }
         } catch (error) {
-            message.error('Error syncing cash register data');
+            message.error(t('pos.messages.sync_error'));
         } finally {
             hide();
         }
@@ -165,13 +168,13 @@ export const POSPage = () => {
     const handleCheckoutProcess = async (paymentData: any) => {
         try {
             const sale = await processSale(paymentData, activeSession?.id);
-            message.success(`Sale processed successfully. Invoice: ${sale.invoiceNumber}`);
+            message.success(t('pos.messages.sale_success', { invoice: sale.invoiceNumber }));
             setIsCheckoutOpen(false);
             setCompletedSale(sale);
             setIsInvoiceModalOpen(true);
             await refreshInvoiceNumber();
         } catch (error) {
-            message.error('Error processing sale');
+            message.error(t('pos.messages.sale_error'));
             console.error('Sale processing error:', error);
         }
     };
@@ -216,7 +219,7 @@ export const POSPage = () => {
                 return (
                     <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', background: '#f0f2f5' }}>
                         <Spin size="large" />
-                        <Title level={3} style={{ marginTop: 20 }}>Finding your Register...</Title>
+                        <Title level={3} style={{ marginTop: 20 }}>{t('pos.messages.finding_register')}</Title>
                     </div>
                 );
             }
@@ -226,13 +229,13 @@ export const POSPage = () => {
                     <Card style={{ width: '100%', maxWidth: 500, textAlign: 'center' }}>
                         <Empty
                             description={
-                                <Title level={4}>No Cash Register Assigned</Title>
+                                <Title level={4}>{t('pos.messages.no_register_assigned_title')}</Title>
                             }
                         >
-                            <Text type="secondary">Please ask your administrator to open a shift and assign you to a register.</Text>
+                            <Text type="secondary">{t('pos.messages.no_register_assigned_desc')}</Text>
                             <div style={{ marginTop: 24 }}>
                                 <Button type="primary" onClick={() => queryClient.invalidateQueries({ queryKey: ['activeSession'] })}>
-                                    Retry Connection
+                                    {t('pos.messages.retry_connection')}
                                 </Button>
                             </div>
                         </Empty>
@@ -243,9 +246,9 @@ export const POSPage = () => {
 
         return (
             <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', background: '#f0f2f5', padding: 20 }}>
-                <Card title={<Title level={3} style={{ margin: 0 }}>📍 Select Cash Register</Title>} style={{ width: '100%', maxWidth: 500, textAlign: 'center' }}>
+                <Card title={<Title level={3} style={{ margin: 0 }}>{t('pos.messages.select_register_title')}</Title>} style={{ width: '100%', maxWidth: 500, textAlign: 'center' }}>
                     <Space direction="vertical" style={{ width: '100%' }} size="large">
-                        <Text type="secondary">Choose the register you will be operating today.</Text>
+                        <Text type="secondary">{t('pos.messages.select_register_desc')}</Text>
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
                             {registers.map(r => (
                                 <Button
@@ -269,8 +272,8 @@ export const POSPage = () => {
         return (
             <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', background: '#f0f2f5' }}>
                 <Spin size="large" />
-                <Title level={3} style={{ marginTop: 20 }}>Loading POS...</Title>
-                <Button type="link" onClick={() => setRegisterId('')}>Change Register</Button>
+                <Title level={3} style={{ marginTop: 20 }}>{t('pos.messages.loading_pos')}</Title>
+                <Button type="link" onClick={() => setRegisterId('')}>{t('pos.messages.change_register')}</Button>
             </div>
         );
     }
@@ -282,8 +285,8 @@ export const POSPage = () => {
             {activeSession?.status === 'AWAITING_CLOSE' && (
                 <div style={{ padding: '0 20px', marginTop: 10 }}>
                     <Alert
-                        message="CLOSURE IN PROGRESS"
-                        description="A shift closure has been requested. Please wait for the administrator to authorize your cash count to continue or exit."
+                        message={t('pos.messages.closure_in_progress')}
+                        description={t('pos.messages.closure_requested')}
                         type="warning"
                         showIcon
                     />
@@ -350,7 +353,7 @@ export const POSPage = () => {
                                 label: (
                                     <span>
                                         <AppstoreOutlined />
-                                        Catalog
+                                        {t('pos.catalog.departments') || 'Catalog'}
                                     </span>
                                 ),
                                 children: (
@@ -364,7 +367,7 @@ export const POSPage = () => {
                                 label: (
                                     <span>
                                         <ShoppingCartOutlined />
-                                        Cart
+                                        {t('pos.footer.items') || 'Cart'}
                                     </span>
                                 ),
                                 children: (

@@ -21,8 +21,10 @@ import { currenciesApi, type Currency } from '../services/currenciesApi';
 import { companySettingsApi } from '../services/companySettingsApi';
 import { useAuth } from '../features/auth/AuthProvider';
 import { AIAssistantModal } from '../components/AIAssistantModal';
+import { useTranslation } from 'react-i18next';
 
 export const DashboardPage = () => {
+    const { t } = useTranslation();
     const navigate = useNavigate();
     const { user } = useAuth();
 
@@ -58,8 +60,6 @@ export const DashboardPage = () => {
                 setPrimaryCurrency(primary);
 
                 // Default to Primary, or user preference if we stored it (not implemented yet)
-                // Or maybe default to the preferred secondary if set?
-                // Let's default to Primary (null means "Raw/Primary" in our logic usually, but here we want explicit ID)
                 if (primary) {
                     setSelectedCurrencyId(primary.id);
                 }
@@ -67,10 +67,7 @@ export const DashboardPage = () => {
             } catch (error) {
                 console.error("Error initializing dashboard:", error);
             } finally {
-                // Initial fetch of stats happens in separate effect or here?
-                // Let's let the other effect handle stats fetching to keep it clean,
-                // but we need to ensure loading state is managed.
-                // Actually, fetchStats handles its own loading.
+                // setLoading(false) is called in fetchStats
             }
         };
 
@@ -83,9 +80,6 @@ export const DashboardPage = () => {
 
     const fetchStats = async () => {
         try {
-            // Only set global loading if it's the first load or range change?
-            // Dashboard refresh might ideally be background.
-            // keeping simple for now.
             if (!stats) setLoading(true);
             const data = await statsApi.getDashboardStats(range);
             setStats(data);
@@ -118,13 +112,6 @@ export const DashboardPage = () => {
 
     const currentSymbol = getCurrencySymbol();
 
-    const rangeLabels: Record<string, string> = {
-        '7days': 'Últimos 7 días',
-        '30days': 'Últimos 30 días',
-        '1year': 'Último año',
-        'all': 'Histórico total'
-    };
-
     if (loading) {
         return (
             <div style={{ padding: 24, textAlign: 'center' }}>
@@ -136,7 +123,7 @@ export const DashboardPage = () => {
     if (!stats) {
         return (
             <div style={{ padding: 24 }}>
-                <Empty description="Error al cargar estadísticas" />
+                <Empty description={t('common.error_loading')} />
             </div>
         );
     }
@@ -146,16 +133,14 @@ export const DashboardPage = () => {
         ? ((salesMonthChange / stats.lastMonthSales) * 100).toFixed(1)
         : 0;
 
-    // Velocity/Forecast logic removed in favor of Nominal comparison
-
     const topProductsColumns = [
         {
-            title: 'Producto',
+            title: t('products.finished.name'),
             dataIndex: 'name',
             key: 'name',
         },
         {
-            title: 'Unidades Vendidas',
+            title: t('common.units_sold'),
             dataIndex: 'quantity',
             key: 'quantity',
             align: 'right' as const,
@@ -167,9 +152,9 @@ export const DashboardPage = () => {
             <div style={{ marginBottom: 24 }}>
                 <Row justify="space-between" align="middle">
                     <Col xs={24} sm={12}>
-                        <h1 className="responsive-title" style={{ margin: 0 }}>📊 Dashboard</h1>
+                        <h1 className="responsive-title" style={{ margin: 0 }}>📊 {t('dashboard.title')}</h1>
                         <p style={{ color: '#666', marginTop: 8 }}>
-                            Resumen de tu negocio
+                            {t('dashboard.summary')}
                         </p>
                     </Col>
                     <Col xs={24} sm={12} style={{ textAlign: 'right', marginTop: 16, display: 'flex', gap: 10, justifyContent: 'flex-end', alignItems: 'center' }}>
@@ -182,10 +167,10 @@ export const DashboardPage = () => {
                         />
                         <Segmented
                             options={[
-                                { label: '7 D (7D)', value: '7days' },
+                                { label: '7 D', value: '7days' },
                                 { label: '1 M', value: '30days' },
                                 { label: '1 A', value: '1year' },
-                                { label: 'Todo', value: 'all' },
+                                { label: t('common.all'), value: 'all' },
                             ]}
                             value={range}
                             onChange={(value) => setRange(value as string)}
@@ -199,7 +184,7 @@ export const DashboardPage = () => {
                 <Col xs={24} sm={12} lg={4}>
                     <Card size="small">
                         <Statistic
-                            title="Ventas Hoy"
+                            title={t('dashboard.sales_today')}
                             value={getConvertedAmount(stats.todaySales)}
                             precision={2}
                             prefix={currentSymbol}
@@ -212,7 +197,7 @@ export const DashboardPage = () => {
                 <Col xs={24} sm={12} lg={7}>
                     <Card size="small" style={{ border: '1px solid #1890ff44' }}>
                         <Statistic
-                            title="Ventas Mes (Revaluado)"
+                            title={t('dashboard.sales_month_revalued')}
                             value={getConvertedAmount(stats.thisMonthSales)}
                             precision={2}
                             prefix={currentSymbol}
@@ -227,9 +212,9 @@ export const DashboardPage = () => {
                             }
                         />
                         <div style={{ marginTop: 4, fontSize: 11, color: '#666', display: 'flex', justifyContent: 'space-between' }}>
-                            <span>{salesMonthChange >= 0 ? '+' : ''}{salesMonthChangePercent}% vs mes ant.</span>
-                            <span title="Monto cobrado físicamente (sin revaluar)">
-                                Nominal: {formatVenezuelanPrice(getConvertedAmount(stats.thisMonthSalesNominal), currentSymbol)}
+                            <span>{salesMonthChange >= 0 ? '+' : ''}{salesMonthChangePercent}% {t('dashboard.vs_last_month')}</span>
+                            <span title={t('dashboard.nominal_desc')}>
+                                {t('dashboard.nominal')}: {formatVenezuelanPrice(getConvertedAmount(stats.thisMonthSalesNominal), currentSymbol)}
                             </span>
                         </div>
                     </Card>
@@ -237,7 +222,7 @@ export const DashboardPage = () => {
                 <Col xs={24} sm={12} lg={6}>
                     <Card size="small">
                         <Statistic
-                            title="Balance de Caja"
+                            title={t('dashboard.cash_balance')}
                             value={getConvertedAmount(stats.cashBalance)}
                             precision={2}
                             prefix={currentSymbol}
@@ -250,7 +235,7 @@ export const DashboardPage = () => {
                 <Col xs={24} sm={12} lg={5}>
                     <Card size="small" style={{ borderColor: '#ff4d4f99' }}>
                         <Statistic
-                            title="Devoluciones/Cambios"
+                            title={t('dashboard.returns_exchanges')}
                             value={getConvertedAmount(stats.monthReturns?.netImpact || 0)}
                             precision={2}
                             prefix={currentSymbol}
@@ -259,14 +244,14 @@ export const DashboardPage = () => {
                             suffix={<RollbackOutlined />}
                         />
                         <div style={{ marginTop: 4, fontSize: 11, color: '#666' }}>
-                            Reembolsos: {formatVenezuelanPrice(getConvertedAmount(stats.monthReturns?.totalRefundsPaid || 0), currentSymbol)}
+                            {t('dashboard.refunds')}: {formatVenezuelanPrice(getConvertedAmount(stats.monthReturns?.totalRefundsPaid || 0), currentSymbol)}
                         </div>
                     </Card>
                 </Col>
                 <Col xs={24} sm={12} lg={4}>
                     <Card size="small" style={{ borderColor: stats.criticalStock > 0 ? '#faad14' : undefined }}>
                         <Statistic
-                            title="Stock Crítico"
+                            title={t('dashboard.critical_stock')}
                             value={stats.criticalStock}
                             suffix={`/ ${stats.totalProducts}`}
                             valueStyle={{ color: stats.criticalStock > 0 ? '#faad14' : '#52c41a', fontSize: '20px' }}
@@ -281,7 +266,7 @@ export const DashboardPage = () => {
             <Row gutter={[16, 16]}>
                 {/* Sales Trend */}
                 <Col xs={24} lg={16}>
-                    <Card title={`Tendencia de Ventas (${rangeLabels[range]})`}>
+                    <Card title={t('dashboard.sales_trend')}>
                         <ResponsiveContainer width="100%" height={300}>
                             <LineChart data={stats.salesTrend}>
                                 <CartesianGrid strokeDasharray="3 3" />
@@ -293,7 +278,7 @@ export const DashboardPage = () => {
                                 <Line
                                     type="monotone"
                                     dataKey={(data) => getConvertedAmount(data.sales)}
-                                    name="Ventas"
+                                    name={t('pos.footer.total')}
                                     stroke="#1890ff"
                                     strokeWidth={2}
                                     dot={{ fill: '#1890ff' }}
@@ -305,7 +290,7 @@ export const DashboardPage = () => {
 
                 {/* Top Products */}
                 <Col xs={24} lg={8}>
-                    <Card title="Top 5 Productos Más Vendidos">
+                    <Card title={t('dashboard.top_products')}>
                         <Table
                             dataSource={stats.topProducts}
                             columns={topProductsColumns}
@@ -318,7 +303,7 @@ export const DashboardPage = () => {
             </Row>
 
             {/* Quick Actions */}
-            <Card title="Accesos Rápidos" style={{ marginTop: 16 }}>
+            <Card title={t('dashboard.quick_access')} style={{ marginTop: 16 }}>
                 <Row gutter={[16, 16]}>
                     <Col xs={24} sm={8}>
                         <Button
@@ -328,7 +313,7 @@ export const DashboardPage = () => {
                             onClick={() => navigate('/app/sales/pos')}
                             block
                         >
-                            Punto de Venta
+                            {t('dashboard.pos_button')}
                         </Button>
                     </Col>
                     <Col xs={24} sm={8}>
@@ -338,7 +323,7 @@ export const DashboardPage = () => {
                             onClick={() => navigate('/app/purchases/history')}
                             block
                         >
-                            Registrar Compra
+                            {t('dashboard.register_purchase')}
                         </Button>
                     </Col>
                     <Col xs={24} sm={8}>
@@ -348,7 +333,7 @@ export const DashboardPage = () => {
                             onClick={() => navigate('/app/reports')}
                             block
                         >
-                            Ver Reportes
+                            {t('dashboard.view_reports')}
                         </Button>
                     </Col>
                 </Row>
@@ -359,7 +344,7 @@ export const DashboardPage = () => {
                 icon={<RobotOutlined />}
                 type="primary"
                 style={{ right: 24, bottom: 24 }}
-                tooltip="Asesor Financiero IA"
+                tooltip={t('dashboard.ai_assistant')}
                 onClick={() => setAiModalVisible(true)}
             />
 

@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
-import { Modal, Form, Input, InputNumber, Select, message, Row, Col } from 'antd';
+import { Modal, Form, Input, InputNumber, Select, App, Row, Col } from 'antd';
 import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { productsApi } from '../../../services/productsApi';
 import type { Product, CreateProductDto, UpdateProductDto } from '../../../services/productsApi';
 import { departmentsApi } from '../../../services/departmentsApi';
 import { currenciesApi } from '../../../services/currenciesApi';
+import { useTranslation } from 'react-i18next';
 
 interface ServiceFormModalProps {
     open: boolean;
@@ -24,6 +25,8 @@ export const ServiceFormModal = ({ open, service, onClose }: ServiceFormModalPro
  * Internal component to handle hook lifecycle properly.
  */
 const ServiceFormModalContent = ({ open, service, onClose }: ServiceFormModalProps) => {
+    const { t } = useTranslation();
+    const { message } = App.useApp();
     const [form] = Form.useForm();
     const queryClient = useQueryClient();
     const [selectedCategory, setSelectedCategory] = useState<string | undefined>(undefined);
@@ -49,13 +52,13 @@ const ServiceFormModalContent = ({ open, service, onClose }: ServiceFormModalPro
     const createMutation = useMutation({
         mutationFn: productsApi.create,
         onSuccess: () => {
-            message.success('Service created successfully');
+            message.success(t('products.services.success_create'));
             queryClient.invalidateQueries({ queryKey: ['services'] });
             onClose();
             form.resetFields();
         },
         onError: (error: any) => {
-            message.error(error.response?.data?.message || 'Error creating service');
+            message.error(error.response?.data?.message || t('products.services.error_create'));
         },
     });
 
@@ -64,13 +67,13 @@ const ServiceFormModalContent = ({ open, service, onClose }: ServiceFormModalPro
         mutationFn: ({ id, dto }: { id: string; dto: UpdateProductDto }) =>
             productsApi.update(id, dto),
         onSuccess: () => {
-            message.success('Service updated successfully');
+            message.success(t('products.services.success_update'));
             queryClient.invalidateQueries({ queryKey: ['services'] });
             onClose();
             form.resetFields();
         },
         onError: (error: any) => {
-            message.error(error.response?.data?.message || 'Error updating service');
+            message.error(error.response?.data?.message || t('products.services.error_update'));
         },
     });
 
@@ -145,50 +148,50 @@ const ServiceFormModalContent = ({ open, service, onClose }: ServiceFormModalPro
 
     return (
         <Modal
-            title={service ? 'Edit Service' : 'New Service'}
+            title={service ? t('products.services.edit') : t('products.services.new')}
             open={open}
             onOk={handleSubmit}
             onCancel={onClose}
             confirmLoading={createMutation.isPending || updateMutation.isPending}
-            okText={service ? 'Update (F9)' : 'Create (F9)'}
-            cancelText="Cancel"
+            okText={service ? `${t('common.save')} (F9)` : `${t('common.add')} (F9)`}
+            cancelText={t('common.cancel')}
             width={700}
         >
             <Form form={form} layout="vertical" style={{ marginTop: 20 }}>
                 <Row gutter={16}>
                     <Col span={12}>
                         <Form.Item
-                            label="Code (SKU)"
+                            label={t('products.finished.sku')}
                             name="sku"
-                            rules={[{ required: true, message: 'Required' }]}
+                            rules={[{ required: true, message: t('common.error') }]}
                         >
-                            <Input placeholder="e.g., SERV-001" />
+                            <Input placeholder={t('products.services.sku_placeholder')} />
                         </Form.Item>
                     </Col>
                     <Col span={12}>
                         <Form.Item
-                            label="Service Name"
+                            label={t('products.services.name')}
                             name="name"
-                            rules={[{ required: true, message: 'Required' }]}
+                            rules={[{ required: true, message: t('common.error') }]}
                         >
-                            <Input placeholder="e.g., PC Maintenance" />
+                            <Input placeholder={t('products.services.name_placeholder')} />
                         </Form.Item>
                     </Col>
                 </Row>
 
-                <Form.Item label="Description" name="description">
-                    <Input.TextArea rows={2} placeholder="Service details..." />
+                <Form.Item label={t('common.description')} name="description">
+                    <Input.TextArea rows={2} placeholder={t('common.description') + '...'} />
                 </Form.Item>
 
                 <Row gutter={16}>
                     <Col span={12}>
                         <Form.Item
-                            label="Category"
+                            label={t('common.category')}
                             name="categoryId"
-                            rules={[{ required: true, message: 'Required' }]}
+                            rules={[{ required: true, message: t('common.error') }]}
                         >
                             <Select
-                                placeholder="Select category"
+                                placeholder={t('common.category')}
                                 onChange={handleCategoryChange}
                                 showSearch
                                 filterOption={(input, option) =>
@@ -202,9 +205,9 @@ const ServiceFormModalContent = ({ open, service, onClose }: ServiceFormModalPro
                         </Form.Item>
                     </Col>
                     <Col span={12}>
-                        <Form.Item label="Subcategory" name="subcategoryId">
+                        <Form.Item label={t('departments.parent')} name="subcategoryId">
                             <Select
-                                placeholder="Optional"
+                                placeholder={t('common.no')}
                                 allowClear
                                 disabled={!selectedCategory}
                                 options={subcategories.map(subcat => ({
@@ -219,9 +222,9 @@ const ServiceFormModalContent = ({ open, service, onClose }: ServiceFormModalPro
                 <Row gutter={16}>
                     <Col span={8}>
                         <Form.Item
-                            label="Cost (Technical)"
+                            label={t('products.services.cost_technical')}
                             name="costPrice"
-                            rules={[{ required: true, message: 'Required' }, { type: 'number', min: 0 }]}
+                            rules={[{ required: true, message: t('common.error') }, { type: 'number', min: 0 }]}
                         >
                             <InputNumber
                                 style={{ width: '100%' }}
@@ -233,9 +236,9 @@ const ServiceFormModalContent = ({ open, service, onClose }: ServiceFormModalPro
                     </Col>
                     <Col span={8}>
                         <Form.Item
-                            label="Sale Price"
+                            label={t('common.price')}
                             name="salePrice"
-                            rules={[{ required: true, message: 'Required' }, { type: 'number', min: 0 }]}
+                            rules={[{ required: true, message: t('common.error') }, { type: 'number', min: 0 }]}
                         >
                             <InputNumber
                                 style={{ width: '100%' }}
@@ -247,9 +250,9 @@ const ServiceFormModalContent = ({ open, service, onClose }: ServiceFormModalPro
                     </Col>
                     <Col span={8}>
                         <Form.Item
-                            label="Currency"
+                            label={t('common.payment_currency')}
                             name="currencyId"
-                            rules={[{ required: true, message: 'Required' }]}
+                            rules={[{ required: true, message: t('common.error') }]}
                         >
                             <Select
                                 options={currencies.map(curr => ({

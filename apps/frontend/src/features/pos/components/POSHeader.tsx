@@ -7,6 +7,7 @@ import { formatVenezuelanPrice, formatVenezuelanPriceOnly } from '../../../utils
 import { ClientPurchaseHistoryCompact } from '../../../components/ClientPurchaseHistory';
 import { useAuth } from '../../auth/AuthProvider';
 import { useQuery } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 
 const { Header } = Layout;
 const { Title, Text } = Typography;
@@ -17,6 +18,7 @@ const { Title, Text } = Typography;
  * Shows active customer details, current totals (multi-currency), system clock, and cash register session status.
  */
 export const POSHeader = ({ onCajaClick }: { onCajaClick?: () => void }) => {
+    const { t } = useTranslation();
     const screens = Grid.useBreakpoint();
     const isMobile = !screens.lg;
     const { user, logout } = useAuth();
@@ -81,17 +83,17 @@ export const POSHeader = ({ onCajaClick }: { onCajaClick?: () => void }) => {
                         {!isMobile && (
                             <>
                                 <Space direction="vertical" size={0}>
-                                    <Text type="secondary" style={{ fontSize: 10 }}>Date</Text>
+                                    <Text type="secondary" style={{ fontSize: 10 }}>{t('pos.header.date')}</Text>
                                     <Text strong style={{ fontSize: 13 }}>{currentTime.toLocaleDateString()}</Text>
                                 </Space>
                                 <Space direction="vertical" size={0}>
-                                    <Text type="secondary" style={{ fontSize: 10 }}>Time</Text>
+                                    <Text type="secondary" style={{ fontSize: 10 }}>{t('pos.header.time')}</Text>
                                     <Text strong style={{ fontSize: 13 }}>{currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Text>
                                 </Space>
                             </>
                         )}
                         <Space direction="vertical" size={0}>
-                            <Text type="secondary" style={{ fontSize: 10 }}>Customer</Text>
+                            <Text type="secondary" style={{ fontSize: 10 }}>{t('pos.header.customer')}</Text>
                             <Space size={4}>
                                 <Text strong style={{ fontSize: isMobile ? 12 : 16 }}>{activeCustomer}</Text>
                                 {customerId && !isMobile && <ClientPurchaseHistoryCompact clientId={customerId} />}
@@ -99,7 +101,7 @@ export const POSHeader = ({ onCajaClick }: { onCajaClick?: () => void }) => {
                         </Space>
                         {!isMobile && (
                             <Space direction="vertical" size={0}>
-                                <Text type="secondary" style={{ fontSize: 10 }}>Next Invoice</Text>
+                                <Text type="secondary" style={{ fontSize: 10 }}>{t('pos.header.next_invoice')}</Text>
                                 <Text strong style={{ fontSize: 16, color: '#1890ff' }}>{nextInvoiceNumber}</Text>
                             </Space>
                         )}
@@ -110,13 +112,13 @@ export const POSHeader = ({ onCajaClick }: { onCajaClick?: () => void }) => {
                                 <Alert
                                     message={
                                         !activeSession
-                                            ? (user?.role === 'ADMIN' ? "ADMIN MODE" : "WARNING: REGISTER NOT OPEN")
-                                            : "SESSION RECONCILIATION PENDING"
+                                            ? (user?.role === 'ADMIN' ? t('pos.header.admin_mode') : t('pos.header.warning_register_closed'))
+                                            : t('pos.header.reconciliation_pending')
                                     }
                                     description={
                                         !activeSession
-                                            ? (user?.role === 'ADMIN' ? "Operating without an active cash session" : "CONTACT MANAGER FOR OPENING")
-                                            : "Complete cash count"
+                                            ? (user?.role === 'ADMIN' ? t('pos.header.operating_no_session') : t('pos.header.contact_manager_open'))
+                                            : t('pos.header.complete_cash_count')
                                     }
                                     type={user?.role === 'ADMIN' && !activeSession ? "info" : "warning"}
                                     showIcon
@@ -139,11 +141,11 @@ export const POSHeader = ({ onCajaClick }: { onCajaClick?: () => void }) => {
                         {!isMobile && (
                             <>
                                 <div style={{ textAlign: 'right' }}>
-                                    <Text type="secondary" style={{ fontSize: 12, display: 'block' }}>Subtotal</Text>
+                                    <Text type="secondary" style={{ fontSize: 12, display: 'block' }}>{t('pos.header.subtotal')}</Text>
                                     <Text style={{ fontSize: 16 }}>{formatVenezuelanPriceOnly(totals.subtotal)}</Text>
                                 </div>
                                 <div style={{ textAlign: 'right' }}>
-                                    <Text type="secondary" style={{ fontSize: 12, display: 'block' }}>VAT (IVA)</Text>
+                                    <Text type="secondary" style={{ fontSize: 12, display: 'block' }}>{t('pos.header.tax_iva')}</Text>
                                     <Text style={{ fontSize: 16 }}>{formatVenezuelanPriceOnly(totals.tax)}</Text>
                                 </div>
                             </>
@@ -152,16 +154,16 @@ export const POSHeader = ({ onCajaClick }: { onCajaClick?: () => void }) => {
                         {/* Multi-currency Breakdown Popover */}
                         <Popover
                             placement="bottomRight"
-                            title="Currency Breakdown"
+                            title={t('pos.header.currency_breakdown')}
                             content={
                                 <div style={{ minWidth: 200 }}>
                                     <div style={{ padding: '8px 0', borderBottom: '1px solid #f0f0f0', marginBottom: 8 }}>
                                         <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                            <Text type="secondary">Subtotal:</Text>
+                                            <Text type="secondary">{t('pos.header.subtotal')}:</Text>
                                             <Text>{formatVenezuelanPrice(totals.subtotal, 'Bs')}</Text>
                                         </div>
                                         <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                            <Text type="secondary">VAT (IVA):</Text>
+                                            <Text type="secondary">{t('pos.header.tax_iva')}:</Text>
                                             <Text>{formatVenezuelanPrice(totals.tax, 'Bs')}</Text>
                                         </div>
                                     </div>
@@ -188,7 +190,7 @@ export const POSHeader = ({ onCajaClick }: { onCajaClick?: () => void }) => {
                                             loading={isRefreshing}
                                             style={{ width: '100%' }}
                                         >
-                                            Sync Exchange Rates
+                                            {t('pos.header.sync_rates')}
                                         </Button>
                                     </div>
                                 </div>
@@ -202,7 +204,7 @@ export const POSHeader = ({ onCajaClick }: { onCajaClick?: () => void }) => {
                                 textAlign: 'right',
                                 cursor: 'help'
                             }}>
-                                <Text type="secondary" style={{ fontSize: isMobile ? 9 : 11, display: 'block' }}>Total</Text>
+                                <Text type="secondary" style={{ fontSize: isMobile ? 9 : 11, display: 'block' }}>{t('pos.footer.total')}</Text>
                                 <Title level={isMobile ? 5 : 2} style={{ margin: 0, color: '#096dd9', lineHeight: 1 }}>
                                     {formatVenezuelanPrice(totals.total, isMobile ? '' : 'Bs')}
                                 </Title>
@@ -212,7 +214,7 @@ export const POSHeader = ({ onCajaClick }: { onCajaClick?: () => void }) => {
                             </div>
                         </Popover>
 
-                        <Tooltip title={isFullscreen ? "Exit Fullscreen" : "Fullscreen (Kiosk Mode)"}>
+                        <Tooltip title={isFullscreen ? t('pos.header.exit_fullscreen') : t('pos.header.kiosk_mode')}>
                             <Button
                                 icon={isFullscreen ? <FullscreenExitOutlined /> : <FullscreenOutlined />}
                                 onClick={toggleFullscreen}
@@ -230,11 +232,11 @@ export const POSHeader = ({ onCajaClick }: { onCajaClick?: () => void }) => {
                                         size={isMobile ? "small" : "middle"}
                                         style={{ backgroundColor: '#722ed1', borderColor: '#722ed1' }}
                                     >
-                                        {!isMobile && 'Register'}
+                                        {!isMobile && t('pos.header.register')}
                                     </Button>
                                 ) : (
                                     <Tag color="warning" icon={<SyncOutlined spin />}>
-                                        Closure Pending
+                                        {t('pos.header.closure_pending')}
                                     </Tag>
                                 )}
                                 <Button
@@ -243,9 +245,9 @@ export const POSHeader = ({ onCajaClick }: { onCajaClick?: () => void }) => {
                                     icon={<LogoutOutlined />}
                                     onClick={logout}
                                     size={isMobile ? "small" : "middle"}
-                                    title="Logout"
+                                    title={t('pos.header.logout')}
                                 >
-                                    {!isMobile && 'Exit'}
+                                    {!isMobile && t('pos.header.exit')}
                                 </Button>
                             </Space>
                         )}

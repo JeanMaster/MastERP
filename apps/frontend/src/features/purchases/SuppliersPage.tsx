@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Table, Button, Input, Space, Card, Tag, Tooltip, Switch, App, Grid } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined, UserOutlined, ShopOutlined, ReloadOutlined } from '@ant-design/icons';
+import { useTranslation } from 'react-i18next';
 import { suppliersApi } from '../../services/suppliersApi';
 import type { Supplier, CreateSupplierDto, UpdateSupplierDto } from '../../services/suppliersApi';
 import { CreateSupplierModal } from './components/CreateSupplierModal';
@@ -11,6 +12,7 @@ import { CreateSupplierModal } from './components/CreateSupplierModal';
  * Handles listing, searching, and status management for suppliers.
  */
 export const SuppliersPage: React.FC = () => {
+    const { t } = useTranslation();
     const screens = Grid.useBreakpoint();
     const isMobile = !screens.lg;
     const { message, modal } = App.useApp();
@@ -36,7 +38,7 @@ export const SuppliersPage: React.FC = () => {
             const data = await suppliersApi.getAll(searchTerm, !showInactive);
             setSuppliers(data);
         } catch (error) {
-            message.error('Error loading suppliers');
+            message.error(t('common.error_loading_suppliers', { defaultValue: 'Error loading suppliers' }));
         } finally {
             setLoading(false);
         }
@@ -46,14 +48,14 @@ export const SuppliersPage: React.FC = () => {
         setModalLoading(true);
         try {
             await suppliersApi.create(values);
-            message.success('Supplier created successfully');
+            message.success(t('common.success_create_supplier', { defaultValue: 'Supplier created successfully' }));
             setModalVisible(false);
             fetchSuppliers();
         } catch (error: any) {
             if (error.message?.includes('RIF')) {
-                message.error('The RIF is already registered');
+                message.error(t('common.error_rif_registered', { defaultValue: 'The RIF is already registered' }));
             } else {
-                message.error('Error creating supplier');
+                message.error(t('common.error_create_supplier', { defaultValue: 'Error creating supplier' }));
             }
         } finally {
             setModalLoading(false);
@@ -65,12 +67,12 @@ export const SuppliersPage: React.FC = () => {
         setModalLoading(true);
         try {
             await suppliersApi.update(editingSupplier.id, values);
-            message.success('Supplier updated successfully');
+            message.success(t('common.success_update_supplier', { defaultValue: 'Supplier updated successfully' }));
             setModalVisible(false);
             setEditingSupplier(null);
             fetchSuppliers();
         } catch (error) {
-            message.error('Error updating supplier');
+            message.error(t('common.error_update_supplier', { defaultValue: 'Error updating supplier' }));
         } finally {
             setModalLoading(false);
         }
@@ -82,17 +84,17 @@ export const SuppliersPage: React.FC = () => {
      */
     const handleDelete = (id: string) => {
         modal.confirm({
-            title: 'Are you sure?',
-            content: 'The supplier will be marked as inactive.',
-            okText: 'Yes, Deactivate',
-            cancelText: 'Cancel',
+            title: t('common.are_you_sure'),
+            content: t('common.deactivate_supplier_desc', { defaultValue: 'The supplier will be marked as inactive.' }),
+            okText: t('common.yes_deactivate', { defaultValue: 'Yes, Deactivate' }),
+            cancelText: t('common.cancel'),
             onOk: async () => {
                 try {
                     await suppliersApi.remove(id);
-                    message.success('Supplier deactivated');
+                    message.success(t('common.success_deactivate_supplier', { defaultValue: 'Supplier deactivated' }));
                     fetchSuppliers();
                 } catch (error) {
-                    message.error('Error deactivating supplier');
+                    message.error(t('common.error_deactivate_supplier', { defaultValue: 'Error deactivating supplier' }));
                 }
             },
         });
@@ -105,7 +107,7 @@ export const SuppliersPage: React.FC = () => {
 
     const columns = [
         {
-            title: 'Commercial Name / Legal Entity',
+            title: t('common.commercial_name', { defaultValue: 'Commercial Name / Legal Entity' }),
             key: 'name',
             render: (_: any, record: Supplier) => (
                 <Space direction="vertical" size={0}>
@@ -115,13 +117,13 @@ export const SuppliersPage: React.FC = () => {
             ),
         },
         {
-            title: 'RIF (Tax ID)',
+            title: t('common.rif', { defaultValue: 'RIF (Tax ID)' }),
             dataIndex: 'rif',
             key: 'rif',
             render: (text: string) => <Tag color="blue">{text}</Tag>,
         },
         {
-            title: 'Contact',
+            title: t('common.contact', { defaultValue: 'Contact' }),
             key: 'contact',
             render: (_: any, record: Supplier) => (
                 <Space direction="vertical" size={0}>
@@ -132,29 +134,29 @@ export const SuppliersPage: React.FC = () => {
             ),
         },
         {
-            title: 'Address',
+            title: t('common.address'),
             dataIndex: 'address',
             key: 'address',
             ellipsis: true,
         },
         {
-            title: 'Category',
+            title: t('common.category'),
             dataIndex: 'category',
             key: 'category',
             render: (text: string) => text ? <Tag>{text}</Tag> : '-',
         },
         {
-            title: 'Status',
+            title: t('common.status'),
             dataIndex: 'active',
             key: 'active',
             render: (active: boolean) => (
                 <Tag color={active ? 'success' : 'error'}>
-                    {active ? 'Active' : 'Inactive'}
+                    {active ? t('common.active', { defaultValue: 'Active' }) : t('common.inactive', { defaultValue: 'Inactive' })}
                 </Tag>
             )
         },
         {
-            title: 'Actions',
+            title: t('common.actions'),
             key: 'actions',
             render: (_: any, record: Supplier) => (
                 <Space>
@@ -166,7 +168,7 @@ export const SuppliersPage: React.FC = () => {
                         />
                     </Tooltip>
                     {record.active && (
-                        <Tooltip title="Deactivate">
+                        <Tooltip title={t('common.deactivate', { defaultValue: 'Deactivate' })}>
                             <Button
                                 icon={<DeleteOutlined />}
                                 danger
@@ -194,26 +196,26 @@ export const SuppliersPage: React.FC = () => {
                     <Space direction={isMobile ? 'vertical' : 'horizontal'} style={{ width: isMobile ? '100%' : 'auto' }}>
                         <Space>
                             <ShopOutlined style={{ fontSize: isMobile ? '20px' : '24px', color: '#1890ff' }} />
-                            <h1 style={{ margin: 0, fontSize: isMobile ? '20px' : '24px' }}>Suppliers</h1>
+                            <h1 style={{ margin: 0, fontSize: isMobile ? '20px' : '24px' }}>{t('menu.purchases.suppliers')}</h1>
                         </Space>
                         <Space.Compact style={{ width: isMobile ? '100%' : 'auto' }}>
                             <Input
-                                placeholder="Search suppliers..."
+                                placeholder={t('common.search_suppliers', { defaultValue: 'Search suppliers...' })}
                                 prefix={<SearchOutlined />}
                                 style={{ width: isMobile ? '100%' : 250 }}
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
                                 onPressEnter={fetchSuppliers}
                             />
-                            <Button onClick={fetchSuppliers}>Search</Button>
+                            <Button onClick={fetchSuppliers}>{t('common.search')}</Button>
                         </Space.Compact>
                     </Space>
                     <Space wrap align="center" style={{ width: isMobile ? '100%' : 'auto', justifyContent: isMobile ? 'space-between' : 'flex-end' }}>
                         <Switch
                             checked={!showInactive}
                             onChange={(checked) => setShowInactive(!checked)}
-                            checkedChildren="Active"
-                            unCheckedChildren="Inactive"
+                            checkedChildren={t('common.active')}
+                            unCheckedChildren={t('common.inactive')}
                             size={isMobile ? 'small' : 'default'}
                         />
                         <Space>
@@ -226,7 +228,7 @@ export const SuppliersPage: React.FC = () => {
                                     setModalVisible(true);
                                 }}
                             >
-                                {isMobile ? 'New' : 'New Supplier'}
+                                {isMobile ? t('common.new') : t('common.new_supplier', { defaultValue: 'New Supplier' })}
                             </Button>
                         </Space>
                     </Space>
@@ -241,7 +243,7 @@ export const SuppliersPage: React.FC = () => {
                         defaultPageSize: 10,
                         showSizeChanger: true,
                         pageSizeOptions: ['10', '20', '50', '100'],
-                        showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} suppliers`
+                        showTotal: (total, range) => t('common.pagination_total', { rangeStart: range[0], rangeEnd: range[1], total, defaultValue: `${range[0]}-${range[1]} of ${total}` })
                     }}
                     scroll={{ x: 'max-content' }}
                 />

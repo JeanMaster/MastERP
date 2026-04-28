@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
-import { Modal, Form, Input, InputNumber, Select, message, Row, Col } from 'antd';
+import { Modal, Form, Input, InputNumber, Select, App, Row, Col } from 'antd';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import { banksApi, type BankAccount } from '../../../services/banksApi';
 
 interface BankMovementModalProps {
@@ -14,20 +15,22 @@ interface BankMovementModalProps {
  * Modal to register a manual bank movement (income or outcome).
  */
 export const BankMovementModal = ({ open, bankAccount, onClose }: BankMovementModalProps) => {
+    const { t } = useTranslation();
+    const { message } = App.useApp();
     const [form] = Form.useForm();
     const queryClient = useQueryClient();
 
     const mutation = useMutation({
         mutationFn: banksApi.addMovement,
         onSuccess: () => {
-            message.success('Movement registered successfully');
+            message.success(t('banks.movements.messages.success'));
             queryClient.invalidateQueries({ queryKey: ['banks'] });
             queryClient.invalidateQueries({ queryKey: ['bank-history', bankAccount?.id] });
             onClose();
             form.resetFields();
         },
         onError: (error: any) => {
-            message.error(error.response?.data?.message || 'Error registering movement');
+            message.error(error.response?.data?.message || t('banks.movements.messages.error'));
         },
     });
 
@@ -59,13 +62,13 @@ export const BankMovementModal = ({ open, bankAccount, onClose }: BankMovementMo
 
     return (
         <Modal
-            title={`New Movement: ${bankAccount?.bankName}`}
+            title={`${t('banks.movements.title')}: ${bankAccount?.bankName}`}
             open={open}
             onOk={handleSubmit}
             onCancel={onClose}
             confirmLoading={mutation.isPending}
-            okText="Register (F9)"
-            cancelText="Cancel"
+            okText={`${t('common.add')} (F9)`}
+            cancelText={t('common.cancel')}
         >
             <Form
                 form={form}
@@ -76,21 +79,21 @@ export const BankMovementModal = ({ open, bankAccount, onClose }: BankMovementMo
                 <Row gutter={16}>
                     <Col span={12}>
                         <Form.Item
-                            label="Type"
+                            label={t('banks.movements.type')}
                             name="type"
                             rules={[{ required: true }]}
                         >
                             <Select
                                 options={[
-                                    { value: 'IN', label: 'Income (+)' },
-                                    { value: 'OUT', label: 'Outcome (-)' },
+                                    { value: 'IN', label: t('banks.movements.income') },
+                                    { value: 'OUT', label: t('banks.movements.outcome') },
                                 ]}
                             />
                         </Form.Item>
                     </Col>
                     <Col span={12}>
                         <Form.Item
-                            label="Amount"
+                            label={t('banks.movements.amount')}
                             name="amount"
                             rules={[{ required: true, type: 'number', min: 0.01 }]}
                         >
@@ -100,34 +103,34 @@ export const BankMovementModal = ({ open, bankAccount, onClose }: BankMovementMo
                 </Row>
 
                 <Form.Item
-                    label="Category"
+                    label={t('banks.movements.category')}
                     name="category"
                     rules={[{ required: true }]}
                 >
                     <Select
                         options={[
-                            { value: 'INJECTION', label: 'Capital Injection' },
-                            { value: 'EXPENSE', label: 'Expense' },
-                            { value: 'ADJUSTMENT', label: 'Balance Adjustment' },
-                            { value: 'TRANSFER', label: 'Transfer between Accounts' },
-                            { value: 'OTHER', label: 'Other' },
+                            { value: 'INJECTION', label: t('banks.movements.categories.injection') },
+                            { value: 'EXPENSE', label: t('banks.movements.categories.expense') },
+                            { value: 'ADJUSTMENT', label: t('banks.movements.categories.adjustment') },
+                            { value: 'TRANSFER', label: t('banks.movements.categories.transfer') },
+                            { value: 'OTHER', label: t('banks.movements.categories.other') },
                         ]}
                     />
                 </Form.Item>
 
                 <Form.Item
-                    label="Description"
+                    label={t('banks.movements.description')}
                     name="description"
                     rules={[{ required: true }]}
                 >
-                    <Input placeholder="e.g., Rent payment, Extra sale..." />
+                    <Input placeholder={t('banks.placeholders.description')} />
                 </Form.Item>
 
                 <Form.Item
-                    label="Reference (Optional)"
+                    label={t('banks.movements.reference')}
                     name="reference"
                 >
-                    <Input placeholder="Bank ref, invoice #..." />
+                    <Input placeholder={t('banks.placeholders.reference')} />
                 </Form.Item>
             </Form>
         </Modal>

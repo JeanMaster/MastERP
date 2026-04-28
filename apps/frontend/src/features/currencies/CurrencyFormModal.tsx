@@ -3,6 +3,7 @@ import { Modal, Form, Input, InputNumber, Checkbox, message, Alert, Select } fro
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { currenciesApi } from '../../services/currenciesApi';
 import type { Currency, CreateCurrencyDto, UpdateCurrencyDto } from '../../services/currenciesApi';
+import { useTranslation } from 'react-i18next';
 
 interface CurrencyFormModalProps {
     open: boolean;
@@ -15,6 +16,7 @@ interface CurrencyFormModalProps {
  * Modal to create or edit a currency. Handles primary currency logic and exchange rates.
  */
 export const CurrencyFormModal = ({ open, currency, onClose }: CurrencyFormModalProps) => {
+    const { t } = useTranslation();
     const [form] = Form.useForm();
     const queryClient = useQueryClient();
 
@@ -22,13 +24,13 @@ export const CurrencyFormModal = ({ open, currency, onClose }: CurrencyFormModal
     const createMutation = useMutation({
         mutationFn: currenciesApi.create,
         onSuccess: () => {
-            message.success('Currency created successfully');
+            message.success(t('currencies.success_create', { defaultValue: 'Currency created successfully' }));
             queryClient.invalidateQueries({ queryKey: ['currencies'] });
             onClose();
             form.resetFields();
         },
         onError: (error: any) => {
-            message.error(error.response?.data?.message || 'Error creating currency');
+            message.error(error.response?.data?.message || t('common.error'));
         },
     });
 
@@ -37,13 +39,13 @@ export const CurrencyFormModal = ({ open, currency, onClose }: CurrencyFormModal
         mutationFn: ({ id, dto }: { id: string; dto: UpdateCurrencyDto }) =>
             currenciesApi.update(id, dto),
         onSuccess: () => {
-            message.success('Currency updated successfully');
+            message.success(t('currencies.success_update', { defaultValue: 'Currency updated successfully' }));
             queryClient.invalidateQueries({ queryKey: ['currencies'] });
             onClose();
             form.resetFields();
         },
         onError: (error: any) => {
-            message.error(error.response?.data?.message || 'Error updating currency');
+            message.error(error.response?.data?.message || t('common.error'));
         },
     });
 
@@ -107,53 +109,53 @@ export const CurrencyFormModal = ({ open, currency, onClose }: CurrencyFormModal
 
     return (
         <Modal
-            title={currency ? 'Edit Currency' : 'New Currency'}
+            title={currency ? t('currencies.edit') : t('currencies.new')}
             open={open}
             onOk={handleSubmit}
             onCancel={onClose}
             confirmLoading={createMutation.isPending || updateMutation.isPending}
-            okText={currency ? 'Update (F9)' : 'Create (F9)'}
-            cancelText="Cancel"
+            okText={currency ? `${t('common.save')} (F9)` : `${t('common.add')} (F9)`}
+            cancelText={t('common.cancel')}
             width={600}
         >
             <Form form={form} layout="vertical" style={{ marginTop: 20 }}>
                 <Form.Item
-                    label="Name"
+                    label={t('currencies.form.name')}
                     name="name"
-                    rules={[{ required: true, message: 'Name is required' }]}
+                    rules={[{ required: true, message: t('common.error') }]}
                 >
-                    <Input placeholder="e.g., US Dollar, Euro, Bolívar" />
+                    <Input placeholder={t('currencies.form.name_placeholder')} />
                 </Form.Item>
 
                 <Form.Item
-                    label="Code (ISO 4217)"
+                    label={t('currencies.form.code')}
                     name="code"
-                    rules={[{ required: true, message: 'Code is required' }]}
+                    rules={[{ required: true, message: t('common.error') }]}
                 >
-                    <Input placeholder="e.g., USD, VES, EUR" maxLength={3} style={{ textTransform: 'uppercase' }} />
+                    <Input placeholder={t('currencies.form.code_help')} maxLength={3} style={{ textTransform: 'uppercase' }} />
                 </Form.Item>
 
                 <Form.Item
-                    label="Symbol"
+                    label={t('currencies.form.symbol')}
                     name="symbol"
-                    rules={[{ required: true, message: 'Symbol is required' }]}
+                    rules={[{ required: true, message: t('common.error') }]}
                 >
-                    <Input placeholder="e.g., $, Bs, €" maxLength={5} />
+                    <Input placeholder={t('currencies.form.symbol_placeholder')} maxLength={5} />
                 </Form.Item>
 
                 <Form.Item name="isPrimary" valuePropName="checked">
                     <Checkbox>
-                        <strong>Is Primary Currency</strong>
+                        <strong>{t('currencies.form.is_primary')}</strong>
                         <div style={{ fontSize: 12, color: '#888' }}>
-                            The primary currency serves as the base for all exchange rates
+                            {t('currencies.form.is_primary_desc')}
                         </div>
                     </Checkbox>
                 </Form.Item>
 
                 {isPrimary && (
                     <Alert
-                        message="This currency will be marked as primary"
-                        description="If another primary currency exists, it will be automatically unmasked."
+                        message={t('currencies.form.is_primary_alert')}
+                        description={t('currencies.form.is_primary_alert_desc')}
                         type="info"
                         showIcon
                         style={{ marginBottom: 16 }}
@@ -164,7 +166,7 @@ export const CurrencyFormModal = ({ open, currency, onClose }: CurrencyFormModal
                     <>
                         <Form.Item name="isAutomatic" valuePropName="checked">
                             <Checkbox>
-                                <strong>Automatic Update</strong>
+                                <strong>{t('currencies.form.is_automatic')}</strong>
                             </Checkbox>
                         </Form.Item>
 
@@ -175,11 +177,11 @@ export const CurrencyFormModal = ({ open, currency, onClose }: CurrencyFormModal
                             {({ getFieldValue }) =>
                                 getFieldValue('isAutomatic') ? (
                                     <Form.Item
-                                        label="Data Source"
+                                        label={t('currencies.form.data_source')}
                                         name="apiSymbol"
-                                        rules={[{ required: true, message: 'Please select a source' }]}
+                                        rules={[{ required: true, message: t('common.select_source') }]}
                                     >
-                                        <Select placeholder="Select external source">
+                                        <Select placeholder={t('common.select_source')}>
                                             <Select.Option value="binance_p2p">Binance P2P (USDT)</Select.Option>
                                             <Select.Option value="bcv">Central Bank of Venezuela (BCV)</Select.Option>
                                             <Select.Option value="enparalelo">EnParaleloVzla</Select.Option>
@@ -187,13 +189,13 @@ export const CurrencyFormModal = ({ open, currency, onClose }: CurrencyFormModal
                                     </Form.Item>
                                 ) : (
                                     <Form.Item
-                                        label="Exchange Rate"
+                                        label={t('currencies.rate')}
                                         name="exchangeRate"
                                         rules={[
-                                            { required: !isPrimary, message: 'Exchange rate is required for secondary currencies' },
-                                            { type: 'number', min: 0.0001, message: 'Rate must be greater than 0' },
+                                            { required: !isPrimary, message: t('currencies.form.rate_error') },
+                                            { type: 'number', min: 0.0001, message: t('currencies.form.rate_error') },
                                         ]}
-                                        help="How many units of the primary currency equal 1 unit of this currency? e.g., 1 USD = 100 Bs"
+                                        help={t('currencies.form.rate_help')}
                                     >
                                         <InputNumber
                                             placeholder="e.g., 100.00"

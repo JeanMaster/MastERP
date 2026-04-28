@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
-import { Card, Form, Input, Button, Upload, message, Space, Skeleton, Switch, Divider, Alert, Typography } from 'antd';
+import { Card, Form, Input, Button, Upload, App, Space, Skeleton, Switch, Divider, Alert, Typography } from 'antd';
 import { UploadOutlined, BankOutlined } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { companySettingsApi } from '../../services/companySettingsApi';
+import { useTranslation } from 'react-i18next';
 
 const { Title, Text } = Typography;
 
@@ -12,6 +13,8 @@ const { Title, Text } = Typography;
  * Handles logo uploads and accounting rigour configurations.
  */
 const CompanySettingsForm = ({ settings, onSubmit, isUpdating }: { settings: any, onSubmit: (values: any, logoUrl: string) => void, isUpdating: boolean }) => {
+    const { t } = useTranslation();
+    const { message } = App.useApp();
     const [form] = Form.useForm();
     const [logoUrl, setLogoUrl] = useState<string>('');
 
@@ -51,7 +54,7 @@ const CompanySettingsForm = ({ settings, onSubmit, isUpdating }: { settings: any
             reader.onload = (e) => {
                 const result = e.target?.result as string;
                 setLogoUrl(result);
-                message.success('Logo loaded. Save changes to apply.');
+                message.success(t('settings.company.messages.logo_loaded'));
             };
             reader.readAsDataURL(file);
         }
@@ -65,22 +68,22 @@ const CompanySettingsForm = ({ settings, onSubmit, isUpdating }: { settings: any
             style={{ maxWidth: 600 }}
         >
             <Form.Item
-                label="Company Name"
+                label={t('settings.company.name')}
                 name="name"
-                rules={[{ required: true, message: 'Company name is required' }]}
+                rules={[{ required: true, message: t('settings.company.name_required') }]}
             >
                 <Input placeholder="e.g., MastERP Solutions" size="large" />
             </Form.Item>
 
             <Form.Item
-                label="Tax Identification / RIF"
+                label={t('settings.company.tax_id')}
                 name="rif"
-                rules={[{ required: true, message: 'Tax ID (RIF) is required' }]}
+                rules={[{ required: true, message: t('settings.company.tax_id_required') }]}
             >
                 <Input placeholder="J-12345678-9" size="large" />
             </Form.Item>
 
-            <Form.Item label="Company Brand / Logo">
+            <Form.Item label={t('settings.company.logo')}>
                 <Space direction="vertical" style={{ width: '100%' }}>
                     {logoUrl && (
                         <div style={{
@@ -111,26 +114,26 @@ const CompanySettingsForm = ({ settings, onSubmit, isUpdating }: { settings: any
                         showUploadList={false}
                     >
                         <Button icon={<UploadOutlined />} size="large" block>
-                            {logoUrl ? 'Change Logo' : 'Upload Logo'}
+                            {logoUrl ? t('settings.company.change_logo') : t('settings.company.upload_logo')}
                         </Button>
                     </Upload>
                     <Text type="secondary" style={{ fontSize: 12 }}>
-                        Recommendation: Use a square image (aspect ratio 1:1) for optimal circular display on receipts and reports.
+                        {t('settings.company.logo_recommendation')}
                     </Text>
                 </Space>
             </Form.Item>
 
-            <Divider orientation={"left" as any}>Accounting Control</Divider>
+            <Divider orientation={"left" as any}>{t('settings.company.accounting_control')}</Divider>
 
             <Form.Item
-                label="Enforce Bank Account Selection"
+                label={t('settings.company.enforce_bank')}
                 name="requireBankAccountForPayments"
                 valuePropName="checked"
                 style={{ marginBottom: 12 }}
             >
                 <Switch
-                    checkedChildren="Strict"
-                    unCheckedChildren="Optional"
+                    checkedChildren={t('settings.company.strict')}
+                    unCheckedChildren={t('settings.company.optional')}
                 />
             </Form.Item>
             
@@ -139,8 +142,8 @@ const CompanySettingsForm = ({ settings, onSubmit, isUpdating }: { settings: any
                 showIcon 
                 icon={<BankOutlined />}
                 style={{ marginBottom: 24 }}
-                message="Mandatory Bank Source" 
-                description="When enabled, staff will be forced to select an specific bank account or cash drawer when recording Expenses or paying Suppliers." 
+                message={t('settings.company.mandatory_bank_desc')} 
+                description={t('settings.company.mandatory_bank_help')} 
             />
 
             <Form.Item>
@@ -152,7 +155,7 @@ const CompanySettingsForm = ({ settings, onSubmit, isUpdating }: { settings: any
                     loading={isUpdating}
                     style={{ height: 50, borderRadius: 8 }}
                 >
-                    Save Changes (F9)
+                    {t('settings.company.save_changes')}
                 </Button>
             </Form.Item>
         </Form>
@@ -164,6 +167,8 @@ const CompanySettingsForm = ({ settings, onSubmit, isUpdating }: { settings: any
  * Main wrapper for the business profile and configuration settings.
  */
 export const CompanySettingsPage = () => {
+    const { t } = useTranslation();
+    const { message } = App.useApp();
     const queryClient = useQueryClient();
 
     const { data: settings, isLoading } = useQuery({
@@ -174,11 +179,11 @@ export const CompanySettingsPage = () => {
     const updateMutation = useMutation({
         mutationFn: companySettingsApi.updateSettings,
         onSuccess: () => {
-            message.success('Company settings updated successfully');
+            message.success(t('settings.company.messages.success_update'));
             queryClient.invalidateQueries({ queryKey: ['company-settings'] });
         },
         onError: (error: any) => {
-            message.error(error.response?.data?.message || 'Error updating settings');
+            message.error(error.response?.data?.message || t('settings.company.messages.error_update'));
         },
     });
 
@@ -192,8 +197,8 @@ export const CompanySettingsPage = () => {
     return (
         <Card bordered={false} style={{ boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
             <div style={{ marginBottom: 24 }}>
-                <Title level={2} style={{ margin: 0 }}>🏢 Business Profile</Title>
-                <Text type="secondary">Manage your company branding, legal identification, and accounting rigour.</Text>
+                <Title level={2} style={{ margin: 0 }}>{t('settings.company.page_title')}</Title>
+                <Text type="secondary">{t('settings.company.page_subtitle')}</Text>
             </div>
             {isLoading ? (
                 <Skeleton active paragraph={{ rows: 8 }} />

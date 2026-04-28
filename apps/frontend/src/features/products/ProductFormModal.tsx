@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
-import { Modal, Form, Input, InputNumber, Select, message, Row, Col, Divider, Card, Alert, Upload, Button, Switch } from 'antd';
+import { Modal, Form, Input, InputNumber, Select, Row, Col, Divider, Card, Alert, Upload, Button, Switch, App } from 'antd';
 import { PlusOutlined, NodeIndexOutlined, DeleteOutlined } from '@ant-design/icons';
+import { useTranslation } from 'react-i18next';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { productsApi } from '../../services/productsApi';
 import type { Product, CreateProductDto, UpdateProductDto } from '../../services/productsApi';
@@ -23,6 +24,8 @@ interface ProductFormModalProps {
  * Handles multi-currency pricing, unit conversions (primary/secondary), and inventory tracking.
  */
 export const ProductFormModal = ({ open, product, onClose, defaultType }: ProductFormModalProps) => {
+    const { t } = useTranslation();
+    const { message } = App.useApp();
     const [form] = Form.useForm();
     const queryClient = useQueryClient();
     const [selectedCategory, setSelectedCategory] = useState<string | undefined>(undefined);
@@ -76,13 +79,13 @@ export const ProductFormModal = ({ open, product, onClose, defaultType }: Produc
     const createMutation = useMutation({
         mutationFn: productsApi.create,
         onSuccess: () => {
-            message.success('Product created successfully');
+            message.success(t('products.success_create', { defaultValue: 'Product created successfully' }));
             queryClient.invalidateQueries({ queryKey: ['products'] });
             onClose();
             form.resetFields();
         },
         onError: (error: any) => {
-            message.error(error.response?.data?.message || 'Error creating product');
+            message.error(error.response?.data?.message || t('products.error_create', { defaultValue: 'Error creating product' }));
         },
     });
 
@@ -96,14 +99,14 @@ export const ProductFormModal = ({ open, product, onClose, defaultType }: Produc
                 setCostChangeInfo(data.costChangeInfo);
                 setPriceUpdateModalVisible(true);
             } else {
-                message.success('Product updated successfully');
+                message.success(t('products.success_update', { defaultValue: 'Product updated successfully' }));
                 queryClient.invalidateQueries({ queryKey: ['products'] });
                 onClose();
                 form.resetFields();
             }
         },
         onError: (error: any) => {
-            message.error(error.response?.data?.message || 'Error updating product');
+            message.error(error.response?.data?.message || t('products.error_update', { defaultValue: 'Error updating product' }));
         },
     });
 
@@ -271,7 +274,7 @@ export const ProductFormModal = ({ open, product, onClose, defaultType }: Produc
                 }];
 
                 await productsApi.batchUpdatePrices(updates);
-                message.success('Prices updated successfully');
+                message.success(t('products.prices_updated', { defaultValue: 'Prices updated successfully' }));
 
                 setPriceUpdateModalVisible(false);
                 await queryClient.invalidateQueries({ queryKey: ['products'] });
@@ -283,7 +286,7 @@ export const ProductFormModal = ({ open, product, onClose, defaultType }: Produc
             }
         } catch (error) {
             console.error(error);
-            message.error('Error updating prices');
+            message.error(t('products.error_updating_prices', { defaultValue: 'Error updating prices' }));
         } finally {
             if (open) setPriceUpdateLoading(false);
         }
@@ -291,7 +294,7 @@ export const ProductFormModal = ({ open, product, onClose, defaultType }: Produc
 
     const handlePriceUpdateCancel = () => {
         setPriceUpdateModalVisible(false);
-        message.success('Product updated (prices unchanged)');
+        message.success(t('products.success_update_no_price', { defaultValue: 'Product updated (prices unchanged)' }));
         queryClient.invalidateQueries({ queryKey: ['products'] });
         form.resetFields();
         setTimeout(() => {
@@ -328,8 +331,8 @@ export const ProductFormModal = ({ open, product, onClose, defaultType }: Produc
         if (!found) return;
 
         Modal.confirm({
-            title: 'Import price configuration?',
-            content: `The currency, cost, and sales prices from "${found.name}" will be copied. Current values will be overwritten.`,
+            title: t('products.import_price_title', { defaultValue: 'Import price configuration?' }),
+            content: t('products.import_price_content', { defaultValue: `The currency, cost, and sales prices from "${found.name}" will be copied. Current values will be overwritten.`, name: found.name }),
             onOk: () => {
                 const costPrice = found.costPrice;
                 const saleProfitPercent = costPrice > 0 ? ((found.salePrice - costPrice) / costPrice) * 100 : 0;
@@ -359,10 +362,12 @@ export const ProductFormModal = ({ open, product, onClose, defaultType }: Produc
                     setSelectedCurrency(found.currency);
                 }
 
-                message.success('Price information imported');
+                message.success(t('products.price_info_imported', { defaultValue: 'Price information imported' }));
                 setSimilarProducts([]);
                 setSimilarProductSearch('');
-            }
+            },
+            okText: t('common.yes'),
+            cancelText: t('common.no')
         });
     };
 
@@ -595,13 +600,13 @@ export const ProductFormModal = ({ open, product, onClose, defaultType }: Produc
     return (
         <>
             <Modal
-                title={product ? 'Edit Product' : 'New Product'}
+                title={product ? t('products.edit') : t('products.create')}
                 open={open}
                 onOk={handleSubmit}
                 onCancel={onClose}
                 confirmLoading={createMutation.isPending || updateMutation.isPending}
-                okText={product ? 'Update (F9)' : 'Create (F9)'}
-                cancelText="Cancel"
+                okText={`${product ? t('common.update') : t('common.create')} (F9)`}
+                cancelText={t('common.cancel')}
                 width={900}
             >
                 <Form
@@ -618,16 +623,16 @@ export const ProductFormModal = ({ open, product, onClose, defaultType }: Produc
                     <Row gutter={16}>
                         <Col span={24}>
                             <Form.Item
-                                label="Product Type"
+                                label={t('products.type', { defaultValue: 'Product Type' })}
                                 name="type"
                                 rules={[{ required: true }]}
                             >
                                 <Select
                                     onChange={(val) => setProductType(val)}
                                     options={[
-                                        { value: 'PRODUCT', label: 'Finished Product' },
-                                        { value: 'SERVICE', label: 'Service' },
-                                        { value: 'COMPOSED', label: 'Composed Product (Recipe)' },
+                                        { value: 'PRODUCT', label: t('products.type_product', { defaultValue: 'Finished Product' }) },
+                                        { value: 'SERVICE', label: t('products.type_service', { defaultValue: 'Service' }) },
+                                        { value: 'COMPOSED', label: t('products.type_composed', { defaultValue: 'Composed Product (Recipe)' }) },
                                     ]}
                                 />
                             </Form.Item>
@@ -637,31 +642,31 @@ export const ProductFormModal = ({ open, product, onClose, defaultType }: Produc
                     <Row gutter={16}>
                         <Col span={12}>
                             <Form.Item
-                                label="SKU"
+                                label={t('common.sku', { defaultValue: 'SKU' })}
                                 name="sku"
-                                rules={[{ required: true, message: 'SKU is required' }]}
+                                rules={[{ required: true, message: t('products.sku_required', { defaultValue: 'SKU is required' }) }]}
                             >
-                                <Input placeholder="e.g., PROD-001" />
+                                <Input placeholder={t('products.sku_placeholder', { defaultValue: 'e.g., PROD-001' })} />
                             </Form.Item>
                         </Col>
                         <Col span={12}>
                             <Form.Item
-                                label="Name"
+                                label={t('common.name')}
                                 name="name"
-                                rules={[{ required: true, message: 'Name is required' }]}
+                                rules={[{ required: true, message: t('products.name_required', { defaultValue: 'Name is required' }) }]}
                             >
-                                <Input placeholder="e.g., Hammer 16oz" />
+                                <Input placeholder={t('products.name_placeholder', { defaultValue: 'e.g., Hammer 16oz' })} />
                             </Form.Item>
                         </Col>
                     </Row>
 
-                    <Form.Item label="Description" name="description">
-                        <Input.TextArea rows={2} placeholder="Product description..." />
+                    <Form.Item label={t('common.description')} name="description">
+                        <Input.TextArea rows={2} placeholder={t('products.description_placeholder', { defaultValue: 'Product description...' })} />
                     </Form.Item>
 
                     {settings?.taxEnabled && (
                         <Form.Item name="isTaxExempt" valuePropName="checked">
-                            <Switch checkedChildren="Tax EXEMPT Product" unCheckedChildren="Taxable Product" />
+                            <Switch checkedChildren={t('products.tax_exempt', { defaultValue: 'Tax EXEMPT Product' })} unCheckedChildren={t('products.taxable', { defaultValue: 'Taxable Product' })} />
                         </Form.Item>
                     )}
 
@@ -685,7 +690,7 @@ export const ProductFormModal = ({ open, product, onClose, defaultType }: Produc
                                     showUploadList={false}
                                     beforeUpload={async (file) => {
                                         if (images.length >= 12) {
-                                            message.warning('Maximum 12 images allowed');
+                                            message.warning(t('products.images_max'));
                                             return false;
                                         }
                                         try {
@@ -727,12 +732,12 @@ export const ProductFormModal = ({ open, product, onClose, defaultType }: Produc
                                                 });
                                             };
 
-                                            message.loading({ content: 'Processing image...', key: 'img-proc' });
+                                            message.loading({ content: t('products.image_processing'), key: 'img-proc' });
                                             const compressed = await compressImage(file);
                                             setImages(prev => [...prev, compressed]);
-                                            message.success({ content: 'Image added', key: 'img-proc' });
+                                            message.success({ content: t('products.image_added'), key: 'img-proc' });
                                         } catch (error) {
-                                            message.error('Error processing image');
+                                            message.error(t('products.image_error'));
                                         }
                                         return false;
                                     }}
@@ -740,7 +745,7 @@ export const ProductFormModal = ({ open, product, onClose, defaultType }: Produc
                                 >
                                     <div>
                                         <PlusOutlined />
-                                        <div style={{ marginTop: 8 }}>Add</div>
+                                        <div style={{ marginTop: 8 }}>{t('common.add')}</div>
                                     </div>
                                 </Upload>
                             )}
@@ -750,12 +755,12 @@ export const ProductFormModal = ({ open, product, onClose, defaultType }: Produc
                     <Row gutter={16}>
                         <Col span={12}>
                             <Form.Item
-                                label="Category"
+                                label={t('common.category')}
                                 name="categoryId"
-                                rules={[{ required: true, message: 'Category is required' }]}
+                                rules={[{ required: true, message: t('products.category_required', { defaultValue: 'Category is required' }) }]}
                             >
                                 <Select
-                                    placeholder="Select category"
+                                    placeholder={t('products.select_category', { defaultValue: 'Select category' })}
                                     onChange={handleCategoryChange}
                                     showSearch
                                     filterOption={(input, option) =>
@@ -769,9 +774,9 @@ export const ProductFormModal = ({ open, product, onClose, defaultType }: Produc
                             </Form.Item>
                         </Col>
                         <Col span={12}>
-                            <Form.Item label="Subcategory (Optional)" name="subcategoryId">
+                            <Form.Item label={t('products.subcategory', { defaultValue: 'Subcategory (Optional)' })} name="subcategoryId">
                                 <Select
-                                    placeholder="Select subcategory"
+                                    placeholder={t('products.select_subcategory', { defaultValue: 'Select subcategory' })}
                                     allowClear
                                     disabled={!selectedCategory}
                                     showSearch
@@ -789,12 +794,12 @@ export const ProductFormModal = ({ open, product, onClose, defaultType }: Produc
 
                     {productType === 'COMPOSED' && (
                         <Card
-                            title={<span style={{ color: '#722ed1' }}><NodeIndexOutlined /> Composed Product Recipe</span>}
+                            title={<span style={{ color: '#722ed1' }}><NodeIndexOutlined /> {t('products.composed_recipe_title', { defaultValue: 'Composed Product Recipe' })}</span>}
                             size="small"
                             style={{ marginBottom: 24, borderColor: '#d3adf7', background: '#f9f0ff' }}
                         >
                             <Alert
-                                message="Cost and stock will be automatically calculated based on the added components."
+                                message={t('products.composed_recipe_alert', { defaultValue: 'Cost and stock will be automatically calculated based on the added components.' })}
                                 type="info"
                                 showIcon
                                 style={{ marginBottom: 16 }}
@@ -874,25 +879,25 @@ export const ProductFormModal = ({ open, product, onClose, defaultType }: Produc
                     )}
 
                     <Divider orientation={"left" as any} style={{ margin: '12px 0' }}>
-                        <span style={{ fontSize: '14px', color: '#666' }}>Pricing and Inventory</span>
+                        <span style={{ fontSize: '14px', color: '#666' }}>{t('products.pricing_inventory_title', { defaultValue: 'Pricing and Inventory' })}</span>
                     </Divider>
 
                     <Card size="small" style={{ marginBottom: 16, background: '#f9f9f9', border: '1px dashed #d9d9d9' }}>
                         <Form.Item
-                            label={<span style={{ fontWeight: 500 }}>Import prices from similar product</span>}
-                            tooltip="Search an existing product to copy its price and currency configuration"
+                            label={<span style={{ fontWeight: 500 }}>{t('products.import_similar_label', { defaultValue: 'Import prices from similar product' })}</span>}
+                            tooltip={t('products.import_similar_tooltip', { defaultValue: 'Search an existing product to copy its price and currency configuration' })}
                             style={{ marginBottom: 0 }}
                         >
                             <Select
                                 showSearch
                                 value={similarProductSearch || undefined}
-                                placeholder="Type SKU or product name..."
+                                placeholder={t('products.import_similar_placeholder', { defaultValue: 'Type SKU or product name...' })}
                                 defaultActiveFirstOption={false}
                                 suffixIcon={null}
                                 filterOption={false}
                                 onSearch={handleSearchSimilar}
                                 onChange={handleImportFromProduct}
-                                notFoundContent={isSearchingSimilar ? 'Searching...' : null}
+                                notFoundContent={isSearchingSimilar ? t('common.searching', { defaultValue: 'Searching...' }) : null}
                                 options={similarProducts.map(p => ({
                                     value: p.id,
                                     label: `${p.sku} - ${p.name} (${p.currency?.symbol}${p.salePrice})`,
@@ -905,9 +910,9 @@ export const ProductFormModal = ({ open, product, onClose, defaultType }: Produc
                     <Row gutter={16}>
                         <Col span={12}>
                             <Form.Item
-                                label="Currency"
+                                label={t('common.currency')}
                                 name="currencyId"
-                                rules={[{ required: true, message: 'Currency is required' }]}
+                                rules={[{ required: true, message: t('products.currency_required', { defaultValue: 'Currency is required' }) }]}
                             >
                                 <Select
                                     placeholder="Select currency"
@@ -923,15 +928,15 @@ export const ProductFormModal = ({ open, product, onClose, defaultType }: Produc
                             </Form.Item>
 
                             <Form.Item
-                                label="Cost Price"
+                                label={t('common.cost_price')}
                                 name="costPrice"
                                 rules={[
-                                    { required: true, message: 'Cost price is required' },
-                                    { type: 'number', min: 0, message: 'Must be greater than or equal to 0' },
+                                    { required: true, message: t('products.cost_required', { defaultValue: 'Cost price is required' }) },
+                                    { type: 'number', min: 0, message: t('common.min_zero', { defaultValue: 'Must be greater than or equal to 0' }) },
                                 ]}
                             >
                                 <InputNumber
-                                    placeholder={productType === 'COMPOSED' ? "Auto-calculated" : "0.00"}
+                                    placeholder={productType === 'COMPOSED' ? t('common.auto_calculated', { defaultValue: 'Auto-calculated' }) : "0.00"}
                                     style={{ width: '100%' }}
                                     precision={2}
                                     min={0}
@@ -940,12 +945,12 @@ export const ProductFormModal = ({ open, product, onClose, defaultType }: Produc
                             </Form.Item>
 
                             <Form.Item
-                                label={productType === 'COMPOSED' ? "Availability (Auto)" : "Initial Stock"}
+                                label={productType === 'COMPOSED' ? `${t('common.availability', { defaultValue: 'Availability' })} (Auto)` : t('common.stock')}
                                 name="stock"
-                                rules={[{ type: 'number', min: 0, message: 'Must be greater than or equal to 0' }]}
+                                rules={[{ type: 'number', min: 0, message: t('common.min_zero') }]}
                             >
                                 <InputNumber
-                                    placeholder={productType === 'COMPOSED' ? "Auto-calculated" : "0.000"}
+                                    placeholder={productType === 'COMPOSED' ? t('common.auto_calculated') : "0.000"}
                                     style={{ width: '100%' }}
                                     precision={3}
                                     min={0}
@@ -956,12 +961,12 @@ export const ProductFormModal = ({ open, product, onClose, defaultType }: Produc
                             <Row gutter={8}>
                                 <Col span={12}>
                                     <Form.Item
-                                        label="Primary Unit"
+                                        label={t('products.primary_unit', { defaultValue: 'Primary Unit' })}
                                         name="unitId"
-                                        rules={[{ required: true, message: 'Unit is required' }]}
+                                        rules={[{ required: true, message: t('products.unit_required', { defaultValue: 'Unit is required' }) }]}
                                     >
                                         <Select
-                                            placeholder="Select unit"
+                                            placeholder={t('products.select_unit', { defaultValue: 'Select unit' })}
                                             showSearch
                                             filterOption={(input, option) =>
                                                 (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
@@ -974,9 +979,9 @@ export const ProductFormModal = ({ open, product, onClose, defaultType }: Produc
                                     </Form.Item>
                                 </Col>
                                 <Col span={12}>
-                                    <Form.Item label="Secondary Unit (Optional)" name="secondaryUnitId">
+                                    <Form.Item label={t('products.secondary_unit', { defaultValue: 'Secondary Unit (Optional)' })} name="secondaryUnitId">
                                         <Select
-                                            placeholder="e.g., Box, Pack"
+                                            placeholder={t('products.secondary_unit_placeholder', { defaultValue: 'e.g., Box, Pack' })}
                                             allowClear
                                             showSearch
                                             onChange={handleSecondaryUnitChange}
@@ -994,22 +999,22 @@ export const ProductFormModal = ({ open, product, onClose, defaultType }: Produc
                         </Col>
 
                         <Col span={12}>
-                            <Form.Item label="Sales Price (Normal)" style={{ marginBottom: 8 }}>
+                            <Form.Item label={t('products.sale_price_normal', { defaultValue: 'Sales Price (Normal)' })} style={{ marginBottom: 8 }}>
                                 <Row gutter={8}>
                                     <Col span={12}>
                                         <Form.Item
                                             name="salePrice"
                                             noStyle
                                             rules={[
-                                                { required: true, message: 'Required' },
-                                                { type: 'number', min: 0, message: 'Must be >= 0' },
+                                                { required: true, message: t('common.required') },
+                                                { type: 'number', min: 0, message: t('common.min_zero_short', { defaultValue: 'Must be >= 0' }) },
                                                 ({ getFieldValue }) => ({
                                                     validator(_, value) {
                                                         const costPrice = getFieldValue('costPrice');
                                                         if (!value || value >= costPrice) {
                                                             return Promise.resolve();
                                                         }
-                                                        return Promise.reject(new Error('Must be >= cost'));
+                                                        return Promise.reject(new Error(t('products.error_min_cost', { defaultValue: 'Must be >= cost' })));
                                                     },
                                                 }),
                                             ]}
@@ -1026,7 +1031,7 @@ export const ProductFormModal = ({ open, product, onClose, defaultType }: Produc
                                     <Col span={12}>
                                         <Form.Item name="saleProfitPercent" noStyle>
                                             <InputNumber
-                                                placeholder="Profit %"
+                                                placeholder={t('products.profit_percent_placeholder', { defaultValue: 'Profit %' })}
                                                 style={{ width: '100%' }}
                                                 precision={2}
                                                 min={-100}
@@ -1039,14 +1044,14 @@ export const ProductFormModal = ({ open, product, onClose, defaultType }: Produc
                                 </Row>
                             </Form.Item>
 
-                            <Form.Item label="Offer Price (Optional)" style={{ marginBottom: 8 }}>
+                            <Form.Item label={t('products.offer_price', { defaultValue: 'Offer Price (Optional)' })} style={{ marginBottom: 8 }}>
                                 <Row gutter={8}>
                                     <Col span={12}>
                                         <Form.Item
                                             name="offerPrice"
                                             noStyle
                                             rules={[
-                                                { type: 'number', min: 0, message: 'Must be >= 0' },
+                                                { type: 'number', min: 0, message: t('common.min_zero_short') },
                                                 ({ getFieldValue }) => ({
                                                     validator(_, value) {
                                                         if (!value) return Promise.resolve();
@@ -1071,7 +1076,7 @@ export const ProductFormModal = ({ open, product, onClose, defaultType }: Produc
                                     <Col span={12}>
                                         <Form.Item name="offerProfitPercent" noStyle>
                                             <InputNumber
-                                                placeholder="Profit %"
+                                                placeholder={t('products.profit_percent_placeholder')}
                                                 style={{ width: '100%' }}
                                                 precision={2}
                                                 min={-100}
@@ -1084,14 +1089,14 @@ export const ProductFormModal = ({ open, product, onClose, defaultType }: Produc
                                 </Row>
                             </Form.Item>
 
-                            <Form.Item label="Wholesale Price (Optional)" style={{ marginBottom: 8 }}>
+                            <Form.Item label={t('products.wholesale_price', { defaultValue: 'Wholesale Price (Optional)' })} style={{ marginBottom: 8 }}>
                                 <Row gutter={8}>
                                     <Col span={12}>
                                         <Form.Item
                                             name="wholesalePrice"
                                             noStyle
                                             rules={[
-                                                { type: 'number', min: 0, message: 'Must be >= 0' },
+                                                { type: 'number', min: 0, message: t('common.min_zero_short') },
                                                 ({ getFieldValue }) => ({
                                                     validator(_, value) {
                                                         if (!value) return Promise.resolve();
@@ -1099,13 +1104,13 @@ export const ProductFormModal = ({ open, product, onClose, defaultType }: Produc
                                                         if (value >= costPrice) {
                                                             return Promise.resolve();
                                                         }
-                                                        return Promise.reject(new Error('Must be >= cost'));
+                                                        return Promise.reject(new Error(t('products.error_min_cost', { defaultValue: 'Must be >= cost' })));
                                                     },
                                                 }),
                                             ]}
                                         >
                                             <InputNumber
-                                                placeholder="Price"
+                                                placeholder={t('common.price', { defaultValue: 'Price' })}
                                                 style={{ width: '100%' }}
                                                 precision={2}
                                                 min={0}
@@ -1116,7 +1121,7 @@ export const ProductFormModal = ({ open, product, onClose, defaultType }: Produc
                                     <Col span={12}>
                                         <Form.Item name="wholesaleProfitPercent" noStyle>
                                             <InputNumber
-                                                placeholder="Profit %"
+                                                placeholder={t('products.profit_percent_placeholder')}
                                                 style={{ width: '100%' }}
                                                 precision={2}
                                                 min={-100}
@@ -1133,13 +1138,13 @@ export const ProductFormModal = ({ open, product, onClose, defaultType }: Produc
 
                     {hasSecondaryUnit && (
                         <>
-                            <Divider>Secondary Unit</Divider>
+                            <Divider>{t('products.secondary_unit_divider', { defaultValue: 'Secondary Unit' })}</Divider>
                             <Alert
-                                message="Conversion Configuration"
+                                message={t('products.conversion_config', { defaultValue: 'Conversion Configuration' })}
                                 description={
                                     conversionDirection === 'primary_to_secondary'
-                                        ? `The Secondary Unit (e.g., Box) contains multiple Primary Units.`
-                                        : `The Primary Unit (e.g., Roll) contains multiple Secondary Units.`
+                                        ? t('products.primary_to_secondary_desc', { defaultValue: 'The Secondary Unit (e.g., Box) contains multiple Primary Units.' })
+                                        : t('products.secondary_to_primary_desc', { defaultValue: 'The Primary Unit (e.g., Roll) contains multiple Secondary Units.' })
                                 }
                                 type="info"
                                 showIcon
@@ -1148,7 +1153,7 @@ export const ProductFormModal = ({ open, product, onClose, defaultType }: Produc
                             <Row gutter={16}>
                                 <Col span={12}>
                                     <Form.Item
-                                        label="Conversion Type"
+                                        label={t('products.conversion_type', { defaultValue: 'Conversion Type' })}
                                         name="conversionDirection"
                                         initialValue="primary_to_secondary"
                                     >
@@ -1158,22 +1163,22 @@ export const ProductFormModal = ({ open, product, onClose, defaultType }: Produc
                                                 calculateSecondaryPrices();
                                             }}
                                             options={[
-                                                { value: 'primary_to_secondary', label: 'Primary → Secondary (Multiply)' },
-                                                { value: 'secondary_to_primary', label: 'Secondary → Primary (Divide)' },
+                                                { value: 'primary_to_secondary', label: t('products.primary_to_secondary_label', { defaultValue: 'Primary → Secondary (Multiply)' }) },
+                                                { value: 'secondary_to_primary', label: t('products.secondary_to_primary_label', { defaultValue: 'Secondary → Primary (Divide)' }) },
                                             ]}
                                         />
                                     </Form.Item>
                                 </Col>
                                 <Col span={12}>
                                     <Form.Item
-                                        label="Conversion Quantity"
+                                        label={t('products.conversion_quantity', { defaultValue: 'Conversion Quantity' })}
                                         name="unitsPerSecondaryUnit"
                                         help={
                                             conversionDirection === 'primary_to_secondary'
-                                                ? 'e.g., 1 Box = 12 Units'
-                                                : 'e.g., 1 Roll = 50 Meters'
+                                                ? t('products.conversion_qty_help_p2s', { defaultValue: 'e.g., 1 Box = 12 Units' })
+                                                : t('products.conversion_qty_help_s2p', { defaultValue: 'e.g., 1 Roll = 50 Meters' })
                                         }
-                                        rules={[{ required: hasSecondaryUnit, message: 'Required' }]}
+                                        rules={[{ required: hasSecondaryUnit, message: t('common.required') }]}
                                     >
                                         <InputNumber
                                             placeholder="Quantity"
@@ -1190,10 +1195,10 @@ export const ProductFormModal = ({ open, product, onClose, defaultType }: Produc
                                 <Form.Item
                                     label="Secondary Cost Price"
                                     name="secondaryCostPrice"
-                                    rules={[{ type: 'number', min: 0, message: 'Must be >= 0' }]}
+                                    rules={[{ type: 'number', min: 0, message: t('common.min_zero_short', { defaultValue: 'Must be >= 0' }) }]}
                                 >
                                     <InputNumber
-                                        placeholder="Auto-calculated"
+                                        placeholder={t('common.auto_calculated')}
                                         style={{ width: '100%' }}
                                         precision={2}
                                         min={0}
@@ -1208,7 +1213,7 @@ export const ProductFormModal = ({ open, product, onClose, defaultType }: Produc
                                                 name="secondarySalePrice"
                                                 noStyle
                                                 rules={[
-                                                    { type: 'number', min: 0, message: 'Must be >= 0' },
+                                                    { type: 'number', min: 0, message: t('common.min_zero_short') },
                                                     ({ getFieldValue }) => ({
                                                         validator(_, value) {
                                                             if (!value) return Promise.resolve();
@@ -1216,7 +1221,7 @@ export const ProductFormModal = ({ open, product, onClose, defaultType }: Produc
                                                             if (!secondaryCost || value >= secondaryCost) {
                                                                 return Promise.resolve();
                                                             }
-                                                            return Promise.reject(new Error('Must be >= packaging cost'));
+                                                            return Promise.reject(new Error(t('products.error_min_packaging_cost', { defaultValue: 'Must be >= packaging cost' })));
                                                         },
                                                     }),
                                                 ]}
@@ -1233,7 +1238,7 @@ export const ProductFormModal = ({ open, product, onClose, defaultType }: Produc
                                         <Col span={12}>
                                             <Form.Item name="secondarySaleProfitPercent" noStyle>
                                                 <InputNumber
-                                                    placeholder="Profit %"
+                                                    placeholder={t('products.profit_percent_placeholder')}
                                                     style={{ width: '100%' }}
                                                     precision={2}
                                                     min={-100}
@@ -1253,7 +1258,7 @@ export const ProductFormModal = ({ open, product, onClose, defaultType }: Produc
                                                 name="secondaryOfferPrice"
                                                 noStyle
                                                 rules={[
-                                                    { type: 'number', min: 0, message: 'Must be >= 0' },
+                                                    { type: 'number', min: 0, message: t('common.min_zero_short') },
                                                     ({ getFieldValue }) => ({
                                                         validator(_, value) {
                                                             if (!value) return Promise.resolve();
@@ -1261,7 +1266,7 @@ export const ProductFormModal = ({ open, product, onClose, defaultType }: Produc
                                                             if (!secondaryCost || value >= secondaryCost) {
                                                                 return Promise.resolve();
                                                             }
-                                                            return Promise.reject(new Error('Must be >= packaging cost'));
+                                                            return Promise.reject(new Error(t('products.error_min_packaging_cost', { defaultValue: 'Must be >= packaging cost' })));
                                                         },
                                                     }),
                                                 ]}
@@ -1278,7 +1283,7 @@ export const ProductFormModal = ({ open, product, onClose, defaultType }: Produc
                                         <Col span={12}>
                                             <Form.Item name="secondaryOfferProfitPercent" noStyle>
                                                 <InputNumber
-                                                    placeholder="Profit %"
+                                                    placeholder={t('products.profit_percent_placeholder')}
                                                     style={{ width: '100%' }}
                                                     precision={2}
                                                     min={-100}
@@ -1298,7 +1303,7 @@ export const ProductFormModal = ({ open, product, onClose, defaultType }: Produc
                                                 name="secondaryWholesalePrice"
                                                 noStyle
                                                 rules={[
-                                                    { type: 'number', min: 0, message: 'Must be >= 0' },
+                                                    { type: 'number', min: 0, message: t('common.min_zero_short') },
                                                     ({ getFieldValue }) => ({
                                                         validator(_, value) {
                                                             if (!value) return Promise.resolve();
@@ -1306,7 +1311,7 @@ export const ProductFormModal = ({ open, product, onClose, defaultType }: Produc
                                                             if (!secondaryCost || value >= secondaryCost) {
                                                                 return Promise.resolve();
                                                             }
-                                                            return Promise.reject(new Error('Must be >= packaging cost'));
+                                                            return Promise.reject(new Error(t('products.error_min_packaging_cost', { defaultValue: 'Must be >= packaging cost' })));
                                                         },
                                                     }),
                                                 ]}
@@ -1323,7 +1328,7 @@ export const ProductFormModal = ({ open, product, onClose, defaultType }: Produc
                                         <Col span={12}>
                                             <Form.Item name="secondaryWholesaleProfitPercent" noStyle>
                                                 <InputNumber
-                                                    placeholder="Profit %"
+                                                    placeholder={t('products.profit_percent_placeholder')}
                                                     style={{ width: '100%' }}
                                                     precision={2}
                                                     min={-100}

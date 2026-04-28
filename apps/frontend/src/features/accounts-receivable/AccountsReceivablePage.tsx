@@ -12,6 +12,7 @@ import { ClientStatementModal } from './components/ClientStatementModal';
 import { formatVenezuelanNumber } from '../../utils/formatters';
 import dayjs from 'dayjs';
 import { useQuery } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 
 /**
  * AccountsReceivablePage Component
@@ -19,6 +20,7 @@ import { useQuery } from '@tanstack/react-query';
  * Allows tracking customer debt, registering payments, and managing tax retentions.
  */
 export const AccountsReceivablePage = () => {
+    const { t } = useTranslation();
     const { message, modal } = App.useApp();
     const [activeTab, setActiveTab] = useState('pending');
     const [pendingInvoices, setPendingInvoices] = useState<Invoice[]>([]);
@@ -50,7 +52,7 @@ export const AccountsReceivablePage = () => {
             const data = await invoicesApi.getPendingInvoices();
             setPendingInvoices(data);
         } catch (error: any) {
-            message.error('Error loading pending invoices');
+            message.error(t('accounts_receivable.messages.error_loading_invoices'));
         } finally {
             setLoadingInvoices(false);
         }
@@ -62,7 +64,7 @@ export const AccountsReceivablePage = () => {
             const data = await paymentsApi.getAllPayments();
             setAllPayments(data);
         } catch (error: any) {
-            message.error('Error loading payment history');
+            message.error(t('accounts_receivable.messages.error_loading_payments'));
         } finally {
             setLoadingPayments(false);
         }
@@ -83,7 +85,7 @@ export const AccountsReceivablePage = () => {
         setSelectedInvoice(null);
         fetchPendingInvoices();
         fetchAllPayments();
-        message.success('Balance updated!');
+        message.success(t('accounts_receivable.messages.balance_updated'));
     };
 
     const handleViewStatement = async (clientId: string, clientName: string) => {
@@ -93,25 +95,25 @@ export const AccountsReceivablePage = () => {
             setStatementInvoices(invoices);
             setStatementModalVisible(true);
         } catch (error: any) {
-            message.error('Error loading account statement');
+            message.error(t('accounts_receivable.messages.error_loading_statement'));
         }
     };
 
     const handleDeletePayment = (paymentId: string) => {
         modal.confirm({
-            title: 'Delete Payment?',
-            content: 'This action will revert the invoice balance and cannot be undone.',
-            okText: 'Yes, delete',
+            title: t('accounts_receivable.messages.delete_payment_title'),
+            content: t('accounts_receivable.messages.delete_payment_content'),
+            okText: t('accounts_receivable.messages.delete_payment_ok'),
             okType: 'danger',
-            cancelText: 'Cancel',
+            cancelText: t('common.cancel'),
             onOk: async () => {
                 try {
                     await paymentsApi.delete(paymentId);
-                    message.success('Payment deleted and balance reverted');
+                    message.success(t('accounts_receivable.messages.delete_payment_success'));
                     fetchPendingInvoices();
                     fetchAllPayments();
                 } catch (error: any) {
-                    message.error('Error deleting payment');
+                    message.error(t('accounts_receivable.messages.delete_payment_error'));
                 }
             },
         });
@@ -121,25 +123,25 @@ export const AccountsReceivablePage = () => {
         if (!invoice.saleId) return;
 
         modal.confirm({
-            title: 'Declare as UNCOLLECTIBLE / Bad Debt?',
+            title: t('accounts_receivable.messages.bad_debt_title'),
             content: (
                 <div>
-                    <p>This action will remove the sale and associated debt from the books.</p>
-                    <p style={{ color: 'red', fontWeight: 'bold' }}>⚠️ INVENTORY STOCK WILL NOT BE RESTORED</p>
-                    <p>Use only if the customer took the goods and will not pay (Loss/Theft).</p>
+                    <p>{t('accounts_receivable.messages.bad_debt_content_1')}</p>
+                    <p style={{ color: 'red', fontWeight: 'bold' }}>{t('accounts_receivable.messages.bad_debt_content_2')}</p>
+                    <p>{t('accounts_receivable.messages.bad_debt_content_3')}</p>
                 </div>
             ),
-            okText: 'Declare Bad Debt',
+            okText: t('accounts_receivable.messages.bad_debt_ok'),
             okType: 'danger',
-            cancelText: 'Cancel',
+            cancelText: t('common.cancel'),
             onOk: async () => {
                 try {
                     await salesApi.markAsUncollectible(invoice.saleId!);
-                    message.success('Debt declared uncollectible and removed');
+                    message.success(t('accounts_receivable.messages.bad_debt_success'));
                     fetchPendingInvoices();
                     fetchAllPayments();
                 } catch (error: any) {
-                    message.error('Error processing uncollectible debt');
+                    message.error(t('accounts_receivable.messages.bad_debt_error'));
                 }
             },
         });
@@ -162,23 +164,23 @@ export const AccountsReceivablePage = () => {
 
     const invoiceColumns = [
         {
-            title: 'Invoice #',
+            title: t('accounts_receivable.invoice_num'),
             dataIndex: 'number',
             key: 'number',
         },
         {
-            title: 'Customer',
+            title: t('common.customer'),
             dataIndex: ['client', 'name'],
             key: 'client',
         },
         {
-            title: 'Date',
+            title: t('common.date'),
             dataIndex: 'createdAt',
             key: 'createdAt',
             render: (date: string) => dayjs(date).format('MM/DD/YYYY'),
         },
         {
-            title: 'Due Date',
+            title: t('accounts_receivable.due_date'),
             dataIndex: 'dueDate',
             key: 'dueDate',
             render: (date: string) => {
@@ -192,7 +194,7 @@ export const AccountsReceivablePage = () => {
             },
         },
         {
-            title: 'Status',
+            title: t('common.status'),
             dataIndex: 'status',
             key: 'status',
             render: (status: string) => {
@@ -203,16 +205,16 @@ export const AccountsReceivablePage = () => {
                     OVERDUE: 'red',
                 };
                 const labels: Record<string, string> = {
-                    PENDING: 'Pending',
-                    PARTIAL: 'Partial',
-                    PAID: 'Paid',
-                    OVERDUE: 'Overdue',
+                    PENDING: t('accounts_receivable.pending'),
+                    PARTIAL: t('accounts_receivable.partial'),
+                    PAID: t('accounts_receivable.paid'),
+                    OVERDUE: t('accounts_receivable.overdue'),
                 };
                 return <Tag color={colors[status]}>{labels[status] || status}</Tag>;
             },
         },
         {
-            title: 'Total',
+            title: t('common.total'),
             dataIndex: 'total',
             key: 'total',
             align: 'right' as const,
@@ -222,7 +224,7 @@ export const AccountsReceivablePage = () => {
             }
         },
         {
-            title: 'Balance',
+            title: t('common.balance'),
             dataIndex: 'balance',
             key: 'balance',
             align: 'right' as const,
@@ -236,7 +238,7 @@ export const AccountsReceivablePage = () => {
             },
         },
         {
-            title: 'Actions',
+            title: t('accounts_receivable.actions'),
             key: 'actions',
             render: (_: any, record: Invoice) => (
                 <Space>
@@ -246,7 +248,7 @@ export const AccountsReceivablePage = () => {
                         onClick={() => handleRegisterPayment(record)}
                         disabled={record.status === 'PAID'}
                     >
-                        Pay
+                        {t('accounts_receivable.pay')}
                     </Button>
                     <Button
                         type="primary"
@@ -255,23 +257,23 @@ export const AccountsReceivablePage = () => {
                         onClick={() => handleRegisterRetention(record)}
                         disabled={record.status === 'PAID'}
                     >
-                        Retention
+                        {t('accounts_receivable.retention')}
                     </Button>
                     <Button
                         size="small"
                         onClick={() => handleViewStatement(record.clientId, record.client?.name || 'Customer')}
                     >
-                        Statement
+                        {t('accounts_receivable.statement')}
                     </Button>
                     {record.saleId && (
                         <Button
                             danger
                             size="small"
                             icon={<CloseCircleOutlined />}
-                            title="Declare Uncollectible (Loss)"
+                            title={t('accounts_receivable.messages.bad_debt_title')}
                             onClick={() => handleMarkUncollectible(record)}
                         >
-                            Bad Debt
+                            {t('accounts_receivable.bad_debt')}
                         </Button>
                     )}
                 </Space>
@@ -281,41 +283,41 @@ export const AccountsReceivablePage = () => {
 
     const paymentsColumns = [
         {
-            title: 'Date',
+            title: t('common.date'),
             dataIndex: 'paymentDate',
             key: 'paymentDate',
             render: (date: string) => dayjs(date).format('MM/DD/YYYY HH:mm'),
         },
         {
-            title: 'Invoice #',
+            title: t('accounts_receivable.invoice_num'),
             dataIndex: ['invoice', 'number'],
             key: 'invoice',
         },
         {
-            title: 'Customer',
+            title: t('common.customer'),
             dataIndex: ['invoice', 'client', 'name'],
             key: 'client',
         },
         {
-            title: 'Amount',
+            title: t('common.total'),
             dataIndex: 'amount',
             key: 'amount',
             align: 'right' as const,
             render: (amount: number) => `Bs. ${formatVenezuelanNumber(amount)}`,
         },
         {
-            title: 'Method',
+            title: t('accounts_receivable.method'),
             dataIndex: 'paymentMethod',
             key: 'paymentMethod',
         },
         {
-            title: 'Reference',
+            title: t('common.reference'),
             dataIndex: 'reference',
             key: 'reference',
             render: (ref: string) => ref || '-',
         },
         {
-            title: 'Actions',
+            title: t('accounts_receivable.actions'),
             key: 'actions',
             align: 'center' as const,
             render: (_: any, record: any) => (
@@ -333,7 +335,7 @@ export const AccountsReceivablePage = () => {
         <div style={{ padding: '24px' }}>
             <div style={{ marginBottom: 24 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-                    <h2 style={{ fontSize: 24, margin: 0 }}>Accounts Receivable</h2>
+                    <h2 style={{ fontSize: 24, margin: 0 }}>{t('accounts_receivable.title')}</h2>
                     <Space>
                         <Button
                             icon={<ReloadOutlined />}
@@ -342,7 +344,7 @@ export const AccountsReceivablePage = () => {
                                 fetchAllPayments();
                             }}
                         >
-                            Refresh
+                            {t('common.refresh')}
                         </Button>
                     </Space>
                 </div>
@@ -351,7 +353,7 @@ export const AccountsReceivablePage = () => {
                     <Col span={8}>
                         <Card>
                             <Statistic
-                                title="Total Receivable"
+                                title={t('accounts_receivable.total_receivable')}
                                 value={totalReceivable}
                                 precision={2}
                                 prefix="Bs."
@@ -362,7 +364,7 @@ export const AccountsReceivablePage = () => {
                     <Col span={8}>
                         <Card>
                             <Statistic
-                                title="Pending Invoices"
+                                title={t('accounts_receivable.pending_invoices')}
                                 value={pendingInvoices.length}
                                 prefix={<FileTextOutlined />}
                                 valueStyle={{ color: '#1890ff' }}
@@ -372,7 +374,7 @@ export const AccountsReceivablePage = () => {
                     <Col span={8}>
                         <Card>
                             <Statistic
-                                title="Overdue Invoices"
+                                title={t('accounts_receivable.overdue_invoices')}
                                 value={overdueInvoices.length}
                                 prefix={<ClockCircleOutlined />}
                                 valueStyle={{ color: '#52c41a' }}
@@ -384,7 +386,7 @@ export const AccountsReceivablePage = () => {
 
             <Card>
                 <Tabs activeKey={activeTab} onChange={setActiveTab}>
-                    <Tabs.TabPane tab="Pending Invoices" key="pending">
+                    <Tabs.TabPane tab={t('accounts_receivable.pending_invoices')} key="pending">
                         <Table
                             dataSource={pendingInvoices}
                             columns={invoiceColumns}
@@ -394,7 +396,7 @@ export const AccountsReceivablePage = () => {
                         />
                     </Tabs.TabPane>
 
-                    <Tabs.TabPane tab="Payment History" key="payments">
+                    <Tabs.TabPane tab={t('accounts_receivable.payment_history')} key="payments">
                         <Table
                             dataSource={allPayments}
                             columns={paymentsColumns}

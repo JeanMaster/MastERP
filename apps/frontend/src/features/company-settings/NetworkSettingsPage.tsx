@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
-import { Card, Radio, Input, Button, Space, Divider, Typography, Alert, message, Tag } from 'antd';
+import { Card, Radio, Input, Button, Space, Divider, Typography, Alert, App, Tag } from 'antd';
 import { GlobalOutlined, LaptopOutlined, ShareAltOutlined, SaveOutlined, ReloadOutlined, CopyOutlined } from '@ant-design/icons';
+import { useTranslation } from 'react-i18next';
 import { setCustomApiUrl, BASE_URL, getConnectionMode } from '../../services/apiConfig';
 import { systemApi } from '../../services/systemApi';
 import type { NetworkInfo } from '../../services/systemApi';
@@ -16,6 +17,8 @@ const { Title, Text, Paragraph } = Typography;
  * 3. Remote: Backend is hosted on a public URL (Cloud).
  */
 export const NetworkSettingsPage = () => {
+    const { t } = useTranslation();
+    const { message } = App.useApp();
     const [mode, setMode] = useState<'local' | 'lan' | 'remote'>(getConnectionMode());
     const [customUrl, setCustomUrl] = useState(localStorage.getItem('CUSTOM_API_URL') || '');
     const [networkInfo, setNetworkInfo] = useState<NetworkInfo | null>(null);
@@ -47,23 +50,23 @@ export const NetworkSettingsPage = () => {
     const handleSave = () => {
         if (mode === 'local') {
             setCustomApiUrl(null);
-            message.success('Mode switched to Local Host. The application will restart.');
+            message.success(t('settings.network.success_mode_local'));
         } else if (mode === 'lan') {
             if (networkInfo?.localIp) {
                 const lanUrl = `http://${networkInfo.localIp}:${networkInfo.port}/api`;
                 setCustomApiUrl(lanUrl);
-                message.success('Mode switched to Local Network (LAN). The application will restart.');
+                message.success(t('settings.network.success_mode_lan'));
             } else {
-                message.error('Could not automatically detect the server\'s local IP.');
+                message.error(t('settings.network.error_lan_ip'));
                 return;
             }
         } else {
             if (!customUrl) {
-                message.error('Please enter a valid URL for Remote mode.');
+                message.error(t('settings.network.error_remote_url'));
                 return;
             }
             setCustomApiUrl(customUrl);
-            message.success('Mode switched to Remote/Cloud. The application will restart.');
+            message.success(t('settings.network.success_mode_remote'));
         }
 
         // Restart app to apply new BASE_URL environment
@@ -74,7 +77,7 @@ export const NetworkSettingsPage = () => {
 
     const copyToClipboard = (text: string) => {
         navigator.clipboard.writeText(text);
-        message.success('Copied to clipboard');
+        message.success(t('settings.network.copy_success'));
     };
 
     const lanAppUrl = networkInfo ? `${window.location.protocol}//${networkInfo.localIp}:${window.location.port}` : '';
@@ -82,17 +85,17 @@ export const NetworkSettingsPage = () => {
     return (
         <div style={{ padding: 24, maxWidth: 900, margin: '0 auto' }}>
             <div style={{ marginBottom: 32 }}>
-                <Title level={2} style={{ margin: 0 }}>🌐 Network & Connectivity Settings</Title>
+                <Title level={2} style={{ margin: 0 }}>{t('settings.network.page_title')}</Title>
                 <Paragraph type="secondary">
-                    Configure how this frontend application communicates with the central MastERP core server.
+                    {t('settings.network.page_subtitle')}
                 </Paragraph>
             </div>
 
             <Card bordered={false} style={{ marginBottom: 24, boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
-                <Title level={4}>Server Discovery</Title>
+                <Title level={4}>{t('settings.network.discovery_title')}</Title>
                 <Space direction="vertical" style={{ width: '100%' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                        <Text strong>Current Connection Endpoint:</Text>
+                        <Text strong>{t('settings.network.current_endpoint')}</Text>
                         <Tag color="blue" style={{ fontSize: '14px', padding: '4px 12px' }}>{BASE_URL}</Tag>
                         <Button
                             icon={<ReloadOutlined />}
@@ -100,14 +103,14 @@ export const NetworkSettingsPage = () => {
                             onClick={loadNetworkInfo}
                             loading={isLoading}
                         >
-                            Refresh Info
+                            {t('settings.network.refresh_button')}
                         </Button>
                     </div>
                 </Space>
             </Card>
 
             <Card bordered={false} style={{ boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
-                <Title level={4}>Connection Environment</Title>
+                <Title level={4}>{t('settings.network.env_title')}</Title>
                 <Radio.Group
                     value={mode}
                     onChange={(e) => setMode(e.target.value)}
@@ -117,13 +120,13 @@ export const NetworkSettingsPage = () => {
                     size="large"
                 >
                     <Radio.Button value="local">
-                        <Space><LaptopOutlined /> Localhost (Single PC)</Space>
+                        <Space><LaptopOutlined /> {t('settings.network.mode_local')}</Space>
                     </Radio.Button>
                     <Radio.Button value="lan">
-                        <Space><ShareAltOutlined /> Local Network (LAN)</Space>
+                        <Space><ShareAltOutlined /> {t('settings.network.mode_lan')}</Space>
                     </Radio.Button>
                     <Radio.Button value="remote">
-                        <Space><GlobalOutlined /> Remote / Cloud</Space>
+                        <Space><GlobalOutlined /> {t('settings.network.mode_remote')}</Space>
                     </Radio.Button>
                 </Radio.Group>
 
@@ -131,8 +134,8 @@ export const NetworkSettingsPage = () => {
                     {mode === 'local' && (
                         <Alert
                             type="info"
-                            message="Direct Connection"
-                            description="Use this if you are running both the database/server and this interface on the same physical computer. This is the fastest and most stable configuration."
+                            message={t('settings.network.local_msg_title')}
+                            description={t('settings.network.local_msg_desc')}
                             showIcon
                         />
                     )}
@@ -141,18 +144,18 @@ export const NetworkSettingsPage = () => {
                         <div>
                             <Alert
                                 type="warning"
-                                message="Intranet Deployment"
-                                description="Enable this mode to allow other devices (smartphones, tablets, auxiliary laptops) on your same Wi-Fi network to connect to this server."
+                                message={t('settings.network.lan_msg_title')}
+                                description={t('settings.network.lan_msg_desc')}
                                 showIcon
                                 style={{ marginBottom: 16 }}
                             />
                             {networkInfo && (
                                 <Card size="small" style={{ background: '#fafafa', border: '1px dashed #d9d9d9' }}>
-                                    <Text strong>Detected Server IP:</Text>
+                                    <Text strong>{t('settings.network.lan_detected_ip')}</Text>
                                     <Paragraph copyable={{ text: networkInfo.localIp }} style={{ fontSize: '18px', marginTop: 8 }}>
                                         {networkInfo.localIp}
                                     </Paragraph>
-                                    <Text type="secondary">The application will attempt to reach the backend at this internal address.</Text>
+                                    <Text type="secondary">{t('settings.network.lan_ip_desc')}</Text>
                                 </Card>
                             )}
                         </div>
@@ -162,13 +165,13 @@ export const NetworkSettingsPage = () => {
                         <div>
                             <Alert
                                 type="success"
-                                message="Distributed / Cloud Connection"
-                                description="Enter the full URL of your publicly hosted API (e.g., https://api.yourdomain.com/api)."
+                                message={t('settings.network.remote_msg_title')}
+                                description={t('settings.network.remote_msg_desc')}
                                 showIcon
                                 style={{ marginBottom: 16 }}
                             />
                             <Input
-                                placeholder="https://api.your-cloud-server.com/api"
+                                placeholder={t('settings.network.remote_placeholder')}
                                 value={customUrl}
                                 onChange={(e) => setCustomUrl(e.target.value)}
                                 style={{ marginBottom: 12 }}
@@ -188,15 +191,15 @@ export const NetworkSettingsPage = () => {
                         onClick={handleSave}
                         style={{ height: 50, borderRadius: 8, padding: '0 40px' }}
                     >
-                        Apply Settings & Restart App
+                        {t('settings.network.apply_button')}
                     </Button>
                 </div>
             </Card >
 
             {mode === 'lan' && networkInfo && (
-                <Card title="External Device Connection Guide" style={{ marginTop: 32, borderRadius: 12 }}>
+                <Card title={t('settings.network.external_title')} style={{ marginTop: 32, borderRadius: 12 }}>
                     <Paragraph>
-                        To access MastERP from another device in the same building, open the browser on that device and enter:
+                        {t('settings.network.external_desc')}
                     </Paragraph>
                     <Title level={2} style={{ textAlign: 'center', color: '#1890ff', margin: '24px 0' }}>
                         {lanAppUrl}
@@ -207,7 +210,7 @@ export const NetworkSettingsPage = () => {
                             icon={<CopyOutlined />}
                             onClick={() => copyToClipboard(lanAppUrl)}
                         >
-                            Copy Invitation Link
+                            {t('settings.network.copy_link')}
                         </Button>
                     </div>
                 </Card>

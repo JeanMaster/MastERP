@@ -1,5 +1,6 @@
 import { Modal, Card, Row, Col, Typography, Button, Space, Divider, Tag, Descriptions, message } from 'antd';
 import { WhatsAppOutlined, MailOutlined, PrinterOutlined, CloseOutlined } from '@ant-design/icons';
+import { useTranslation } from 'react-i18next';
 import type { Sale } from '../../../services/salesApi';
 import { formatVenezuelanPrice } from '../../../utils/formatters';
 import { usePOSStore } from '../../../store/posStore';
@@ -18,6 +19,8 @@ interface InvoiceModalProps {
  * Provides options to print the fiscal receipt (SENIAT format) or send it via WhatsApp/Email.
  */
 export const InvoiceModal = ({ open, sale, onClose }: InvoiceModalProps) => {
+    const { t, i18n } = useTranslation();
+    const currentLang = i18n.language || 'es';
     if (!sale) {
         return (
             <Modal
@@ -27,13 +30,13 @@ export const InvoiceModal = ({ open, sale, onClose }: InvoiceModalProps) => {
                 destroyOnClose
             >
                 <div style={{ textAlign: 'center', padding: 20 }}>
-                    Loading invoice data...
+                    {t('common.loading_invoice_data', { defaultValue: 'Loading invoice data...' })}
                 </div>
             </Modal>
         );
     }
 
-    const clientName = sale.client?.name || 'CASH CUSTOMER';
+    const clientName = sale.client?.name || t('common.cash_customer', { defaultValue: 'CASH CUSTOMER' });
     const clientPhone = (sale.client as any)?.phone || null;
     const { companyInfo } = usePOSStore();
     const clientEmail = (sale.client as any)?.email || null;
@@ -58,17 +61,17 @@ export const InvoiceModal = ({ open, sale, onClose }: InvoiceModalProps) => {
             `🏢 *${companyInfo?.name || 'MastERP'}*\n` +
             `Tax ID (RIF): ${companyInfo?.rif || 'J-00000000-0'}\n` +
             `━━━━━━━━━━━━━━━━\n\n` +
-            `🧾 *INVOICE ${sale.invoiceNumber}*\n\n` +
-            `Hello ${clientName}, here are your purchase details:\n\n` +
-            `📅 *Date:* ${new Date(sale.date).toLocaleDateString('en-US')}\n` +
-            `🕐 *Time:* ${new Date(sale.date).toLocaleTimeString('en-US')}\n\n` +
-            `📦 *Items:*\n${itemsList}\n\n` +
+            `🧾 *${t('common.invoice_caps', { defaultValue: 'INVOICE' })} ${sale.invoiceNumber}*\n\n` +
+            `${t('pos.wa_hello', { defaultValue: 'Hello' })} ${clientName}, ${t('pos.wa_details_prefix', { defaultValue: 'here are your purchase details' })}:\n\n` +
+            `📅 *${t('common.date')}:* ${new Date(sale.date).toLocaleDateString(currentLang === 'es' ? 'es-VE' : 'en-US')}\n` +
+            `🕐 *${t('common.time', { defaultValue: 'Time' })}:* ${new Date(sale.date).toLocaleTimeString(currentLang === 'es' ? 'es-VE' : 'en-US')}\n\n` +
+            `📦 *${t('common.items')}:*\n${itemsList}\n\n` +
             `━━━━━━━━━━━━━━━━\n` +
-            `💵 Subtotal: ${formatVenezuelanPrice(sale.subtotal)}\n` +
-            (sale.discount > 0 ? `🏷️ Discount: -${formatVenezuelanPrice(sale.discount)}\n` : '') +
+            `💵 ${t('common.subtotal')}: ${formatVenezuelanPrice(sale.subtotal)}\n` +
+            (sale.discount > 0 ? `🏷️ ${t('common.discount')}: -${formatVenezuelanPrice(sale.discount)}\n` : '') +
             `💰 *TOTAL: ${formatVenezuelanPrice(sale.total)}*\n\n` +
-            `💳 Payment Method: ${sale.paymentMethod}\n\n` +
-            `Thank you for your purchase! 🙏\n` +
+            `💳 ${t('common.payment_method')}: ${sale.paymentMethod}\n\n` +
+            `${t('pos.wa_thank_you', { defaultValue: 'Thank you for your purchase!' })} 🙏\n` +
             `_${companyInfo?.name || 'MastERP'}_`
         );
         return `https://wa.me/${cleanPhone}?text=${invoiceMessage}`;
@@ -77,29 +80,29 @@ export const InvoiceModal = ({ open, sale, onClose }: InvoiceModalProps) => {
     const handleWhatsApp = () => {
         if (clientPhone && hasWhatsapp) {
             window.open(formatWhatsAppUrl(clientPhone), '_blank');
-            message.success('Opening WhatsApp...');
+            message.success(t('pos.opening_whatsapp', { defaultValue: 'Opening WhatsApp...' }));
             onClose();
         } else {
-            message.warning('Customer does not have WhatsApp registered');
+            message.warning(t('pos.no_whatsapp_registered', { defaultValue: 'Customer does not have WhatsApp registered' }));
         }
     };
 
     const handleEmail = () => {
         if (clientEmail) {
-            const subject = encodeURIComponent(`Invoice ${sale.invoiceNumber} - ${companyInfo?.name || 'MastERP'}`);
+            const subject = encodeURIComponent(`${t('common.invoice')} ${sale.invoiceNumber} - ${companyInfo?.name || 'MastERP'}`);
             const body = encodeURIComponent(
-                `Dear ${clientName},\n\n` +
-                `Please find the details of your invoice below:\n\n` +
-                `Invoice Number: ${sale.invoiceNumber}\n` +
-                `Date: ${new Date(sale.date).toLocaleDateString('en-US')}\n` +
-                `Total: ${formatVenezuelanPrice(sale.total)}\n\n` +
-                `Thank you for your business!\n\n${companyInfo?.name || 'MastERP'}`
+                `${t('pos.email_dear', { defaultValue: 'Dear' })} ${clientName},\n\n` +
+                `${t('pos.email_details_prefix', { defaultValue: 'Please find the details of your invoice below' })}:\n\n` +
+                `${t('common.invoice_number', { defaultValue: 'Invoice Number' })}: ${sale.invoiceNumber}\n` +
+                `${t('common.date')}: ${new Date(sale.date).toLocaleDateString(currentLang === 'es' ? 'es-VE' : 'en-US')}\n` +
+                `${t('common.total')}: ${formatVenezuelanPrice(sale.total)}\n\n` +
+                `${t('pos.wa_thank_you')}!\n\n${companyInfo?.name || 'MastERP'}`
             );
             window.open(`mailto:${clientEmail}?subject=${subject}&body=${body}`, '_blank');
-            message.success('Opening email client...');
+            message.success(t('pos.opening_email_client', { defaultValue: 'Opening email client...' }));
             onClose();
         } else {
-            message.warning('Customer does not have an email registered');
+            message.warning(t('pos.no_email_registered', { defaultValue: 'Customer does not have an email registered' }));
         }
     };
 
@@ -111,7 +114,7 @@ export const InvoiceModal = ({ open, sale, onClose }: InvoiceModalProps) => {
             <!DOCTYPE html>
             <html>
             <head>
-                <title>Invoice ${sale.invoiceNumber}</title>
+                <title>${t('common.invoice')} ${sale.invoiceNumber}</title>
                 <style>
                     body { font-family: Arial, sans-serif; font-size: 12px; margin: 20px; }
                     .header { text-align: center; margin-bottom: 20px; }
@@ -133,29 +136,29 @@ export const InvoiceModal = ({ open, sale, onClose }: InvoiceModalProps) => {
             <body>
                 <div class="header">
                     <div class="company-name">${companyInfo?.name || 'MastERP'}</div>
-                    <div class="fiscal-info">Tax ID (RIF): ${companyInfo?.rif || 'J-00000000-0'}</div>
-                    <div class="fiscal-info">Fiscal Address: Venezuela</div>
-                    <div class="invoice-title">INVOICE</div>
+                    <div class="fiscal-info">${t('common.tax_id_rif', { defaultValue: 'Tax ID (RIF)' })}: ${companyInfo?.rif || 'J-00000000-0'}</div>
+                    <div class="fiscal-info">${t('common.fiscal_address', { defaultValue: 'Fiscal Address' })}: Venezuela</div>
+                    <div class="invoice-title">${t('common.invoice_caps')}</div>
                     <div style="font-size: 14px; margin-top: 5px;">${sale.invoiceNumber}</div>
                 </div>
                 
                 <div class="info-section">
                     <div class="info-row">
-                        <span><strong>Date:</strong> ${new Date(sale.date).toLocaleDateString('en-US')}</span>
-                        <span><strong>Time:</strong> ${new Date(sale.date).toLocaleTimeString('en-US')}</span>
+                        <span><strong>${t('common.date')}:</strong> ${new Date(sale.date).toLocaleDateString(currentLang === 'es' ? 'es-VE' : 'en-US')}</span>
+                        <span><strong>${t('common.time')}:</strong> ${new Date(sale.date).toLocaleTimeString(currentLang === 'es' ? 'es-VE' : 'en-US')}</span>
                     </div>
                     <div class="info-row">
-                        <span><strong>Customer:</strong> ${clientName}</span>
+                        <span><strong>${t('common.customer')}:</strong> ${clientName}</span>
                     </div>
                 </div>
                 
                 <table>
                     <thead>
                         <tr>
-                            <th>Qty.</th>
-                            <th>Description</th>
-                            <th>Unit Price</th>
-                            <th>Total</th>
+                            <th>${t('common.qty_short')}</th>
+                            <th>${t('common.description', { defaultValue: 'Description' })}</th>
+                            <th>${t('common.unit_price')}</th>
+                            <th>${t('common.total')}</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -171,26 +174,25 @@ export const InvoiceModal = ({ open, sale, onClose }: InvoiceModalProps) => {
                 </table>
                 
                 <div class="totals">
-                    <div class="total-row">Subtotal: ${formatVenezuelanPrice(sale.subtotal)}</div>
-                    ${sale.discount > 0 ? `<div class="total-row">Discount: -${formatVenezuelanPrice(sale.discount)}</div>` : ''}
-                    ${sale.tax > 0 ? `<div class="total-row">VAT (16%): ${formatVenezuelanPrice(sale.tax)}</div>` : ''}
+                    <div class="total-row">${t('common.subtotal')}: ${formatVenezuelanPrice(sale.subtotal)}</div>
+                    ${sale.discount > 0 ? `<div class="total-row">${t('common.discount')}: -${formatVenezuelanPrice(sale.discount)}</div>` : ''}
+                    ${sale.tax > 0 ? `<div class="total-row">${t('common.vat_16')}: ${formatVenezuelanPrice(sale.tax)}</div>` : ''}
                     <div class="total-row grand-total">TOTAL: ${formatVenezuelanPrice(sale.total)}</div>
                 </div>
                 
                 <div class="info-section">
-                    <div><strong>Payment Method:</strong> ${sale.paymentMethod}</div>
-                    ${sale.tendered ? `<div><strong>Paid with:</strong> ${formatVenezuelanPrice(sale.tendered)}</div>` : ''}
-                    ${sale.change ? `<div><strong>Change:</strong> ${formatVenezuelanPrice(sale.change)}</div>` : ''}
+                    <div><strong>${t('common.payment_method')}:</strong> ${sale.paymentMethod}</div>
+                    ${sale.tendered ? `<div><strong>${t('pos.paid_with', { defaultValue: 'Paid with' })}:</strong> ${formatVenezuelanPrice(sale.tendered)}</div>` : ''}
+                    ${sale.change ? `<div><strong>${t('pos.change', { defaultValue: 'Change' })}:</strong> ${formatVenezuelanPrice(sale.change)}</div>` : ''}
                 </div>
                 
                 <div class="seniat-notice">
-                    <strong>NOTE:</strong> This invoice complies with SENIAT regulations.
-                    Valid document for fiscal purposes according to current legislation.
+                    <strong>${t('pos.note_caps', { defaultValue: 'NOTE' })}:</strong> ${t('pos.seniat_notice', { defaultValue: 'This invoice complies with SENIAT regulations. Valid document for fiscal purposes according to current legislation.' })}
                 </div>
                 
                 <div class="footer">
-                    Thank you for your purchase!<br>
-                    Generated by ${companyInfo?.name || 'MastERP'}
+                    ${t('pos.wa_thank_you')}<br>
+                    ${t('pos.generated_by', { defaultValue: 'Generated by' })} ${companyInfo?.name || 'MastERP'}
                 </div>
             </body>
             </html>
@@ -206,7 +208,7 @@ export const InvoiceModal = ({ open, sale, onClose }: InvoiceModalProps) => {
                 printWindow.close();
             }, 250);
         }
-        message.success('Preparing print view...');
+        message.success(t('pos.preparing_print_view', { defaultValue: 'Preparing print view...' }));
         onClose();
     };
 
@@ -226,29 +228,29 @@ export const InvoiceModal = ({ open, sale, onClose }: InvoiceModalProps) => {
             title={
                 <div style={{ textAlign: 'center' }}>
                     <Title level={4} style={{ margin: 0 }}>
-                        🧾 Sale Completed
+                        🧾 {t('pos.sale_completed', { defaultValue: 'Sale Completed' })}
                     </Title>
                 </div>
             }
         >
             <Card style={{ marginBottom: 16 }}>
                 <Descriptions column={2} size="small">
-                    <Descriptions.Item label="Invoice" span={2}>
+                    <Descriptions.Item label={t('common.invoice')} span={2}>
                         <Tag color="blue" style={{ fontSize: 16 }}>{sale.invoiceNumber}</Tag>
                     </Descriptions.Item>
-                    <Descriptions.Item label="Date">
-                        {new Date(sale.date).toLocaleDateString('en-US')}
+                    <Descriptions.Item label={t('common.date')}>
+                        {new Date(sale.date).toLocaleDateString(currentLang === 'es' ? 'es-VE' : 'en-US')}
                     </Descriptions.Item>
-                    <Descriptions.Item label="Time">
-                        {new Date(sale.date).toLocaleTimeString('en-US')}
+                    <Descriptions.Item label={t('common.time')}>
+                        {new Date(sale.date).toLocaleTimeString(currentLang === 'es' ? 'es-VE' : 'en-US')}
                     </Descriptions.Item>
-                    <Descriptions.Item label="Customer" span={2}>
+                    <Descriptions.Item label={t('common.customer')} span={2}>
                         <Text strong>{clientName}</Text>
                     </Descriptions.Item>
-                    <Descriptions.Item label="Products">
-                        {sale.items?.length || 0} items
+                    <Descriptions.Item label={t('common.products')}>
+                        {sale.items?.length || 0} {t('common.items')}
                     </Descriptions.Item>
-                    <Descriptions.Item label="Payment Method">
+                    <Descriptions.Item label={t('common.payment_method')}>
                         {sale.paymentMethod}
                     </Descriptions.Item>
                 </Descriptions>
@@ -257,7 +259,7 @@ export const InvoiceModal = ({ open, sale, onClose }: InvoiceModalProps) => {
 
                 <Row justify="space-between" align="middle">
                     <Col>
-                        <Text type="secondary">Sale Total</Text>
+                        <Text type="secondary">{t('pos.sale_total', { defaultValue: 'Sale Total' })}</Text>
                     </Col>
                     <Col>
                         <Title level={2} style={{ margin: 0, color: '#52c41a' }}>
@@ -267,7 +269,7 @@ export const InvoiceModal = ({ open, sale, onClose }: InvoiceModalProps) => {
                 </Row>
             </Card>
 
-            <Divider>How would you like to receive the invoice?</Divider>
+            <Divider>{t('pos.how_receive_invoice', { defaultValue: 'How would you like to receive the invoice?' })}</Divider>
 
             <Space direction="vertical" size="middle" style={{ width: '100%' }}>
                 <Button
@@ -279,8 +281,8 @@ export const InvoiceModal = ({ open, sale, onClose }: InvoiceModalProps) => {
                     onClick={handleWhatsApp}
                     disabled={!clientPhone || !hasWhatsapp}
                 >
-                    Send via WhatsApp
-                    {(!clientPhone || !hasWhatsapp) && <Text type="secondary" style={{ marginLeft: 8 }}>(Unavailable)</Text>}
+                    {t('pos.send_via_whatsapp', { defaultValue: 'Send via WhatsApp' })}
+                    {(!clientPhone || !hasWhatsapp) && <Text type="secondary" style={{ marginLeft: 8 }}>({t('common.unavailable', { defaultValue: 'Unavailable' })})</Text>}
                 </Button>
 
                 <Button
@@ -292,8 +294,8 @@ export const InvoiceModal = ({ open, sale, onClose }: InvoiceModalProps) => {
                     onClick={handleEmail}
                     disabled={!clientEmail}
                 >
-                    Send via Email
-                    {!clientEmail && <Text type="secondary" style={{ marginLeft: 8 }}>(Unavailable)</Text>}
+                    {t('pos.send_via_email', { defaultValue: 'Send via Email' })}
+                    {!clientEmail && <Text type="secondary" style={{ marginLeft: 8 }}>({t('common.unavailable')})</Text>}
                 </Button>
 
                 <Button
@@ -303,7 +305,7 @@ export const InvoiceModal = ({ open, sale, onClose }: InvoiceModalProps) => {
                     block
                     onClick={handlePrint}
                 >
-                    Print Invoice (SENIAT)
+                    {t('pos.print_invoice_seniat', { defaultValue: 'Print Invoice (SENIAT)' })}
                 </Button>
 
                 <Divider style={{ margin: '8px 0' }} />
@@ -315,7 +317,7 @@ export const InvoiceModal = ({ open, sale, onClose }: InvoiceModalProps) => {
                     block
                     onClick={handleSkip}
                 >
-                    Don't print now
+                    {t('pos.dont_print_now', { defaultValue: "Don't print now" })}
                 </Button>
             </Space>
         </Modal>

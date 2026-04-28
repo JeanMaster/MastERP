@@ -3,6 +3,7 @@ import { Modal, Form, Input, InputNumber, Select, Switch, message, Divider } fro
 import { employeesApi } from '../services/employeesApi';
 import type { Employee } from '../services/employeesApi';
 import { useQueryClient, useMutation } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 
 interface Props {
     visible: boolean;
@@ -16,6 +17,7 @@ interface Props {
  * Tracks personal information, labor details, and payment configurations.
  */
 export const EmployeeFormModal: React.FC<Props> = ({ visible, onClose, employee }) => {
+    const { t } = useTranslation();
     const [form] = Form.useForm();
     const queryClient = useQueryClient();
     const isEditing = !!employee;
@@ -39,12 +41,12 @@ export const EmployeeFormModal: React.FC<Props> = ({ visible, onClose, employee 
             return employeesApi.create(values);
         },
         onSuccess: () => {
-            message.success(`Employee ${isEditing ? 'updated' : 'created'} successfully`);
+            message.success(t('hr.success_save'));
             queryClient.invalidateQueries({ queryKey: ['employees'] });
             onClose();
         },
         onError: () => {
-            message.error('Error saving employee profile');
+            message.error(t('hr.error_save'));
         }
     });
 
@@ -73,74 +75,74 @@ export const EmployeeFormModal: React.FC<Props> = ({ visible, onClose, employee 
 
     return (
         <Modal
-            title={isEditing ? 'Edit Employee Profile' : 'Register New Employee'}
+            title={isEditing ? t('hr.edit') : t('hr.new')}
             open={visible}
             onOk={handleOk}
             onCancel={onClose}
             confirmLoading={mutation.isPending}
-            okText="Save Profile (F9)"
+            okText={`${t('common.save')} (F9)`}
             width={700}
         >
             <Form form={form} layout="vertical">
-                <Divider orientation={"left" as any}>Personal Information</Divider>
+                <Divider orientation={"left" as any}>{t('hr.personal_info')}</Divider>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                    <Form.Item name="firstName" label="First Names" rules={[{ required: true, message: 'Please enter first names' }]}>
-                        <Input placeholder="John" />
+                    <Form.Item name="firstName" label={t('common.first_name')} rules={[{ required: true, message: t('common.error') }]}>
+                        <Input placeholder={t('hr.first_name_placeholder')} />
                     </Form.Item>
-                    <Form.Item name="lastName" label="Last Names" rules={[{ required: true, message: 'Please enter last names' }]}>
-                        <Input placeholder="Doe" />
+                    <Form.Item name="lastName" label={t('common.last_name')} rules={[{ required: true, message: t('common.error') }]}>
+                        <Input placeholder={t('hr.last_name_placeholder')} />
                     </Form.Item>
                 </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                    <Form.Item name="identification" label="Tax ID / Identification (RIF/CI)" rules={[{ required: true, message: 'ID is required' }]}>
-                        <Input placeholder="V-12345678" />
+                    <Form.Item name="identification" label={t('common.identification')} rules={[{ required: true, message: t('common.error') }]}>
+                        <Input placeholder={t('hr.id_placeholder')} />
                     </Form.Item>
-                    <Form.Item name="email" label="Email Address">
-                        <Input type="email" placeholder="john.doe@example.com" />
-                    </Form.Item>
-                </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                    <Form.Item name="phone" label="Phone Number">
-                        <Input placeholder="+58 412..." />
-                    </Form.Item>
-                    <Form.Item name="address" label="Home Address">
-                        <Input placeholder="Full address..." />
-                    </Form.Item>
-                </div>
-
-                <Divider orientation={"left" as any}>Employment Details</Divider>
-
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                    <Form.Item name="position" label="Position / Job Title" rules={[{ required: true, message: 'Position is required' }]}>
-                        <Input placeholder="Sales Representative" />
-                    </Form.Item>
-                    <Form.Item name="department" label="Department">
-                        <Input placeholder="Sales / Operations" />
+                    <Form.Item name="email" label={t('common.email')}>
+                        <Input type="email" placeholder={t('hr.email_placeholder')} />
                     </Form.Item>
                 </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                    <Form.Item name="paymentFrequency" label="Payment Frequency" rules={[{ required: true }]}>
+                    <Form.Item name="phone" label={t('common.phone')}>
+                        <Input placeholder={t('hr.phone_placeholder')} />
+                    </Form.Item>
+                    <Form.Item name="address" label={t('common.address')}>
+                        <Input placeholder={t('hr.address_placeholder')} />
+                    </Form.Item>
+                </div>
+
+                <Divider orientation={"left" as any}>{t('hr.employment_details')}</Divider>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                    <Form.Item name="position" label={t('common.position')} rules={[{ required: true, message: t('common.error') }]}>
+                        <Input placeholder={t('hr.position_placeholder')} />
+                    </Form.Item>
+                    <Form.Item name="department" label={t('common.department')}>
+                        <Input placeholder={t('hr.dept_placeholder')} />
+                    </Form.Item>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                    <Form.Item name="paymentFrequency" label={t('hr.frequency')} rules={[{ required: true }]}>
                         <Select>
-                            <Select.Option value="WEEKLY">Weekly</Select.Option>
-                            <Select.Option value="BIWEEKLY">Biweekly (Fortnightly)</Select.Option>
-                            <Select.Option value="MONTHLY">Monthly</Select.Option>
+                            <Select.Option value="WEEKLY">{t('hr.weekly')}</Select.Option>
+                            <Select.Option value="BIWEEKLY">{t('hr.biweekly')}</Select.Option>
+                            <Select.Option value="MONTHLY">{t('hr.monthly')}</Select.Option>
                         </Select>
                     </Form.Item>
-                    <Form.Item name="isActive" label="Employment Status" valuePropName="checked">
-                        <Switch checkedChildren="Active" unCheckedChildren="Inactive" />
+                    <Form.Item name="isActive" label={t('hr.status')} valuePropName="checked">
+                        <Switch checkedChildren={t('hr.active')} unCheckedChildren={t('hr.inactive')} />
                     </Form.Item>
                 </div>
 
-                <Divider orientation={"left" as any}>Compensation</Divider>
+                <Divider orientation={"left" as any}>{t('hr.compensation')}</Divider>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '16px' }}>
-                    <Form.Item name="baseSalary" label="Monthly Base Salary" rules={[{ required: true, message: 'Please enter base salary' }]}>
+                    <Form.Item name="baseSalary" label={t('common.salary')} rules={[{ required: true, message: t('common.error') }]}>
                         <InputNumber
                             style={{ width: '100%' }}
                             precision={2}
-                            placeholder="0.00"
+                            placeholder={t('hr.salary_placeholder')}
                             addonBefore={
                                 <Form.Item name="currency" noStyle>
                                     <Select style={{ width: 100 }}>

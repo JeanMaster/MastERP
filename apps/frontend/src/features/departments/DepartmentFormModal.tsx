@@ -3,6 +3,7 @@ import { Modal, Form, Input, TreeSelect, message } from 'antd';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { departmentsApi } from '../../services/departmentsApi';
 import type { Department, CreateDepartmentDto, UpdateDepartmentDto } from '../../services/departmentsApi';
+import { useTranslation } from 'react-i18next';
 
 interface DepartmentFormModalProps {
     open: boolean;
@@ -16,6 +17,7 @@ interface DepartmentFormModalProps {
  * Supports hierarchical assignment with a 2-level limit.
  */
 export const DepartmentFormModal = ({ open, department, onClose }: DepartmentFormModalProps) => {
+    const { t } = useTranslation();
     const [form] = Form.useForm();
     const queryClient = useQueryClient();
 
@@ -30,13 +32,13 @@ export const DepartmentFormModal = ({ open, department, onClose }: DepartmentFor
     const createMutation = useMutation({
         mutationFn: departmentsApi.create,
         onSuccess: () => {
-            message.success('Department created successfully');
+            message.success(t('departments.success_create'));
             queryClient.invalidateQueries({ queryKey: ['departments'] });
             onClose();
             form.resetFields();
         },
         onError: (error: any) => {
-            message.error(error.response?.data?.message || 'Error creating department');
+            message.error(error.response?.data?.message || t('common.error'));
         },
     });
 
@@ -45,13 +47,13 @@ export const DepartmentFormModal = ({ open, department, onClose }: DepartmentFor
         mutationFn: ({ id, dto }: { id: string; dto: UpdateDepartmentDto }) =>
             departmentsApi.update(id, dto),
         onSuccess: () => {
-            message.success('Department updated successfully');
+            message.success(t('departments.success_update'));
             queryClient.invalidateQueries({ queryKey: ['departments'] });
             onClose();
             form.resetFields();
         },
         onError: (error: any) => {
-            message.error(error.response?.data?.message || 'Error updating department');
+            message.error(error.response?.data?.message || t('common.error'));
         },
     });
 
@@ -127,34 +129,34 @@ export const DepartmentFormModal = ({ open, department, onClose }: DepartmentFor
 
     return (
         <Modal
-            title={department ? 'Edit Department' : 'New Department'}
+            title={department ? t('departments.edit') : t('departments.new')}
             open={open}
             onOk={handleSubmit}
             onCancel={onClose}
             confirmLoading={createMutation.isPending || updateMutation.isPending}
-            okText={department ? 'Update (F9)' : 'Create (F9)'}
-            cancelText="Cancel"
+            okText={department ? `${t('common.save')} (F9)` : `${t('common.add')} (F9)`}
+            cancelText={t('common.cancel')}
         >
             <Form form={form} layout="vertical" style={{ marginTop: 20 }}>
                 <Form.Item
-                    label="Name"
+                    label={t('departments.name')}
                     name="name"
-                    rules={[{ required: true, message: 'Name is required' }]}
+                    rules={[{ required: true, message: t('departments.name_required') }]}
                 >
                     <Input placeholder="e.g., Hardware" />
                 </Form.Item>
 
-                <Form.Item label="Description" name="description">
-                    <Input.TextArea rows={3} placeholder="Department description..." />
+                <Form.Item label={t('departments.description')} name="description">
+                    <Input.TextArea rows={3} placeholder={t('common.description') + '...'} />
                 </Form.Item>
 
                 <Form.Item
-                    label="Parent Department (Optional)"
+                    label={t('departments.parent')}
                     name="parentId"
-                    help="Only 2 levels allowed: Main → Sub-department"
+                    help={t('departments.parent_help')}
                 >
                     <TreeSelect
-                        placeholder="Select parent department"
+                        placeholder={t('departments.select_parent')}
                         allowClear
                         treeData={treeData}
                         showSearch

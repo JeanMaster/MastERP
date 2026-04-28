@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import { formatVenezuelanPrice } from '../../utils/formatters';
-import { Card, Table, Button, Space, Input, message, Popconfirm, Grid, Tooltip } from 'antd';
+import { Card, Table, Button, Space, Input, App, Popconfirm, Grid, Tooltip } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined, ReloadOutlined } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { productsApi } from '../../services/productsApi';
 import { currenciesApi } from '../../services/currenciesApi';
 import type { Product } from '../../services/productsApi';
 import { ServiceFormModal } from './services/ServiceFormModal';
+import { useTranslation } from 'react-i18next';
 
 /**
  * ServicesPage Component
@@ -14,6 +15,8 @@ import { ServiceFormModal } from './services/ServiceFormModal';
  * Lists services with multi-currency price conversion tooltips.
  */
 export const ServicesPage = () => {
+    const { t } = useTranslation();
+    const { message } = App.useApp();
     const screens = Grid.useBreakpoint();
     const isMobile = !screens.lg;
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -37,11 +40,11 @@ export const ServicesPage = () => {
     const deleteMutation = useMutation({
         mutationFn: productsApi.delete,
         onSuccess: () => {
-            message.success('Service deleted successfully');
+            message.success(t('products.services.delete_success'));
             queryClient.invalidateQueries({ queryKey: ['services'] });
         },
         onError: () => {
-            message.error('Error deleting service');
+            message.error(t('common.error'));
         },
     });
 
@@ -67,13 +70,13 @@ export const ServicesPage = () => {
 
     const columns = [
         {
-            title: 'Code',
+            title: t('common.code'),
             dataIndex: 'sku',
             key: 'sku',
             width: 120,
         },
         {
-            title: 'Name',
+            title: t('common.name'),
             dataIndex: 'name',
             key: 'name',
             render: (text: string, record: Product) => (
@@ -84,7 +87,7 @@ export const ServicesPage = () => {
             ),
         },
         {
-            title: 'Cost',
+            title: t('common.cost'),
             key: 'cost',
             width: 120,
             render: (_: any, record: Product) => (
@@ -95,7 +98,7 @@ export const ServicesPage = () => {
             align: 'right' as const,
         },
         {
-            title: 'Sale Price',
+            title: t('common.sale_price'),
             key: 'price',
             width: 140,
             render: (_: any, record: Product) => {
@@ -144,7 +147,7 @@ export const ServicesPage = () => {
             align: 'right' as const,
         },
         {
-            title: 'Actions',
+            title: t('common.actions'),
             key: 'actions',
             align: 'center' as const,
             width: 100,
@@ -156,11 +159,11 @@ export const ServicesPage = () => {
                         onClick={() => handleEdit(record)}
                     />
                     <Popconfirm
-                        title="Delete service?"
-                        description="This action cannot be undone."
+                        title={t('products.services.delete_confirm')}
+                        description={t('products.services.delete_desc')}
                         onConfirm={() => handleDelete(record.id)}
-                        okText="Yes"
-                        cancelText="No"
+                        okText={t('common.yes')}
+                        cancelText={t('common.no')}
                     >
                         <Button type="text" danger icon={<DeleteOutlined />} />
                     </Popconfirm>
@@ -179,10 +182,10 @@ export const ServicesPage = () => {
                 marginBottom: 16,
                 gap: isMobile ? 12 : 0
             }}>
-                <h1 style={{ margin: 0, fontSize: isMobile ? '1.5rem' : '2rem' }}>Services</h1>
+                <h1 style={{ margin: 0, fontSize: isMobile ? '1.5rem' : '2rem' }}>{t('products.services.title')}</h1>
                 <Space direction={isMobile ? 'vertical' : 'horizontal'} style={{ width: isMobile ? '100%' : 'auto' }} align={isMobile ? 'end' : 'center'}>
                     <Input
-                        placeholder="Search service..."
+                        placeholder={t('products.services.search_placeholder')}
                         prefix={<SearchOutlined />}
                         value={searchTerm}
                         onChange={e => setSearchTerm(e.target.value)}
@@ -194,7 +197,7 @@ export const ServicesPage = () => {
                             onClick={() => queryClient.invalidateQueries({ queryKey: ['services'] })}
                         />
                         <Button type="primary" icon={<PlusOutlined />} onClick={() => setIsModalOpen(true)}>
-                            {isMobile ? 'New' : 'New Service'}
+                            {isMobile ? t('common.add') : t('products.services.new_button')}
                         </Button>
                     </Space>
                 </Space>

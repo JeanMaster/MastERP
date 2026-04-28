@@ -1,4 +1,4 @@
-import { Modal, InputNumber, Button, Table, Typography, Space, Statistic, Row, Col, message, Alert } from 'antd';
+import { Modal, InputNumber, Button, Table, Typography, Space, Statistic, Row, Col, Alert, App } from 'antd';
 import { SyncOutlined } from '@ant-design/icons';
 import { useState, useEffect } from 'react';
 import { cashRegisterApi } from '../../../services/cashRegisterApi';
@@ -6,6 +6,7 @@ import { currenciesApi } from '../../../services/currenciesApi';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../auth/AuthProvider';
 import { useQueryClient } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 
 const { Title, Text } = Typography;
 
@@ -24,6 +25,8 @@ interface CashCountModalProps {
  * Handles the physical cash count process for session opening (verification) or closing.
  */
 export const CashCountModal = ({ open, mode, sessionId, openingBalance, expectedBalance, onSuccess, onCancel }: CashCountModalProps) => {
+    const { t } = useTranslation();
+    const { message } = App.useApp();
     const navigate = useNavigate();
     const { logout } = useAuth();
     const queryClient = useQueryClient();
@@ -58,12 +61,12 @@ export const CashCountModal = ({ open, mode, sessionId, openingBalance, expected
                 if (secondary && secondary.exchangeRate) {
                     setExchangeRate(Number(secondary.exchangeRate));
                 } else {
-                    message.warning('No exchange rate found for USD. Using 0.');
+                    message.warning(t('cash_register.usd_rate_warning'));
                 }
             }
         } catch (error) {
             console.error(error);
-            message.error('Error loading cash count data');
+            message.error(t('cash_register.error_load_count'));
         } finally {
             setLoading(false);
         }
@@ -98,7 +101,10 @@ export const CashCountModal = ({ open, mode, sessionId, openingBalance, expected
 
         // If opening, the amount MUST match
         if (mode === 'OPENING' && Math.abs(diff) > 0.01) {
-            message.error(`The amount does not match (${diff > 0 ? '+' : ''}${diff.toFixed(2)} Bs). Please verify the cash or contact a supervisor.`);
+            message.error(t('cash_register.opening_diff_error', { 
+                diff: diff.toFixed(2), 
+                defaultValue: `The amount does not match (${diff > 0 ? '+' : ''}${diff.toFixed(2)} Bs). Please verify the cash or contact a supervisor.` 
+            }));
             return;
         }
 
@@ -114,7 +120,7 @@ export const CashCountModal = ({ open, mode, sessionId, openingBalance, expected
                     items,
                     exchangeRate
                 });
-                message.success('Cash register verified successfully');
+                message.success(t('cash_register.verify_success'));
 
                 // Invalidate cache before navigating to avoid loops with old data
                 await queryClient.invalidateQueries({ queryKey: ['activeSession'] });
@@ -135,10 +141,10 @@ export const CashCountModal = ({ open, mode, sessionId, openingBalance, expected
 
                 setIsWaitingApproval(true);
                 onSuccess();
-                message.success('Closing request sent. The administrator must authorize the closure.');
+                message.success(t('cash_register.close_request_sent', { defaultValue: 'Closing request sent. The administrator must authorize the closure.' }));
             }
         } catch (error: any) {
-            message.error(error.message || 'Error in cash count process');
+            message.error(error.message || t('cash_register.error_count_process', { defaultValue: 'Error in cash count process' }));
         } finally {
             setLoading(false);
         }
@@ -149,13 +155,13 @@ export const CashCountModal = ({ open, mode, sessionId, openingBalance, expected
             setLoading(true);
             const session = await cashRegisterApi.getSession(sessionId);
             if (session.status === 'CLOSED') {
-                message.success('Closure authorized. Exiting...');
+                message.success(t('cash_register.close_success'));
                 logout();
             } else {
-                message.info('The closure has not been authorized yet.');
+                message.info(t('cash_register.close_pending', { defaultValue: 'The closure has not been authorized yet.' }));
             }
         } catch (error) {
-            message.error('Error verifying closure status');
+            message.error(t('cash_register.error_verify_status', { defaultValue: 'Error verifying closure status' }));
         } finally {
             setLoading(false);
         }
@@ -172,9 +178,9 @@ export const CashCountModal = ({ open, mode, sessionId, openingBalance, expected
                 size="small"
                 loading={loading}
                 columns={[
-                    { title: 'Denomination', dataIndex: 'label', key: 'label' },
+                    { title: t('cash_register.denomination'), dataIndex: 'label', key: 'label' },
                     {
-                        title: 'Quantity',
+                        title: t('cash_register.quantity'),
                         key: 'qty',
                         render: (_: any, record: any) => (
                             <InputNumber
@@ -186,7 +192,7 @@ export const CashCountModal = ({ open, mode, sessionId, openingBalance, expected
                         )
                     },
                     {
-                        title: 'Subtotal',
+                        title: t('cash_register.subtotal'),
                         key: 'subtotal',
                         align: 'right',
                         render: (_: any, record: any) => {
@@ -207,21 +213,20 @@ export const CashCountModal = ({ open, mode, sessionId, openingBalance, expected
     if (isWaitingApproval) {
         return (
             <Modal
-                title="Closure in Progress"
+                title={t('cash_register.close_in_progress', { defaultValue: 'Closure in Progress' })}
                 open={open}
                 closable={false}
                 footer={[
                     <Button key="verify" type="primary" size="large" onClick={checkApprovalStatus} loading={loading}>
-                        Verify Approval
+                        {t('cash_register.verify_approval', { defaultValue: 'Verify Approval' })}
                     </Button>
                 ]}
             >
                 <div style={{ textAlign: 'center', padding: '40px 0' }}>
                     <SyncOutlined spin style={{ fontSize: 48, color: '#faad14', marginBottom: 20 }} />
-                    <Title level={4}>Waiting for confirmation...</Title>
+                    <Title level={4}>{t('cash_register.waiting_confirmation', { defaultValue: 'Waiting for confirmation...' })}</Title>
                     <Text type="secondary">
-                        Your closing request has been sent to the administrator.
-                        Please keep this window open and click "Verify Approval" when you are informed that your count was authorized.
+                        {t('cash_register.close_request_help', { defaultValue: 'Your closing request has been sent to the administrator. Please keep this window open and click "Verify Approval" when you are informed that your count was authorized.' })}
                     </Text>
                 </div>
             </Modal>
@@ -230,7 +235,7 @@ export const CashCountModal = ({ open, mode, sessionId, openingBalance, expected
 
     return (
         <Modal
-            title={mode === 'OPENING' ? "Opening Cash Count (Cash Verification)" : "Cash Closure Count"}
+            title={mode === 'OPENING' ? t('cash_register.opening_count_title', { defaultValue: 'Opening Cash Count (Cash Verification)' }) : t('cash_register.closing_count_title', { defaultValue: 'Cash Closure Count' })}
             open={open}
             width={800}
             closable={mode === 'CLOSING'} // Allow cancel on closing if they want to keep selling
@@ -238,18 +243,18 @@ export const CashCountModal = ({ open, mode, sessionId, openingBalance, expected
             maskClosable={false}
             keyboard={false}
             footer={[
-                mode === 'CLOSING' && <Button key="cancel" onClick={onCancel}>Continue Selling</Button>,
+                mode === 'CLOSING' && <Button key="cancel" onClick={onCancel}>{t('cash_register.continue_selling', { defaultValue: 'Continue Selling' })}</Button>,
                 <Button key="submit" type="primary" size="large" onClick={handleSubmit} loading={loading}>
-                    {mode === 'OPENING' ? 'Confirm Count' : 'Request Cash Closure'}
+                    {mode === 'OPENING' ? t('cash_register.confirm_count', { defaultValue: 'Confirm Count' }) : t('cash_register.request_close_button', { defaultValue: 'Request Cash Closure' })}
                 </Button>
             ].filter(Boolean)}
         >
             <Space direction="vertical" style={{ width: '100%' }} size="large">
                 <Alert
-                    message={mode === 'OPENING' ? "Verification Required" : "Closing Count"}
+                    message={mode === 'OPENING' ? t('cash_register.verification_required', { defaultValue: 'Verification Required' }) : t('cash_register.closing_count')}
                     description={mode === 'OPENING'
-                        ? "Please count the physical cash to confirm the opening amount."
-                        : "Count the final cash in drawer to request the session closure."}
+                        ? t('cash_register.opening_help', { defaultValue: 'Please count the physical cash to confirm the opening amount.' })
+                        : t('cash_register.closing_help', { defaultValue: 'Count the final cash in drawer to request the session closure.' })}
                     type="warning"
                     showIcon
                 />
@@ -263,7 +268,7 @@ export const CashCountModal = ({ open, mode, sessionId, openingBalance, expected
                         <Title level={5}>Dollars (USD)</Title>
                         {renderDenominationColumn('USD')}
                         <div style={{ marginTop: 10, textAlign: 'right' }}>
-                            <Text type="secondary">Exchange Rate: {exchangeRate.toFixed(2)} Bs/USD</Text>
+                            <Text type="secondary">{t('expenses.exchange_rate')}: {exchangeRate.toFixed(2)} Bs/USD</Text>
                         </div>
                     </Col>
                 </Row>
@@ -271,11 +276,11 @@ export const CashCountModal = ({ open, mode, sessionId, openingBalance, expected
                 <div style={{ background: '#f5f5f5', padding: 16, borderRadius: 8 }}>
                     <Row gutter={16}>
                         <Col span={8}>
-                            <Statistic title="Total Counted (Bs)" value={totalEquivalent} precision={2} prefix="Bs." />
+                            <Statistic title={t('cash_register.total_counted', { defaultValue: 'Total Counted (Bs)' })} value={totalEquivalent} precision={2} prefix="Bs." />
                         </Col>
                         <Col span={8}>
                             <Statistic
-                                title={mode === 'OPENING' ? "Opening Balance (System)" : "Expected Balance (System)"}
+                                title={mode === 'OPENING' ? t('cash_register.opening_system', { defaultValue: 'Opening Balance (System)' }) : t('cash_register.expected_system', { defaultValue: 'Expected Balance (System)' })}
                                 value={mode === 'OPENING' ? openingBalance : (expectedBalance || 0)}
                                 precision={2}
                                 prefix="Bs."
@@ -283,7 +288,7 @@ export const CashCountModal = ({ open, mode, sessionId, openingBalance, expected
                         </Col>
                         <Col span={8}>
                             <Statistic
-                                title="Difference"
+                                title={t('cash_register.difference', { defaultValue: 'Difference' })}
                                 value={Math.round((totalEquivalent - (mode === 'OPENING' ? openingBalance : (expectedBalance || 0))) * 100) / 100}
                                 precision={2}
                                 prefix="Bs."

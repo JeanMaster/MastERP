@@ -1,7 +1,8 @@
-import { Modal, Form, Input, Select, Checkbox, Row, Col, Typography, message, Switch, Divider } from 'antd';
+import { Modal, Form, Input, Select, Checkbox, Row, Col, Typography, App, Switch, Divider } from 'antd';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
 import { usersApi } from '../../../services/usersApi';
+import { useTranslation } from 'react-i18next';
 
 const { Text } = Typography;
 
@@ -11,50 +12,52 @@ interface UserFormModalProps {
     user?: any; // If set, we are editing
 }
 
-const ROLES = [
-    { label: 'Administrator', value: 'ADMIN' },
-    { label: 'Supervisor', value: 'SUPERVISOR' },
-    { label: 'Cashier', value: 'CASHIER' },
-];
-
-const PERMISSIONS = [
-    {
-        group: 'Sales & POS',
-        options: [
-            { label: 'POS Operations', value: 'MODULE_POS' },
-            { label: 'View Sales History', value: 'VIEW_SALES' },
-            { label: 'Manage Cash Drawer', value: 'MANAGE_CASH_REGISTER' },
-            { label: 'Void Sales / Refunds', value: 'VOID_SALES' },
-        ]
-    },
-    {
-        group: 'Inventory Management',
-        options: [
-            { label: 'View Catalog', value: 'VIEW_PRODUCTS' },
-            { label: 'Edit Products', value: 'EDIT_PRODUCTS' },
-            { label: 'Inventory Adjustments', value: 'INVENTORY_ADJUSTMENTS' },
-        ]
-    },
-    {
-        group: 'Business Admin',
-        options: [
-            { label: 'Purchase Management', value: 'MODULE_PURCHASES' },
-            { label: 'Expense Tracking', value: 'MODULE_EXPENSES' },
-            { label: 'Advanced Reporting', value: 'MODULE_REPORTS' },
-            { label: 'System Configuration', value: 'MODULE_CONFIG' },
-        ]
-    }
-];
-
 /**
  * UserFormModal Component
  * Form for creating and updating user accounts.
  * Includes security role selection, password management, and granular permission toggles.
  */
 export const UserFormModal = ({ open, onCancel, user }: UserFormModalProps) => {
+    const { t } = useTranslation();
+    const { message } = App.useApp();
     const [form] = Form.useForm();
     const queryClient = useQueryClient();
     const isEdit = !!user;
+
+    const ROLES = [
+        { label: t('users.roles.admin'), value: 'ADMIN' },
+        { label: t('users.roles.supervisor'), value: 'SUPERVISOR' },
+        { label: t('users.roles.cashier'), value: 'CASHIER' },
+    ];
+
+    const PERMISSIONS = [
+        {
+            group: t('users.permissions.groups.sales'),
+            options: [
+                { label: t('users.permissions.options.pos'), value: 'MODULE_POS' },
+                { label: t('users.permissions.options.view_sales'), value: 'VIEW_SALES' },
+                { label: t('users.permissions.options.manage_cash'), value: 'MANAGE_CASH_REGISTER' },
+                { label: t('users.permissions.options.void_sales'), value: 'VOID_SALES' },
+            ]
+        },
+        {
+            group: t('users.permissions.groups.inventory'),
+            options: [
+                { label: t('users.permissions.options.view_products'), value: 'VIEW_PRODUCTS' },
+                { label: t('users.permissions.options.edit_products'), value: 'EDIT_PRODUCTS' },
+                { label: t('users.permissions.options.inventory_adj'), value: 'INVENTORY_ADJUSTMENTS' },
+            ]
+        },
+        {
+            group: t('users.permissions.groups.admin'),
+            options: [
+                { label: t('users.permissions.options.purchases'), value: 'MODULE_PURCHASES' },
+                { label: t('users.permissions.options.expenses'), value: 'MODULE_EXPENSES' },
+                { label: t('users.permissions.options.reports'), value: 'MODULE_REPORTS' },
+                { label: t('users.permissions.options.config'), value: 'MODULE_CONFIG' },
+            ]
+        }
+    ];
 
     useEffect(() => {
         if (open) {
@@ -84,12 +87,12 @@ export const UserFormModal = ({ open, onCancel, user }: UserFormModalProps) => {
             }
         },
         onSuccess: () => {
-            message.success(isEdit ? 'User account updated' : 'User account created');
+            message.success(isEdit ? t('users.success_update') : t('users.success_create'));
             queryClient.invalidateQueries({ queryKey: ['users'] });
             onCancel();
         },
         onError: (err: any) => {
-            message.error(err?.response?.data?.message || 'Error saving user profile');
+            message.error(err?.response?.data?.message || t('common.error'));
         }
     });
 
@@ -113,11 +116,11 @@ export const UserFormModal = ({ open, onCancel, user }: UserFormModalProps) => {
 
     return (
         <Modal
-            title={isEdit ? "Edit User Profile" : "Register New System User"}
+            title={isEdit ? t('users.edit') : t('users.new')}
             open={open}
             onCancel={onCancel}
             onOk={() => form.submit()}
-            okText={isEdit ? "Update User (F9)" : "Create User (F9)"}
+            okText={isEdit ? `${t('common.save')} (F9)` : `${t('common.add')} (F9)`}
             width={700}
             confirmLoading={mutation.isPending}
             style={{ top: 20 }}
@@ -133,8 +136,8 @@ export const UserFormModal = ({ open, onCancel, user }: UserFormModalProps) => {
                     <Col span={12}>
                         <Form.Item
                             name="username"
-                            label="Username / Login"
-                            rules={[{ required: true, message: 'Login username is required' }]}
+                            label={t('common.username')}
+                            rules={[{ required: true, message: t('common.error') }]}
                         >
                             <Input disabled={isEdit} placeholder="e.g., jsmith" />
                         </Form.Item>
@@ -142,8 +145,8 @@ export const UserFormModal = ({ open, onCancel, user }: UserFormModalProps) => {
                     <Col span={12}>
                         <Form.Item
                             name="name"
-                            label="Employee Full Name"
-                            rules={[{ required: true, message: 'Please enter a name' }]}
+                            label={t('common.name')}
+                            rules={[{ required: true, message: t('common.error') }]}
                         >
                             <Input placeholder="John Smith" />
                         </Form.Item>
@@ -154,7 +157,7 @@ export const UserFormModal = ({ open, onCancel, user }: UserFormModalProps) => {
                     <Col span={12}>
                         <Form.Item
                             name="role"
-                            label="Global Security Role"
+                            label={t('common.role')}
                             rules={[{ required: true }]}
                         >
                             <Select options={ROLES} />
@@ -163,10 +166,10 @@ export const UserFormModal = ({ open, onCancel, user }: UserFormModalProps) => {
                     <Col span={12}>
                         <Form.Item
                             name="isActive"
-                            label="Account Status"
+                            label={t('common.status')}
                             valuePropName="checked"
                         >
-                            <Switch checkedChildren="Active" unCheckedChildren="Inactive" />
+                            <Switch checkedChildren={t('common.active')} unCheckedChildren={t('common.inactive')} />
                         </Form.Item>
                     </Col>
                 </Row>
@@ -175,10 +178,10 @@ export const UserFormModal = ({ open, onCancel, user }: UserFormModalProps) => {
                     <Col span={24}>
                         <Form.Item
                             name="password"
-                            label={isEdit ? "New Password (Leave blank to keep current)" : "Password"}
+                            label={isEdit ? `${t('common.password')} (${t('common.no')} = keep)` : t('common.password')}
                             rules={[
-                                { required: !isEdit, message: 'Password is required' }, 
-                                { min: 6, message: 'Minimum 6 characters for security' }
+                                { required: !isEdit, message: t('common.error') }, 
+                                { min: 6, message: t('common.error') }
                             ]}
                         >
                             <Input.Password placeholder="******" />
@@ -186,7 +189,7 @@ export const UserFormModal = ({ open, onCancel, user }: UserFormModalProps) => {
                     </Col>
                 </Row>
 
-                <Divider orientation={"left" as any}>Granular Access Permissions</Divider>
+                <Divider orientation={"left" as any}>{t('users.permissions.title')}</Divider>
                 <Form.Item name="permissions">
                     <Checkbox.Group style={{ width: '100%' }}>
                         <Row gutter={[16, 24]}>
