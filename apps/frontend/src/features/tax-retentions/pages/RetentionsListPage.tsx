@@ -5,6 +5,7 @@ import { taxRetentionsApi, type TaxRetention } from '../../../services/taxRetent
 import { formatVenezuelanNumber } from '../../../utils/formatters';
 import dayjs from 'dayjs';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 
 const { Title, Text } = Typography;
 
@@ -14,6 +15,7 @@ const { Title, Text } = Typography;
  * Allows exporting data for SENIAT (Venezuelan tax authority).
  */
 export const RetentionsListPage = () => {
+    const { t } = useTranslation();
     const { message, modal } = App.useApp();
     const queryClient = useQueryClient();
     const [dateRange, setDateRange] = useState<any>(null);
@@ -28,7 +30,7 @@ export const RetentionsListPage = () => {
      */
     const handleExportTxt = async () => {
         try {
-            message.loading({ content: 'Generating TXT file...', key: 'exporting' });
+            message.loading({ content: t('tax_retention.messages.export_loading'), key: 'exporting' });
             
             const startDate = dateRange?.[0]?.format('YYYY-MM-DD');
             const endDate = dateRange?.[1]?.format('YYYY-MM-DD');
@@ -48,11 +50,11 @@ export const RetentionsListPage = () => {
             link.remove();
             window.URL.revokeObjectURL(url);
 
-            message.success({ content: 'File generated successfully', key: 'exporting' });
+            message.success({ content: t('tax_retention.messages.export_success'), key: 'exporting' });
         } catch (error: any) {
             console.error('Export error:', error);
             message.error({ 
-                content: error.response?.data?.message || 'Error generating TXT file', 
+                content: error.response?.data?.message || t('tax_retention.messages.export_error'), 
                 key: 'exporting' 
             });
         }
@@ -61,12 +63,12 @@ export const RetentionsListPage = () => {
     const deleteMutation = useMutation({
         mutationFn: taxRetentionsApi.remove,
         onSuccess: () => {
-            message.success('Retention deleted and balance reverted');
+            message.success(t('tax_retention.messages.delete_success'));
             queryClient.invalidateQueries({ queryKey: ['tax-retentions'] });
             queryClient.invalidateQueries({ queryKey: ['pending-invoices'] });
         },
         onError: (error: any) => {
-            message.error(error.response?.data?.message || 'Error deleting retention');
+            message.error(error.response?.data?.message || t('tax_retention.messages.delete_error'));
         }
     });
 
@@ -76,9 +78,9 @@ export const RetentionsListPage = () => {
      */
     const handleDelete = (id: string) => {
         modal.confirm({
-            title: 'Delete Voucher?',
-            content: 'The associated invoice payment will be reverted and the pending balance will be restored.',
-            okText: 'Yes, Delete',
+            title: t('tax_retention.list.delete_title'),
+            content: t('tax_retention.list.delete_content'),
+            okText: t('common.yes'),
             okType: 'danger',
             onOk: () => deleteMutation.mutate(id)
         });
@@ -86,28 +88,28 @@ export const RetentionsListPage = () => {
 
     const columns = [
         {
-            title: 'Voucher #',
+            title: t('tax_retention.list.voucher'),
             dataIndex: 'voucherNumber',
             key: 'voucherNumber',
             render: (text: string) => <Text strong>{text}</Text>
         },
         {
-            title: 'Date',
+            title: t('tax_retention.list.date'),
             dataIndex: 'voucherDate',
             key: 'voucherDate',
             render: (date: string) => dayjs(date).format('DD/MM/YYYY')
         },
         {
-            title: 'Type',
+            title: t('tax_retention.type'),
             dataIndex: 'type',
             key: 'type',
             render: (type: string) => {
                 const colors: any = { IVA: 'blue', ISLR: 'purple', MUNICIPAL: 'orange' };
-                return <Tag color={colors[type] || 'default'}>{type}</Tag>;
+                return <Tag color={colors[type] || 'default'} style={{ borderRadius: '4px', fontWeight: 600 }}>{type}</Tag>;
             }
         },
         {
-            title: 'Reference (Invoice/Purchase)',
+            title: t('tax_retention.list.reference'),
             key: 'source',
             render: (_: any, record: TaxRetention) => {
                 if (record.invoice) {
@@ -130,7 +132,7 @@ export const RetentionsListPage = () => {
             }
         },
         {
-            title: 'Taxable Base',
+            title: t('tax_retention.list.taxable_base'),
             dataIndex: 'baseAmount',
             key: 'baseAmount',
             align: 'right' as const,
@@ -143,7 +145,7 @@ export const RetentionsListPage = () => {
             render: (p: number) => `${p}%`
         },
         {
-            title: 'Retained Amount',
+            title: t('tax_retention.retained_amount'),
             dataIndex: 'amount',
             key: 'amount',
             align: 'right' as const,
@@ -154,8 +156,9 @@ export const RetentionsListPage = () => {
             )
         },
         {
-            title: 'Actions',
+            title: t('common.actions'),
             key: 'actions',
+            align: 'right' as const,
             render: (_: any, record: TaxRetention) => (
                 <Space>
                     <Button 
@@ -170,29 +173,50 @@ export const RetentionsListPage = () => {
     ];
 
     return (
-        <div style={{ padding: 24 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-                <Title level={2}>Tax Retentions Control</Title>
-                <Space>
-                    <DatePicker.RangePicker onChange={setDateRange} />
+        <div style={{ padding: '24px 32px', background: '#f8fafc', minHeight: '100vh' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 32 }}>
+                <Title level={2} style={{ margin: 0, fontWeight: 800, color: '#1e293b' }}>
+                    {t('tax_retention.list.title')}
+                </Title>
+                <Space size="middle">
+                    <DatePicker.RangePicker 
+                        onChange={setDateRange} 
+                        style={{ borderRadius: '8px' }}
+                        placeholder={[t('common.date'), t('common.date')]}
+                    />
                     <Button 
                         icon={<ExportOutlined />} 
                         onClick={handleExportTxt}
                         disabled={isLoading}
+                        style={{ borderRadius: '8px', height: '40px' }}
                     >
                         SENIAT TXT
                     </Button>
-                    <Button type="primary" icon={<ReloadOutlined />} onClick={() => refetch()}>Refresh</Button>
+                    <Button 
+                        type="primary" 
+                        icon={<ReloadOutlined />} 
+                        onClick={() => refetch()}
+                        style={{ 
+                            borderRadius: '8px', 
+                            height: '40px',
+                            background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
+                            border: 'none',
+                            boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)'
+                        }}
+                    >
+                        {t('common.refresh')}
+                    </Button>
                 </Space>
             </div>
 
-            <Card>
+            <Card style={{ borderRadius: '16px', boxShadow: '0 4px 20px rgba(0,0,0,0.05)', border: 'none', overflow: 'hidden' }}>
                 <Table
                     dataSource={retentions}
                     columns={columns}
                     rowKey="id"
                     loading={isLoading}
                     pagination={{ pageSize: 15 }}
+                    className="premium-table"
                 />
             </Card>
         </div>

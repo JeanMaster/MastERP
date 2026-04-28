@@ -17,7 +17,8 @@ import {
     EditOutlined,
     DeleteOutlined,
     ShopOutlined,
-    EnvironmentOutlined
+    EnvironmentOutlined,
+    SettingOutlined
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -163,20 +164,34 @@ export const RegistersManagement = () => {
     ];
 
     return (
-        <div style={{ padding: 24 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-                <Title level={2}>⚙️ {t('cash_register.title')}</Title>
+        <div style={{ padding: '24px 0' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 32 }}>
+                <div>
+                    <Title level={3} style={{ margin: 0, fontWeight: 700 }}>
+                        <SettingOutlined style={{ marginRight: 12, color: '#6366f1' }} />
+                        {t('cash_register.title')}
+                    </Title>
+                    <Text type="secondary">{t('cash_register.dashboard_title')}</Text>
+                </div>
                 <Button
                     type="primary"
                     icon={<PlusOutlined />}
                     onClick={handleAdd}
                     size="large"
+                    style={{ 
+                        borderRadius: '12px', 
+                        height: '48px', 
+                        padding: '0 24px',
+                        background: 'linear-gradient(135deg, #6366f1 0%, #a855f7 100%)',
+                        border: 'none',
+                        boxShadow: '0 4px 12px rgba(99, 102, 241, 0.3)'
+                    }}
                 >
                     {t('cash_register.new')}
                 </Button>
             </div>
 
-            <Card>
+            <Card style={{ borderRadius: '16px', boxShadow: '0 4px 20px rgba(0,0,0,0.05)', border: 'none' }}>
                 <Table
                     dataSource={registers}
                     columns={columns}

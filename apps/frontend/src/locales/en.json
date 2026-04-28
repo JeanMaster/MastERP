@@ -414,6 +414,7 @@
       "retentions": "Tax Retentions",
       "customers": "Customers"
     },
+    "cash_register": "Cash / Sessions",
     "marketing": {
       "label": "Marketing Hub",
       "control_center": "Control Center",
@@ -1240,7 +1241,21 @@
     "messages": {
       "exceeds_balance": "Retention amount exceeds pending invoice balance.",
       "success": "Retention registered successfully",
-      "error": "Error registering retention"
+      "error": "Error registering retention",
+      "delete_success": "Retention deleted and balance reverted",
+      "delete_error": "Error deleting retention",
+      "export_loading": "Generating TXT file...",
+      "export_success": "File generated successfully",
+      "export_error": "Error generating TXT file"
+    },
+    "list": {
+      "title": "Tax Retentions Control",
+      "voucher": "Voucher #",
+      "date": "Date",
+      "reference": "Reference (Invoice/Purchase)",
+      "taxable_base": "Taxable Base",
+      "delete_title": "Delete Voucher?",
+      "delete_content": "The associated payment will be reverted and the pending balance will be restored."
     }
   },
   "accounts_receivable": {
@@ -1352,7 +1367,10 @@
     }
   },
   "cash_register": {
-    "title": "Cash Register Management",
+    "title": "Registers Management",
+    "actions": "Actions",
+    "control_panel": "Control Panel",
+    "history_tab": "Global History",
     "new": "New Register",
     "edit": "Edit Register",
     "delete_confirm": "Delete cash register?",

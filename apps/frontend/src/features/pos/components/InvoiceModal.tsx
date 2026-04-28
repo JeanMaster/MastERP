@@ -20,6 +20,7 @@ interface InvoiceModalProps {
  */
 export const InvoiceModal = ({ open, sale, onClose }: InvoiceModalProps) => {
     const { t, i18n } = useTranslation();
+    const { companyInfo } = usePOSStore();
     const currentLang = i18n.language || 'es';
     if (!sale) {
         return (
@@ -38,7 +39,6 @@ export const InvoiceModal = ({ open, sale, onClose }: InvoiceModalProps) => {
 
     const clientName = sale.client?.name || t('common.cash_customer', { defaultValue: 'CASH CUSTOMER' });
     const clientPhone = (sale.client as any)?.phone || null;
-    const { companyInfo } = usePOSStore();
     const clientEmail = (sale.client as any)?.email || null;
     const hasWhatsapp = (sale.client as any)?.hasWhatsapp || false;
 

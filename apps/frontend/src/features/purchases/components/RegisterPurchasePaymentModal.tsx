@@ -62,8 +62,8 @@ export const RegisterPurchasePaymentModal = ({ open, purchase, onClose }: Regist
             setPaymentCurrency(purchase.currencyCode);
             setEquivalentAmount(purchase.balance);
             form.setFieldsValue({
-                paymentAmount: purchase.balance,
-                exchangeRate: purchase.exchangeRate || 1
+                paymentAmount: Number(purchase.balance),
+                exchangeRate: Number(purchase.exchangeRate || 1)
             });
         }
     }, [open, purchase, form]);
@@ -94,7 +94,10 @@ export const RegisterPurchasePaymentModal = ({ open, purchase, onClose }: Regist
             newAmount = payRateForCalc > 0 ? (purchase.balance * invRateForCalc) / payRateForCalc : 0;
         }
 
-        form.setFieldsValue({ exchangeRate: newRate, paymentAmount: newAmount });
+        form.setFieldsValue({ 
+            exchangeRate: Number(newRate), 
+            paymentAmount: Number(newAmount) 
+        });
         setEquivalentAmount(purchase.balance);
 
     }, [paymentCurrency, purchase, currencies, form]);
@@ -112,7 +115,7 @@ export const RegisterPurchasePaymentModal = ({ open, purchase, onClose }: Regist
 
         // Recalculate amount based on custom rate: (Balance_Inv * Rate_Inv) / rate
         const newAmount = rate > 0 ? (purchase.balance * invRateForCalc) / rate : 0;
-        form.setFieldsValue({ paymentAmount: newAmount });
+        form.setFieldsValue({ paymentAmount: Number(newAmount) });
         setEquivalentAmount(purchase.balance);
     };
 
@@ -274,7 +277,7 @@ export const RegisterPurchasePaymentModal = ({ open, purchase, onClose }: Regist
                             amount = (purchase.balance * invRateForCalc) / payRateForCalc;
                         }
 
-                        form.setFieldsValue({ paymentAmount: amount });
+                        form.setFieldsValue({ paymentAmount: Number(amount) });
                         updateEquivalent();
                     }}
                 >

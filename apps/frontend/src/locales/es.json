@@ -411,6 +411,7 @@
       "retentions": "Retenciones de Impuestos",
       "customers": "Clientes"
     },
+    "cash_register": "Caja / Arqueos",
     "marketing": {
       "label": "Centro de Marketing",
       "control_center": "Centro de Control",
@@ -1237,7 +1238,21 @@
     "messages": {
       "exceeds_balance": "El monto de la retención excede el saldo pendiente de la factura.",
       "success": "Retención registrada exitosamente",
-      "error": "Error al registrar la retención"
+      "error": "Error al registrar la retención",
+      "delete_success": "Retención eliminada y saldo revertido",
+      "delete_error": "Error al eliminar la retención",
+      "export_loading": "Generando archivo TXT...",
+      "export_success": "Archivo generado exitosamente",
+      "export_error": "Error al generar el archivo TXT"
+    },
+    "list": {
+      "title": "Control de Retenciones de Impuestos",
+      "voucher": "Comprobante #",
+      "date": "Fecha",
+      "reference": "Referencia (Factura/Compra)",
+      "taxable_base": "Base Imponible",
+      "delete_title": "¿Eliminar Comprobante?",
+      "delete_content": "El pago asociado será revertido y se restaurará el saldo pendiente de la factura/compra."
     }
   },
   "accounts_receivable": {
@@ -1350,6 +1365,9 @@
   },
   "cash_register": {
     "title": "Gestión de Cajas",
+    "actions": "Acciones",
+    "control_panel": "Panel de Control",
+    "history_tab": "Historial Global",
     "new": "Nueva Caja",
     "edit": "Editar Caja",
     "delete_confirm": "¿Eliminar caja registradora?",
