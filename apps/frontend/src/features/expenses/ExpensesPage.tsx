@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Card, Table, Button, Input, Tag, Typography, Statistic, Row, Col, Space, Grid, Tooltip } from 'antd';
 import { PlusOutlined, ReloadOutlined, SearchOutlined, DollarOutlined, EditOutlined } from '@ant-design/icons';
 import { useQuery } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import dayjs from 'dayjs';
 import { expensesApi, type Expense } from '../../services/expensesApi';
 import { CreateExpenseModal } from './components/CreateExpenseModal';
@@ -16,6 +17,7 @@ const { Title } = Typography;
 export const ExpensesPage = () => {
     const screens = Grid.useBreakpoint();
     const isMobile = !screens.lg;
+    const { t } = useTranslation();
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
     const [searchText, setSearchText] = useState('');
@@ -45,7 +47,6 @@ export const ExpensesPage = () => {
 
     /**
      * Calculates totals in USD based on exchange rate at the time of expense.
-     * @param list List of expenses to sum.
      */
     const calculateTotalInUSD = (list: Expense[]) => {
         return list.reduce((sum, e) => {
@@ -67,7 +68,7 @@ export const ExpensesPage = () => {
 
     const columns = [
         {
-            title: 'Date',
+            title: t('common.date'),
             dataIndex: 'date',
             key: 'date',
             render: (date: string) => dayjs(date).format('DD/MM/YYYY'),
@@ -75,20 +76,25 @@ export const ExpensesPage = () => {
             width: 100,
         },
         {
-            title: 'Description',
+            title: t('expenses.description'),
             dataIndex: 'description',
             key: 'description',
         },
         {
-            title: 'Category',
+            title: t('expenses.category'),
             dataIndex: 'category',
             key: 'category',
-            render: (category: string) => <Tag color="blue">{category}</Tag>,
-            filters: Array.from(new Set(safeExpenses.map(e => e.category))).map(c => ({ text: c, value: c })),
+            render: (category: string) => (
+                <Tag color="blue">{t(`expenses.categories.${category}`, { defaultValue: category })}</Tag>
+            ),
+            filters: Array.from(new Set(safeExpenses.map(e => e.category))).map(c => ({
+                text: t(`expenses.categories.${c}`, { defaultValue: c }),
+                value: c,
+            })),
             onFilter: (value: any, record: Expense) => record.category === value,
         },
         {
-            title: 'Original Amount',
+            title: t('expenses_page.original_amount'),
             key: 'originalAmount',
             align: 'right' as const,
             render: (_: any, record: Expense) => (
@@ -98,14 +104,14 @@ export const ExpensesPage = () => {
                     </Typography.Text>
                     {record.exchangeRate && Number(record.exchangeRate) !== 1 && (
                         <Typography.Text type="secondary" style={{ fontSize: '11px' }}>
-                            Rate: {record.exchangeRate}
+                            {t('expenses_page.rate')}: {record.exchangeRate}
                         </Typography.Text>
                     )}
                 </Space>
             ),
         },
         {
-            title: 'Relative ($)',
+            title: t('expenses_page.relative_usd'),
             key: 'usdAmount',
             align: 'right' as const,
             render: (_: any, record: Expense) => {
@@ -126,19 +132,10 @@ export const ExpensesPage = () => {
             }
         },
         {
-            title: 'Method / Account',
+            title: t('expenses_page.method_account'),
             key: 'paymentMethod',
             render: (_: any, record: Expense) => {
-                const methodMap: Record<string, string> = {
-                    'CASH': 'Cash',
-                    'TRANSFER': 'Transfer',
-                    'PAGO_MOVIL': 'Pago Móvil',
-                    'DEBIT': 'Debit',
-                    'CREDIT': 'Credit',
-                    'ZELLE': 'Zelle',
-                    'USDT': 'USDT'
-                };
-                const methodName = methodMap[record.paymentMethod] || record.paymentMethod;
+                const methodName = t(`expenses.payment_methods.${record.paymentMethod}`, { defaultValue: record.paymentMethod });
 
                 return (
                     <Space direction="vertical" size={0}>
@@ -153,16 +150,16 @@ export const ExpensesPage = () => {
             }
         },
         {
-            title: 'Ref.',
+            title: t('common.reference'),
             dataIndex: 'reference',
             key: 'reference',
         },
         {
-            title: 'Actions',
+            title: t('common.actions'),
             key: 'actions',
             width: 80,
             render: (_: any, record: Expense) => (
-                <Tooltip title="Edit Expense">
+                <Tooltip title={t('expenses_page.edit_expense')}>
                     <Button
                         icon={<EditOutlined />}
                         onClick={() => handleEdit(record)}
@@ -177,12 +174,12 @@ export const ExpensesPage = () => {
     return (
         <div style={{ padding: isMobile ? '8px' : '24px' }}>
             <div style={{ marginBottom: 24 }}>
-                <Title level={isMobile ? 3 : 2}>Operative Expenses</Title>
+                <Title level={isMobile ? 3 : 2}>{t('expenses.title')}</Title>
                 <Row gutter={[16, 16]}>
                     <Col xs={12} sm={12} md={6}>
                         <Card size={isMobile ? 'small' : 'default'}>
                             <Statistic
-                                title="Today (Ref $)"
+                                title={t('expenses_page.today_ref')}
                                 value={totalTodayUSD}
                                 precision={2}
                                 valueStyle={{ color: '#cf1322', fontSize: isMobile ? '16px' : '24px' }}
@@ -195,7 +192,7 @@ export const ExpensesPage = () => {
                     <Col xs={12} sm={12} md={6}>
                         <Card size={isMobile ? 'small' : 'default'}>
                             <Statistic
-                                title="Month (Ref $)"
+                                title={t('expenses_page.month_ref')}
                                 value={totalMonthUSD}
                                 precision={2}
                                 valueStyle={{ color: '#cf1322', fontSize: isMobile ? '16px' : '24px' }}
@@ -212,7 +209,7 @@ export const ExpensesPage = () => {
                 extra={
                     <Space direction={isMobile ? 'vertical' : 'horizontal'} style={{ width: isMobile ? '100%' : 'auto' }} align={isMobile ? 'end' : 'center'}>
                         <Input
-                            placeholder="Search expenses..."
+                            placeholder={t('expenses_page.search_placeholder')}
                             prefix={<SearchOutlined />}
                             onChange={e => setSearchText(e.target.value)}
                             style={{ width: isMobile ? '100%' : 200 }}
@@ -229,7 +226,7 @@ export const ExpensesPage = () => {
                                 danger
                                 block={isMobile}
                             >
-                                {isMobile ? 'Register' : 'Register Expense'}
+                                {isMobile ? t('expenses_page.register_short') : t('expenses.register_new')}
                             </Button>
                         </Space>
                     </Space>

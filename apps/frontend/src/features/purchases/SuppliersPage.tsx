@@ -38,7 +38,7 @@ export const SuppliersPage: React.FC = () => {
             const data = await suppliersApi.getAll(searchTerm, !showInactive);
             setSuppliers(data);
         } catch (error) {
-            message.error(t('common.error_loading_suppliers', { defaultValue: 'Error loading suppliers' }));
+            message.error(t('purchases.suppliers.messages.load_error'));
         } finally {
             setLoading(false);
         }
@@ -48,14 +48,14 @@ export const SuppliersPage: React.FC = () => {
         setModalLoading(true);
         try {
             await suppliersApi.create(values);
-            message.success(t('common.success_create_supplier', { defaultValue: 'Supplier created successfully' }));
+            message.success(t('purchases.suppliers.messages.success_create'));
             setModalVisible(false);
             fetchSuppliers();
         } catch (error: any) {
             if (error.message?.includes('RIF')) {
-                message.error(t('common.error_rif_registered', { defaultValue: 'The RIF is already registered' }));
+                message.error(t('purchases.suppliers.messages.error_rif_registered'));
             } else {
-                message.error(t('common.error_create_supplier', { defaultValue: 'Error creating supplier' }));
+                message.error(t('purchases.suppliers.messages.error_create'));
             }
         } finally {
             setModalLoading(false);
@@ -67,12 +67,12 @@ export const SuppliersPage: React.FC = () => {
         setModalLoading(true);
         try {
             await suppliersApi.update(editingSupplier.id, values);
-            message.success(t('common.success_update_supplier', { defaultValue: 'Supplier updated successfully' }));
+            message.success(t('purchases.suppliers.messages.success_update'));
             setModalVisible(false);
             setEditingSupplier(null);
             fetchSuppliers();
         } catch (error) {
-            message.error(t('common.error_update_supplier', { defaultValue: 'Error updating supplier' }));
+            message.error(t('purchases.suppliers.messages.error_update'));
         } finally {
             setModalLoading(false);
         }
@@ -85,16 +85,16 @@ export const SuppliersPage: React.FC = () => {
     const handleDelete = (id: string) => {
         modal.confirm({
             title: t('common.are_you_sure'),
-            content: t('common.deactivate_supplier_desc', { defaultValue: 'The supplier will be marked as inactive.' }),
-            okText: t('common.yes_deactivate', { defaultValue: 'Yes, Deactivate' }),
+            content: t('purchases.suppliers.messages.deactivate_confirm'),
+            okText: t('common.yes_deactivate'),
             cancelText: t('common.cancel'),
             onOk: async () => {
                 try {
                     await suppliersApi.remove(id);
-                    message.success(t('common.success_deactivate_supplier', { defaultValue: 'Supplier deactivated' }));
+                    message.success(t('purchases.suppliers.messages.success_deactivate'));
                     fetchSuppliers();
                 } catch (error) {
-                    message.error(t('common.error_deactivate_supplier', { defaultValue: 'Error deactivating supplier' }));
+                    message.error(t('purchases.suppliers.messages.error_deactivate'));
                 }
             },
         });
@@ -107,7 +107,7 @@ export const SuppliersPage: React.FC = () => {
 
     const columns = [
         {
-            title: t('common.commercial_name', { defaultValue: 'Commercial Name / Legal Entity' }),
+            title: t('purchases.suppliers.comercial_name'),
             key: 'name',
             render: (_: any, record: Supplier) => (
                 <Space direction="vertical" size={0}>
@@ -117,13 +117,13 @@ export const SuppliersPage: React.FC = () => {
             ),
         },
         {
-            title: t('common.rif', { defaultValue: 'RIF (Tax ID)' }),
+            title: t('purchases.suppliers.rif'),
             dataIndex: 'rif',
             key: 'rif',
             render: (text: string) => <Tag color="blue">{text}</Tag>,
         },
         {
-            title: t('common.contact', { defaultValue: 'Contact' }),
+            title: t('purchases.suppliers.contact_name'),
             key: 'contact',
             render: (_: any, record: Supplier) => (
                 <Space direction="vertical" size={0}>
@@ -151,7 +151,7 @@ export const SuppliersPage: React.FC = () => {
             key: 'active',
             render: (active: boolean) => (
                 <Tag color={active ? 'success' : 'error'}>
-                    {active ? t('common.active', { defaultValue: 'Active' }) : t('common.inactive', { defaultValue: 'Inactive' })}
+                    {active ? t('common.active') : t('common.inactive')}
                 </Tag>
             )
         },
@@ -160,7 +160,7 @@ export const SuppliersPage: React.FC = () => {
             key: 'actions',
             render: (_: any, record: Supplier) => (
                 <Space>
-                    <Tooltip title="Edit">
+                    <Tooltip title={t('common.edit')}>
                         <Button
                             icon={<EditOutlined />}
                             onClick={() => openEditModal(record)}
@@ -168,7 +168,7 @@ export const SuppliersPage: React.FC = () => {
                         />
                     </Tooltip>
                     {record.active && (
-                        <Tooltip title={t('common.deactivate', { defaultValue: 'Deactivate' })}>
+                        <Tooltip title={t('common.deactivate')}>
                             <Button
                                 icon={<DeleteOutlined />}
                                 danger
@@ -196,11 +196,11 @@ export const SuppliersPage: React.FC = () => {
                     <Space direction={isMobile ? 'vertical' : 'horizontal'} style={{ width: isMobile ? '100%' : 'auto' }}>
                         <Space>
                             <ShopOutlined style={{ fontSize: isMobile ? '20px' : '24px', color: '#1890ff' }} />
-                            <h1 style={{ margin: 0, fontSize: isMobile ? '20px' : '24px' }}>{t('menu.purchases.suppliers')}</h1>
+                            <h1 style={{ margin: 0, fontSize: isMobile ? '20px' : '24px' }}>{t('purchases.suppliers.title')}</h1>
                         </Space>
                         <Space.Compact style={{ width: isMobile ? '100%' : 'auto' }}>
                             <Input
-                                placeholder={t('common.search_suppliers', { defaultValue: 'Search suppliers...' })}
+                                placeholder={t('purchases.suppliers.title') + '...'}
                                 prefix={<SearchOutlined />}
                                 style={{ width: isMobile ? '100%' : 250 }}
                                 value={searchTerm}
@@ -228,7 +228,7 @@ export const SuppliersPage: React.FC = () => {
                                     setModalVisible(true);
                                 }}
                             >
-                                {isMobile ? t('common.new') : t('common.new_supplier', { defaultValue: 'New Supplier' })}
+                                {isMobile ? t('common.new') : t('purchases.suppliers.new')}
                             </Button>
                         </Space>
                     </Space>
@@ -243,7 +243,7 @@ export const SuppliersPage: React.FC = () => {
                         defaultPageSize: 10,
                         showSizeChanger: true,
                         pageSizeOptions: ['10', '20', '50', '100'],
-                        showTotal: (total, range) => t('common.pagination_total', { rangeStart: range[0], rangeEnd: range[1], total, defaultValue: `${range[0]}-${range[1]} of ${total}` })
+                        showTotal: (total, range) => t('common.pagination_total', { rangeStart: range[0], rangeEnd: range[1], total })
                     }}
                     scroll={{ x: 'max-content' }}
                 />

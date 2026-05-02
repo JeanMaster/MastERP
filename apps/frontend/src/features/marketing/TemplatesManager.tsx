@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { marketingApi } from '../../services/marketingApi';
 import { PlusOutlined, DeleteOutlined, FileTextOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
+import { useTranslation } from 'react-i18next';
 
 const { TextArea } = Input;
 const { Title, Text } = Typography;
@@ -14,6 +15,7 @@ const { Title, Text } = Typography;
  * Supports dynamic variables (name, tier, points) that are automatically replaced during campaign execution.
  */
 export const TemplatesManager = () => {
+    const { t } = useTranslation();
     const [isModalVisible, setIsModalVisible] = useState(false);
     const [form] = Form.useForm();
     const queryClient = useQueryClient();
@@ -26,24 +28,24 @@ export const TemplatesManager = () => {
     const createMutation = useMutation({
         mutationFn: marketingApi.createTemplate,
         onSuccess: () => {
-            message.success('Message template created successfully');
+            message.success(t('marketing.templates.success_create'));
             queryClient.invalidateQueries({ queryKey: ['marketing-templates'] });
             setIsModalVisible(false);
             form.resetFields();
         },
         onError: () => {
-            message.error('Failed to create template');
+            message.error(t('marketing.templates.error_create'));
         }
     });
 
     const deleteMutation = useMutation({
         mutationFn: marketingApi.deleteTemplate,
         onSuccess: () => {
-            message.success('Template deleted');
+            message.success(t('marketing.templates.success_delete'));
             queryClient.invalidateQueries({ queryKey: ['marketing-templates'] });
         },
         onError: () => {
-            message.error('Error deleting template');
+            message.error(t('marketing.templates.error_delete'));
         }
     });
 
@@ -72,13 +74,13 @@ export const TemplatesManager = () => {
 
     const columns = [
         { 
-            title: 'Template Name', 
+            title: t('marketing.templates.table.name'), 
             dataIndex: 'name', 
             key: 'name',
             render: (text: string) => <strong>{text}</strong>
         },
         { 
-            title: 'Category', 
+            title: t('marketing.templates.table.category'), 
             dataIndex: 'category', 
             key: 'category',
             render: (cat: string) => {
@@ -88,34 +90,38 @@ export const TemplatesManager = () => {
                     BIRTHDAY: 'magenta',
                     RETENTION: 'purple'
                 };
-                return <Tag color={colorMap[cat] || 'default'}>{cat}</Tag>;
+                return (
+                    <Tag color={colorMap[cat] || 'default'}>
+                        {t(`marketing.templates.categories.${cat.toLowerCase()}`, { defaultValue: cat })}
+                    </Tag>
+                );
             }
         },
         { 
-            title: 'Message Content', 
+            title: t('marketing.templates.table.content'), 
             dataIndex: 'content', 
             key: 'content',
             ellipsis: true,
             render: (text: string) => <Text type="secondary">{text}</Text>
         },
         { 
-            title: 'Date Created', 
+            title: t('marketing.templates.table.date'), 
             dataIndex: 'createdAt', 
             key: 'createdAt',
             render: (date: string) => dayjs(date).format('MM/DD/YYYY')
         },
         {
-            title: 'Actions',
+            title: t('common.actions'),
             key: 'actions',
             width: 100,
             render: (_: any, record: any) => (
                 <Space>
                     <Popconfirm
-                        title="Delete this template?"
-                        description="This action cannot be undone. Past campaigns will not be affected."
+                        title={t('marketing.templates.delete_confirm')}
+                        description={t('marketing.templates.delete_confirm_desc')}
                         onConfirm={() => deleteMutation.mutate(record.id)}
-                        okText="Yes, delete"
-                        cancelText="Cancel"
+                        okText={t('common.yes')}
+                        cancelText={t('common.no')}
                     >
                         <Button danger icon={<DeleteOutlined />} size="small" />
                     </Popconfirm>
@@ -128,8 +134,8 @@ export const TemplatesManager = () => {
         <div style={{ padding: '24px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
                 <div>
-                    <Title level={2} style={{ margin: 0 }}><FileTextOutlined /> Message Templates</Title>
-                    <Text type="secondary">Create reusable message structures for your marketing campaigns.</Text>
+                    <Title level={2} style={{ margin: 0 }}><FileTextOutlined /> {t('marketing.templates.title')}</Title>
+                    <Text type="secondary">{t('marketing.templates.subtitle')}</Text>
                 </div>
                 <Button 
                     type="primary" 
@@ -137,7 +143,7 @@ export const TemplatesManager = () => {
                     onClick={() => setIsModalVisible(true)}
                     size="large"
                 >
-                    Create Template
+                    {t('marketing.templates.create_button')}
                 </Button>
             </div>
 
@@ -153,7 +159,7 @@ export const TemplatesManager = () => {
             </Card>
 
             <Modal
-                title="Create New Message Template"
+                title={t('marketing.templates.modal_title')}
                 open={isModalVisible}
                 onOk={handleCreate}
                 onCancel={() => {
@@ -161,50 +167,50 @@ export const TemplatesManager = () => {
                     form.resetFields();
                 }}
                 confirmLoading={createMutation.isPending}
-                okText="Create Template (F9)"
+                okText={t('marketing.templates.create_button_shortcut')}
                 width={600}
             >
                 <Form form={form} layout="vertical" style={{ marginTop: 20 }}>
                     <Form.Item 
                         name="name" 
-                        label="Template Title"
-                        rules={[{ required: true, message: 'Please enter a descriptive name' }]}
+                        label={t('marketing.templates.name_label')}
+                        rules={[{ required: true, message: t('common.required') }]}
                     >
-                        <Input placeholder="e.g., VIP Flash Sale Invite" />
+                        <Input placeholder={t('marketing.templates.name_placeholder')} />
                     </Form.Item>
                     
                     <Form.Item 
                         name="category" 
-                        label="Purpose / Category"
+                        label={t('marketing.templates.category_label')}
                         initialValue="PROMOTIONAL"
                         rules={[{ required: true }]}
                     >
                         <Select>
-                            <Select.Option value="PROMOTIONAL">Promotional</Select.Option>
-                            <Select.Option value="INFO">Informational</Select.Option>
-                            <Select.Option value="BIRTHDAY">Birthday Wishes</Select.Option>
-                            <Select.Option value="RETENTION">Retention / Re-engagement</Select.Option>
+                            <Select.Option value="PROMOTIONAL">{t('marketing.templates.categories.promotional')}</Select.Option>
+                            <Select.Option value="INFO">{t('marketing.templates.categories.info')}</Select.Option>
+                            <Select.Option value="BIRTHDAY">{t('marketing.templates.categories.birthday')}</Select.Option>
+                            <Select.Option value="RETENTION">{t('marketing.templates.categories.retention')}</Select.Option>
                         </Select>
                     </Form.Item>
 
                     <Form.Item 
                         name="content" 
-                        label="WhatsApp Message Body"
-                        rules={[{ required: true, message: 'Message content cannot be empty' }]}
-                        tooltip="Use curly braces for dynamic variables: {name}, {tier}, and {points}"
+                        label={t('marketing.templates.content_label')}
+                        rules={[{ required: true, message: t('common.required') }]}
+                        tooltip={t('marketing.templates.content_tooltip')}
                     >
                         <TextArea 
                             rows={6} 
-                            placeholder="Hi {name}! Since you are a {tier} customer, we have a special gift for you..."
+                            placeholder={t('marketing.templates.content_placeholder')}
                         />
                     </Form.Item>
                     
                     <div style={{ background: '#f5f5f5', padding: '16px', borderRadius: '8px', fontSize: '13px', border: '1px solid #eee' }}>
-                        <Text strong>Available Dynamic Variables:</Text>
+                        <Text strong>{t('marketing.templates.variables_title')}</Text>
                         <ul style={{ margin: '8px 0 0 0', paddingLeft: '20px', color: '#666' }}>
-                            <li><code>{'{name}'}</code>: Customer's first name</li>
-                            <li><code>{'{tier}'}</code>: Loyalty level (VIP, Gold, Silver, Bronze)</li>
-                            <li><code>{'{points}'}</code>: Total accumulated loyalty points</li>
+                            <li><code>{'{name}'}</code>: {t('marketing.templates.var_name_desc')}</li>
+                            <li><code>{'{tier}'}</code>: {t('marketing.templates.var_tier_desc')}</li>
+                            <li><code>{'{points}'}</code>: {t('marketing.templates.var_points_desc')}</li>
                         </ul>
                     </div>
                 </Form>

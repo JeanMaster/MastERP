@@ -106,7 +106,7 @@ export const EmployeesPage = () => {
             align: 'center' as const,
             render: (_: any, record: Employee) => (
                 <Tag color={record.isActive ? 'green' : 'red'}>
-                    {record.isActive ? t('users.active') : t('users.inactive')}
+                    {record.isActive ? t('hr.active') : t('hr.inactive')}
                 </Tag>
             )
         },
@@ -151,7 +151,7 @@ export const EmployeesPage = () => {
                 rowKey="id"
                 loading={isLoading}
                 pagination={{
-                    showTotal: (total) => t('hr.payroll.messages.total_periods', { total })
+                    showTotal: (total) => t('hr.employees.messages.total_employees', { total })
                 }}
             />
 

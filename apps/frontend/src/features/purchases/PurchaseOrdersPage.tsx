@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Table, Button, Tag, Row, Col, Card, App, Grid, Typography, Space, Tooltip, Popconfirm } from 'antd';
 import { PlusOutlined, ReloadOutlined, WhatsAppOutlined, EyeOutlined, DeleteOutlined } from '@ant-design/icons';
+import { useTranslation } from 'react-i18next';
 import dayjs from 'dayjs';
 import { purchaseOrdersApi } from '../../services/purchaseOrdersApi';
 import type { PurchaseOrder } from '../../services/purchaseOrdersApi';
@@ -17,6 +18,7 @@ export const PurchaseOrdersPage: React.FC = () => {
     const screens = Grid.useBreakpoint();
     const isMobile = !screens.lg;
     const { message } = App.useApp();
+    const { t } = useTranslation();
     const [orders, setOrders] = useState<PurchaseOrder[]>([]);
     const [loading, setLoading] = useState(true);
     const [modalVisible, setModalVisible] = useState(false);
@@ -35,7 +37,7 @@ export const PurchaseOrdersPage: React.FC = () => {
             const data = await purchaseOrdersApi.getAll();
             setOrders(data);
         } catch (error) {
-            message.error('Error loading purchase orders');
+            message.error(t('purchase_orders.error_load'));
         } finally {
             setLoading(false);
         }
@@ -56,10 +58,10 @@ export const PurchaseOrdersPage: React.FC = () => {
     const handleDelete = async (id: string) => {
         try {
             await purchaseOrdersApi.delete(id);
-            message.success('Order deleted successfully');
+            message.success(t('purchase_orders.delete_success'));
             fetchOrders();
         } catch (error: any) {
-            message.error(error.response?.data?.message || 'Error deleting purchase order');
+            message.error(error.response?.data?.message || t('purchase_orders.delete_error'));
         }
     };
 
@@ -69,22 +71,22 @@ export const PurchaseOrdersPage: React.FC = () => {
     const handleShareWhatsApp = (order: PurchaseOrder) => {
         const supplierPhone = order.supplier.phone?.replace(/\D/g, '');
         if (!supplierPhone) {
-            message.warning('Supplier has no phone number registered');
+            message.warning(t('purchase_orders.no_phone'));
             return;
         }
 
-        let text = `*Purchase Order from: ${companyName || 'Our Company'}*\n`;
+        let text = `*${t('purchase_orders.wa_header', { company: companyName || t('purchase_orders.our_company') })}*\n`;
         text += `ID: ${order.id.slice(0, 8)}\n`;
-        text += `Date: ${dayjs(order.orderDate).format('MM/DD/YYYY')}\n\n`;
-        text += `*Items:*\n`;
+        text += `${t('common.date')}: ${dayjs(order.orderDate).format('DD/MM/YYYY')}\n\n`;
+        text += `*${t('common.items')}:*\n`;
 
         order.items.forEach((item, index) => {
-            text += `${index + 1}. ${item.product?.name || 'Product'} - SKU: ${item.product?.sku || 'N/A'}\n`;
-            text += `   Qty: ${item.quantity}\n`;
+            text += `${index + 1}. ${item.product?.name || t('common.product')} - SKU: ${item.product?.sku || 'N/A'}\n`;
+            text += `   ${t('common.quantity')}: ${item.quantity}\n`;
         });
 
         if (order.notes) {
-            text += `\n*Note:* ${order.notes}`;
+            text += `\n*${t('common.notes')}:* ${order.notes}`;
         }
 
         const encodedText = encodeURIComponent(text);
@@ -99,19 +101,19 @@ export const PurchaseOrdersPage: React.FC = () => {
 
     const columns = [
         {
-            title: 'Date',
+            title: t('common.date'),
             dataIndex: 'orderDate',
             key: 'date',
-            render: (date: string) => dayjs(date).format('MM/DD/YYYY'),
+            render: (date: string) => dayjs(date).format('DD/MM/YYYY'),
             sorter: (a: PurchaseOrder, b: PurchaseOrder) => dayjs(a.orderDate).unix() - dayjs(b.orderDate).unix(),
         },
         {
-            title: 'Supplier',
+            title: t('common.supplier'),
             dataIndex: ['supplier', 'comercialName'],
             key: 'supplier',
         },
         {
-            title: 'Total',
+            title: t('common.total'),
             dataIndex: 'total',
             key: 'total',
             render: (total: number, record: PurchaseOrder) => (
@@ -119,32 +121,33 @@ export const PurchaseOrdersPage: React.FC = () => {
             ),
         },
         {
-            title: 'Status',
+            title: t('common.status'),
             dataIndex: 'status',
             key: 'status',
             render: (status: string) => {
-                let color = 'orange';
-                let label = status;
-                if (status === 'COMPLETED') { color = 'green'; label = 'Received'; }
-                if (status === 'CANCELLED') { color = 'red'; label = 'Cancelled'; }
-                if (status === 'PENDING') { color = 'blue'; label = 'Pending'; }
-                return <Tag color={color}>{label}</Tag>;
+                const statusMap: Record<string, { color: string; label: string }> = {
+                    COMPLETED: { color: 'green', label: t('purchase_orders.status_received') },
+                    CANCELLED: { color: 'red',   label: t('purchase_orders.status_cancelled') },
+                    PENDING:   { color: 'blue',   label: t('purchase_orders.status_pending') },
+                };
+                const s = statusMap[status] || { color: 'orange', label: status };
+                return <Tag color={s.color}>{s.label}</Tag>;
             },
         },
         {
-            title: 'Actions',
+            title: t('common.actions'),
             key: 'actions',
             fixed: isMobile ? false : ('right' as const),
             render: (_: any, record: PurchaseOrder) => (
                 <Space>
-                    <Tooltip title="View Details">
+                    <Tooltip title={t('purchase_orders.view_details')}>
                         <Button
                             icon={<EyeOutlined />}
                             type="text"
                             onClick={() => handleViewDetails(record)}
                         />
                     </Tooltip>
-                    <Tooltip title="Send via WhatsApp">
+                    <Tooltip title={t('purchase_orders.send_whatsapp')}>
                         <Button
                             icon={<WhatsAppOutlined />}
                             type="text"
@@ -154,10 +157,10 @@ export const PurchaseOrdersPage: React.FC = () => {
                     </Tooltip>
                     {record.status === 'PENDING' && (
                         <Popconfirm
-                            title="Delete this order?"
+                            title={t('purchase_orders.delete_confirm')}
                             onConfirm={() => handleDelete(record.id)}
-                            okText="Yes"
-                            cancelText="No"
+                            okText={t('common.yes')}
+                            cancelText={t('common.no')}
                         >
                             <Button
                                 icon={<DeleteOutlined />}
@@ -176,7 +179,9 @@ export const PurchaseOrdersPage: React.FC = () => {
             <Card>
                 <Row justify="space-between" align="middle" gutter={[16, 16]} style={{ marginBottom: 24 }}>
                     <Col xs={24} md={12}>
-                        <Typography.Title level={isMobile ? 3 : 2} style={{ margin: 0 }}>📋 Purchase Orders</Typography.Title>
+                        <Typography.Title level={isMobile ? 3 : 2} style={{ margin: 0 }}>
+                            📋 {t('purchase_orders.title')}
+                        </Typography.Title>
                     </Col>
                     <Col xs={24} md={12} style={{ textAlign: isMobile ? 'left' : 'right' }}>
                         <Space wrap={isMobile}>
@@ -187,7 +192,7 @@ export const PurchaseOrdersPage: React.FC = () => {
                                 onClick={() => setModalVisible(true)}
                                 block={isMobile}
                             >
-                                New Order
+                                {t('purchase_orders.new_order')}
                             </Button>
                         </Space>
                     </Col>

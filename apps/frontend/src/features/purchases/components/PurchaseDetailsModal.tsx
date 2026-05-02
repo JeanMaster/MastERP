@@ -1,5 +1,6 @@
 import React from 'react';
 import { Modal, Descriptions, Table, Tag } from 'antd';
+import { useTranslation } from 'react-i18next';
 import dayjs from 'dayjs';
 import type { Purchase } from '../../../services/purchasesApi';
 import { formatVenezuelanPrice } from '../../../utils/formatters';
@@ -20,29 +21,30 @@ export const PurchaseDetailsModal: React.FC<PurchaseDetailsModalProps> = ({
     purchase,
     onClose
 }) => {
+    const { t } = useTranslation();
     if (!purchase) return null;
 
     const columns = [
         {
-            title: 'Product',
+            title: t('purchases.details.product'),
             dataIndex: ['product', 'name'],
             key: 'product',
         },
         {
-            title: 'Quantity',
+            title: t('purchases.details.quantity'),
             dataIndex: 'quantity',
             key: 'quantity',
             align: 'right' as const,
         },
         {
-            title: 'Unit Cost',
+            title: t('purchases.details.unit_cost'),
             dataIndex: 'cost',
             key: 'cost',
             align: 'right' as const,
             render: (cost: number) => `${purchase.currencyCode} ${formatVenezuelanPrice(cost)}`,
         },
         {
-            title: 'Total',
+            title: t('purchases.details.total'),
             dataIndex: 'total',
             key: 'total',
             align: 'right' as const,
@@ -52,33 +54,33 @@ export const PurchaseDetailsModal: React.FC<PurchaseDetailsModalProps> = ({
 
     return (
         <Modal
-            title={`Purchase Details - Invoice #${purchase.invoiceNumber || 'N/A'}`}
+            title={t('purchases.details.title', { number: purchase.invoiceNumber || 'N/A' })}
             open={visible}
             onCancel={onClose}
             footer={null}
             width={800}
         >
             <Descriptions bordered size="small" column={2}>
-                <Descriptions.Item label="Invoice Date">
+                <Descriptions.Item label={t('purchases.details.invoice_date')}>
                     {dayjs(purchase.invoiceDate).format('MM/DD/YYYY')}
                 </Descriptions.Item>
-                <Descriptions.Item label="Supplier">
+                <Descriptions.Item label={t('purchases.details.supplier')}>
                     {purchase.supplier?.comercialName || 'N/A'}
                 </Descriptions.Item>
-                <Descriptions.Item label="Status">
+                <Descriptions.Item label={t('purchases.details.status')}>
                     <Tag color={purchase.status === 'COMPLETED' ? 'green' : 'orange'}>
-                        {purchase.status === 'COMPLETED' ? 'Completed' : purchase.status}
+                        {purchase.status === 'COMPLETED' ? t('purchases.completed') : purchase.status}
                     </Tag>
                 </Descriptions.Item>
-                <Descriptions.Item label="Currency">
+                <Descriptions.Item label={t('purchases.details.currency')}>
                     {purchase.currencyCode} (Rate: {purchase.exchangeRate})
                 </Descriptions.Item>
-                <Descriptions.Item label="Grand Total" span={2}>
+                <Descriptions.Item label={t('purchases.details.grand_total')} span={2}>
                     <strong>{purchase.currencyCode} {formatVenezuelanPrice(Number(purchase.total))}</strong>
                 </Descriptions.Item>
             </Descriptions>
 
-            <h3 style={{ marginTop: 24, marginBottom: 16 }}>Received Items</h3>
+            <h3 style={{ marginTop: 24, marginBottom: 16 }}>{t('purchases.details.received_items')}</h3>
             <Table
                 dataSource={purchase.items}
                 columns={columns}

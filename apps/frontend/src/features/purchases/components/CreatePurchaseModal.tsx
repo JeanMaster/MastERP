@@ -254,7 +254,7 @@ export const CreatePurchaseModal: React.FC<CreatePurchaseModalProps> = ({ visibl
     };
 
     const columns = [
-        { title: t('common.product', { defaultValue: 'Product' }), dataIndex: 'productName', key: 'name' },
+        { title: t('common.product'), dataIndex: 'productName', key: 'name' },
         {
             title: t('common.quantity'),
             key: 'quantity',
@@ -268,7 +268,7 @@ export const CreatePurchaseModal: React.FC<CreatePurchaseModalProps> = ({ visibl
             )
         },
         {
-            title: `${t('common.unit_cost', { defaultValue: 'Unit Cost' })} (${selectedCurrency?.symbol || '$'})`,
+            title: `${t('purchases.details.unit_cost')} (${selectedCurrency?.symbol || '$'})`,
             key: 'cost',
             render: (_: any, record: any) => (
                 <InputNumber
@@ -302,7 +302,7 @@ export const CreatePurchaseModal: React.FC<CreatePurchaseModalProps> = ({ visibl
         <Modal
             title={
                 <Row align="middle" justify="space-between" style={{ marginRight: 32 }}>
-                    <Col>Register Purchase / Reception</Col>
+                    <Col>{t('purchases.register.title')}</Col>
                     <Col>
                         {pendingOrders.length > 0 && (
                             <Button
@@ -311,7 +311,7 @@ export const CreatePurchaseModal: React.FC<CreatePurchaseModalProps> = ({ visibl
                                 onClick={() => setOrderSelectionVisible(true)}
                                 type="dashed"
                             >
-                                {t('common.load_from_order', { defaultValue: 'Load from Order' })} ({pendingOrders.length})
+                                {t('purchases.register.load_from_order')} ({pendingOrders.length})
                             </Button>
                         )}
                     </Col>
@@ -323,7 +323,7 @@ export const CreatePurchaseModal: React.FC<CreatePurchaseModalProps> = ({ visibl
             footer={[
                 <Button key="back" onClick={onCancel}>{t('common.cancel')}</Button>,
                 <Button key="submit" type="primary" loading={loading} onClick={handleSubmit}>
-                    {t('common.process_purchase', { defaultValue: 'Process Purchase' })}
+                    {t('purchases.register.process_button')}
                 </Button>
             ]}
         >
@@ -333,22 +333,22 @@ export const CreatePurchaseModal: React.FC<CreatePurchaseModalProps> = ({ visibl
                         <Form.Item name="supplierId" label={t('common.supplier')} rules={[{ required: true }]}>
                             <Select
                                 showSearch
-                                placeholder={t('common.select_supplier')}
+                                placeholder={t('purchases.register.select_supplier')}
                                 optionFilterProp="children"
                             >
                                 {suppliers.map(s => (
                                     <Select.Option key={s.id} value={s.id}>{s.comercialName}</Select.Option>
-                                ))}
+                                    ))}
                             </Select>
                         </Form.Item>
                     </Col>
                     <Col span={8}>
-                        <Form.Item name="invoiceDate" label={t('common.invoice_date', { defaultValue: 'Invoice Date' })} rules={[{ required: true }]}>
+                        <Form.Item name="invoiceDate" label={t('purchases.register.invoice_date')} rules={[{ required: true }]}>
                             <DatePicker style={{ width: '100%' }} />
                         </Form.Item>
                     </Col>
                     <Col span={8}>
-                        <Form.Item name="invoiceNumber" label={t('common.invoice_control_number', { defaultValue: 'Control / Invoice #' })}>
+                        <Form.Item name="invoiceNumber" label={t('purchases.register.control_invoice')}>
                             <Input placeholder="00-000000" />
                         </Form.Item>
                     </Col>
@@ -356,7 +356,7 @@ export const CreatePurchaseModal: React.FC<CreatePurchaseModalProps> = ({ visibl
 
                 <Row gutter={16}>
                     <Col span={8}>
-                        <Form.Item name="currencyCode" label={t('common.payment_currency', { defaultValue: 'Payment Currency' })} rules={[{ required: true }]}>
+                        <Form.Item name="currencyCode" label={t('purchases.register.payment_currency')} rules={[{ required: true }]}>
                             <Select
                                 placeholder={t('common.currency')}
                                 onChange={(val) => {
@@ -376,7 +376,7 @@ export const CreatePurchaseModal: React.FC<CreatePurchaseModalProps> = ({ visibl
                     </Col>
                     {selectedCurrency && !selectedCurrency.isPrimary && (
                         <Col span={8}>
-                            <Form.Item label={`${t('common.exchange_rate', { defaultValue: 'Exchange Rate' })} (${selectedCurrency.code})`}>
+                            <Form.Item label={`${t('purchases.register.exchange_rate')} (${selectedCurrency.code})`}>
                                 <InputNumber
                                     min={0.0001}
                                     step={0.01}
@@ -390,12 +390,12 @@ export const CreatePurchaseModal: React.FC<CreatePurchaseModalProps> = ({ visibl
                 </Row>
             </Form>
 
-            <Divider>Products</Divider>
+            <Divider>{t('common.products')}</Divider>
 
             <div style={{ marginBottom: 16 }}>
                 <Select
                     showSearch
-                    placeholder="Search product to add..."
+                    placeholder={t('purchases.register.search_product_placeholder')}
                     style={{ width: '100%' }}
                     defaultActiveFirstOption={false}
                     showArrow={false}
@@ -412,7 +412,7 @@ export const CreatePurchaseModal: React.FC<CreatePurchaseModalProps> = ({ visibl
                 >
                     {products.map(p => (
                         <Select.Option key={p.id} value={p.id}>
-                            {p.name} ({p.sku}) - {t('common.stock', { defaultValue: 'Stock' })}: {p.stock}
+                            {p.name} ({p.sku}) - {t('purchases.register.stock')}: {p.stock}
                         </Select.Option>
                     ))}
                 </Select>
@@ -443,7 +443,7 @@ export const CreatePurchaseModal: React.FC<CreatePurchaseModalProps> = ({ visibl
                             <Table.Summary.Row>
                                 <Table.Summary.Cell index={0} colSpan={3} align="right">
                                     <Space>
-                                        <Typography.Text type="secondary">{t('common.tax_deductible_vat', { defaultValue: 'Tax Deductible (VAT)' })}</Typography.Text>
+                                        <Typography.Text type="secondary">{t('purchases.register.tax_deductible')}</Typography.Text>
                                         <Form.Item name="isTaxable" valuePropName="checked" noStyle>
                                             <Select
                                                 size="small"
@@ -458,7 +458,7 @@ export const CreatePurchaseModal: React.FC<CreatePurchaseModalProps> = ({ visibl
                                                 ]}
                                             />
                                         </Form.Item>
-                                        <Typography.Text strong>{t('common.vat_16', { defaultValue: 'VAT (16%)' })}</Typography.Text>
+                                        <Typography.Text strong>{t('purchases.register.vat_16')}</Typography.Text>
                                     </Space>
                                 </Table.Summary.Cell>
                                 <Table.Summary.Cell index={1}>
@@ -499,7 +499,7 @@ export const CreatePurchaseModal: React.FC<CreatePurchaseModalProps> = ({ visibl
 
             {/* Order Selection Modal */}
             <Modal
-                title={t('common.select_pending_order', { defaultValue: 'Select Pending Order' })}
+                title={t('purchases.register.select_pending_order')}
                 open={orderSelectionVisible}
                 onCancel={() => setOrderSelectionVisible(false)}
                 footer={null}
@@ -510,15 +510,15 @@ export const CreatePurchaseModal: React.FC<CreatePurchaseModalProps> = ({ visibl
                     rowKey="id"
                     size="small"
                     columns={[
-                        { title: t('common.order_number', { defaultValue: 'Order #' }), dataIndex: 'id', render: (id) => id.slice(0, 8) },
+                        { title: t('purchases.register.order_number'), dataIndex: 'id', render: (id) => id.slice(0, 8) },
                         { title: t('common.supplier'), dataIndex: ['supplier', 'comercialName'] },
                         { title: t('common.date'), dataIndex: 'orderDate', render: (d) => dayjs(d).format('DD/MM/YYYY') },
                         { title: t('common.total'), dataIndex: 'total', render: (t, r) => `${r.currencyCode} ${t}` },
                         {
-                            title: t('common.action', { defaultValue: 'Action' }),
+                            title: t('common.actions'),
                             render: (_, record) => (
                                 <Button type="primary" size="small" onClick={() => handleSelectOrder(record.id)}>
-                                    {t('common.select', { defaultValue: 'Select' })}
+                                    {t('common.select')}
                                 </Button>
                             )
                         }

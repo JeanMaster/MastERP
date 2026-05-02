@@ -41,12 +41,12 @@ export const EmployeeFormModal: React.FC<Props> = ({ visible, onClose, employee 
             return employeesApi.create(values);
         },
         onSuccess: () => {
-            message.success(t('hr.success_save'));
+            message.success(t('hr.employees.messages.success_save'));
             queryClient.invalidateQueries({ queryKey: ['employees'] });
             onClose();
         },
         onError: () => {
-            message.error(t('hr.error_save'));
+            message.error(t('hr.employees.messages.error_save'));
         }
     });
 

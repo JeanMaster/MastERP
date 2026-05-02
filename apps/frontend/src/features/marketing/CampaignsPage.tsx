@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { marketingApi } from '../../services/marketingApi';
 import { RocketOutlined, PlusOutlined, WhatsAppOutlined, CheckCircleOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
+import { useTranslation } from 'react-i18next';
 
 const { Text, Title } = Typography;
 
@@ -13,6 +14,7 @@ const { Text, Title } = Typography;
  * Allows creating segmented campaigns, tracking delivery progress, and providing manual execution shortcuts via WhatsApp Web.
  */
 export const CampaignsPage = () => {
+    const { t } = useTranslation();
     const [isCreateModalVisible, setIsCreateModalVisible] = useState(false);
     const [viewCampaignId, setViewCampaignId] = useState<string | null>(null);
     const [form] = Form.useForm();
@@ -40,13 +42,13 @@ export const CampaignsPage = () => {
     const createMutation = useMutation({
         mutationFn: marketingApi.createCampaign,
         onSuccess: () => {
-            message.success('Campaign created. Recipient list generated.');
+            message.success(t('marketing.campaigns.success_create'));
             queryClient.invalidateQueries({ queryKey: ['marketing-campaigns'] });
             setIsCreateModalVisible(false);
             form.resetFields();
         },
         onError: (err: any) => {
-            message.error(err?.response?.data?.message || 'Error creating campaign');
+            message.error(err?.response?.data?.message || t('marketing.campaigns.error_create'));
         }
     });
 
@@ -56,7 +58,7 @@ export const CampaignsPage = () => {
     const markSentMutation = useMutation({
         mutationFn: marketingApi.markRecipientSent,
         onSuccess: () => {
-            message.success('Recipient marked as sent');
+            message.success(t('marketing.campaigns.recipient_marked'));
             queryClient.invalidateQueries({ queryKey: ['marketing-campaign-details', viewCampaignId] });
             queryClient.invalidateQueries({ queryKey: ['marketing-campaigns'] });
         }
@@ -102,24 +104,24 @@ export const CampaignsPage = () => {
 
     const columns = [
         { 
-            title: 'Campaign Name', 
+            title: t('marketing.campaigns.campaign_name'), 
             dataIndex: 'name', 
             key: 'name',
             render: (text: string) => <strong>{text}</strong>
         },
         { 
-            title: 'Target Segment', 
+            title: t('marketing.campaigns.target_segment'), 
             dataIndex: 'targetSegment', 
             key: 'targetSegment',
-            render: (seg: string) => <Tag color="blue">{seg}</Tag>
+            render: (seg: string) => <Tag color="blue">{t(`marketing.campaigns.segments.${seg.toLowerCase()}`, { defaultValue: seg })}</Tag>
         },
         { 
-            title: 'Template', 
+            title: t('marketing.campaigns.message_template'), 
             key: 'template',
             render: (_: any, record: any) => record.template?.name || 'N/A'
         },
         {
-            title: 'Delivery Progress',
+            title: t('marketing.campaigns.delivery_progress'),
             key: 'progress',
             width: 200,
             render: (_: any, record: any) => {
@@ -128,31 +130,31 @@ export const CampaignsPage = () => {
                     <div>
                         <Progress percent={percent} size="small" status={percent === 100 ? 'success' : 'active'} />
                         <div style={{ fontSize: '11px', textAlign: 'center', marginTop: 4 }}>
-                            {record.sentCount} / {record.totalRecipients} sent
+                            {t('marketing.campaigns.sent_count', { sent: record.sentCount, total: record.totalRecipients })}
                         </div>
                     </div>
                 );
             }
         },
         { 
-            title: 'Status', 
+            title: t('common.status'), 
             dataIndex: 'status', 
             key: 'status',
             align: 'center' as const,
             render: (status: string) => (
                 <Tag color={status === 'COMPLETED' ? 'success' : status === 'PENDING' ? 'processing' : 'default'}>
-                    {status}
+                    {t(`common.status_${status.toLowerCase()}`, { defaultValue: status })}
                 </Tag>
             )
         },
         { 
-            title: 'Date Created', 
+            title: t('marketing.campaigns.date_created'), 
             dataIndex: 'createdAt', 
             key: 'createdAt',
             render: (date: string) => dayjs(date).format('MM/DD/YYYY HH:mm')
         },
         {
-            title: 'Actions',
+            title: t('common.actions'),
             key: 'actions',
             render: (_: any, record: any) => (
                 <Button 
@@ -161,23 +163,23 @@ export const CampaignsPage = () => {
                     size="small"
                     onClick={() => setViewCampaignId(record.id)}
                 >
-                    Monitor / Execute
+                    {t('marketing.campaigns.monitor_execute')}
                 </Button>
             )
         }
     ];
 
     const recipientColumns = [
-        { title: 'Customer', dataIndex: 'clientName', key: 'clientName' },
-        { title: 'Phone', dataIndex: 'clientPhone', key: 'clientPhone' },
+        { title: t('common.customer'), dataIndex: 'clientName', key: 'clientName' },
+        { title: t('common.phone'), dataIndex: 'clientPhone', key: 'clientPhone' },
         { 
-            title: 'Delivery Status', 
+            title: t('marketing.campaigns.delivery_status', { defaultValue: 'Delivery Status' }), 
             dataIndex: 'status', 
             key: 'status',
-            render: (s: string) => s === 'SENT' ? <Tag color="green">Sent</Tag> : <Tag color="orange">Pending</Tag>
+            render: (s: string) => s === 'SENT' ? <Tag color="green">{t('marketing.campaigns.sent', { defaultValue: 'Sent' })}</Tag> : <Tag color="orange">{t('marketing.campaigns.pending', { defaultValue: 'Pending' })}</Tag>
         },
         {
-            title: 'Execution Actions',
+            title: t('marketing.campaigns.execution_actions'),
             key: 'action',
             render: (_: any, record: any) => (
                 <Space>
@@ -187,7 +189,7 @@ export const CampaignsPage = () => {
                         icon={<WhatsAppOutlined />}
                         onClick={() => handleWhatsAppClick(record.clientPhone, record.message)}
                     >
-                        Open WhatsApp
+                        {t('marketing.campaigns.open_whatsapp')}
                     </Button>
                     <Button 
                         type={record.status === 'SENT' ? 'default' : 'primary'}
@@ -195,7 +197,7 @@ export const CampaignsPage = () => {
                         disabled={record.status === 'SENT' || markSentMutation.isPending}
                         onClick={() => markSentMutation.mutate(record.id)}
                     >
-                        {record.status === 'SENT' ? 'Done' : 'Mark as Sent'}
+                        {record.status === 'SENT' ? t('marketing.campaigns.done') : t('marketing.campaigns.mark_as_sent')}
                     </Button>
                 </Space>
             )
@@ -206,8 +208,8 @@ export const CampaignsPage = () => {
         <div style={{ padding: '24px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
                 <div>
-                    <Title level={2} style={{ margin: 0 }}><RocketOutlined /> Mass Marketing Campaigns</Title>
-                    <Text type="secondary">Reach your customers directly through personalized messaging.</Text>
+                    <Title level={2} style={{ margin: 0 }}><RocketOutlined /> {t('marketing.campaigns.mass_campaigns')}</Title>
+                    <Text type="secondary">{t('marketing.campaigns.campaigns_subtitle')}</Text>
                 </div>
                 <Button 
                     type="primary" 
@@ -215,7 +217,7 @@ export const CampaignsPage = () => {
                     onClick={() => setIsCreateModalVisible(true)}
                     size="large"
                 >
-                    Launch New Campaign
+                    {t('marketing.campaigns.launch_new')}
                 </Button>
             </div>
 
@@ -226,34 +228,34 @@ export const CampaignsPage = () => {
                     loading={loadingCampaigns}
                     rowKey="id"
                     pagination={{
-                        showTotal: (total) => `Total: ${total} campaigns`
+                        showTotal: (total) => t('common.pagination_total_campaigns', { defaultValue: `Total: ${total} campaigns`, total })
                     }}
                 />
             </Card>
 
             <Modal
-                title="Launch New Campaign"
+                title={t('marketing.campaigns.launch_new')}
                 open={isCreateModalVisible}
                 onOk={handleCreate}
                 onCancel={() => setIsCreateModalVisible(false)}
                 confirmLoading={createMutation.isPending}
-                okText="Initialize Campaign (F9)"
+                okText={t('marketing.campaigns.launch_button_shortcut', { defaultValue: 'Initialize Campaign (F9)' })}
             >
                 <Form form={form} layout="vertical" style={{ marginTop: 20 }}>
                     <Form.Item 
                         name="name" 
-                        label="Internal Campaign Name"
-                        rules={[{ required: true, message: 'Please enter a name' }]}
+                        label={t('marketing.campaigns.internal_name')}
+                        rules={[{ required: true, message: t('common.required') }]}
                     >
-                        <Input placeholder="e.g., Black Friday 2025 VIP Preview" />
+                        <Input placeholder={t('marketing.campaigns.internal_name_placeholder')} />
                     </Form.Item>
 
                     <Form.Item 
                         name="templateId" 
-                        label="Message Template"
-                        rules={[{ required: true, message: 'Please select a template' }]}
+                        label={t('marketing.campaigns.message_template')}
+                        rules={[{ required: true, message: t('common.required') }]}
                     >
-                        <Select placeholder="Select a pre-defined template">
+                        <Select placeholder={t('marketing.campaigns.template_placeholder')}>
                             {templates?.map((t: any) => (
                                 <Select.Option key={t.id} value={t.id}>{t.name}</Select.Option>
                             ))}
@@ -262,28 +264,28 @@ export const CampaignsPage = () => {
 
                     <Form.Item 
                         name="targetSegment" 
-                        label="Target Segment"
-                        rules={[{ required: true, message: 'Please select a segment' }]}
-                        extra="The system will automatically replace template variables (e.g., {{name}}) for each customer in this segment."
+                        label={t('marketing.campaigns.target_segment')}
+                        rules={[{ required: true, message: t('common.required') }]}
+                        extra={t('marketing.campaigns.template_variable_hint')}
                     >
-                        <Select placeholder="Choose target audience">
-                            <Select.Option value="ALL">All Registered Customers</Select.Option>
-                            <Select.Option value="VIP">VIP (Diamond) Customers Only</Select.Option>
-                            <Select.Option value="GOLD">Gold Tier Customers Only</Select.Option>
-                            <Select.Option value="CHURN">Risk of Churn (Inactive Customers)</Select.Option>
-                            <Select.Option value="BIRTHDAY">Current Month Birthdays</Select.Option>
+                        <Select placeholder={t('marketing.campaigns.choose_audience')}>
+                            <Select.Option value="ALL">{t('marketing.campaigns.segments.all')}</Select.Option>
+                            <Select.Option value="VIP">{t('marketing.campaigns.segments.vip')}</Select.Option>
+                            <Select.Option value="GOLD">{t('marketing.campaigns.segments.gold')}</Select.Option>
+                            <Select.Option value="CHURN">{t('marketing.campaigns.segments.churn')}</Select.Option>
+                            <Select.Option value="BIRTHDAY">{t('marketing.campaigns.segments.birthday')}</Select.Option>
                         </Select>
                     </Form.Item>
                 </Form>
             </Modal>
 
             <Modal
-                title={`Campaign Monitor: ${campaignDetails?.name || ''}`}
+                title={t('marketing.campaigns.monitor_title', { name: campaignDetails?.name || '' })}
                 open={!!viewCampaignId}
                 onCancel={() => setViewCampaignId(null)}
                 footer={[
                     <Button key="close" onClick={() => setViewCampaignId(null)}>
-                        Close Monitor
+                        {t('marketing.campaigns.close_monitor')}
                     </Button>
                 ]}
                 width={900}
@@ -293,16 +295,16 @@ export const CampaignsPage = () => {
                 ) : campaignDetails ? (
                     <div>
                         <div style={{ marginBottom: 24 }}>
-                            <Text strong>Original Message Template:</Text>
+                            <Text strong>{t('marketing.campaigns.original_template')}</Text>
                             <div style={{ padding: '12px', background: '#f9f9f9', border: '1px solid #eee', borderRadius: '8px', whiteSpace: 'pre-wrap', marginTop: 8 }}>
                                 {campaignDetails.template?.content}
                             </div>
                         </div>
                         <Divider />
-                        <Title level={5}>Recipient List ({campaignDetails.totalRecipients})</Title>
+                        <Title level={5}>{t('marketing.campaigns.recipient_list', { count: campaignDetails.totalRecipients })}</Title>
                         <Alert 
-                            message="Campaign Execution Instructions"
-                            description='Click "Open WhatsApp" to launch the chat with the personalized message. After sending, click "Mark as Sent" to update the progress tracker.'
+                            message={t('marketing.campaigns.instructions_title')}
+                            description={t('marketing.campaigns.instructions_desc')}
                             type="info"
                             showIcon
                             style={{ marginBottom: 16 }}

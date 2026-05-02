@@ -8,6 +8,7 @@ import {
     StarFilled
 } from '@ant-design/icons';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip as RechartsTooltip } from 'recharts';
+import { useTranslation } from 'react-i18next';
 
 const { Title } = Typography;
 
@@ -17,6 +18,7 @@ const { Title } = Typography;
  * Visualizes customer segmentation (tiers), churn risk analysis, and provides actionable shortcuts for upcoming events like birthdays.
  */
 export const MarketingDashboard = () => {
+    const { t } = useTranslation();
     const { data: stats, isLoading } = useQuery({
         queryKey: ['marketing-stats'],
         queryFn: marketingApi.getStats,
@@ -26,42 +28,42 @@ export const MarketingDashboard = () => {
     if (isLoading) {
         return (
             <div style={{ textAlign: 'center', padding: '50px' }}>
-                <Spin size="large" tip="Loading marketing intelligence..." />
+                <Spin size="large" tip={t('marketing.dashboard.loading_intelligence')} />
             </div>
         );
     }
 
-    if (!stats) return <Empty description="No marketing data available" />;
+    if (!stats) return <Empty description={t('marketing.dashboard.no_data')} />;
 
     const tierData = [
-        { name: 'VIP (Diamond)', value: stats.tiers.vip, color: '#722ed3' },
-        { name: 'Gold', value: stats.tiers.gold, color: '#faad14' },
-        { name: 'Silver', value: stats.tiers.silver, color: '#1890ff' },
-        { name: 'Bronze', value: stats.tiers.bronze, color: '#8c8c8c' },
+        { name: t('marketing.campaigns.segments.vip'), value: stats.tiers.vip, color: '#722ed3' },
+        { name: t('marketing.campaigns.segments.gold'), value: stats.tiers.gold, color: '#faad14' },
+        { name: t('marketing.campaigns.segments.silver', { defaultValue: 'Silver' }), value: stats.tiers.silver, color: '#1890ff' },
+        { name: t('marketing.campaigns.segments.bronze', { defaultValue: 'Bronze' }), value: stats.tiers.bronze, color: '#8c8c8c' },
     ].filter(t => t.value > 0);
 
     /**
      * Opens a pre-filled WhatsApp message for customer birthdays.
      */
     const handleWhatsApp = (phone: string, name: string) => {
-        const message = encodeURIComponent(`Hi ${name}! We wish you a very happy birthday from the MastERP team. We have a special gift waiting for you on your next visit! 🎂🎁`);
+        const message = encodeURIComponent(t('marketing.dashboard.wa_birthday_msg', { name }));
         window.open(`https://wa.me/${phone.replace(/\D/g, '')}?text=${message}`, '_blank');
     };
 
     const birthdayColumns = [
         {
-            title: 'Customer',
+            title: t('common.customer'),
             dataIndex: 'name',
             key: 'name',
         },
         {
-            title: 'Day',
+            title: t('common.day', { defaultValue: 'Day' }),
             dataIndex: 'day',
             key: 'day',
             render: (day: number) => <Tag color="blue">{day}</Tag>
         },
         {
-            title: 'Action',
+            title: t('common.actions'),
             key: 'action',
             render: (_: any, record: any) => (
                 <Button 
@@ -71,7 +73,7 @@ export const MarketingDashboard = () => {
                     onClick={() => handleWhatsApp(record.phone, record.name)}
                     size="small"
                 >
-                    Send Wishes
+                    {t('marketing.dashboard.send_wishes', { defaultValue: 'Send Wishes' })}
                 </Button>
             )
         }
@@ -79,13 +81,13 @@ export const MarketingDashboard = () => {
 
     return (
         <div style={{ padding: '24px' }}>
-            <Title level={2} style={{ marginBottom: '24px' }}>📈 Marketing Control Center</Title>
+            <Title level={2} style={{ marginBottom: '24px' }}>📈 {t('marketing.dashboard.control_center_title')}</Title>
             
             <Row gutter={[16, 16]}>
                 <Col xs={24} md={8}>
                     <Card bordered={false}>
                         <Statistic 
-                            title="Total VIP Customers" 
+                            title={t('marketing.dashboard.total_vip')} 
                             value={stats.tiers.vip} 
                             prefix={<StarFilled style={{ color: '#722ed3' }} />} 
                             valueStyle={{ color: '#722ed3' }}
@@ -95,21 +97,21 @@ export const MarketingDashboard = () => {
                 <Col xs={24} md={8}>
                     <Card bordered={false}>
                         <Statistic 
-                            title="Churn Risk Rate" 
+                            title={t('marketing.dashboard.churn_rate')} 
                             value={stats.churn.percentage.toFixed(1)} 
                             suffix="%" 
                             prefix={<FallOutlined style={{ color: '#cf1322' }} />}
                             valueStyle={{ color: '#cf1322' }}
                         />
                         <div style={{ fontSize: '12px', color: '#8c8c8c' }}>
-                            {stats.churn.count} inactive customers (&gt; {stats.churn.days} days)
+                            {t('marketing.dashboard.inactive_customers', { count: stats.churn.count, days: stats.churn.days })}
                         </div>
                     </Card>
                 </Col>
                 <Col xs={24} md={8}>
                     <Card bordered={false}>
                         <Statistic 
-                            title="Birthdays This Month" 
+                            title={t('marketing.dashboard.birthdays_month')} 
                             value={stats.upcomingBirthdays.length} 
                             prefix={<GiftOutlined style={{ color: '#eb2f96' }} />}
                         />
@@ -117,7 +119,7 @@ export const MarketingDashboard = () => {
                 </Col>
 
                 <Col xs={24} lg={14}>
-                    <Card title="Customer Tier Segmentation" bordered={false} style={{ height: '100%', minHeight: '400px' }}>
+                    <Card title={t('marketing.dashboard.tier_segmentation')} bordered={false} style={{ height: '100%', minHeight: '400px' }}>
                         <div style={{ height: '300px' }}>
                             <ResponsiveContainer width="100%" height="100%">
                                 <PieChart>
@@ -143,7 +145,7 @@ export const MarketingDashboard = () => {
                 </Col>
 
                 <Col xs={24} lg={10}>
-                    <Card title="🎂 Upcoming Birthdays" bordered={false} style={{ height: '100%', minHeight: '400px' }}>
+                    <Card title={`🎂 ${t('marketing.dashboard.upcoming_birthdays')}`} bordered={false} style={{ height: '100%', minHeight: '400px' }}>
                         <Table 
                             dataSource={stats.upcomingBirthdays} 
                             columns={birthdayColumns} 
@@ -155,7 +157,7 @@ export const MarketingDashboard = () => {
                 </Col>
 
                 <Col xs={24}>
-                    <Card title="🏆 Top Points Accumulators" bordered={false}>
+                    <Card title={`🏆 ${t('marketing.dashboard.top_earners')}`} bordered={false}>
                         <TopEarnersTable />
                     </Card>
                 </Col>
@@ -169,20 +171,21 @@ export const MarketingDashboard = () => {
  * Lists customers with the highest loyalty points.
  */
 const TopEarnersTable = () => {
+    const { t } = useTranslation();
     const { data: topEarners, isLoading } = useQuery({
         queryKey: ['marketing-top-earners'],
         queryFn: marketingApi.getTopEarners,
     });
 
     const columns = [
-        { title: 'Customer Name', dataIndex: 'name', key: 'name' },
-        { title: 'Client ID', dataIndex: 'id', key: 'id' },
+        { title: t('common.name'), dataIndex: 'name', key: 'name' },
+        { title: t('common.code', { defaultValue: 'Client ID' }), dataIndex: 'id', key: 'id' },
         { 
-            title: 'Accumulated Points', 
+            title: t('marketing.dashboard.top_earners'), 
             dataIndex: 'loyaltyPoints', 
             key: 'loyaltyPoints',
             align: 'right' as const,
-            render: (val: any) => <Tag color="gold">{Number(val).toFixed(0)} pts</Tag>
+            render: (val: any) => <Tag color="gold">{Number(val).toFixed(0)} {t('pos.checkout.pts')}</Tag>
         },
     ];
 

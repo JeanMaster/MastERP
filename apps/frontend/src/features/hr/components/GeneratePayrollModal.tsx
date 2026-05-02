@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { Modal, Form, Input, DatePicker, message, Select } from 'antd';
+import { useTranslation } from 'react-i18next';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { payrollApi } from '../services/payrollApi';
 
@@ -14,6 +15,7 @@ interface Props {
  * It creates a time-bounded Period and automatically generates individual payment records for active employees based on the selected frequency.
  */
 export const GeneratePayrollModal: React.FC<Props> = ({ visible, onClose }) => {
+    const { t } = useTranslation();
     const [form] = Form.useForm();
     const queryClient = useQueryClient();
 
@@ -40,13 +42,13 @@ export const GeneratePayrollModal: React.FC<Props> = ({ visible, onClose }) => {
             return period;
         },
         onSuccess: () => {
-            message.success('Payroll generated successfully');
+            message.success(t('hr.payroll.success_generate'));
             queryClient.invalidateQueries({ queryKey: ['payroll-periods'] });
             onClose();
             form.resetFields();
         },
         onError: (error: any) => {
-            message.error('Error generating payroll: ' + (error.response?.data?.message || 'Unknown error'));
+            message.error(t('hr.payroll.error_generate') + ': ' + (error.response?.data?.message || t('common.error')));
         }
     });
 
@@ -75,43 +77,43 @@ export const GeneratePayrollModal: React.FC<Props> = ({ visible, onClose }) => {
 
     return (
         <Modal
-            title="Generate New Payroll"
+            title={t('hr.payroll.generate_new')}
             open={visible}
             onOk={handleOk}
             onCancel={onClose}
             confirmLoading={generateMutation.isPending}
-            okText="Generate Payroll (F9)"
+            okText={t('hr.payroll.generate_button_f9')}
+            width={600}
         >
             <Form form={form} layout="vertical">
                 <Form.Item
                     name="name"
-                    label="Period Name / Title"
-                    rules={[{ required: true, message: 'Example: 1st Fortnight - December' }]}
+                    label={t('hr.payroll.period_name')}
+                    rules={[{ required: true, message: t('hr.payroll.period_name_placeholder') }]}
                     initialValue={`Fortnight`}
                 >
-                    <Input placeholder="Example: 1st Fortnight - December 2025" />
+                    <Input placeholder={t('hr.payroll.period_name_placeholder')} />
                 </Form.Item>
 
-                <Form.Item name="frequency" label="Payment Group (Optional)">
-                    <Select placeholder="Generate for all active employees" allowClear>
-                        <Select.Option value="WEEKLY">Weekly Only</Select.Option>
-                        <Select.Option value="BIWEEKLY">Biweekly / Fortnightly Only</Select.Option>
-                        <Select.Option value="MONTHLY">Monthly Only</Select.Option>
+                <Form.Item name="frequency" label={t('hr.payroll.payment_group')}>
+                    <Select placeholder={t('hr.payroll.all_active')} allowClear>
+                        <Select.Option value="WEEKLY">{t('hr.payroll.weekly_only')}</Select.Option>
+                        <Select.Option value="BIWEEKLY">{t('hr.payroll.biweekly_only')}</Select.Option>
+                        <Select.Option value="MONTHLY">{t('hr.payroll.monthly_only')}</Select.Option>
                     </Select>
                 </Form.Item>
 
                 <Form.Item
                     name="dates"
-                    label="Date Range"
-                    rules={[{ required: true, message: 'Please select start and end dates' }]}
+                    label={t('hr.payroll.date_range')}
+                    rules={[{ required: true, message: t('hr.payroll.date_range_error') }]}
                 >
-                    <DatePicker.RangePicker style={{ width: '100%' }} format="MM/DD/YYYY" />
+                    <DatePicker.RangePicker style={{ width: '100%' }} format="DD/MM/YYYY" />
                 </Form.Item>
 
                 <div style={{ color: '#666', fontSize: '13px', background: '#f5f5f5', padding: '12px', borderRadius: '4px' }}>
                     <p style={{ margin: 0 }}>
-                        ℹ️ This will automatically generate payslips for all active employees in the selected group. 
-                        For Biweekly payrolls, it typically calculates 50% of the monthly base salary.
+                        ℹ️ {t('hr.payroll.info_desc')}
                     </p>
                 </div>
             </Form>

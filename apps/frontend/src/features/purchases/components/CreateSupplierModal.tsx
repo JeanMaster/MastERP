@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { Modal, Form, Input, Checkbox, Row, Col } from 'antd';
+import { useTranslation } from 'react-i18next';
 import type { CreateSupplierDto, Supplier } from '../../../services/suppliersApi';
 
 interface CreateSupplierModalProps {
@@ -21,6 +22,7 @@ export const CreateSupplierModal: React.FC<CreateSupplierModalProps> = ({
     initialValues,
     loading,
 }) => {
+    const { t } = useTranslation();
     const [form] = Form.useForm();
     const isEditing = !!initialValues;
 
@@ -62,13 +64,13 @@ export const CreateSupplierModal: React.FC<CreateSupplierModalProps> = ({
 
     return (
         <Modal
-            title={isEditing ? 'Edit Supplier' : 'New Supplier'}
+            title={isEditing ? t('purchases.suppliers.edit') : t('purchases.suppliers.new')}
             open={visible}
             onOk={handleOk}
             onCancel={onCancel}
             confirmLoading={loading}
-            okText={isEditing ? 'Update (F9)' : 'Create (F9)'}
-            cancelText="Cancel"
+            okText={isEditing ? `${t('common.save')} (F9)` : `${t('common.add')} (F9)`}
+            cancelText={t('common.cancel')}
             width={700}
         >
             <Form
@@ -80,48 +82,48 @@ export const CreateSupplierModal: React.FC<CreateSupplierModalProps> = ({
                     <Col span={12}>
                         <Form.Item
                             name="rif"
-                            label="RIF (Tax ID)"
+                            label={t('purchases.suppliers.rif')}
                             rules={[
-                                { required: true, message: 'RIF is required' },
-                                { min: 6, message: 'Minimum 6 characters' },
+                                { required: true, message: t('purchases.suppliers.errors.rif_required') },
+                                { min: 6, message: t('purchases.suppliers.errors.min_6') },
                             ]}
                         >
-                            <Input placeholder="J-12345678-9" />
+                            <Input placeholder={t('purchases.suppliers.rif_placeholder')} />
                         </Form.Item>
                     </Col>
                     <Col span={12}>
                         <Form.Item
                             name="comercialName"
-                            label="Commercial Name"
-                            rules={[{ required: true, message: 'Name is required' }]}
+                            label={t('purchases.suppliers.comercial_name')}
+                            rules={[{ required: true, message: t('purchases.suppliers.errors.name_required') }]}
                         >
-                            <Input placeholder="Distribution Co." />
+                            <Input placeholder={t('purchases.suppliers.comercial_name_placeholder')} />
                         </Form.Item>
                     </Col>
                 </Row>
 
                 <Form.Item
                     name="legalName"
-                    label="Legal Entity Name"
+                    label={t('purchases.suppliers.legal_name')}
                 >
-                    <Input placeholder="Full legal name" />
+                    <Input placeholder={t('purchases.suppliers.legal_name_placeholder')} />
                 </Form.Item>
 
                 <Row gutter={16}>
                     <Col span={12}>
                         <Form.Item
                             name="contactName"
-                            label="Contact Person"
+                            label={t('purchases.suppliers.contact_name')}
                         >
-                            <Input placeholder="John Doe" />
+                            <Input placeholder={t('purchases.suppliers.contact_name_placeholder')} />
                         </Form.Item>
                     </Col>
                     <Col span={12}>
                         <Form.Item
                             name="phone"
-                            label="Phone"
+                            label={t('purchases.suppliers.phone')}
                         >
-                            <Input placeholder="+58 412..." />
+                            <Input placeholder={t('purchases.suppliers.phone_placeholder')} />
                         </Form.Item>
                     </Col>
                 </Row>
@@ -130,27 +132,27 @@ export const CreateSupplierModal: React.FC<CreateSupplierModalProps> = ({
                     <Col span={12}>
                         <Form.Item
                             name="email"
-                            label="Email"
-                            rules={[{ type: 'email', message: 'Invalid email' }]}
+                            label={t('purchases.suppliers.email')}
+                            rules={[{ type: 'email', message: t('purchases.suppliers.errors.invalid_email') }]}
                         >
-                            <Input placeholder="contact@supplier.com" />
+                            <Input placeholder={t('purchases.suppliers.email_placeholder')} />
                         </Form.Item>
                     </Col>
                     <Col span={12}>
                         <Form.Item
                             name="category"
-                            label="Category"
+                            label={t('purchases.suppliers.category')}
                         >
-                            <Input placeholder="Food, Cleaning, etc." />
+                            <Input placeholder={t('purchases.suppliers.category_placeholder')} />
                         </Form.Item>
                     </Col>
                 </Row>
 
                 <Form.Item
                     name="address"
-                    label="Address"
+                    label={t('purchases.suppliers.address')}
                 >
-                    <Input.TextArea rows={2} placeholder="Legal or delivery address" />
+                    <Input.TextArea rows={2} placeholder={t('purchases.suppliers.address_placeholder')} />
                 </Form.Item>
 
                 {isEditing && (
@@ -158,7 +160,7 @@ export const CreateSupplierModal: React.FC<CreateSupplierModalProps> = ({
                         name="active"
                         valuePropName="checked"
                     >
-                        <Checkbox>Supplier Active</Checkbox>
+                        <Checkbox>{t('purchases.suppliers.active')}</Checkbox>
                     </Form.Item>
                 )}
             </Form>
