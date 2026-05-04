@@ -407,23 +407,33 @@ export const SalesReports = () => {
                     <Col xs={12} md={4}>
                         <Text strong>{t('sales_history.filters.customer')}:</Text>
                         <Select
+                            showSearch
                             style={{ width: '100%', marginTop: 8 }}
                             placeholder={t('sales_history.filters.all_customers')}
                             allowClear
                             onChange={(value) => handleFilterChange('clientId', value)}
                             value={filters.clientId}
                             options={clients.map(c => ({ label: c.name, value: c.id }))}
+                            optionFilterProp="label"
+                            filterOption={(input, option) =>
+                                (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+                            }
                         />
                     </Col>
                     <Col xs={12} md={4}>
                         <Text strong>{t('sales_history.filters.product')}:</Text>
                         <Select
+                            showSearch
                             style={{ width: '100%', marginTop: 8 }}
                             placeholder={t('sales_history.filters.all_products')}
                             allowClear
                             onChange={(value) => handleFilterChange('productId', value)}
                             value={filters.productId}
                             options={products.map(p => ({ label: p.name, value: p.id }))}
+                            optionFilterProp="label"
+                            filterOption={(input, option) =>
+                                (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+                            }
                         />
                     </Col>
                     <Col xs={12} md={4}>
