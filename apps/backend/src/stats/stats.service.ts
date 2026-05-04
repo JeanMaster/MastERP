@@ -3292,8 +3292,13 @@ export class StatsService {
     const v90 = q90 / d90;
     const v180 = q180 / d180;
 
-    // Weights: 70% last 30 days, 25% last 90 days, 5% last 180 days
-    // If product is younger than a bucket, the weight is redistributed naturally by the ratios
-    return (v30 * 0.7) + (v90 * 0.25) + (v180 * 0.05);
+    const res = (v30 * 0.7) + (v90 * 0.25) + (v180 * 0.05);
+    
+    // Debug log for HACEB or other suspicious products
+    if (res > 0.1) {
+      console.log(`[DEBUG VELOCITY] q:(${q30},${q90},${q180}) d:(${d30},${d90},${d180}) v:(${v30.toFixed(4)},${v90.toFixed(4)},${v180.toFixed(4)}) res:${res.toFixed(4)}`);
+    }
+
+    return res;
   }
 }
