@@ -16,7 +16,7 @@ PROJECT_ROOT=$(cd "$(dirname "$0")" && pwd)
 cd "$PROJECT_ROOT" || exit 1
 
 # 0.1 Verificar si ya está corriendo para evitar duplicados
-if pgrep -f "node.*/MastERP/apps/backend" > /dev/null || pgrep -f "vite.*--host" > /dev/null; then
+if pgrep -f "node.*/ValeryPort/apps/backend" > /dev/null || pgrep -f "vite.*--host" > /dev/null; then
     echo -e "${YELLOW}⚠️  Los servidores ya están en ejecución.${NC}"
     echo -e "   Si deseas reiniciarlos, ejecuta primero: ${BLUE}stopz${NC}"
     exit 0
@@ -45,7 +45,7 @@ echo -e "${GREEN}📦Iniciando Backend (Cerebro)...${NC}"
 cd apps/backend
 setsid npm run start:dev > ../../backend.prod.log 2>&1 &
 sleep 1
-BACKEND_PID=$(pgrep -f "node.*/MastERP/apps/backend" | tail -n 1)
+BACKEND_PID=$(pgrep -f "node.*/ValeryPort/apps/backend" | tail -n 1)
 cd ../..
 echo $BACKEND_PID > .masterp.pids
 echo "   ✅ Backend corriendo [PID: $BACKEND_PID]"

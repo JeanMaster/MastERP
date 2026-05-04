@@ -16,8 +16,8 @@ PID_FILE="$PROJECT_ROOT/.masterp.pids"
 # Estrategia 1: Matar por patrones específicos (Más fiable)
 echo -e "   ⏳ Deteniendo procesos de Backend y Frontend..."
 # Matamos específicamente procesos de node que cuelguen de nuestras carpetas de apps
-pkill -9 -f "node.*/MastERP/apps/backend" 2>/dev/null
-pkill -9 -f "node.*/MastERP/apps/frontend" 2>/dev/null
+pkill -9 -f "node.*/ValeryPort/apps/backend" 2>/dev/null
+pkill -9 -f "node.*/ValeryPort/apps/frontend" 2>/dev/null
 pkill -9 -f "vite.*--host" 2>/dev/null
 
 # Estrategia 2: Limpieza por PIDs guardados (Si aún quedan)
