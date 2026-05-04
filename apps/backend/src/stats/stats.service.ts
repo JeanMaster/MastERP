@@ -505,7 +505,7 @@ export class StatsService {
             stock: stock,
             dailySalesVelocity: Number(weightedVelocity.toFixed(4)),
             daysRemaining,
-            unitsNeeded6Months: 999, // DEBUG: Forcing 999 to see if this reflects in UI
+            unitsNeeded6Months: Math.max(0, Math.ceil(weightedVelocity * projectionDays) - stock),
             category: p.category?.name || 'Uncategorized',
           },
         ];
@@ -3042,7 +3042,7 @@ export class StatsService {
         stock: stock,
         dailySalesVelocity: Number(weightedVelocity.toFixed(4)),
         daysRemaining: daysRemaining === Number.MAX_SAFE_INTEGER ? -1 : daysRemaining,
-        unitsNeeded6Months: 999, // DEBUG: Forcing 999
+        unitsNeeded6Months: Math.max(0, Math.ceil(weightedVelocity * projectionDays) - stock),
         category: p.category?.name || 'Uncategorized',
       };
     }).sort((a, b) => {
