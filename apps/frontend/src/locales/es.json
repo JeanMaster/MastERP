@@ -957,10 +957,10 @@
       "stock_by_dept": "Stock por Departamento",
       "low_stock_title": "Productos con Stock Bajo",
       "currency_selector_title": "Moneda del Reporte:",
-      "velocity": "Venta Diaria (Prom. 180d)",
+      "velocity": "Venta Diaria (Tendencia)",
       "days_left": "Días Restantes",
       "needed_6m": "Necesario (6 Meses)",
-      "needed_6m_tooltip": "Unidades proyectadas necesarias para los próximos 180 días"
+      "needed_6m_tooltip": "Unidades estimadas para los próximos 6 meses basadas en la tendencia de venta reciente"
     },
     "products": {
       "title": "Rendimiento de Productos y Proyección",

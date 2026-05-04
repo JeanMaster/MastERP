@@ -959,10 +959,10 @@
       "stock_by_dept": "Stock by Department",
       "low_stock_title": "Products with Low Stock",
       "currency_selector_title": "Report Currency:",
-      "velocity": "Daily Sales (180d Avg)",
+      "velocity": "Daily Sales (Trend)",
       "days_left": "Days Remaining",
       "needed_6m": "Needed (6 Months)",
-      "needed_6m_tooltip": "Projected units needed for the next 180 days"
+      "needed_6m_tooltip": "Estimated units needed for the next 6 months based on recent sales trends"
     },
     "products": {
       "title": "Product Performance & Projection",

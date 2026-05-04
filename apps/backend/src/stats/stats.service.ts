@@ -445,25 +445,34 @@ export class StatsService {
       take: 20,
     });
 
-    // Depletion Forecast: Products that will run out soon based on last 180 days velocity
+    // Depletion Forecast: Products that will run out soon based on weighted sales velocity
     const projectionDays = 180;
-    const sixMonthsAgo = dayjs().subtract(180, 'days').toDate();
-    const salesInLast180Days = await this.prisma.saleItem.groupBy({
-      by: ['productId'],
-      where: {
-        createdAt: { gte: sixMonthsAgo },
-        sale: { isCancelled: false },
-      },
-      _sum: {
-        quantity: true,
-      },
-    });
+    const now = dayjs();
+    const thirtyDaysAgo = now.subtract(30, 'days').toDate();
+    const ninetyDaysAgo = now.subtract(90, 'days').toDate();
+    const sixMonthsAgo = now.subtract(180, 'days').toDate();
 
-    const velocityMap = new Map<string, number>();
-    salesInLast180Days.forEach((item) => {
-      const totalSold = Number(item._sum.quantity || 0);
-      velocityMap.set(item.productId, totalSold);
-    });
+    const [sales30, sales90, sales180] = await Promise.all([
+      this.prisma.saleItem.groupBy({
+        by: ['productId'],
+        where: { createdAt: { gte: thirtyDaysAgo }, sale: { isCancelled: false } },
+        _sum: { quantity: true },
+      }),
+      this.prisma.saleItem.groupBy({
+        by: ['productId'],
+        where: { createdAt: { gte: ninetyDaysAgo }, sale: { isCancelled: false } },
+        _sum: { quantity: true },
+      }),
+      this.prisma.saleItem.groupBy({
+        by: ['productId'],
+        where: { createdAt: { gte: sixMonthsAgo }, sale: { isCancelled: false } },
+        _sum: { quantity: true },
+      }),
+    ]);
+
+    const map30 = new Map(sales30.map((i) => [i.productId, Number(i._sum.quantity || 0)]));
+    const map90 = new Map(sales90.map((i) => [i.productId, Number(i._sum.quantity || 0)]));
+    const map180 = new Map(sales180.map((i) => [i.productId, Number(i._sum.quantity || 0)]));
 
     // Get all active products with their current stock, sales info, and createdAt
     const allProducts = await this.prisma.product.findMany({
@@ -479,25 +488,24 @@ export class StatsService {
 
     const depletionForecast = allProducts
       .flatMap((p) => {
-        const totalSold = velocityMap.get(p.id) || 0; // The map actually stores (totalSold / 180) currently, but we will fix that above
+        const q30 = map30.get(p.id) || 0;
+        const q90 = map90.get(p.id) || 0;
+        const q180 = map180.get(p.id) || 0;
         const stock = Number(p.stock);
 
-        if (totalSold <= 0) return []; // No sales, no forecast
+        const weightedVelocity = this.calculateWeightedVelocity(q30, q90, q180, p.createdAt);
+        if (weightedVelocity <= 0) return []; // No sales, no forecast
 
-        // Calculate actual product age in days, capped at 180
-        const ageInDays = Math.max(1, Math.min(180, dayjs().diff(dayjs(p.createdAt), 'day')));
-        const actualVelocity = totalSold / ageInDays;
-
-        const daysRemaining = Math.max(0, Math.ceil(stock / actualVelocity));
+        const daysRemaining = Math.max(0, Math.ceil(stock / weightedVelocity));
         if (daysRemaining > 20) return []; // Only critical ones
 
         return [
           {
             name: p.name,
             stock: stock,
-            dailySalesVelocity: actualVelocity,
+            dailySalesVelocity: Number(weightedVelocity.toFixed(4)),
             daysRemaining,
-            unitsNeeded6Months: Math.ceil(actualVelocity * projectionDays),
+            unitsNeeded6Months: Math.max(0, Math.ceil(weightedVelocity * projectionDays) - stock),
             category: p.category?.name || 'Uncategorized',
           },
         ];
@@ -2978,25 +2986,34 @@ export class StatsService {
    * @returns List of products with inventory forecast metrics.
    */
   async getProductsReport(currencyCode: string = 'VES') {
-    // Depletion Forecast for ALL products based on last 180 days velocity
+    // Depletion Forecast for ALL products based on weighted sales velocity
     const projectionDays = 180;
-    const sixMonthsAgo = dayjs().subtract(180, 'days').toDate();
-    const salesInLast180Days = await this.prisma.saleItem.groupBy({
-      by: ['productId'],
-      where: {
-        createdAt: { gte: sixMonthsAgo },
-        sale: { isCancelled: false },
-      },
-      _sum: {
-        quantity: true,
-      },
-    });
+    const now = dayjs();
+    const thirtyDaysAgo = now.subtract(30, 'days').toDate();
+    const ninetyDaysAgo = now.subtract(90, 'days').toDate();
+    const sixMonthsAgo = now.subtract(180, 'days').toDate();
 
-    const velocityMap = new Map<string, number>();
-    salesInLast180Days.forEach((item) => {
-      const totalSold = Number(item._sum.quantity || 0);
-      velocityMap.set(item.productId, totalSold);
-    });
+    const [sales30, sales90, sales180] = await Promise.all([
+      this.prisma.saleItem.groupBy({
+        by: ['productId'],
+        where: { createdAt: { gte: thirtyDaysAgo }, sale: { isCancelled: false } },
+        _sum: { quantity: true },
+      }),
+      this.prisma.saleItem.groupBy({
+        by: ['productId'],
+        where: { createdAt: { gte: ninetyDaysAgo }, sale: { isCancelled: false } },
+        _sum: { quantity: true },
+      }),
+      this.prisma.saleItem.groupBy({
+        by: ['productId'],
+        where: { createdAt: { gte: sixMonthsAgo }, sale: { isCancelled: false } },
+        _sum: { quantity: true },
+      }),
+    ]);
+
+    const map30 = new Map(sales30.map((i) => [i.productId, Number(i._sum.quantity || 0)]));
+    const map90 = new Map(sales90.map((i) => [i.productId, Number(i._sum.quantity || 0)]));
+    const map180 = new Map(sales180.map((i) => [i.productId, Number(i._sum.quantity || 0)]));
 
     // Get all active products with their current stock, sales info, and createdAt
     const allProducts = await this.prisma.product.findMany({
@@ -3011,22 +3028,21 @@ export class StatsService {
     });
 
     const productsReport = allProducts.map((p) => {
-      const totalSold = velocityMap.get(p.id) || 0;
+      const q30 = map30.get(p.id) || 0;
+      const q90 = map90.get(p.id) || 0;
+      const q180 = map180.get(p.id) || 0;
       const stock = Number(p.stock);
 
-      // Calculate actual product age in days, capped at 180
-      const ageInDays = Math.max(1, Math.min(180, dayjs().diff(dayjs(p.createdAt), 'day')));
-      const actualVelocity = totalSold / ageInDays;
-
-      const daysRemaining = actualVelocity > 0 ? Math.ceil(stock / actualVelocity) : Number.MAX_SAFE_INTEGER;
+      const weightedVelocity = this.calculateWeightedVelocity(q30, q90, q180, p.createdAt);
+      const daysRemaining = weightedVelocity > 0 ? Math.ceil(stock / weightedVelocity) : Number.MAX_SAFE_INTEGER;
 
       return {
         id: p.id,
         name: p.name,
         stock: stock,
-        dailySalesVelocity: Number(actualVelocity.toFixed(4)),
+        dailySalesVelocity: Number(weightedVelocity.toFixed(4)),
         daysRemaining: daysRemaining === Number.MAX_SAFE_INTEGER ? -1 : daysRemaining,
-        unitsNeeded6Months: Math.ceil(actualVelocity * projectionDays),
+        unitsNeeded6Months: Math.max(0, Math.ceil(weightedVelocity * projectionDays) - stock),
         category: p.category?.name || 'Uncategorized',
       };
     }).sort((a, b) => {
@@ -3254,5 +3270,30 @@ export class StatsService {
         }))
         .sort((a, b) => dayjs(a.date).valueOf() - dayjs(b.date).valueOf()),
     };
+  }
+
+  /**
+   * Helper to calculate weighted daily sales velocity.
+   * Gives more weight to recent sales to reflect trends accurately.
+   */
+  private calculateWeightedVelocity(
+    q30: number,
+    q90: number,
+    q180: number,
+    createdAt: Date,
+  ): number {
+    const age = Math.max(1, dayjs().diff(dayjs(createdAt), 'day'));
+    
+    const d30 = Math.min(age, 30);
+    const d90 = Math.min(age, 90);
+    const d180 = Math.min(age, 180);
+
+    const v30 = q30 / d30;
+    const v90 = q90 / d90;
+    const v180 = q180 / d180;
+
+    // Weights: 70% last 30 days, 25% last 90 days, 5% last 180 days
+    // If product is younger than a bucket, the weight is redistributed naturally by the ratios
+    return (v30 * 0.7) + (v90 * 0.25) + (v180 * 0.05);
   }
 }
