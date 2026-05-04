@@ -493,7 +493,7 @@ export class StatsService {
         const q180 = map180.get(p.id) || 0;
         const stock = Number(p.stock);
 
-        const weightedVelocity = this.calculateWeightedVelocity(q30, q90, q180, p.createdAt);
+        const weightedVelocity = this.calculateWeightedVelocity(q30, q90, q180, p.createdAt, p.name);
         if (weightedVelocity <= 0) return []; // No sales, no forecast
 
         const daysRemaining = Math.max(0, Math.ceil(stock / weightedVelocity));
@@ -3033,7 +3033,7 @@ export class StatsService {
       const q180 = map180.get(p.id) || 0;
       const stock = Number(p.stock);
 
-      const weightedVelocity = this.calculateWeightedVelocity(q30, q90, q180, p.createdAt);
+      const weightedVelocity = this.calculateWeightedVelocity(q30, q90, q180, p.createdAt, p.name);
       const daysRemaining = weightedVelocity > 0 ? Math.ceil(stock / weightedVelocity) : Number.MAX_SAFE_INTEGER;
 
       return {
@@ -3281,6 +3281,7 @@ export class StatsService {
     q90: number,
     q180: number,
     createdAt: Date,
+    productName?: string,
   ): number {
     const age = Math.max(1, dayjs().diff(dayjs(createdAt), 'day'));
     
@@ -3295,8 +3296,8 @@ export class StatsService {
     const res = (v30 * 0.7) + (v90 * 0.25) + (v180 * 0.05);
     
     // Debug log for HACEB or other suspicious products
-    if (res > 0.1) {
-      console.log(`[DEBUG VELOCITY] q:(${q30},${q90},${q180}) d:(${d30},${d90},${d180}) v:(${v30.toFixed(4)},${v90.toFixed(4)},${v180.toFixed(4)}) res:${res.toFixed(4)}`);
+    if (res > 0.001) { // Lowered threshold to see everything
+      console.log(`[DEBUG VELOCITY] [${productName || 'Unknown'}] q:(${q30},${q90},${q180}) d:(${d30},${d90},${d180}) v:(${v30.toFixed(4)},${v90.toFixed(4)},${v180.toFixed(4)}) res:${res.toFixed(4)}`);
     }
 
     return res;
