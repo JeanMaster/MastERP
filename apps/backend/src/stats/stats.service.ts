@@ -3280,20 +3280,16 @@ export class StatsService {
     q30: number,
     q90: number,
     q180: number,
-    createdAt: Date,
+    _createdAt: Date, // Kept for signature compatibility but unused
   ): number {
-    const age = Math.max(1, dayjs().diff(dayjs(createdAt), 'day'));
-    
-    const d30 = Math.min(age, 30);
-    const d90 = Math.min(age, 90);
-    const d180 = Math.min(age, 180);
-
-    const v30 = q30 / d30;
-    const v90 = q90 / d90;
-    const v180 = q180 / d180;
+    // We use fixed denominators to be conservative with new products.
+    // This prevents a single sale in the first few days from projecting 
+    // a huge 6-month need.
+    const v30 = q30 / 30;
+    const v90 = q90 / 90;
+    const v180 = q180 / 180;
 
     // Weights: 70% last 30 days, 25% last 90 days, 5% last 180 days
-    // If product is younger than a bucket, the weight is redistributed naturally by the ratios
     return (v30 * 0.7) + (v90 * 0.25) + (v180 * 0.05);
   }
 }
