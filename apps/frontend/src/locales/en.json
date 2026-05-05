@@ -1751,6 +1751,14 @@
       "select_pending_order": "Select Pending Order",
       "order_number": "Order #"
     },
+    "price_change_modal": {
+      "title": "Price Change Detected",
+      "ok_text": "Update Selected",
+      "cancel_text": "Discard Changes",
+      "alert_message": "Cost price changes detected for the following products",
+      "alert_desc": "Select which updates you would like to apply. Suggested prices maintain the existing profit margin percentage.",
+      "note": "If you update the cost but not the sale price, the profit margin will decrease. If you update the sale price, it will be adjusted based on the new cost to maintain the margin percentage."
+    },
     "suppliers": {
       "title": "Suppliers",
       "new": "New Supplier",

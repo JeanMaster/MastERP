@@ -8,7 +8,7 @@ import type { Product, CreateProductDto, UpdateProductDto } from '../../services
 import { departmentsApi } from '../../services/departmentsApi';
 import { currenciesApi } from '../../services/currenciesApi';
 import { unitsApi } from '../../services/unitsApi';
-import { PriceUpdateConfirmModal } from '../purchases/components/PriceUpdateConfirmModal';
+import { PriceUpdateConfirmModal, type PriceUpdateSelection } from '../purchases/components/PriceUpdateConfirmModal';
 import { companySettingsApi } from '../../services/companySettingsApi';
 
 interface ProductFormModalProps {
@@ -261,29 +261,45 @@ export const ProductFormModal = ({ open, product, onClose, defaultType }: Produc
     /**
      * Handles batch price updates if cost changes were confirmed by the user.
      */
-    const handlePriceUpdateConfirm = async () => {
+    const handlePriceUpdateConfirm = async (selections: PriceUpdateSelection[]) => {
         try {
             setPriceUpdateLoading(true);
-            if (costChangeInfo) {
+            const selection = selections[0];
+
+            if (costChangeInfo && selection && (selection.updateCost || selection.updatePrice)) {
+                const finalNewCost = selection.updateCost ? costChangeInfo.newCost : costChangeInfo.oldCost;
+                
+                const finalMargin = selection.updatePrice 
+                    ? costChangeInfo.salePriceMargin 
+                    : (((costChangeInfo.currentSalePrice / finalNewCost) - 1) * 100);
+
+                const finalOfferMargin = selection.updatePrice && costChangeInfo.offerPriceMargin !== null
+                    ? costChangeInfo.offerPriceMargin
+                    : (costChangeInfo.currentOfferPrice ? (((costChangeInfo.currentOfferPrice / finalNewCost) - 1) * 100) : undefined);
+
+                const finalWholesaleMargin = selection.updatePrice && costChangeInfo.wholesalePriceMargin !== null
+                    ? costChangeInfo.wholesalePriceMargin
+                    : (costChangeInfo.currentWholesalePrice ? (((costChangeInfo.currentWholesalePrice / finalNewCost) - 1) * 100) : undefined);
+
                 const updates = [{
                     productId: costChangeInfo.productId,
-                    newCostPrice: costChangeInfo.newCost,
-                    salePriceMargin: costChangeInfo.salePriceMargin,
-                    offerPriceMargin: costChangeInfo.offerPriceMargin,
-                    wholesalePriceMargin: costChangeInfo.wholesalePriceMargin,
+                    newCostPrice: finalNewCost,
+                    salePriceMargin: finalMargin,
+                    offerPriceMargin: finalOfferMargin,
+                    wholesalePriceMargin: finalWholesaleMargin,
                 }];
 
                 await productsApi.batchUpdatePrices(updates);
                 message.success(t('products.prices_updated', { defaultValue: 'Prices updated successfully' }));
-
-                setPriceUpdateModalVisible(false);
-                await queryClient.invalidateQueries({ queryKey: ['products'] });
-
-                form.resetFields();
-                setTimeout(() => {
-                    onClose();
-                }, 100);
             }
+
+            setPriceUpdateModalVisible(false);
+            await queryClient.invalidateQueries({ queryKey: ['products'] });
+
+            form.resetFields();
+            setTimeout(() => {
+                onClose();
+            }, 100);
         } catch (error) {
             console.error(error);
             message.error(t('products.error_updating_prices', { defaultValue: 'Error updating prices' }));
@@ -291,6 +307,7 @@ export const ProductFormModal = ({ open, product, onClose, defaultType }: Produc
             if (open) setPriceUpdateLoading(false);
         }
     };
+
 
     const handlePriceUpdateCancel = () => {
         setPriceUpdateModalVisible(false);

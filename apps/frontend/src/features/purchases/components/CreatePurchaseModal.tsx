@@ -11,7 +11,7 @@ import { purchasesApi } from '../../../services/purchasesApi';
 import type { CreatePurchaseDto } from '../../../services/purchasesApi';
 import { currenciesApi } from '../../../services/currenciesApi';
 import type { Currency } from '../../../services/currenciesApi';
-import { PriceUpdateConfirmModal } from './PriceUpdateConfirmModal';
+import { PriceUpdateConfirmModal, type PriceUpdateSelection } from './PriceUpdateConfirmModal';
 import { purchaseOrdersApi } from '../../../services/purchaseOrdersApi';
 import type { PurchaseOrder } from '../../../services/purchaseOrdersApi';
 
@@ -218,20 +218,47 @@ export const CreatePurchaseModal: React.FC<CreatePurchaseModalProps> = ({ visibl
         }
     };
 
-    const handlePriceUpdateConfirm = async () => {
+    const handlePriceUpdateConfirm = async (selections: PriceUpdateSelection[]) => {
         try {
             setPriceUpdateLoading(true);
-            const updates = productsWithCostChange.map(p => ({
-                productId: p.productId,
-                newCostPrice: p.newCost,
-                salePriceMargin: p.salePriceMargin,
-                offerPriceMargin: p.offerPriceMargin,
-                wholesalePriceMargin: p.wholesalePriceMargin,
-                currencyId: p.currencyId,
-            }));
+            
+            const updates = selections
+                .filter(s => s.updateCost || s.updatePrice)
+                .map(s => {
+                    const p = productsWithCostChange.find(item => item.productId === s.productId);
+                    if (!p) return null;
 
-            await productsApi.batchUpdatePrices(updates);
-            message.success(t('common.prices_updated_success', { defaultValue: 'Prices updated successfully' }));
+                    const finalNewCost = s.updateCost ? p.newCost : p.oldCost;
+                    
+                    // If updatePrice is true, we use the original margin (p.salePriceMargin)
+                    // If updatePrice is false, we calculate a margin that keeps the current price stable relative to finalNewCost
+                    const finalMargin = s.updatePrice 
+                        ? p.salePriceMargin 
+                        : (((p.currentSalePrice / finalNewCost) - 1) * 100);
+
+                    const finalOfferMargin = s.updatePrice && p.offerPriceMargin !== null
+                        ? p.offerPriceMargin
+                        : (p.currentOfferPrice ? (((p.currentOfferPrice / finalNewCost) - 1) * 100) : undefined);
+
+                    const finalWholesaleMargin = s.updatePrice && p.wholesalePriceMargin !== null
+                        ? p.wholesalePriceMargin
+                        : (p.currentWholesalePrice ? (((p.currentWholesalePrice / finalNewCost) - 1) * 100) : undefined);
+
+                    return {
+                        productId: p.productId,
+                        newCostPrice: finalNewCost,
+                        salePriceMargin: finalMargin,
+                        offerPriceMargin: finalOfferMargin,
+                        wholesalePriceMargin: finalWholesaleMargin,
+                        currencyId: p.currencyId,
+                    };
+                })
+                .filter(Boolean);
+
+            if (updates.length > 0) {
+                await productsApi.batchUpdatePrices(updates as any);
+                message.success(t('common.prices_updated_success', { defaultValue: 'Prices updated successfully' }));
+            }
 
             setPriceUpdateLoading(false);
             setPriceUpdateModalVisible(false);
@@ -245,6 +272,7 @@ export const CreatePurchaseModal: React.FC<CreatePurchaseModalProps> = ({ visibl
             setPriceUpdateLoading(false);
         }
     };
+
 
     const handlePriceUpdateCancel = () => {
         setPriceUpdateModalVisible(false);

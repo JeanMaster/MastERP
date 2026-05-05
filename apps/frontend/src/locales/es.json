@@ -1749,6 +1749,14 @@
       "select_pending_order": "Seleccionar Orden Pendiente",
       "order_number": "Nro. Orden"
     },
+    "price_change_modal": {
+      "title": "Cambio de Precio Detectado",
+      "ok_text": "Actualizar Seleccionados",
+      "cancel_text": "Descartar Cambios",
+      "alert_message": "Se detectaron cambios en el precio de costo de los siguientes productos",
+      "alert_desc": "Seleccione qué actualizaciones desea aplicar. Los precios sugeridos mantienen el porcentaje de margen de ganancia actual.",
+      "note": "Si actualiza el costo pero no el precio de venta, el margen de ganancia disminuirá. Si actualiza el precio de venta, este se ajustará en base al nuevo costo para mantener el porcentaje de margen."
+    },
     "suppliers": {
       "title": "Proveedores",
       "new": "Nuevo Proveedor",

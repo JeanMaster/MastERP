@@ -1,10 +1,11 @@
-import React from 'react';
-import { Modal, Table, Typography, Space, Tag, Alert } from 'antd';
+import React, { useState, useEffect } from 'react';
+import { Modal, Table, Typography, Space, Tag, Alert, Checkbox } from 'antd';
 import { WarningOutlined } from '@ant-design/icons';
+import { useTranslation } from 'react-i18next';
 
 const { Text, Title } = Typography;
 
-interface ProductWithCostChange {
+export interface ProductWithCostChange {
     productId: string;
     productName: string;
     oldCost: number;
@@ -18,13 +19,20 @@ interface ProductWithCostChange {
     suggestedSalePrice: number;
     suggestedOfferPrice?: number | null;
     suggestedWholesalePrice?: number | null;
+    currencyId?: string;
+}
+
+export interface PriceUpdateSelection {
+    productId: string;
+    updateCost: boolean;
+    updatePrice: boolean;
 }
 
 interface PriceUpdateConfirmModalProps {
     visible: boolean;
     products: ProductWithCostChange[];
     currencySymbol: string;
-    onConfirm: () => void;
+    onConfirm: (selections: PriceUpdateSelection[]) => void;
     onCancel: () => void;
     loading?: boolean;
 }
@@ -32,7 +40,7 @@ interface PriceUpdateConfirmModalProps {
 /**
  * PriceUpdateConfirmModal Component
  * Alerts the user when a purchase invoice contains cost changes for existing products.
- * Suggests automatic sale price adjustments based on historical profit margins.
+ * Allows granular selection of Cost and Sale Price updates per product.
  */
 export const PriceUpdateConfirmModal: React.FC<PriceUpdateConfirmModalProps> = ({
     visible,
@@ -42,87 +50,136 @@ export const PriceUpdateConfirmModal: React.FC<PriceUpdateConfirmModalProps> = (
     onCancel,
     loading,
 }) => {
+    const { t } = useTranslation();
+    const [selectedUpdates, setSelectedUpdates] = useState<Record<string, { updateCost: boolean, updatePrice: boolean }>>({});
+
+    // Initialize selections when modal opens
+    useEffect(() => {
+        if (visible && products.length > 0) {
+            const initial: Record<string, { updateCost: boolean, updatePrice: boolean }> = {};
+            products.forEach(p => {
+                initial[p.productId] = { updateCost: true, updatePrice: true };
+            });
+            setSelectedUpdates(initial);
+        }
+    }, [visible, products]);
+
+    const handleToggle = (productId: string, field: 'updateCost' | 'updatePrice', checked: boolean) => {
+        setSelectedUpdates(prev => ({
+            ...prev,
+            [productId]: {
+                ...prev[productId],
+                [field]: checked
+            }
+        }));
+    };
+
+    const handleConfirm = () => {
+        const selections = products.map(p => ({
+            productId: p.productId,
+            updateCost: selectedUpdates[p.productId]?.updateCost ?? false,
+            updatePrice: selectedUpdates[p.productId]?.updatePrice ?? false,
+        }));
+        onConfirm(selections);
+    };
+
     const columns = [
         {
-            title: 'Product',
+            title: t('common.product'),
             dataIndex: 'productName',
             key: 'name',
             width: '25%',
         },
         {
-            title: 'Cost',
+            title: t('common.cost'),
             key: 'cost',
             width: '20%',
             render: (_: any, record: ProductWithCostChange) => (
                 <Space direction="vertical" size={0}>
-                    <Text delete type="secondary" style={{ fontSize: 11 }}>
-                        {currencySymbol} {record.oldCost.toFixed(2)}
-                    </Text>
-                    <Text strong style={{ color: '#1890ff' }}>
-                        {currencySymbol} {record.newCost.toFixed(2)}
-                    </Text>
-                    <Tag color={record.newCost > record.oldCost ? 'red' : 'green'} style={{ fontSize: 10 }}>
-                        {record.newCost > record.oldCost ? '+' : ''}
-                        {(((record.newCost - record.oldCost) / (record.oldCost || 1)) * 100).toFixed(1)}%
-                    </Tag>
+                    <Checkbox 
+                        checked={selectedUpdates[record.productId]?.updateCost}
+                        onChange={(e) => handleToggle(record.productId, 'updateCost', e.target.checked)}
+                    >
+                        <Text strong style={{ color: selectedUpdates[record.productId]?.updateCost ? '#1890ff' : 'inherit' }}>
+                            {currencySymbol} {record.newCost.toFixed(2)}
+                        </Text>
+                    </Checkbox>
+                    <div style={{ paddingLeft: 24 }}>
+                        <Text delete type="secondary" style={{ fontSize: 11 }}>
+                            {currencySymbol} {record.oldCost.toFixed(2)}
+                        </Text>
+                        <br />
+                        <Tag color={record.newCost > record.oldCost ? 'red' : 'green'} style={{ fontSize: 10, marginTop: 4 }}>
+                            {record.newCost > record.oldCost ? '+' : ''}
+                            {(((record.newCost - record.oldCost) / (record.oldCost || 1)) * 100).toFixed(1)}%
+                        </Tag>
+                    </div>
                 </Space>
             ),
         },
         {
-            title: 'Retail Price',
+            title: t('common.sale_price'),
             key: 'salePrice',
             width: '18%',
             render: (_: any, record: ProductWithCostChange) => (
                 <Space direction="vertical" size={0}>
-                    <Text type="secondary" style={{ fontSize: 11 }}>
-                        {currencySymbol} {record.currentSalePrice.toFixed(2)}
-                    </Text>
-                    <Text strong style={{ color: '#52c41a' }}>
-                        {currencySymbol} {record.suggestedSalePrice.toFixed(2)}
-                    </Text>
-                    <Tag color="blue" style={{ fontSize: 10 }}>
-                        {record.salePriceMargin.toFixed(0)}% Margin
-                    </Tag>
+                    <Checkbox 
+                        checked={selectedUpdates[record.productId]?.updatePrice}
+                        onChange={(e) => handleToggle(record.productId, 'updatePrice', e.target.checked)}
+                    >
+                        <Text strong style={{ color: selectedUpdates[record.productId]?.updatePrice ? '#52c41a' : 'inherit' }}>
+                            {currencySymbol} {record.suggestedSalePrice.toFixed(2)}
+                        </Text>
+                    </Checkbox>
+                    <div style={{ paddingLeft: 24 }}>
+                        <Text type="secondary" style={{ fontSize: 11 }}>
+                            {currencySymbol} {record.currentSalePrice.toFixed(2)}
+                        </Text>
+                        <br />
+                        <Tag color="blue" style={{ fontSize: 10, marginTop: 4 }}>
+                            {record.salePriceMargin.toFixed(0)}% {t('common.margin')}
+                        </Tag>
+                    </div>
                 </Space>
             ),
         },
         {
-            title: 'Offer Price',
+            title: t('products.finished.offer'),
             key: 'offerPrice',
             width: '18%',
             render: (_: any, record: ProductWithCostChange) => {
                 if (!record.currentOfferPrice) return <Text type="secondary">-</Text>;
                 return (
-                    <Space direction="vertical" size={0}>
+                    <Space direction="vertical" size={0} style={{ paddingLeft: 24 }}>
+                        <Text strong style={{ color: selectedUpdates[record.productId]?.updatePrice ? '#52c41a' : 'inherit' }}>
+                            {currencySymbol} {record.suggestedOfferPrice?.toFixed(2)}
+                        </Text>
                         <Text type="secondary" style={{ fontSize: 11 }}>
                             {currencySymbol} {record.currentOfferPrice.toFixed(2)}
                         </Text>
-                        <Text strong style={{ color: '#52c41a' }}>
-                            {currencySymbol} {record.suggestedOfferPrice?.toFixed(2)}
-                        </Text>
                         <Tag color="blue" style={{ fontSize: 10 }}>
-                            {record.offerPriceMargin?.toFixed(0)}% Margin
+                            {record.offerPriceMargin?.toFixed(0)}% {t('common.margin')}
                         </Tag>
                     </Space>
                 );
             },
         },
         {
-            title: 'Wholesale Price',
+            title: t('products.finished.wholesale'),
             key: 'wholesalePrice',
             width: '19%',
             render: (_: any, record: ProductWithCostChange) => {
                 if (!record.currentWholesalePrice) return <Text type="secondary">-</Text>;
                 return (
-                    <Space direction="vertical" size={0}>
+                    <Space direction="vertical" size={0} style={{ paddingLeft: 24 }}>
+                        <Text strong style={{ color: selectedUpdates[record.productId]?.updatePrice ? '#52c41a' : 'inherit' }}>
+                            {currencySymbol} {record.suggestedWholesalePrice?.toFixed(2)}
+                        </Text>
                         <Text type="secondary" style={{ fontSize: 11 }}>
                             {currencySymbol} {record.currentWholesalePrice.toFixed(2)}
                         </Text>
-                        <Text strong style={{ color: '#52c41a' }}>
-                            {currencySymbol} {record.suggestedWholesalePrice?.toFixed(2)}
-                        </Text>
                         <Tag color="blue" style={{ fontSize: 10 }}>
-                            {record.wholesalePriceMargin?.toFixed(0)}% Margin
+                            {record.wholesalePriceMargin?.toFixed(0)}% {t('common.margin')}
                         </Tag>
                     </Space>
                 );
@@ -136,21 +193,21 @@ export const PriceUpdateConfirmModal: React.FC<PriceUpdateConfirmModalProps> = (
                 <Space>
                     <WarningOutlined style={{ color: '#faad14', fontSize: 20 }} />
                     <Title level={4} style={{ margin: 0 }}>
-                        Price Change Detected
+                        {t('purchases.price_change_modal.title', { defaultValue: 'Price Change Detected' })}
                     </Title>
                 </Space>
             }
             open={visible}
-            onOk={onConfirm}
+            onOk={handleConfirm}
             onCancel={onCancel}
-            okText="Yes, update prices"
-            cancelText="No, keep current prices"
-            width={900}
+            okText={t('purchases.price_change_modal.ok_text', { defaultValue: 'Update Selected' })}
+            cancelText={t('purchases.price_change_modal.cancel_text', { defaultValue: 'Discard Changes' })}
+            width={950}
             confirmLoading={loading}
         >
             <Alert
-                message="Cost price changes detected for the following products"
-                description="Would you like to automatically update sale prices using existing profit margins?"
+                message={t('purchases.price_change_modal.alert_message', { defaultValue: 'Cost price changes detected for the following products' })}
+                description={t('purchases.price_change_modal.alert_desc', { defaultValue: 'Select which updates you would like to apply. Suggested prices maintain the existing profit margin percentage.' })}
                 type="warning"
                 showIcon
                 style={{ marginBottom: 16 }}
@@ -167,8 +224,7 @@ export const PriceUpdateConfirmModal: React.FC<PriceUpdateConfirmModalProps> = (
 
             <div style={{ marginTop: 16, padding: 12, background: '#f0f2f5', borderRadius: 4 }}>
                 <Text type="secondary" style={{ fontSize: 12 }}>
-                    <strong>Note:</strong> Suggested prices maintain the same margin percentage. 
-                    If you select "No", sale prices will remain unchanged despite the increased cost.
+                    <strong>{t('common.notes')}:</strong> {t('purchases.price_change_modal.note', { defaultValue: 'If you update the cost but not the sale price, the profit margin will decrease. If you update the sale price, it will be adjusted based on the new cost to maintain the margin percentage.' })}
                 </Text>
             </div>
         </Modal>
