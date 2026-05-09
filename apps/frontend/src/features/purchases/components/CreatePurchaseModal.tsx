@@ -223,12 +223,13 @@ export const CreatePurchaseModal: React.FC<CreatePurchaseModalProps> = ({ visibl
             setPriceUpdateLoading(true);
             
             const updates = selections
-                .filter(s => s.updateCost || s.updatePrice)
+                .filter(s => s.updateCost || s.updatePrice || s.updateCurrency)
                 .map(s => {
                     const p = productsWithCostChange.find(item => item.productId === s.productId);
                     if (!p) return null;
 
                     const finalNewCost = s.updateCost ? p.newCost : p.oldCost;
+                    const finalCurrencyId = s.updateCurrency ? p.currencyId : p.oldCurrencyId;
                     
                     // If updatePrice is true, we use the original margin (p.salePriceMargin)
                     // If updatePrice is false, we calculate a margin that keeps the current price stable relative to finalNewCost
@@ -250,7 +251,7 @@ export const CreatePurchaseModal: React.FC<CreatePurchaseModalProps> = ({ visibl
                         salePriceMargin: finalMargin,
                         offerPriceMargin: finalOfferMargin,
                         wholesalePriceMargin: finalWholesaleMargin,
-                        currencyId: p.currencyId,
+                        currencyId: finalCurrencyId,
                     };
                 })
                 .filter(Boolean);

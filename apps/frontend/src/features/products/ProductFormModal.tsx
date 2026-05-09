@@ -266,8 +266,9 @@ export const ProductFormModal = ({ open, product, onClose, defaultType }: Produc
             setPriceUpdateLoading(true);
             const selection = selections[0];
 
-            if (costChangeInfo && selection && (selection.updateCost || selection.updatePrice)) {
+            if (costChangeInfo && selection && (selection.updateCost || selection.updatePrice || selection.updateCurrency)) {
                 const finalNewCost = selection.updateCost ? costChangeInfo.newCost : costChangeInfo.oldCost;
+                const finalCurrencyId = selection.updateCurrency ? costChangeInfo.currencyId : costChangeInfo.oldCurrencyId;
                 
                 const finalMargin = selection.updatePrice 
                     ? costChangeInfo.salePriceMargin 
@@ -287,6 +288,7 @@ export const ProductFormModal = ({ open, product, onClose, defaultType }: Produc
                     salePriceMargin: finalMargin,
                     offerPriceMargin: finalOfferMargin,
                     wholesalePriceMargin: finalWholesaleMargin,
+                    currencyId: finalCurrencyId,
                 }];
 
                 await productsApi.batchUpdatePrices(updates);

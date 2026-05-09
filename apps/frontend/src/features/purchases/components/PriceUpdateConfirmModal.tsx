@@ -19,13 +19,17 @@ export interface ProductWithCostChange {
     suggestedSalePrice: number;
     suggestedOfferPrice?: number | null;
     suggestedWholesalePrice?: number | null;
-    currencyId?: string;
+    currencyId: string;
+    currencyName?: string;
+    oldCurrencyId: string;
+    oldCurrencyName?: string;
 }
 
 export interface PriceUpdateSelection {
     productId: string;
     updateCost: boolean;
     updatePrice: boolean;
+    updateCurrency: boolean;
 }
 
 interface PriceUpdateConfirmModalProps {
@@ -51,20 +55,25 @@ export const PriceUpdateConfirmModal: React.FC<PriceUpdateConfirmModalProps> = (
     loading,
 }) => {
     const { t } = useTranslation();
-    const [selectedUpdates, setSelectedUpdates] = useState<Record<string, { updateCost: boolean, updatePrice: boolean }>>({});
+    const [selectedUpdates, setSelectedUpdates] = useState<Record<string, { updateCost: boolean, updatePrice: boolean, updateCurrency: boolean }>>({});
 
     // Initialize selections when modal opens
     useEffect(() => {
         if (visible && products.length > 0) {
-            const initial: Record<string, { updateCost: boolean, updatePrice: boolean }> = {};
+            const initial: Record<string, { updateCost: boolean, updatePrice: boolean, updateCurrency: boolean }> = {};
             products.forEach(p => {
-                initial[p.productId] = { updateCost: true, updatePrice: true };
+                const hasCurrencyChange = p.oldCurrencyId !== p.currencyId;
+                initial[p.productId] = { 
+                    updateCost: true, 
+                    updatePrice: true, 
+                    updateCurrency: hasCurrencyChange 
+                };
             });
             setSelectedUpdates(initial);
         }
     }, [visible, products]);
 
-    const handleToggle = (productId: string, field: 'updateCost' | 'updatePrice', checked: boolean) => {
+    const handleToggle = (productId: string, field: 'updateCost' | 'updatePrice' | 'updateCurrency', checked: boolean) => {
         setSelectedUpdates(prev => ({
             ...prev,
             [productId]: {
@@ -79,6 +88,7 @@ export const PriceUpdateConfirmModal: React.FC<PriceUpdateConfirmModalProps> = (
             productId: p.productId,
             updateCost: selectedUpdates[p.productId]?.updateCost ?? false,
             updatePrice: selectedUpdates[p.productId]?.updatePrice ?? false,
+            updateCurrency: selectedUpdates[p.productId]?.updateCurrency ?? false,
         }));
         onConfirm(selections);
     };
@@ -88,12 +98,39 @@ export const PriceUpdateConfirmModal: React.FC<PriceUpdateConfirmModalProps> = (
             title: t('common.product'),
             dataIndex: 'productName',
             key: 'name',
-            width: '25%',
+            width: '20%',
+        },
+        {
+            title: t('common.currency', { defaultValue: 'Currency' }),
+            key: 'currency',
+            width: '15%',
+            render: (_: any, record: ProductWithCostChange) => {
+                const hasChange = record.oldCurrencyId !== record.currencyId;
+                if (!hasChange) return <Text type="secondary">{record.currencyName}</Text>;
+                
+                return (
+                    <Space direction="vertical" size={0}>
+                        <Checkbox 
+                            checked={selectedUpdates[record.productId]?.updateCurrency}
+                            onChange={(e) => handleToggle(record.productId, 'updateCurrency', e.target.checked)}
+                        >
+                            <Text strong color={selectedUpdates[record.productId]?.updateCurrency ? '#1890ff' : 'inherit'}>
+                                {record.currencyName}
+                            </Text>
+                        </Checkbox>
+                        <div style={{ paddingLeft: 24 }}>
+                            <Text delete type="secondary" style={{ fontSize: 11 }}>
+                                {record.oldCurrencyName}
+                            </Text>
+                        </div>
+                    </Space>
+                );
+            }
         },
         {
             title: t('common.cost'),
             key: 'cost',
-            width: '20%',
+            width: '18%',
             render: (_: any, record: ProductWithCostChange) => (
                 <Space direction="vertical" size={0}>
                     <Checkbox 
@@ -120,7 +157,7 @@ export const PriceUpdateConfirmModal: React.FC<PriceUpdateConfirmModalProps> = (
         {
             title: t('common.sale_price'),
             key: 'salePrice',
-            width: '18%',
+            width: '16%',
             render: (_: any, record: ProductWithCostChange) => (
                 <Space direction="vertical" size={0}>
                     <Checkbox 
@@ -146,7 +183,7 @@ export const PriceUpdateConfirmModal: React.FC<PriceUpdateConfirmModalProps> = (
         {
             title: t('products.finished.offer'),
             key: 'offerPrice',
-            width: '18%',
+            width: '15%',
             render: (_: any, record: ProductWithCostChange) => {
                 if (!record.currentOfferPrice) return <Text type="secondary">-</Text>;
                 return (
@@ -167,7 +204,7 @@ export const PriceUpdateConfirmModal: React.FC<PriceUpdateConfirmModalProps> = (
         {
             title: t('products.finished.wholesale'),
             key: 'wholesalePrice',
-            width: '19%',
+            width: '16%',
             render: (_: any, record: ProductWithCostChange) => {
                 if (!record.currentWholesalePrice) return <Text type="secondary">-</Text>;
                 return (
@@ -202,7 +239,7 @@ export const PriceUpdateConfirmModal: React.FC<PriceUpdateConfirmModalProps> = (
             onCancel={onCancel}
             okText={t('purchases.price_change_modal.ok_text', { defaultValue: 'Update Selected' })}
             cancelText={t('purchases.price_change_modal.cancel_text', { defaultValue: 'Discard Changes' })}
-            width={950}
+            width={1050}
             confirmLoading={loading}
         >
             <Alert
@@ -230,3 +267,4 @@ export const PriceUpdateConfirmModal: React.FC<PriceUpdateConfirmModalProps> = (
         </Modal>
     );
 };
+

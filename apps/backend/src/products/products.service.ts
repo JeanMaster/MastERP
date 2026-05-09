@@ -267,12 +267,15 @@ export class ProductsService {
 
     // Detect cost change and calculate margins
     let costChangeInfo: any = null;
-    if (updateProductDto.costPrice !== undefined) {
-      const oldCost = Number(existingProduct.costPrice);
-      const newCost = Number(updateProductDto.costPrice);
-      const costChanged = Math.abs(oldCost - newCost) > 0.001;
+    const oldCost = Number(existingProduct.costPrice);
+    const newCost = updateProductDto.costPrice !== undefined ? Number(updateProductDto.costPrice) : oldCost;
+    const costChanged = Math.abs(oldCost - newCost) > 0.001;
+    
+    const oldCurrencyId = existingProduct.currencyId;
+    const newCurrencyId = updateProductDto.currencyId !== undefined ? updateProductDto.currencyId : oldCurrencyId;
+    const currencyChanged = oldCurrencyId !== newCurrencyId;
 
-      if (costChanged && oldCost > 0) {
+    if (((costChanged && oldCost > 0) || currencyChanged) && updateProductDto.costPrice !== undefined) {
         const salePrice = Number(existingProduct.salePrice);
         const offerPrice = existingProduct.offerPrice
           ? Number(existingProduct.offerPrice)
@@ -291,6 +294,10 @@ export class ProductsService {
           wholesalePrice && wholesalePrice > 0
             ? ((wholesalePrice - oldCost) / oldCost) * 100
             : null;
+
+        // Get currency names for the UI
+        const oldCurrency = await this.prisma.currency.findUnique({ where: { id: oldCurrencyId } });
+        const newCurrency = await this.prisma.currency.findUnique({ where: { id: newCurrencyId } });
 
         costChangeInfo = {
           productId: existingProduct.id,
@@ -312,8 +319,11 @@ export class ProductsService {
             wholesalePriceMargin !== null
               ? newCost * (1 + wholesalePriceMargin / 100)
               : null,
+          currencyId: newCurrencyId,
+          currencyName: newCurrency?.name,
+          oldCurrencyId,
+          oldCurrencyName: oldCurrency?.name,
         };
-      }
     }
 
     // Cost calculation for composed products

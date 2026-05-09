@@ -131,6 +131,8 @@ export class PurchasesService {
             salePrice: true,
             offerPrice: true,
             wholesalePrice: true,
+            currencyId: true,
+            currency: { select: { name: true } },
           },
         });
 
@@ -140,8 +142,9 @@ export class PurchasesService {
         const oldCost = Number(product.costPrice);
         const newCost = Number(item.cost);
         const costChanged = Math.abs(oldCost - newCost) > 0.001;
+        const currencyChanged = product.currencyId !== currency.id;
 
-        if (costChanged && oldCost > 0) {
+        if ((costChanged && oldCost > 0) || currencyChanged) {
           // Calculate current margins
           const salePrice = Number(product.salePrice);
           const offerPrice = product.offerPrice
@@ -184,6 +187,9 @@ export class PurchasesService {
                 ? newCost * (1 + wholesalePriceMargin / 100)
                 : null,
             currencyId: currency.id,
+            currencyName: currency.name,
+            oldCurrencyId: product.currencyId,
+            oldCurrencyName: (product as any).currency?.name,
           });
         }
 
