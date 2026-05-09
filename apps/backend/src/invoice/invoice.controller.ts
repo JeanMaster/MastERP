@@ -3,9 +3,11 @@ import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { InvoiceService } from './invoice.service';
 import { CreateInvoiceDto } from './dto/create-invoice.dto';
 import { AuthGuard } from '@nestjs/passport';
+import { RolesGuard } from '../common/guards/roles.guard';
+import { Roles, Role } from '../common/decorators/roles.decorator';
 
 @Controller('invoice')
-@UseGuards(AuthGuard('jwt'))
+@UseGuards(AuthGuard('jwt'), RolesGuard)
 export class InvoiceController {
   constructor(private readonly invoiceService: InvoiceService) {}
 
@@ -41,12 +43,14 @@ export class InvoiceController {
     return this.invoiceService.getClientInvoices(clientId);
   }
 
+  @Roles(Role.ADMIN, Role.MANAGER)
   @Get('pending')
   @ApiOperation({ summary: 'Retrieve all pending invoices' })
   getPendingInvoices() {
     return this.invoiceService.getPendingInvoices();
   }
 
+  @Roles(Role.ADMIN, Role.MANAGER)
   @Get('overdue')
   @ApiOperation({ summary: 'Retrieve all overdue invoices' })
   getOverdueInvoices() {
@@ -62,6 +66,7 @@ export class InvoiceController {
   /**
    * Retrieves the current status of the invoice counter.
    */
+  @Roles(Role.ADMIN, Role.MANAGER)
   @Get('counter')
   async getCurrentCounter() {
     return this.invoiceService.getCurrentCounter();

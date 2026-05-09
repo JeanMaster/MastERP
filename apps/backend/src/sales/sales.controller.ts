@@ -8,12 +8,15 @@ import {
   Patch,
   Delete,
   UseGuards,
+  Request,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { SalesService } from './sales.service';
 import { InvoiceService } from '../invoice/invoice.service';
 import { CreateSaleDto } from './dto/create-sale.dto';
 import { AuthGuard } from '@nestjs/passport';
+import { RolesGuard } from '../common/guards/roles.guard';
+import { Roles, Role } from '../common/decorators/roles.decorator';
 
 export interface SalesFilters {
   startDate?: string;
@@ -28,7 +31,7 @@ export interface SalesFilters {
 
 @ApiTags('sales')
 @Controller('sales')
-@UseGuards(AuthGuard('jwt'))
+@UseGuards(AuthGuard('jwt'), RolesGuard)
 export class SalesController {
   constructor(
     private readonly salesService: SalesService,
@@ -45,13 +48,14 @@ export class SalesController {
     status: 400,
     description: 'Invalid data or insufficient stock',
   })
-  create(@Body() createSaleDto: CreateSaleDto) {
-    return this.salesService.create(createSaleDto);
+  create(@Body() createSaleDto: CreateSaleDto, @Request() req) {
+    return this.salesService.create(createSaleDto, req.user);
   }
 
   /**
    * Retrieves sales records matching specific filters.
    */
+  @Roles(Role.ADMIN, Role.MANAGER)
   @Get()
   @ApiOperation({ summary: 'Retrieve sales with filters' })
   @ApiResponse({ status: 200, description: 'List of filtered sales' })
@@ -82,6 +86,7 @@ export class SalesController {
   /**
    * Retrieves all sale records.
    */
+  @Roles(Role.ADMIN, Role.MANAGER)
   @Get('all')
   @ApiOperation({ summary: 'Retrieve all sales' })
   @ApiResponse({ status: 200, description: 'List of sales' })
@@ -108,6 +113,7 @@ export class SalesController {
   /**
    * Updates the payment method of an existing sale.
    */
+  @Roles(Role.ADMIN, Role.MANAGER)
   @Patch(':id/payment-method')
   @ApiOperation({ summary: 'Update the payment method of a sale' })
   @ApiResponse({ status: 200, description: 'Payment method updated' })
@@ -121,6 +127,7 @@ export class SalesController {
   /**
    * Deletes a sale record and restores product stock.
    */
+  @Roles(Role.ADMIN, Role.MANAGER)
   @Delete(':id')
   @ApiOperation({ summary: 'Delete a sale (and restore stock)' })
   @ApiResponse({ status: 200, description: 'Sale deleted' })
@@ -132,6 +139,7 @@ export class SalesController {
    * Marks a sale as uncollectible (e.g., loss/theft).
    * DOES NOT restore stock.
    */
+  @Roles(Role.ADMIN, Role.MANAGER)
   @Delete(':id/uncollectible')
   @ApiOperation({
     summary: 'Declare UNCOLLECTIBLE (Delete sale WITHOUT restoring stock)',

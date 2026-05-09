@@ -13,13 +13,16 @@ import { CurrenciesService } from './currencies.service';
 import { CreateCurrencyDto } from './dto/create-currency.dto';
 import { UpdateCurrencyDto } from './dto/update-currency.dto';
 import { AuthGuard } from '@nestjs/passport';
+import { RolesGuard } from '../common/guards/roles.guard';
+import { Roles, Role } from '../common/decorators/roles.decorator';
 
 @ApiTags('currencies')
 @Controller('currencies')
-@UseGuards(AuthGuard('jwt'))
+@UseGuards(AuthGuard('jwt'), RolesGuard)
 export class CurrenciesController {
   constructor(private readonly currenciesService: CurrenciesService) {}
 
+  @Roles(Role.ADMIN, Role.MANAGER)
   @Post()
   @ApiOperation({ summary: 'Create a new currency' })
   @ApiResponse({ status: 201, description: 'Currency created successfully' })
@@ -42,6 +45,7 @@ export class CurrenciesController {
     return this.currenciesService.findOne(id);
   }
 
+  @Roles(Role.ADMIN, Role.MANAGER)
   @Patch(':id')
   @ApiOperation({ summary: 'Update a currency' })
   @ApiResponse({ status: 200, description: 'Currency updated successfully' })
@@ -53,6 +57,7 @@ export class CurrenciesController {
     return this.currenciesService.update(id, updateCurrencyDto);
   }
 
+  @Roles(Role.ADMIN, Role.MANAGER)
   @Delete(':id')
   @ApiOperation({ summary: 'Deactivate a currency (soft delete)' })
   @ApiResponse({ status: 200, description: 'Currency deactivated successfully' })

@@ -85,6 +85,12 @@ export class CreatePurchaseDto {
   @Min(0)
   taxAmount?: number;
 
+  @ApiProperty({ example: 63.8, required: false, description: 'Total amount of the purchase (subtotal + tax)' })
+  @IsNumber()
+  @IsOptional()
+  @Min(0)
+  total?: number;
+
   @ApiProperty({ example: 'uuid-of-order', required: false, description: 'Related purchase order ID' })
   @IsString()
   @IsOptional()

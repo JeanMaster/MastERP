@@ -8,9 +8,13 @@ import {
   Query,
   Body,
   Res,
+  UseGuards,
 } from '@nestjs/common';
 import { MercadoLibreService } from './mercadolibre.service';
 import { ApiOperation, ApiTags, ApiQuery } from '@nestjs/swagger';
+import { AuthGuard } from '@nestjs/passport';
+import { RolesGuard } from '../common/guards/roles.guard';
+import { Roles, Role } from '../common/decorators/roles.decorator';
 
 @ApiTags('mercadolibre')
 @Controller('mercadolibre')
@@ -42,12 +46,16 @@ export class MercadoLibreController {
 
   // ─── Accounts ───────────────────────────────────────────
 
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Roles(Role.ADMIN, Role.MANAGER)
   @Get('accounts')
   @ApiOperation({ summary: 'List linked Mercado Libre accounts' })
   async getAccounts() {
     return this.mlService.getAccounts();
   }
 
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Roles(Role.ADMIN, Role.MANAGER)
   @Delete('accounts/:id')
   @ApiOperation({ summary: 'Unlink a Mercado Libre account' })
   async deleteAccount(@Param('id') id: string) {
@@ -56,6 +64,8 @@ export class MercadoLibreController {
 
   // ─── Product Publishing ─────────────────────────────────
 
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Roles(Role.ADMIN, Role.MANAGER)
   @Post('publish')
   @ApiOperation({ summary: 'Publish a product to Mercado Libre' })
   async publishProduct(
@@ -82,18 +92,24 @@ export class MercadoLibreController {
     return this.mlService.getCategories(id);
   }
 
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Roles(Role.ADMIN, Role.MANAGER)
   @Post('sync/:productId')
   @ApiOperation({ summary: 'Sync product price/stock to Mercado Libre' })
   async syncProduct(@Param('productId') productId: string) {
     return this.mlService.syncProduct(productId);
   }
 
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Roles(Role.ADMIN, Role.MANAGER)
   @Delete('unpublish/:productId')
   @ApiOperation({ summary: 'Unpublish a product from Mercado Libre' })
   async unpublishProduct(@Param('productId') productId: string) {
     return this.mlService.unpublishProduct(productId);
   }
 
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Roles(Role.ADMIN, Role.MANAGER)
   @Put('pause/:productId')
   @ApiOperation({ summary: 'Pause a Mercado Libre listing' })
   async pauseProduct(@Param('productId') productId: string) {
@@ -109,6 +125,8 @@ export class MercadoLibreController {
     return this.mlService.getMappings(mlAccountId);
   }
 
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Roles(Role.ADMIN, Role.MANAGER)
   @Post('mock-accounts')
   @ApiOperation({ summary: 'Create a mock Mercado Libre account' })
   async createMockAccount() {

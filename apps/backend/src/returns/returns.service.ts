@@ -162,9 +162,10 @@ export class ReturnsService {
    * Creates a new return record.
    * Validates eligibility, generates the credit note number, and records the return.
    * @param createReturnDto The return data.
+   * @param user The authenticated user requesting the return.
    * @returns The created return record.
    */
-  async create(createReturnDto: CreateReturnDto) {
+  async create(createReturnDto: CreateReturnDto, user: any) {
     // Validate eligibility
     const validation = await this.validateReturnEligibility(
       createReturnDto.originalSaleId,
@@ -191,6 +192,27 @@ export class ReturnsService {
       data: { currentNumber: controlCounter.currentNumber + 1 },
     });
 
+    // 🛡️ SECURITY: Calculate real refund amount based on original sale prices
+    const sale = await this.prisma.sale.findUnique({
+      where: { id: createReturnDto.originalSaleId },
+      include: { items: true }
+    });
+
+    let calculatedMaxRefund = 0;
+    for (const item of createReturnDto.items) {
+      const originalItem = sale?.items.find(i => i.productId === item.productId);
+      if (originalItem) {
+        calculatedMaxRefund += Number(originalItem.unitPrice) * Number(item.quantity);
+      }
+    }
+
+    // Allow for small rounding differences
+    if (createReturnDto.refundAmount > calculatedMaxRefund + 0.01) {
+      throw new BadRequestException(
+        `Security Alert: Refund amount (${createReturnDto.refundAmount}) exceeds original purchase value (${calculatedMaxRefund}).`
+      );
+    }
+
     // Create the return record
     const returnRecord = await this.prisma.return.create({
       data: {
@@ -200,10 +222,10 @@ export class ReturnsService {
         returnType: createReturnDto.returnType,
         reason: createReturnDto.reason,
         productCondition: createReturnDto.productCondition,
-        refundAmount: createReturnDto.refundAmount,
+        refundAmount: createReturnDto.refundAmount || calculatedMaxRefund,
         refundMethod: createReturnDto.refundMethod,
         notes: createReturnDto.notes,
-        requestedBy: createReturnDto.requestedBy,
+        requestedBy: user.username || user.name || 'Unknown', // Force authenticated user
         items: {
           create: createReturnDto.items,
         },

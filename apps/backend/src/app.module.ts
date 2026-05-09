@@ -1,4 +1,6 @@
 import { Module } from '@nestjs/common';
+import { APP_GUARD } from '@nestjs/core';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { ConfigModule } from '@nestjs/config';
 import { BanksModule } from './banks/banks.module';
 import { AppController } from './app.controller';
@@ -35,6 +37,10 @@ import { TaxRetentionsModule } from './tax-retentions/tax-retentions.module';
 
 @Module({
   imports: [
+    ThrottlerModule.forRoot([{
+      ttl: 60000, // 1 minute
+      limit: 100, // max 100 requests per minute
+    }]),
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: '.env',
@@ -70,6 +76,13 @@ import { TaxRetentionsModule } from './tax-retentions/tax-retentions.module';
     MarketingModule,
   ],
   controllers: [AppController, DevToolsController],
-  providers: [AppService, DevToolsService],
+  providers: [
+    AppService, 
+    DevToolsService,
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
+    }
+  ],
 })
 export class AppModule {}

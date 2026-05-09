@@ -6,15 +6,19 @@ import {
   Param,
   Query,
   UseGuards,
+  Request,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { InventoryAdjustmentsService } from './inventory-adjustments.service';
 import { CreateAdjustmentDto } from './dto/create-adjustment.dto';
 import { AuthGuard } from '@nestjs/passport';
+import { RolesGuard } from '../common/guards/roles.guard';
+import { Roles, Role } from '../common/decorators/roles.decorator';
 
 @ApiTags('inventory-adjustments')
 @Controller('inventory-adjustments')
-@UseGuards(AuthGuard('jwt'))
+@UseGuards(AuthGuard('jwt'), RolesGuard)
+@Roles(Role.ADMIN, Role.MANAGER)
 export class InventoryAdjustmentsController {
   constructor(
     private readonly inventoryAdjustmentsService: InventoryAdjustmentsService,
@@ -27,8 +31,8 @@ export class InventoryAdjustmentsController {
     status: 400,
     description: 'Insufficient stock or invalid data',
   })
-  create(@Body() createAdjustmentDto: CreateAdjustmentDto) {
-    return this.inventoryAdjustmentsService.create(createAdjustmentDto);
+  create(@Body() createAdjustmentDto: CreateAdjustmentDto, @Request() req) {
+    return this.inventoryAdjustmentsService.create(createAdjustmentDto, req.user);
   }
 
   @Get()

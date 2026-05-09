@@ -3,6 +3,7 @@ import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
+import helmet from 'helmet';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -11,9 +12,29 @@ async function bootstrap() {
   const httpAdapterHost = app.get(HttpAdapterHost);
   app.useGlobalFilters(new AllExceptionsFilter(httpAdapterHost));
 
-  // CORS - Permissive configuration for LAN access
+  // Security Headers
+  app.use(helmet({
+    crossOriginResourcePolicy: { policy: "cross-origin" }, // Allow images from backend to be loaded by frontend
+    contentSecurityPolicy: process.env.NODE_ENV === 'production' ? undefined : false, // Disable CSP in dev to not break Swagger
+  }));
+
+  // CORS - Restricted configuration
+  const allowedOrigins = [
+    process.env.CORS_ORIGIN,
+    'http://localhost:5173',
+    'http://127.0.0.1:5173',
+  ].filter(Boolean);
+
   app.enableCors({
-    origin: true, // Reflects the request origin (allows all)
+    origin: (origin, callback) => {
+      // Allow requests with no origin (like mobile apps or curl) 
+      // or check if the origin is in the whitelist or matches LAN pattern
+      if (!origin || allowedOrigins.includes(origin) || /^http:\/\/192\.168\.\d{1,3}\.\d{1,3}/.test(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
     credentials: true,
   });
@@ -27,17 +48,19 @@ async function bootstrap() {
     }),
   );
 
-  // Swagger/OpenAPI
-  const config = new DocumentBuilder()
-    .setTitle('MastERP API')
-    .setDescription('REST API for the MastERP ERP System')
-    .setVersion('1.0')
-    .addTag('health', 'System health endpoints')
-    .addBearerAuth()
-    .build();
+  // Swagger/OpenAPI - Only enabled in development/staging
+  if (process.env.NODE_ENV !== 'production') {
+    const config = new DocumentBuilder()
+      .setTitle('MastERP API')
+      .setDescription('REST API for the MastERP ERP System')
+      .setVersion('1.0')
+      .addTag('health', 'System health endpoints')
+      .addBearerAuth()
+      .build();
 
-  const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('api/docs', app, document);
+    const document = SwaggerModule.createDocument(app, config);
+    SwaggerModule.setup('api/docs', app, document);
+  }
 
   // Global route prefix for all endpoints
   app.setGlobalPrefix('api');

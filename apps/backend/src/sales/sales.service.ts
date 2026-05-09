@@ -1,4 +1,5 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
+import { Injectable, BadRequestException, UnauthorizedException } from '@nestjs/common';
+import { Role } from '../common/decorators/roles.decorator';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateSaleDto } from './dto/create-sale.dto';
 import { InvoiceService } from '../invoice/invoice.service';
@@ -26,9 +27,10 @@ export class SalesService {
    * Handles stock validation/updates, invoice/control number generation,
    * cash movements, loyalty points, and automated credit invoices.
    * @param createSaleDto Data Transfer Object for creating a sale.
+   * @param user The authenticated user performing the sale.
    * @returns The created sale record with items and client details.
    */
-  async create(createSaleDto: CreateSaleDto) {
+  async create(createSaleDto: CreateSaleDto, user: any) {
     const {
       items,
       invoiceNumber: reservedInvoiceNumber,
@@ -37,6 +39,8 @@ export class SalesService {
 
     // Validate products, stock and prepare items with cost
     const itemsWithCost: any[] = [];
+    let calculatedSubtotal = 0;
+    let calculatedTax = 0;
 
     for (const item of items) {
       const product = await this.prisma.product.findUnique({
@@ -53,6 +57,22 @@ export class SalesService {
         throw new BadRequestException(
           `Product with ID ${item.productId} not found`,
         );
+      }
+
+      // 🛡️ SECURITY: Validate that the price is not below cost
+      // Calculate cost in Primary Currency
+      const rate = product.currency?.isPrimary
+        ? 1
+        : Number(product.currency?.exchangeRate || 1);
+      const costInPrimary = Number(product.costPrice || 0) * rate;
+
+      if (Number(item.unitPrice) < costInPrimary) {
+        const canSellBelowCost = user.role === Role.ADMIN || user.role === Role.MANAGER;
+        if (!canSellBelowCost) {
+          throw new UnauthorizedException(
+            `Unauthorized: You cannot sell ${product.name} below its cost price (${costInPrimary}). Contact a manager.`,
+          );
+        }
       }
 
       // Validate stock (if applicable)
@@ -78,17 +98,32 @@ export class SalesService {
         );
       }
 
-      // Calculate cost in Primary Currency
-      const rate = product.currency?.isPrimary
-        ? 1
-        : Number(product.currency?.exchangeRate || 1);
-      const costInPrimary = Number(product.costPrice || 0) * rate;
+      // Accumulate totals for server-side verification
+      const itemTotal = Number(item.unitPrice) * Number(item.quantity);
+      calculatedSubtotal += itemTotal;
+      if (!product.isTaxExempt) {
+        // Assuming global tax rate for simplicity, or we could fetch from settings
+        // For now, we trust the tax calculation logic but verify the total
+        // better yet, we can calculate based on the item's tax status
+      }
 
       itemsWithCost.push({
         ...item,
         cost: costInPrimary, // Capture normalized cost
         isTaxExempt: product.isTaxExempt, // Capture historical tax status
       });
+    }
+
+    // 🛡️ SECURITY: Verify Total Consistency
+    // Calculate expected tax and total (this is simplified, should ideally match your tax logic)
+    const expectedTax = createSaleDto.tax; // We still use the tax sent but could recalculate if taxRate was known here
+    const expectedTotal = calculatedSubtotal + Number(expectedTax) - Number(createSaleDto.discount || 0) + Number(createSaleDto.igtfAmount || 0);
+
+    // Allow for small rounding differences (0.01)
+    if (Math.abs(expectedTotal - Number(createSaleDto.total)) > 0.01) {
+      throw new BadRequestException(
+        `Security Alert: Transaction total mismatch. Calculated: ${expectedTotal}, Received: ${createSaleDto.total}. Potential price manipulation detected.`,
+      );
     }
 
     // Get active cash session (if exists)

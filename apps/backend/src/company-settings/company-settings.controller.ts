@@ -3,9 +3,12 @@ import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { CompanySettingsService } from './company-settings.service';
 import { UpdateCompanySettingsDto } from './dto/update-company-settings.dto';
 import { AuthGuard } from '@nestjs/passport';
+import { RolesGuard } from '../common/guards/roles.guard';
+import { Roles, Role } from '../common/decorators/roles.decorator';
 
 @ApiTags('company-settings')
 @Controller('company-settings')
+@UseGuards(AuthGuard('jwt'), RolesGuard)
 export class CompanySettingsController {
   constructor(
     private readonly companySettingsService: CompanySettingsService,
@@ -24,7 +27,7 @@ export class CompanySettingsController {
   /**
    * Updates the company settings.
    */
-  @UseGuards(AuthGuard('jwt'))
+  @Roles(Role.ADMIN)
   @Put()
   @ApiOperation({ summary: 'Update company settings' })
   @ApiResponse({ status: 200, description: 'Settings updated successfully' })

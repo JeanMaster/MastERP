@@ -17,9 +17,10 @@ export class InventoryAdjustmentsService {
    * Creates a new inventory adjustment.
    * Updates the product's stock and records the adjustment in a transaction.
    * @param createAdjustmentDto The data for the inventory adjustment.
+   * @param user The authenticated user performing the adjustment.
    * @returns The created inventory adjustment record.
    */
-  async create(createAdjustmentDto: CreateAdjustmentDto) {
+  async create(createAdjustmentDto: CreateAdjustmentDto, user: any) {
     // 1. Get current product
     const product = await this.prisma.product.findUnique({
       where: { id: createAdjustmentDto.productId },
@@ -63,7 +64,7 @@ export class InventoryAdjustmentsService {
           newStock,
           reason: createAdjustmentDto.reason,
           notes: createAdjustmentDto.notes,
-          performedBy: createAdjustmentDto.performedBy || 'System',
+          performedBy: user.username || user.name || 'Unknown', // Force authenticated user
         },
         include: {
           product: {

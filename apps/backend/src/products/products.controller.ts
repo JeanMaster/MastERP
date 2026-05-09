@@ -14,16 +14,19 @@ import { ProductsService } from './products.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { AuthGuard } from '@nestjs/passport';
+import { RolesGuard } from '../common/guards/roles.guard';
+import { Roles, Role } from '../common/decorators/roles.decorator';
 
 @ApiTags('products')
 @Controller('products')
+@UseGuards(AuthGuard('jwt'), RolesGuard)
 export class ProductsController {
   constructor(private readonly productsService: ProductsService) {}
 
   /**
    * Creates a new product.
    */
-  @UseGuards(AuthGuard('jwt'))
+  @Roles(Role.ADMIN, Role.MANAGER)
   @Post()
   @ApiOperation({ summary: 'Create a new product' })
   @ApiResponse({ status: 201, description: 'Product created successfully' })
@@ -98,7 +101,7 @@ export class ProductsController {
   /**
    * Updates an existing product.
    */
-  @UseGuards(AuthGuard('jwt'))
+  @Roles(Role.ADMIN, Role.MANAGER)
   @Patch(':id')
   @ApiOperation({ summary: 'Update a product' })
   @ApiResponse({ status: 200, description: 'Product updated' })
@@ -110,7 +113,7 @@ export class ProductsController {
   /**
    * Deletes a product (soft delete).
    */
-  @UseGuards(AuthGuard('jwt'))
+  @Roles(Role.ADMIN, Role.MANAGER)
   @Delete(':id')
   @ApiOperation({ summary: 'Delete a product (soft delete)' })
   @ApiResponse({ status: 200, description: 'Product marked as inactive' })
@@ -122,7 +125,7 @@ export class ProductsController {
   /**
    * Batch updates product prices using margin percentages.
    */
-  @UseGuards(AuthGuard('jwt'))
+  @Roles(Role.ADMIN, Role.MANAGER)
   @Post('batch-update-prices')
   @ApiOperation({
     summary: 'Batch update product sale prices using margins',

@@ -14,10 +14,12 @@ import { ClientsService } from './clients.service';
 import { CreateClientDto } from './dto/create-client.dto';
 import { UpdateClientDto } from './dto/update-client.dto';
 import { AuthGuard } from '@nestjs/passport';
+import { RolesGuard } from '../common/guards/roles.guard';
+import { Roles, Role } from '../common/decorators/roles.decorator';
 
 @ApiTags('clients')
 @Controller('clients')
-@UseGuards(AuthGuard('jwt'))
+@UseGuards(AuthGuard('jwt'), RolesGuard)
 export class ClientsController {
   constructor(private readonly clientsService: ClientsService) {}
 
@@ -29,6 +31,7 @@ export class ClientsController {
     return this.clientsService.create(createClientDto);
   }
 
+  @Roles(Role.ADMIN, Role.MANAGER)
   @Get()
   @ApiOperation({ summary: 'Retrieve all clients' })
   @ApiQuery({
@@ -63,6 +66,7 @@ export class ClientsController {
     return this.clientsService.update(id, updateClientDto);
   }
 
+  @Roles(Role.ADMIN, Role.MANAGER)
   @Delete(':id')
   @ApiOperation({ summary: 'Deactivate a client (soft delete)' })
   @ApiResponse({ status: 200, description: 'Client marked as inactive' })

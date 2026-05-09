@@ -74,6 +74,13 @@ export class PurchasesService {
     const paidAmount = purchaseData.paidAmount || 0;
     const balance = total - paidAmount;
 
+    // 🛡️ SECURITY: Verify total consistency
+    if (createPurchaseDto.total && Math.abs(total - Number(createPurchaseDto.total)) > 0.01) {
+      throw new BadRequestException(
+        `Security Alert: Purchase total mismatch. Calculated: ${total}, Received: ${createPurchaseDto.total}. Potential data manipulation detected.`
+      );
+    }
+
     // Track products with cost changes for price update suggestions
     const productsWithCostChange: any[] = [];
 
@@ -314,19 +321,37 @@ export class PurchasesService {
       // Calculate how much we take from the bank
       const pAmount = Number(paymentAmount || amount);
       const pCurrency = currencyCode || purchase.currencyCode;
-      const rate = Number(exchangeRate || 1);
+      
+      amountToDeductFromBank = pAmount; // Default if currencies match
+    // 🛡️ SECURITY: Validate exchange rate sanity
+    if (exchangeRate && currencyCode) {
+      const systemCurrency = await this.prisma.currency.findUnique({
+        where: { code: currencyCode },
+      });
 
-      amountToDeductFromBank = pAmount;
+      if (systemCurrency) {
+        const systemRate = Number(systemCurrency.exchangeRate);
+        const providedRate = Number(exchangeRate);
+        const deviation = Math.abs(providedRate - systemRate) / systemRate;
 
-      if (pCurrency !== bankAccount.currency.code) {
-        if (bankAccount.currency.isPrimary) {
-          // Bank is VES, Payment is USD
-          amountToDeductFromBank = pAmount * rate;
-        } else {
-          // Bank is USD, Payment is VES
-          amountToDeductFromBank = pAmount / rate;
+        if (deviation > 0.1) { // 10% tolerance
+          throw new BadRequestException(
+            `Security Alert: Provided exchange rate (${providedRate}) deviates too much from the system rate (${systemRate}). ` +
+            `Please update the system rate or correct the input.`
+          );
         }
       }
+    }
+
+    if (pCurrency !== bankAccount.currency.code) {
+      if (bankAccount.currency.isPrimary) {
+        // Bank is VES, Payment is USD
+        amountToDeductFromBank = pAmount * Number(exchangeRate || 1);
+      } else {
+        // Bank is USD, Payment is VES
+        amountToDeductFromBank = pAmount / Number(exchangeRate || 1);
+      }
+    }
 
       if (Number(bankAccount.balance) < amountToDeductFromBank) {
         throw new BadRequestException(

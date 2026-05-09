@@ -1,10 +1,15 @@
-import { Controller, Get, Post, Body, Param, Delete, Query } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Delete, Query, UseGuards } from '@nestjs/common';
 import { TaxRetentionsService } from './tax-retentions.service';
 import { CreateTaxRetentionDto } from './dto/create-tax-retention.dto';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
+import { AuthGuard } from '@nestjs/passport';
+import { RolesGuard } from '../common/guards/roles.guard';
+import { Roles, Role } from '../common/decorators/roles.decorator';
 
 @ApiTags('tax-retentions')
 @Controller('tax-retentions')
+@UseGuards(AuthGuard('jwt'), RolesGuard)
+@Roles(Role.ADMIN, Role.MANAGER)
 export class TaxRetentionsController {
   constructor(private readonly taxRetentionsService: TaxRetentionsService) {}
 

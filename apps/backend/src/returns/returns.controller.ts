@@ -7,8 +7,11 @@ import {
   Param,
   Query,
   UseGuards,
+  Request,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { RolesGuard } from '../common/guards/roles.guard';
+import { Roles, Role } from '../common/decorators/roles.decorator';
 import { ReturnsService } from './returns.service';
 import { CreateReturnDto } from './dto/create-return.dto';
 import { UpdateReturnDto } from './dto/update-return.dto';
@@ -16,7 +19,7 @@ import { AuthGuard } from '@nestjs/passport';
 
 @ApiTags('returns')
 @Controller('returns')
-@UseGuards(AuthGuard('jwt'))
+@UseGuards(AuthGuard('jwt'), RolesGuard)
 export class ReturnsController {
   constructor(private readonly returnsService: ReturnsService) {}
 
@@ -30,8 +33,8 @@ export class ReturnsController {
     status: 400,
     description: 'Invalid data or return not eligible',
   })
-  create(@Body() createReturnDto: CreateReturnDto) {
-    return this.returnsService.create(createReturnDto);
+  create(@Body() createReturnDto: CreateReturnDto, @Request() req) {
+    return this.returnsService.create(createReturnDto, req.user);
   }
 
   /**
@@ -79,17 +82,20 @@ export class ReturnsController {
   /**
    * Approves a pending return.
    */
+  @Roles(Role.ADMIN, Role.MANAGER)
   @Patch(':id/approve')
   @ApiOperation({ summary: 'Approve a pending return' })
   @ApiResponse({ status: 200, description: 'Return approved successfully' })
   @ApiResponse({ status: 400, description: 'Return cannot be approved' })
-  approve(@Param('id') id: string, @Body('approvedBy') approvedBy: string) {
+  approve(@Param('id') id: string, @Request() req) {
+    const approvedBy = req.user.username || req.user.name || 'Unknown';
     return this.returnsService.approve(id, approvedBy);
   }
 
   /**
    * Rejects a pending return.
    */
+  @Roles(Role.ADMIN, Role.MANAGER)
   @Patch(':id/reject')
   @ApiOperation({ summary: 'Reject a pending return' })
   @ApiResponse({ status: 200, description: 'Return rejected successfully' })
@@ -101,6 +107,7 @@ export class ReturnsController {
   /**
    * Processes an approved return (applies stock changes and finalizes).
    */
+  @Roles(Role.ADMIN, Role.MANAGER)
   @Post(':id/process')
   @ApiOperation({ summary: 'Process an approved return' })
   @ApiResponse({ status: 200, description: 'Return processed successfully' })

@@ -1,12 +1,17 @@
-import { Controller, Get, Patch, Post, Delete, Body, Param } from '@nestjs/common';
+import { Controller, Get, Patch, Post, Delete, Body, Param, UseGuards } from '@nestjs/common';
 import { MarketingService } from './marketing.service';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
+import { AuthGuard } from '@nestjs/passport';
+import { RolesGuard } from '../common/guards/roles.guard';
+import { Roles, Role } from '../common/decorators/roles.decorator';
 
 @ApiTags('Marketing')
 @Controller('marketing')
+@UseGuards(AuthGuard('jwt'), RolesGuard)
 export class MarketingController {
   constructor(private readonly marketingService: MarketingService) {}
 
+  @Roles(Role.ADMIN, Role.MANAGER)
   @Get('stats')
   @ApiOperation({ summary: 'Retrieve statistics for the marketing dashboard' })
   async getStats() {
@@ -19,6 +24,7 @@ export class MarketingController {
     return this.marketingService.getConfig();
   }
 
+  @Roles(Role.ADMIN, Role.MANAGER)
   @Patch('config')
   @ApiOperation({ summary: 'Update marketing configuration' })
   async updateConfig(@Body() data: any) {
@@ -43,6 +49,7 @@ export class MarketingController {
     return this.marketingService.getClientLoyaltyHistory(clientId);
   }
 
+  @Roles(Role.ADMIN, Role.MANAGER)
   @Post('loyalty/:clientId/adjust')
   @ApiOperation({ summary: 'Perform manual points adjustment' })
   async adjustPoints(
@@ -65,12 +72,14 @@ export class MarketingController {
     return this.marketingService.getTemplates();
   }
 
+  @Roles(Role.ADMIN, Role.MANAGER)
   @Post('templates')
   @ApiOperation({ summary: 'Create a new message template' })
   async createTemplate(@Body() data: { name: string; content: string; category?: string }) {
     return this.marketingService.createTemplate(data);
   }
 
+  @Roles(Role.ADMIN, Role.MANAGER)
   @Delete('templates/:id')
   @ApiOperation({ summary: 'Delete a message template' })
   async deleteTemplate(@Param('id') id: string) {
@@ -90,6 +99,7 @@ export class MarketingController {
     return this.marketingService.getCampaignDetails(id);
   }
 
+  @Roles(Role.ADMIN, Role.MANAGER)
   @Post('campaigns')
   @ApiOperation({ summary: 'Create a campaign and calculate recipients' })
   async createCampaign(@Body() data: { name: string; templateId: string; targetSegment: string }) {
@@ -109,18 +119,21 @@ export class MarketingController {
     return this.marketingService.getCoupons();
   }
 
+  @Roles(Role.ADMIN, Role.MANAGER)
   @Post('coupons')
   @ApiOperation({ summary: 'Create a new coupon' })
   async createCoupon(@Body() data: any) {
     return this.marketingService.createCoupon(data);
   }
 
+  @Roles(Role.ADMIN, Role.MANAGER)
   @Patch('coupons/:id')
   @ApiOperation({ summary: 'Update a coupon' })
   async updateCoupon(@Param('id') id: string, @Body() data: any) {
     return this.marketingService.updateCoupon(id, data);
   }
 
+  @Roles(Role.ADMIN, Role.MANAGER)
   @Delete('coupons/:id')
   @ApiOperation({ summary: 'Delete a coupon' })
   async deleteCoupon(@Param('id') id: string) {
