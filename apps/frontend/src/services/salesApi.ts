@@ -40,6 +40,7 @@ export interface Sale {
 
 export interface CreateSaleDto {
     clientId?: string;
+    date?: string;
     items: {
         productId: string;
         quantity: number;

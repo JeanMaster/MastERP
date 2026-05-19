@@ -102,6 +102,7 @@ export const UnitFormModal = ({ open, unit, onClose }: UnitFormModalProps) => {
             confirmLoading={createMutation.isPending || updateMutation.isPending}
             okText={unit ? `${t('common.save')} (F9)` : `${t('common.add')} (F9)`}
             cancelText={t('common.cancel')}
+            forceRender
         >
             <Form form={form} layout="vertical" style={{ marginTop: 20 }}>
                 <Form.Item

@@ -172,6 +172,7 @@ export const OpenSessionModal = ({ open, registerId, onCancel, onSuccess }: Open
             okText="Open Cash (F9)"
             cancelText="Cancel"
             width={850}
+            forceRender
         >
             <Form form={form} layout="vertical" style={{ marginTop: 20 }}>
                 <Row gutter={24}>

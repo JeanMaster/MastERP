@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Card, Table, Button, Tag, Space, Modal, Grid, Typography, App } from 'antd';
+import { Card, Table, Button, Tag, Space, Modal, Grid, Typography, App, List } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, UserOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -138,17 +138,101 @@ export const UsersPage = () => {
                 </Button>
             </div>
 
-            <Card bordered={false} style={{ boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
-                <Table
-                    columns={columns}
-                    dataSource={users}
-                    rowKey="id"
-                    loading={isLoading}
-                    scroll={{ x: 'max-content' }}
-                    pagination={{
-                        showTotal: (total) => t('users.total_count', { total })
-                    }}
-                />
+            <Card styles={{ body: { padding: isMobile ? 8 : 24 } }} style={{ borderRadius: '16px', boxShadow: '0 4px 20px rgba(0,0,0,0.05)', border: 'none', overflow: 'hidden' }}>
+                {!isMobile ? (
+                    <Table
+                        columns={columns}
+                        dataSource={users}
+                        rowKey="id"
+                        loading={isLoading}
+                        scroll={{ x: 'max-content' }}
+                        pagination={{
+                            showTotal: (total) => t('users.total_count', { total })
+                        }}
+                        className="premium-table"
+                    />
+                ) : (
+                    <List
+                        dataSource={users}
+                        loading={isLoading}
+                        pagination={{ pageSize: 10, size: 'small', simple: true }}
+                        renderItem={(item: any) => {
+                            const colors: Record<string, string> = {
+                                ADMIN: 'red',
+                                SUPERVISOR: 'gold',
+                                CASHIER: 'green',
+                                USER: 'blue'
+                            };
+                            return (
+                                <List.Item style={{ padding: '8px 0', border: 'none' }}>
+                                    <Card
+                                        style={{ 
+                                            width: '100%', 
+                                            borderRadius: '16px', 
+                                            boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
+                                            border: '1px solid #f0f0f0'
+                                        }}
+                                        styles={{ body: { padding: '16px' } }}
+                                    >
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
+                                            <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                                                <div style={{ 
+                                                    width: '40px', 
+                                                    height: '40px', 
+                                                    borderRadius: '20px', 
+                                                    background: '#f0f7ff', 
+                                                    display: 'flex', 
+                                                    alignItems: 'center', 
+                                                    justifyContent: 'center' 
+                                                }}>
+                                                    <UserOutlined style={{ color: '#1890ff', fontSize: '20px' }} />
+                                                </div>
+                                                <div>
+                                                    <Typography.Text strong style={{ fontSize: '16px', display: 'block' }}>
+                                                        {item.username}
+                                                    </Typography.Text>
+                                                    <Typography.Text type="secondary" style={{ fontSize: '13px' }}>
+                                                        {item.name}
+                                                    </Typography.Text>
+                                                </div>
+                                            </div>
+                                            <Tag color={item.isActive ? 'success' : 'default'} style={{ borderRadius: '12px', margin: 0 }}>
+                                                {item.isActive ? t('users.active') : t('users.inactive')}
+                                            </Tag>
+                                        </div>
+
+                                        <div style={{ background: '#fafafa', borderRadius: '12px', padding: '12px', marginBottom: 16 }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                <Typography.Text type="secondary" style={{ fontSize: '13px' }}>{t('users.role')}</Typography.Text>
+                                                <Tag color={colors[item.role] || 'blue'} style={{ borderRadius: '8px', margin: 0, fontWeight: 600 }}>
+                                                    {t(`users.roles.${item.role.toLowerCase()}`)}
+                                                </Tag>
+                                            </div>
+                                        </div>
+
+                                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', borderTop: '1px solid #f0f0f0', paddingTop: '12px' }}>
+                                            <Button 
+                                                icon={<EditOutlined />} 
+                                                onClick={() => handleEdit(item)}
+                                                style={{ borderRadius: '8px' }}
+                                            >
+                                                {t('common.edit')}
+                                            </Button>
+                                            <Button 
+                                                danger 
+                                                type="text"
+                                                icon={<DeleteOutlined />} 
+                                                onClick={() => handleDelete(item.id)}
+                                                disabled={item.username === 'admin'}
+                                                style={{ borderRadius: '8px' }}
+                                            />
+                                        </div>
+                                    </Card>
+                                </List.Item>
+                            );
+                        }}
+                    />
+                )}
             </Card>
 
             <UserFormModal

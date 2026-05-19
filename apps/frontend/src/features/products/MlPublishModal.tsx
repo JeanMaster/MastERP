@@ -148,6 +148,7 @@ export const MlPublishModal = ({ open, product, onClose }: MlPublishModalProps) 
             open={open}
             onCancel={onClose}
             width={800}
+            forceRender
             footer={[
                 <Button key="cancel" onClick={onClose}>
                     {t('common.cancel')}

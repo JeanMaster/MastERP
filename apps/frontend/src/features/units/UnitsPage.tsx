@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Card, Table, Button, Space, Input, message, Popconfirm, Tag, Grid } from 'antd';
+import { Card, Table, Button, Space, Input, message, Popconfirm, Tag, Grid, List } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined, ReloadOutlined } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { unitsApi } from '../../services/unitsApi';
@@ -110,33 +110,127 @@ export const UnitsPage = () => {
 
     return (
         <Card
-            title={t('units.title')}
-            extra={
-                <Space direction={isMobile ? 'vertical' : 'horizontal'} style={{ width: isMobile ? '100%' : 'auto' }} align={isMobile ? 'end' : 'center'}>
+            title={!isMobile ? t('units.title') : undefined}
+            extra={!isMobile ? (
+                <Space>
                     <Input
                         placeholder={t('units.search_placeholder')}
                         prefix={<SearchOutlined />}
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
-                        style={{ width: isMobile ? '100%' : 250 }}
+                        style={{ width: 250 }}
+                        allowClear
                     />
-                    <Space>
-                        <Button icon={<ReloadOutlined />} onClick={() => queryClient.invalidateQueries({ queryKey: ['units'] })} />
-                        <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}>
-                            {isMobile ? t('common.new') : t('units.new')}
-                        </Button>
-                    </Space>
+                    <Button icon={<ReloadOutlined />} onClick={() => queryClient.invalidateQueries({ queryKey: ['units'] })} />
+                    <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}>
+                        {t('units.new')}
+                    </Button>
                 </Space>
-            }
+            ) : null}
         >
-            <Table
-                columns={columns}
-                dataSource={filteredData}
-                rowKey="id"
-                loading={isLoading}
-                pagination={{ pageSize: 20 }}
-                scroll={{ x: 'max-content' }}
-            />
+            {isMobile && (
+                <div style={{ marginBottom: 16 }}>
+                    <h2 style={{ fontSize: 20, marginBottom: 16 }}>⚖️ {t('units.title')}</h2>
+                    <Space direction="vertical" style={{ width: '100%' }} size="middle">
+                        <Input
+                            placeholder={t('units.search_placeholder')}
+                            prefix={<SearchOutlined />}
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            style={{ width: '100%' }}
+                            size="large"
+                            allowClear
+                        />
+                        <div style={{ display: 'flex', gap: 8 }}>
+                            <Button
+                                type="primary"
+                                icon={<PlusOutlined />}
+                                onClick={handleAdd}
+                                style={{ flex: 1 }}
+                                size="large"
+                            >
+                                {t('units.new')}
+                            </Button>
+                            <Button
+                                icon={<ReloadOutlined />}
+                                onClick={() => queryClient.invalidateQueries({ queryKey: ['units'] })}
+                                size="large"
+                            />
+                        </div>
+                    </Space>
+                </div>
+            )}
+
+            {!isMobile ? (
+                <Table
+                    columns={columns}
+                    dataSource={filteredData}
+                    rowKey="id"
+                    loading={isLoading}
+                    pagination={{
+                        pageSize: 20,
+                        showSizeChanger: true,
+                        responsive: true,
+                        position: ['bottomRight']
+                    }}
+                />
+            ) : (
+                <List
+                    loading={isLoading}
+                    dataSource={filteredData}
+                    pagination={{
+                        pageSize: 10,
+                        size: 'small',
+                        simple: true,
+                    }}
+                    renderItem={(item: Unit) => (
+                        <List.Item
+                            onClick={() => handleEdit(item)}
+                            style={{ 
+                                padding: '16px', 
+                                cursor: 'pointer',
+                                background: '#fff',
+                                marginBottom: 12,
+                                borderRadius: 16,
+                                border: '1px solid #f0f0f0',
+                                boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'center'
+                            }}
+                        >
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                                <div style={{
+                                    width: 48,
+                                    height: 48,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    borderRadius: 12,
+                                    backgroundColor: '#f5f3ff',
+                                    color: '#7c3aed',
+                                    fontSize: 14,
+                                    fontWeight: 700,
+                                    border: '1px solid #ddd6fe'
+                                }}>
+                                    {item.abbreviation}
+                                </div>
+                                <div>
+                                    <div style={{ fontWeight: 700, fontSize: 17, color: '#111827' }}>
+                                        {item.name}
+                                    </div>
+                                    <div style={{ fontSize: 12, color: '#6b7280' }}>
+                                        {t('units.abbreviation')}: {item.abbreviation}
+                                    </div>
+                                </div>
+                            </div>
+                            <div style={{ color: '#9ca3af' }}>
+                                <EditOutlined style={{ fontSize: 16 }} />
+                            </div>
+                        </List.Item>
+                    )}
+                />
+            )}
 
             <UnitFormModal
                 open={isModalOpen}

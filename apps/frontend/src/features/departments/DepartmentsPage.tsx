@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Card, Table, Button, Space, Input, message, Popconfirm, Tag, Grid } from 'antd';
+import { Card, Table, Button, Space, Input, message, Popconfirm, Tag, Grid, List } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined, ReloadOutlined } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
@@ -141,33 +141,137 @@ export const DepartmentsPage = () => {
 
     return (
         <Card
-            title={t('departments.title')}
-            extra={
-                <Space direction={isMobile ? 'vertical' : 'horizontal'} style={{ width: isMobile ? '100%' : 'auto' }} align={isMobile ? 'end' : 'center'}>
+            title={!isMobile ? t('departments.title') : undefined}
+            extra={!isMobile ? (
+                <Space>
                     <Input
                         placeholder={t('departments.search_placeholder')}
                         prefix={<SearchOutlined />}
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
-                        style={{ width: isMobile ? '100%' : 250 }}
+                        style={{ width: 250 }}
+                        allowClear
                     />
-                    <Space>
-                        <Button icon={<ReloadOutlined />} onClick={() => queryClient.invalidateQueries({ queryKey: ['departments'] })} />
-                        <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}>
-                            {isMobile ? t('common.new') : t('departments.new')}
-                        </Button>
-                    </Space>
+                    <Button icon={<ReloadOutlined />} onClick={() => queryClient.invalidateQueries({ queryKey: ['departments'] })} />
+                    <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}>
+                        {t('departments.new')}
+                    </Button>
                 </Space>
-            }
+            ) : null}
         >
-            <Table
-                columns={columns}
-                dataSource={treeData}
-                loading={isLoading}
-                pagination={false}
-                defaultExpandAllRows
-                scroll={{ x: 'max-content' }}
-            />
+            {isMobile && (
+                <div style={{ marginBottom: 16 }}>
+                    <h2 style={{ fontSize: 20, marginBottom: 16 }}>📁 {t('departments.title')}</h2>
+                    <Space direction="vertical" style={{ width: '100%' }} size="middle">
+                        <Input
+                            placeholder={t('departments.search_placeholder')}
+                            prefix={<SearchOutlined />}
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            style={{ width: '100%' }}
+                            size="large"
+                            allowClear
+                        />
+                        <div style={{ display: 'flex', gap: 8 }}>
+                            <Button
+                                type="primary"
+                                icon={<PlusOutlined />}
+                                onClick={handleAdd}
+                                style={{ flex: 1 }}
+                                size="large"
+                            >
+                                {t('departments.new')}
+                            </Button>
+                            <Button
+                                icon={<ReloadOutlined />}
+                                onClick={() => queryClient.invalidateQueries({ queryKey: ['departments'] })}
+                                size="large"
+                            />
+                        </div>
+                    </Space>
+                </div>
+            )}
+
+            {!isMobile ? (
+                <Table
+                    columns={columns}
+                    dataSource={treeData}
+                    loading={isLoading}
+                    pagination={false}
+                    defaultExpandAllRows
+                />
+            ) : (
+                <List
+                    loading={isLoading}
+                    dataSource={filteredData.sort((a, b) => {
+                        // Sort so parents come before their children
+                        if (!a.parentId && b.parentId === a.id) return -1;
+                        if (!b.parentId && a.parentId === b.id) return 1;
+                        return 0;
+                    })}
+                    renderItem={(item: Department) => (
+                        <List.Item
+                            onClick={() => handleEdit(item)}
+                            style={{ 
+                                padding: '16px', 
+                                cursor: 'pointer',
+                                background: '#fff',
+                                marginBottom: 12,
+                                borderRadius: 16,
+                                border: '1px solid #f0f0f0',
+                                boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
+                                display: 'block',
+                                marginLeft: item.parentId ? 20 : 0,
+                                position: 'relative',
+                                overflow: 'hidden'
+                            }}
+                        >
+                            {item.parentId && (
+                                <div style={{
+                                    position: 'absolute',
+                                    left: 0,
+                                    top: 0,
+                                    bottom: 0,
+                                    width: 4,
+                                    background: '#6366f1'
+                                }} />
+                            )}
+                            <div style={{ display: 'flex', width: '100%', alignItems: 'center', justifyContent: 'space-between' }}>
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                                        <div style={{ 
+                                            fontWeight: 700, 
+                                            fontSize: 16, 
+                                            color: '#111827'
+                                        }}>
+                                            {item.name}
+                                        </div>
+                                        <Tag color={item.parentId ? 'blue' : 'green'} style={{ fontSize: 10, margin: 0, borderRadius: 4 }}>
+                                            {item.parentId ? t('departments.sub_department') : t('departments.main')}
+                                        </Tag>
+                                    </div>
+                                    {item.description && (
+                                        <div style={{ 
+                                            fontSize: 13, 
+                                            color: '#6b7280',
+                                            display: '-webkit-box',
+                                            WebkitLineClamp: 2,
+                                            WebkitBoxOrient: 'vertical',
+                                            overflow: 'hidden',
+                                            lineHeight: '1.4'
+                                        }}>
+                                            {item.description}
+                                        </div>
+                                    )}
+                                </div>
+                                <div style={{ marginLeft: 12, color: '#9ca3af' }}>
+                                    <EditOutlined style={{ fontSize: 16 }} />
+                                </div>
+                            </div>
+                        </List.Item>
+                    )}
+                />
+            )}
 
             <DepartmentFormModal
                 open={isModalOpen}

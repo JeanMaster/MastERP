@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Card, Table, Button, Space, Input, App, Popconfirm, Grid, Row, Col, Statistic } from 'antd';
+import { Card, Table, Button, Space, Input, App, Popconfirm, Grid, Row, Col, Statistic, List, Typography } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined, ReloadOutlined, BankOutlined, HistoryOutlined, SwapOutlined } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -12,6 +12,7 @@ import { formatVenezuelanPrice } from '../../utils/formatters';
 import { LiquidateBatchModal } from './components/LiquidateBatchModal';
 
 const { useBreakpoint } = Grid;
+const { Text } = Typography;
 
 /**
  * BanksPage Component
@@ -206,63 +207,175 @@ export const BanksPage = () => {
                 </Space>
             </div>
 
-            <Row gutter={16} style={{ marginBottom: 24 }}>
-                <Col xs={24} sm={6}>
-                    <Card style={{ backgroundColor: '#f0f5ff' }}>
+            <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
+                <Col xs={24} sm={12} md={6}>
+                    <Card size={isMobile ? 'small' : 'default'} style={{ backgroundColor: '#f0f5ff', borderRadius: 12 }}>
                         <Statistic
                             title={t('banks.total_banks')}
                             value={banks.filter(b => ['CHECKING', 'SAVINGS'].includes(b.accountType)).reduce((acc, b) => acc + Number(b.balance), 0)}
                             precision={2}
                             prefix="Bs."
-                            valueStyle={{ color: '#1890ff' }}
+                            styles={{ content: { color: '#1890ff', fontSize: isMobile ? 20 : 24 } }}
                         />
                     </Card>
                 </Col>
-                <Col xs={24} sm={6}>
-                    <Card style={{ backgroundColor: '#fffbe6' }}>
+                <Col xs={24} sm={12} md={6}>
+                    <Card size={isMobile ? 'small' : 'default'} style={{ backgroundColor: '#fffbe6', borderRadius: 12 }}>
                         <Statistic
                             title={t('banks.total_transit')}
                             value={banks.reduce((acc, b) => acc + Number(b.pendingLiquidation || 0), 0)}
                             precision={2}
                             prefix="Bs."
-                            valueStyle={{ color: '#d4b106' }}
+                            styles={{ content: { color: '#d4b106', fontSize: isMobile ? 20 : 24 } }}
                         />
                     </Card>
                 </Col>
-                <Col xs={24} sm={6}>
-                    <Card style={{ backgroundColor: '#f6ffed' }}>
+                <Col xs={24} sm={12} md={6}>
+                    <Card size={isMobile ? 'small' : 'default'} style={{ backgroundColor: '#f6ffed', borderRadius: 12 }}>
                         <Statistic
                             title={t('banks.total_vault')}
                             value={banks.filter(b => b.accountType === 'CASH_VAULT').reduce((acc, b) => acc + Number(b.balance), 0)}
                             precision={2}
                             prefix="Bs."
-                            valueStyle={{ color: '#52c41a' }}
+                            styles={{ content: { color: '#52c41a', fontSize: isMobile ? 20 : 24 } }}
                         />
                     </Card>
                 </Col>
-                <Col xs={24} sm={6}>
-                    <Card style={{ backgroundColor: '#fff7e6', borderColor: '#ffa940', borderWidth: 2 }}>
+                <Col xs={24} sm={12} md={6}>
+                    <Card size={isMobile ? 'small' : 'default'} style={{ backgroundColor: '#fff7e6', borderColor: '#ffa940', borderWidth: 2, borderRadius: 12 }}>
                         <Statistic
                             title={t('banks.liquidity_consolidated')}
                             value={banks.reduce((acc, b) => acc + Number(b.balance) + Number(b.pendingLiquidation || 0), 0)}
                             precision={2}
                             prefix="Bs."
-                            valueStyle={{ color: '#fa8c16', fontWeight: 'bold' }}
+                            styles={{ content: { color: '#fa8c16', fontWeight: 'bold', fontSize: isMobile ? 20 : 24 } }}
                         />
                     </Card>
                 </Col>
             </Row>
 
-            <Card styles={{ body: { padding: 0 } }}>
-                <Table
-                    columns={columns}
+            {!isMobile ? (
+                <Card styles={{ body: { padding: 0 } }}>
+                    <Table
+                        columns={columns}
+                        dataSource={banks}
+                        rowKey="id"
+                        loading={isLoading}
+                        pagination={{ pageSize: 10 }}
+                        scroll={{ x: 'max-content' }}
+                    />
+                </Card>
+            ) : (
+                <List
+                    loading={isLoading}
                     dataSource={banks}
                     rowKey="id"
-                    loading={isLoading}
-                    pagination={{ pageSize: 10 }}
-                    scroll={{ x: 'max-content' }}
+                    renderItem={(item: BankAccount) => {
+                        const types: Record<string, string> = {
+                            'CHECKING': t('banks.table.checking'),
+                            'SAVINGS': t('banks.table.savings'),
+                            'CASH_VAULT': t('banks.table.cash_vault'),
+                            'MOBILE_PAYMENT': t('banks.table.mobile_payment')
+                        };
+
+                        return (
+                            <List.Item
+                                style={{
+                                    padding: '16px',
+                                    background: '#fff',
+                                    marginBottom: 12,
+                                    borderRadius: 16,
+                                    border: '1px solid #f0f0f0',
+                                    boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
+                                    display: 'block'
+                                }}
+                            >
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
+                                    <div style={{ display: 'flex', gap: 12 }}>
+                                        <div style={{ 
+                                            width: 40, 
+                                            height: 40, 
+                                            borderRadius: 10, 
+                                            background: '#f0f7ff', 
+                                            display: 'flex', 
+                                            alignItems: 'center', 
+                                            justifyContent: 'center',
+                                            color: '#1890ff'
+                                        }}>
+                                            <BankOutlined style={{ fontSize: 20 }} />
+                                        </div>
+                                        <div>
+                                            <div style={{ fontWeight: 700, fontSize: 16 }}>{item.bankName}</div>
+                                            <div style={{ fontSize: 12, color: '#8c8c8c' }}>{types[item.accountType] || item.accountType}</div>
+                                        </div>
+                                    </div>
+                                    <div style={{ textAlign: 'right' }}>
+                                        <div style={{ fontWeight: 700, fontSize: 18, color: item.balance >= 0 ? '#52c41a' : '#f5222d' }}>
+                                            {item.currency.symbol} {formatVenezuelanPrice(item.balance)}
+                                        </div>
+                                        <div style={{ fontSize: 11, color: '#8c8c8c', textTransform: 'uppercase' }}>{t('banks.table.real_balance')}</div>
+                                    </div>
+                                </div>
+
+                                <div style={{ background: '#f9fafb', padding: '12px', borderRadius: 12, marginBottom: 16 }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                                        <Text type="secondary" style={{ fontSize: 13 }}>{t('banks.table.holder')}</Text>
+                                        <Text style={{ fontSize: 13 }}>{item.holderName}</Text>
+                                    </div>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                                        <Text type="secondary" style={{ fontSize: 13 }}>{t('banks.table.account_number')}</Text>
+                                        <Text style={{ fontSize: 13, fontFamily: 'monospace' }}>{item.accountNumber}</Text>
+                                    </div>
+                                    {item.pendingLiquidation > 0 && (
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 8, paddingTop: 8, borderTop: '1px dashed #d9d9d9', alignItems: 'center' }}>
+                                            <div>
+                                                <Text type="secondary" style={{ fontSize: 12 }}>{t('banks.table.in_transit')}</Text>
+                                                <div style={{ color: '#1890ff', fontWeight: 600 }}>{item.currency.symbol} {formatVenezuelanPrice(item.pendingLiquidation)}</div>
+                                            </div>
+                                            <Button 
+                                                size="small" 
+                                                type="primary" 
+                                                ghost 
+                                                onClick={() => {
+                                                    setSelectedBank(item);
+                                                    setIsLiquidateOpen(true);
+                                                }}
+                                            >
+                                                {t('banks.actions.liquidate_batch')}
+                                            </Button>
+                                        </div>
+                                    )}
+                                </div>
+
+                                <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid #f0f0f0', paddingTop: 12 }}>
+                                    <Space size={16}>
+                                        <HistoryOutlined 
+                                            style={{ fontSize: 18, color: '#8c8c8c', cursor: 'pointer' }} 
+                                            onClick={() => { setSelectedBank(item); setIsHistoryOpen(true); }}
+                                        />
+                                        <SwapOutlined 
+                                            style={{ fontSize: 18, color: '#8c8c8c', cursor: 'pointer' }} 
+                                            onClick={() => { setSelectedBank(item); setIsMovementOpen(true); }}
+                                        />
+                                        <EditOutlined 
+                                            style={{ fontSize: 18, color: '#6366f1', cursor: 'pointer' }} 
+                                            onClick={() => { setEditingBank(item); setIsModalOpen(true); }}
+                                        />
+                                    </Space>
+                                    <Popconfirm
+                                        title={t('banks.messages.delete_confirm_title')}
+                                        onConfirm={() => deleteMutation.mutate(item.id)}
+                                        okText={t('common.yes')}
+                                        cancelText={t('common.no')}
+                                    >
+                                        <DeleteOutlined style={{ fontSize: 18, color: '#f5222d', cursor: 'pointer' }} />
+                                    </Popconfirm>
+                                </div>
+                            </List.Item>
+                        );
+                    }}
                 />
-            </Card>
+            )}
 
             <BankFormModal
                 open={isModalOpen}

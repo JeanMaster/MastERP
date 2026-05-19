@@ -87,6 +87,7 @@ export const RegisterRetentionModal: React.FC<RegisterRetentionModalProps> = ({
             onCancel={onClose}
             footer={null}
             width={600}
+            forceRender
         >
             {invoice && (
                 <Form

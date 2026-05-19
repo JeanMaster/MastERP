@@ -58,24 +58,25 @@ export const MainLayout = () => {
                     if (!hasAllowedPermission) return acc;
                 }
                 
-                const translatedLabel = item.labelKey ? t(item.labelKey) : item.label;
+                const { labelKey, roles: itemRoles, permissions: itemPermissions, ...menuItemProps } = item;
+                const translatedLabel = labelKey ? t(labelKey) : item.label;
 
                 if (item.children) {
                     const filteredChildren = filterItems(item.children);
                     // Only include parent if it has at least one visible child or is a direct leaf itself
                     if (filteredChildren.length > 0 || (item.key && !item.children.length)) {
                         acc.push({ 
-                            ...item, 
+                            ...menuItemProps, 
                             label: translatedLabel,
                             children: filteredChildren.length > 0 ? filteredChildren : undefined 
                         });
                     } else if (item.children.length > 0 && filteredChildren.length === 0) {
                         return acc;
                     } else {
-                        acc.push({ ...item, label: translatedLabel, children: undefined });
+                        acc.push({ ...menuItemProps, label: translatedLabel, children: undefined });
                     }
                 } else {
-                    acc.push({ ...item, label: translatedLabel });
+                    acc.push({ ...menuItemProps, label: translatedLabel });
                 }
                 return acc;
             }, []);
@@ -202,8 +203,10 @@ export const MainLayout = () => {
                     placement="left"
                     onClose={() => setDrawerVisible(false)}
                     open={drawerVisible}
-                    styles={{ body: { padding: 0 } }}
-                    width={250}
+                    styles={{ 
+                        body: { padding: 0 },
+                        wrapper: { width: 250 }
+                    }}
                     closable={false}
                 >
                     <div style={{ height: '100%', background: isDarkMode ? '#001529' : '#fff' }}>

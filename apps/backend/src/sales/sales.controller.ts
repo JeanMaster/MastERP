@@ -55,7 +55,7 @@ export class SalesController {
   /**
    * Retrieves sales records matching specific filters.
    */
-  @Roles(Role.ADMIN, Role.MANAGER)
+  @Roles(Role.ADMIN, Role.MANAGER, Role.CASHIER)
   @Get()
   @ApiOperation({ summary: 'Retrieve sales with filters' })
   @ApiResponse({ status: 200, description: 'List of filtered sales' })
@@ -153,19 +153,9 @@ export class SalesController {
   }
 
   /**
-   * Retrieves a single sale record by its ID.
-   */
-  @Get(':id')
-  @ApiOperation({ summary: 'Retrieve a sale by ID' })
-  @ApiResponse({ status: 200, description: 'Sale found' })
-  @ApiResponse({ status: 404, description: 'Sale not found' })
-  findOne(@Param('id') id: string) {
-    return this.salesService.findOne(id);
-  }
-
-  /**
    * Retrieves the next available invoice number.
    */
+  @Roles(Role.ADMIN, Role.MANAGER, Role.CASHIER)
   @Get('next-invoice-number')
   @ApiOperation({ summary: 'Retrieve the next invoice number' })
   @ApiResponse({ status: 200, description: 'Next invoice number' })
@@ -176,10 +166,22 @@ export class SalesController {
   /**
    * Reserves an invoice number for immediate use.
    */
+  @Roles(Role.ADMIN, Role.MANAGER, Role.CASHIER)
   @Get('reserve-invoice-number')
   @ApiOperation({ summary: 'Reserve an invoice number for immediate use' })
   @ApiResponse({ status: 200, description: 'Reserved invoice number' })
   reserveInvoiceNumber() {
     return this.invoiceService.reserveInvoiceNumber();
+  }
+
+  /**
+   * Retrieves a single sale record by its ID.
+   */
+  @Get(':id')
+  @ApiOperation({ summary: 'Retrieve a sale by ID' })
+  @ApiResponse({ status: 200, description: 'Sale found' })
+  @ApiResponse({ status: 404, description: 'Sale not found' })
+  findOne(@Param('id') id: string) {
+    return this.salesService.findOne(id);
   }
 }

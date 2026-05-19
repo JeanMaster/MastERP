@@ -69,6 +69,7 @@ export const BankMovementModal = ({ open, bankAccount, onClose }: BankMovementMo
             confirmLoading={mutation.isPending}
             okText={`${t('common.add')} (F9)`}
             cancelText={t('common.cancel')}
+            forceRender
         >
             <Form
                 form={form}

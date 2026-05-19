@@ -68,7 +68,7 @@ export const MarketingSettings = () => {
                 onFinish={onFinish}
                 disabled={updateMutation.isPending}
             >
-                <Card bordered={false} style={{ marginBottom: 24, boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
+                <Card variant="borderless" style={{ marginBottom: 24, boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
                     <Title level={4}><TeamOutlined /> {t('marketing.segmentation_alert')}</Title>
                     <Paragraph type="secondary">
                         {t('marketing.segmentation_desc')}
@@ -105,7 +105,7 @@ export const MarketingSettings = () => {
                     </Row>
                 </Card>
 
-                <Card bordered={false} style={{ marginBottom: 24, boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
+                <Card variant="borderless" style={{ marginBottom: 24, boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
                     <Title level={4}><GiftOutlined /> {t('marketing.loyalty_divider')}</Title>
                     <Row gutter={24}>
                         <Col xs={24} md={12}>

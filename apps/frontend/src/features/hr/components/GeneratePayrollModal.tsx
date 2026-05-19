@@ -84,6 +84,7 @@ export const GeneratePayrollModal: React.FC<Props> = ({ visible, onClose }) => {
             confirmLoading={generateMutation.isPending}
             okText={t('hr.payroll.generate_button_f9')}
             width={600}
+            forceRender
         >
             <Form form={form} layout="vertical">
                 <Form.Item

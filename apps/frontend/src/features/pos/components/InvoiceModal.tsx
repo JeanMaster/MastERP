@@ -1,4 +1,4 @@
-import { Modal, Card, Row, Col, Typography, Button, Space, Divider, Tag, Descriptions, message } from 'antd';
+import { Modal, Card, Row, Col, Typography, Button, Space, Divider, Tag, Descriptions, message, Grid } from 'antd';
 import { WhatsAppOutlined, MailOutlined, PrinterOutlined, CloseOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import type { Sale } from '../../../services/salesApi';
@@ -21,7 +21,10 @@ interface InvoiceModalProps {
 export const InvoiceModal = ({ open, sale, onClose }: InvoiceModalProps) => {
     const { t, i18n } = useTranslation();
     const { companyInfo } = usePOSStore();
+    const screens = Grid.useBreakpoint();
+    const isMobile = !screens.lg;
     const currentLang = i18n.language || 'es';
+
     if (!sale) {
         return (
             <Modal
@@ -216,27 +219,34 @@ export const InvoiceModal = ({ open, sale, onClose }: InvoiceModalProps) => {
         onClose();
     };
 
+
     return (
         <Modal
             open={open}
             onCancel={onClose}
             footer={null}
-            width={600}
+            width={isMobile ? '95%' : 600}
             centered
             destroyOnClose
             maskClosable={false}
+            styles={{ body: { padding: isMobile ? '12px' : '24px' } }}
             title={
                 <div style={{ textAlign: 'center' }}>
-                    <Title level={4} style={{ margin: 0 }}>
+                    <Title level={isMobile ? 5 : 4} style={{ margin: 0 }}>
                         🧾 {t('pos.sale_completed', { defaultValue: 'Sale Completed' })}
                     </Title>
                 </div>
             }
         >
-            <Card style={{ marginBottom: 16 }}>
-                <Descriptions column={2} size="small">
-                    <Descriptions.Item label={t('common.invoice')} span={2}>
-                        <Tag color="blue" style={{ fontSize: 16 }}>{sale.invoiceNumber}</Tag>
+            <Card size="small" style={{ marginBottom: 16, borderRadius: 12 }}>
+                <Descriptions 
+                    column={isMobile ? 1 : 2} 
+                    size="small"
+                    layout={isMobile ? 'horizontal' : 'horizontal'}
+                    labelStyle={{ color: '#8c8c8c' }}
+                >
+                    <Descriptions.Item label={t('common.invoice')} span={isMobile ? 1 : 2}>
+                        <Tag color="blue" style={{ fontSize: isMobile ? 14 : 16, margin: 0 }}>{sale.invoiceNumber}</Tag>
                     </Descriptions.Item>
                     <Descriptions.Item label={t('common.date')}>
                         {new Date(sale.date).toLocaleDateString(currentLang === 'es' ? 'es-VE' : 'en-US')}
@@ -244,14 +254,14 @@ export const InvoiceModal = ({ open, sale, onClose }: InvoiceModalProps) => {
                     <Descriptions.Item label={t('common.time')}>
                         {new Date(sale.date).toLocaleTimeString(currentLang === 'es' ? 'es-VE' : 'en-US')}
                     </Descriptions.Item>
-                    <Descriptions.Item label={t('common.customer')} span={2}>
+                    <Descriptions.Item label={t('common.customer')} span={isMobile ? 1 : 2}>
                         <Text strong>{clientName}</Text>
                     </Descriptions.Item>
                     <Descriptions.Item label={t('common.products')}>
                         {sale.items?.length || 0} {t('common.items')}
                     </Descriptions.Item>
                     <Descriptions.Item label={t('common.payment_method')}>
-                        {sale.paymentMethod}
+                        <Tag color="cyan" style={{ margin: 0 }}>{sale.paymentMethod}</Tag>
                     </Descriptions.Item>
                 </Descriptions>
 
@@ -259,30 +269,31 @@ export const InvoiceModal = ({ open, sale, onClose }: InvoiceModalProps) => {
 
                 <Row justify="space-between" align="middle">
                     <Col>
-                        <Text type="secondary">{t('pos.sale_total', { defaultValue: 'Sale Total' })}</Text>
+                        <Text type="secondary" style={{ fontSize: isMobile ? '12px' : '14px' }}>{t('pos.sale_total', { defaultValue: 'Sale Total' })}</Text>
                     </Col>
                     <Col>
-                        <Title level={2} style={{ margin: 0, color: '#52c41a' }}>
+                        <Title level={isMobile ? 3 : 2} style={{ margin: 0, color: '#52c41a' }}>
                             {formatVenezuelanPrice(sale.total)}
                         </Title>
                     </Col>
                 </Row>
             </Card>
 
-            <Divider>{t('pos.how_receive_invoice', { defaultValue: 'How would you like to receive the invoice?' })}</Divider>
+            <Divider plain style={{ margin: '16px 0' }}>
+                <Text type="secondary" style={{ fontSize: '12px' }}>{t('pos.how_receive_invoice', { defaultValue: 'How would you like to receive the invoice?' })}</Text>
+            </Divider>
 
-            <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+            <Space direction="vertical" size="small" style={{ width: '100%' }}>
                 <Button
                     type="primary"
                     icon={<WhatsAppOutlined />}
                     size="large"
                     block
-                    style={{ background: '#25D366', borderColor: '#25D366' }}
+                    style={{ background: '#25D366', borderColor: '#25D366', height: isMobile ? 50 : 'auto' }}
                     onClick={handleWhatsApp}
                     disabled={!clientPhone || !hasWhatsapp}
                 >
                     {t('pos.send_via_whatsapp', { defaultValue: 'Send via WhatsApp' })}
-                    {(!clientPhone || !hasWhatsapp) && <Text type="secondary" style={{ marginLeft: 8 }}>({t('common.unavailable', { defaultValue: 'Unavailable' })})</Text>}
                 </Button>
 
                 <Button
@@ -290,12 +301,11 @@ export const InvoiceModal = ({ open, sale, onClose }: InvoiceModalProps) => {
                     icon={<MailOutlined />}
                     size="large"
                     block
-                    style={{ background: '#1890ff' }}
+                    style={{ background: '#1890ff', height: isMobile ? 50 : 'auto' }}
                     onClick={handleEmail}
                     disabled={!clientEmail}
                 >
                     {t('pos.send_via_email', { defaultValue: 'Send via Email' })}
-                    {!clientEmail && <Text type="secondary" style={{ marginLeft: 8 }}>({t('common.unavailable')})</Text>}
                 </Button>
 
                 <Button
@@ -303,12 +313,13 @@ export const InvoiceModal = ({ open, sale, onClose }: InvoiceModalProps) => {
                     icon={<PrinterOutlined />}
                     size="large"
                     block
+                    style={{ height: isMobile ? 50 : 'auto' }}
                     onClick={handlePrint}
                 >
                     {t('pos.print_invoice_seniat', { defaultValue: 'Print Invoice (SENIAT)' })}
                 </Button>
 
-                <Divider style={{ margin: '8px 0' }} />
+                <Divider style={{ margin: '4px 0' }} />
 
                 <Button
                     type="text"
@@ -316,6 +327,7 @@ export const InvoiceModal = ({ open, sale, onClose }: InvoiceModalProps) => {
                     size="large"
                     block
                     onClick={handleSkip}
+                    style={{ color: '#8c8c8c' }}
                 >
                     {t('pos.dont_print_now', { defaultValue: "Don't print now" })}
                 </Button>

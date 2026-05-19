@@ -12,7 +12,9 @@ import {
     Space,
     Typography,
     Grid,
-    Alert
+    Alert,
+    Pagination,
+    Tag
 } from 'antd';
 import { useTranslation } from 'react-i18next';
 import {
@@ -27,7 +29,6 @@ import {
 import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { Modal, message } from 'antd';
 import { salesApi, type Sale, type SalesFilters } from '../../../services/salesApi';
-import { productsApi } from '../../../services/productsApi';
 import { clientsApi } from '../../../services/clientsApi';
 import { formatVenezuelanPrice } from '../../../utils/formatters';
 import dayjs from 'dayjs';
@@ -116,10 +117,7 @@ export const SalesReports = () => {
     const sales = data?.sales || [];
     const summary = data?.summary || { totalSales: 0, grossRevenue: 0, nominalRevenue: 0, discounts: 0, averageTicket: 0 };
 
-    const { data: products = [] } = useQuery({
-        queryKey: ['products'],
-        queryFn: () => productsApi.getAll(),
-    });
+
 
     const { data: clients = [] } = useQuery({
         queryKey: ['clients'],
@@ -287,28 +285,32 @@ export const SalesReports = () => {
 
     return (
         <div style={{ padding: isMobile ? 8 : 24 }}>
-            <div style={{ marginBottom: 24 }}>
-                <Row justify="space-between" align="middle" gutter={[16, 16]}>
+            <div style={{ marginBottom: 24, background: '#fff', padding: isMobile ? 16 : 24, borderRadius: 16, boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
+                <Row justify="space-between" align="middle" gutter={[16, 24]}>
                     <Col xs={24} md={12}>
-                        <Title level={isMobile ? 3 : 2} style={{ margin: 0 }}>{t('sales_history.reports_title')}</Title>
-                        <Text type="secondary">{t('sales_history.reports_subtitle')}</Text>
+                        <Title level={isMobile ? 4 : 2} style={{ margin: 0 }}>Historial de Ventas</Title>
+                        <Text type="secondary" style={{ fontSize: isMobile ? 12 : 14 }}>Consulta y gestiona todas las transacciones realizadas.</Text>
                     </Col>
                     <Col xs={24} md={12} style={{ textAlign: isMobile ? 'left' : 'right' }}>
-                        <Space wrap>
+                        <Space wrap size={12} style={{ width: isMobile ? '100%' : 'auto' }}>
                             <Button
                                 type="primary"
                                 icon={<ReloadOutlined />}
                                 onClick={() => refetch()}
                                 block={isMobile}
+                                size="large"
+                                style={{ borderRadius: 8 }}
                             >
-                                {t('sales_history.refresh')}
+                                Actualizar
                             </Button>
                             <Button
                                 icon={<DownloadOutlined />}
                                 disabled={sales.length === 0}
                                 block={isMobile}
+                                size="large"
+                                style={{ borderRadius: 8 }}
                             >
-                                {t('sales_history.export')}
+                                Exportar
                             </Button>
                         </Space>
                     </Col>
@@ -316,62 +318,62 @@ export const SalesReports = () => {
             </div>
 
             {/* Summary Statistics */}
-            <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
+            <Row gutter={[12, 12]} style={{ marginBottom: 24 }}>
                 <Col xs={12} lg={4}>
-                    <Card size="small">
+                    <Card variant="borderless" style={{ borderRadius: 12, boxShadow: '0 4px 12px rgba(0,0,0,0.05)', background: '#e6f7ff' }} styles={{ body: { padding: 16 } }}>
                         <Statistic
-                            title={t('sales_history.stats.total_sales')}
+                            title={<Text type="secondary" style={{ fontSize: 11 }}>TOTAL VENTAS</Text>}
                             value={totalSalesCount}
-                            prefix={<ShoppingOutlined />}
-                            valueStyle={{ color: '#1890ff', fontSize: isMobile ? 18 : 22 }}
+                            prefix={<ShoppingOutlined style={{ color: '#1890ff' }} />}
+                            styles={{ content: { color: '#1890ff', fontSize: isMobile ? 18 : 22, fontWeight: 800 } }}
                         />
                     </Card>
                 </Col>
                 <Col xs={12} lg={5}>
-                    <Card size="small">
+                    <Card variant="borderless" style={{ borderRadius: 12, boxShadow: '0 4px 12px rgba(0,0,0,0.05)', background: '#f6ffed' }} styles={{ body: { padding: 16 } }}>
                         <Statistic
-                            title={t('sales_history.stats.adjusted_revenue')}
+                            title={<Text type="secondary" style={{ fontSize: 11 }}>INGRESO REAL</Text>}
                             value={totalAdjustedRevenue}
                             precision={2}
-                            prefix={<DollarOutlined />}
+                            prefix={<DollarOutlined style={{ color: '#52c41a' }} />}
                             formatter={(value) => formatVenezuelanPrice(Number(value))}
-                            valueStyle={{ color: '#52c41a', fontSize: isMobile ? 18 : 22 }}
+                            styles={{ content: { color: '#52c41a', fontSize: isMobile ? 18 : 22, fontWeight: 800 } }}
                         />
                     </Card>
                 </Col>
                 <Col xs={12} lg={5}>
-                    <Card size="small" style={{ border: '1px solid #d9d9d9' }}>
+                    <Card variant="borderless" style={{ borderRadius: 12, boxShadow: '0 4px 12px rgba(0,0,0,0.05)', background: '#f9f9f9' }} styles={{ body: { padding: 16 } }}>
                         <Statistic
-                            title={t('sales_history.stats.nominal_revenue')}
+                            title={<Text type="secondary" style={{ fontSize: 11 }}>FAC. NOMINAL</Text>}
                             value={summary.nominalRevenue || 0}
                             precision={2}
-                            prefix={<ShoppingOutlined style={{ opacity: 0.7 }} />}
+                            prefix={<ShoppingOutlined style={{ opacity: 0.7, color: '#595959' }} />}
                             formatter={(value) => formatVenezuelanPrice(Number(value))}
-                            valueStyle={{ color: '#595959', fontSize: isMobile ? 18 : 22 }}
+                            styles={{ content: { color: '#595959', fontSize: isMobile ? 18 : 22, fontWeight: 800 } }}
                         />
                     </Card>
                 </Col>
                 <Col xs={12} lg={5}>
-                    <Card size="small">
+                    <Card variant="borderless" style={{ borderRadius: 12, boxShadow: '0 4px 12px rgba(0,0,0,0.05)', background: '#fff1f0' }} styles={{ body: { padding: 16 } }}>
                         <Statistic
-                            title={t('sales_history.stats.total_discounts')}
+                            title={<Text type="secondary" style={{ fontSize: 11 }}>DESCUENTOS</Text>}
                             value={totalDiscount}
                             precision={2}
-                            prefix={<DollarOutlined />}
+                            prefix={<DollarOutlined style={{ color: '#ff4d4f' }} />}
                             formatter={(value) => formatVenezuelanPrice(Number(value))}
-                            valueStyle={{ color: '#ff4d4f', fontSize: isMobile ? 18 : 22 }}
+                            styles={{ content: { color: '#ff4d4f', fontSize: isMobile ? 18 : 22, fontWeight: 800 } }}
                         />
                     </Card>
                 </Col>
-                <Col xs={12} lg={5}>
-                    <Card size="small">
+                <Col xs={24} lg={5}>
+                    <Card variant="borderless" style={{ borderRadius: 12, boxShadow: '0 4px 12px rgba(0,0,0,0.05)', background: '#f9f0ff' }} styles={{ body: { padding: 16 } }}>
                         <Statistic
-                            title={t('sales_history.stats.average_ticket')}
+                            title={<Text type="secondary" style={{ fontSize: 11 }}>TICKET PROMEDIO</Text>}
                             value={averageTicket}
                             precision={2}
-                            prefix={<DollarOutlined />}
+                            prefix={<DollarOutlined style={{ color: '#722ed1' }} />}
                             formatter={(value) => formatVenezuelanPrice(Number(value))}
-                            valueStyle={{ color: '#722ed1', fontSize: isMobile ? 18 : 22 }}
+                            styles={{ content: { color: '#722ed1', fontSize: isMobile ? 18 : 22, fontWeight: 800 } }}
                         />
                     </Card>
                 </Col>
@@ -392,50 +394,58 @@ export const SalesReports = () => {
                 />
             )}
 
-            <Card title={t('sales_history.filters.title')} style={{ marginBottom: 16 }} size={isMobile ? 'small' : 'default'}>
+            <Card 
+                title={<Text strong style={{ fontSize: 16 }}>{t('sales_history.filters.title')}</Text>} 
+                variant="borderless"
+                style={{ marginBottom: 24, borderRadius: 16, boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }} 
+                size={isMobile ? 'small' : 'default'}
+            >
                 <Row gutter={[16, 16]}>
-                    <Col xs={24} md={12}>
-                        <Text strong>{t('sales_history.filters.date_range')}:</Text>
+                    <Col xs={24} md={12} lg={8}>
+                        <Text strong style={{ fontSize: 12, color: '#8c8c8c', display: 'block', marginBottom: 8 }}>{t('sales_history.filters.date_range').toUpperCase()}</Text>
                         <RangePicker
-                            style={{ width: '100%', marginTop: 8 }}
+                            style={{ width: '100%' }}
                             value={dateRange}
                             onChange={handleDateRangeChange}
                             format="MM/DD/YYYY"
                             placeholder={[t('sales_history.filters.start_date'), t('sales_history.filters.end_date')]}
+                            size="large"
                         />
                     </Col>
-                    <Col xs={12} md={6}>
-                        <Text strong>{t('sales_history.filters.payment')}:</Text>
+                    <Col xs={12} md={6} lg={4}>
+                        <Text strong style={{ fontSize: 12, color: '#8c8c8c', display: 'block', marginBottom: 8 }}>{t('sales_history.filters.payment').toUpperCase()}</Text>
                         <Select
-                            style={{ width: '100%', marginTop: 8 }}
+                            style={{ width: '100%' }}
                             placeholder={t('sales_history.filters.all_methods')}
                             allowClear
                             onChange={(value) => handleFilterChange('paymentMethod', value)}
                             value={filters.paymentMethod}
+                            size="large"
                         >
-                            <Select.Option value="CASH">{t('pos.checkout.cash', { defaultValue: 'Cash' })}</Select.Option>
-                            <Select.Option value="DEBIT">{t('pos.checkout.debit_card', { defaultValue: 'Debit Card' })}</Select.Option>
-                            <Select.Option value="CREDIT">{t('pos.checkout.credit_card', { defaultValue: 'Credit Card' })}</Select.Option>
-                            <Select.Option value="TRANSFER">{t('pos.checkout.transfer', { defaultValue: 'Transfer' })}</Select.Option>
-                            <Select.Option value="MOBILE">{t('pos.checkout.mobile_pay', { defaultValue: 'Mobile Payment' })}</Select.Option>
+                            <Select.Option value="CASH">{t('pos.checkout.cash')}</Select.Option>
+                            <Select.Option value="DEBIT">{t('pos.checkout.debit_card')}</Select.Option>
+                            <Select.Option value="CREDIT">{t('pos.checkout.credit_card')}</Select.Option>
+                            <Select.Option value="TRANSFER">{t('pos.checkout.transfer')}</Select.Option>
+                            <Select.Option value="MOBILE">{t('pos.checkout.mobile_pay')}</Select.Option>
                         </Select>
                     </Col>
-                    <Col xs={12} md={6}>
-                        <Text strong>{t('sales_history.filters.min_amount')}:</Text>
+                    <Col xs={12} md={6} lg={4}>
+                        <Text strong style={{ fontSize: 12, color: '#8c8c8c', display: 'block', marginBottom: 8 }}>{t('sales_history.filters.min_amount').toUpperCase()}</Text>
                         <InputNumber
-                            style={{ width: '100%', marginTop: 8 }}
+                            style={{ width: '100%' }}
                             placeholder="0.00"
                             min={0}
                             onChange={(value) => handleFilterChange('minAmount', value)}
                             value={filters.minAmount}
+                            size="large"
                         />
                     </Col>
                     
-                    <Col xs={24} md={12}>
-                        <Text strong>{t('sales_history.filters.customer')}:</Text>
+                    <Col xs={24} lg={8}>
+                        <Text strong style={{ fontSize: 12, color: '#8c8c8c', display: 'block', marginBottom: 8 }}>{t('sales_history.filters.customer').toUpperCase()}</Text>
                         <Select
                             showSearch
-                            style={{ width: '100%', marginTop: 8 }}
+                            style={{ width: '100%' }}
                             placeholder={t('sales_history.filters.all_customers')}
                             allowClear
                             onChange={(value) => handleFilterChange('clientId', value)}
@@ -448,50 +458,133 @@ export const SalesReports = () => {
                             size="large"
                         />
                     </Col>
-                    <Col xs={24} md={12}>
-                        <Text strong>{t('sales_history.filters.product')}:</Text>
-                        <Select
-                            showSearch
-                            style={{ width: '100%', marginTop: 8 }}
-                            placeholder={t('sales_history.filters.all_products')}
-                            allowClear
-                            onChange={(value) => handleFilterChange('productId', value)}
-                            value={filters.productId}
-                            options={products.map(p => ({ label: p.name, value: p.id }))}
-                            optionFilterProp="label"
-                            filterOption={(input, option) =>
-                                (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
-                            }
-                            size="large"
-                        />
-                    </Col>
                 </Row>
-                <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 16 }}>
-                    <Space>
-                        <Button onClick={handleResetFilters}>{t('sales_history.filters.clear')}</Button>
-                        <Button type="primary" onClick={() => refetch()} loading={isLoading}>{t('sales_history.filters.apply')}</Button>
-                    </Space>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 20, gap: 12 }}>
+                    <Button onClick={handleResetFilters} size="large" style={{ borderRadius: 8 }}>{t('sales_history.filters.clear')}</Button>
+                    <Button type="primary" onClick={() => refetch()} loading={isLoading} size="large" style={{ borderRadius: 8 }}>{t('sales_history.filters.apply')}</Button>
                 </div>
             </Card>
 
-            <Card styles={{ body: { padding: isMobile ? 0 : 24 } }}>
-                <Table
-                    columns={columns}
-                    dataSource={sales}
-                    rowKey="id"
-                    loading={isLoading}
-                    pagination={{
-                        pageSize,
-                        showSizeChanger: true,
-                        onShowSizeChange: (_, size) => setPageSize(size),
-                        pageSizeOptions: ['10', '20', '50', '100'],
-                        size: isMobile ? 'small' : 'default',
-                        responsive: true
-                    }}
-                    scroll={{ x: 'max-content' }}
-                    size="small"
-                />
-            </Card>
+            {!isMobile ? (
+                <Card styles={{ body: { padding: 24 } }}>
+                    <Table
+                        columns={columns}
+                        dataSource={sales}
+                        rowKey="id"
+                        loading={isLoading}
+                        pagination={{
+                            pageSize,
+                            showSizeChanger: true,
+                            onShowSizeChange: (_, size) => setPageSize(size),
+                            pageSizeOptions: ['10', '20', '50', '100'],
+                            responsive: true
+                        }}
+                        scroll={{ x: 'max-content' }}
+                        size="small"
+                    />
+                </Card>
+            ) : (
+                <div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                        {sales.map((item: Sale) => (
+                            <Card
+                                key={item.id}
+                                variant="borderless"
+                                style={{
+                                    borderRadius: 16,
+                                    boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
+                                    overflow: 'hidden',
+                                    background: '#fff'
+                                }}
+                                styles={{ body: { padding: 0 } }}
+                            >
+                                <div style={{ padding: '16px 16px 12px 16px', borderBottom: '1px solid #f0f0f0' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                        <div>
+                                            <Text strong style={{ fontSize: 16, color: '#1890ff', cursor: 'pointer' }} onClick={() => { setSelectedSale(item); setIsDetailModalOpen(true); }}>
+                                                #{item.invoiceNumber}
+                                            </Text>
+                                            <div style={{ fontSize: 11, color: '#8c8c8c' }}>
+                                                {dayjs(item.date).format('DD/MM/YYYY HH:mm')}
+                                            </div>
+                                        </div>
+                                        <div style={{ textAlign: 'right' }}>
+                                            <div style={{ fontWeight: 800, fontSize: 18, color: '#111827' }}>
+                                                {formatVenezuelanPrice(item.revaluedTotal ?? item.total ?? 0)}
+                                            </div>
+                                            <Tag color="processing" style={{ margin: 0, borderRadius: 4, fontSize: 10, fontWeight: 700 }}>
+                                                {item.paymentMethod.split(',')[0]}
+                                            </Tag>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div style={{ padding: 16 }}>
+                                    <div style={{ marginBottom: 12 }}>
+                                        <Text type="secondary" style={{ fontSize: 10, display: 'block', marginBottom: 4, textTransform: 'uppercase' }}>Cliente</Text>
+                                        <Text strong style={{ fontSize: 14 }}>{item.client?.name || t('sales_history.table.walk_in')}</Text>
+                                    </div>
+
+                                    <Text type="secondary" style={{ fontSize: 10, display: 'block', marginBottom: 4, textTransform: 'uppercase' }}>Resumen Productos</Text>
+                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                                        {item.items.slice(0, 3).map(i => (
+                                            <Tag key={i.id} style={{ margin: 0, background: '#f5f5f5', border: 'none', borderRadius: 6, fontSize: 11, padding: '2px 8px' }}>
+                                                {i.product.name} <Text type="secondary">x{i.quantity}</Text>
+                                            </Tag>
+                                        ))}
+                                        {item.items.length > 3 && (
+                                            <Tag style={{ margin: 0, background: '#f5f5f5', border: 'none', borderRadius: 6, fontSize: 11 }}>+{item.items.length - 3} más</Tag>
+                                        )}
+                                    </div>
+                                </div>
+
+                                <div style={{ display: 'flex', justifyContent: 'space-between', background: '#f9f9f9', padding: '12px 16px', borderTop: '1px solid #f0f0f0' }}>
+                                    <Button
+                                        type="link"
+                                        size="middle"
+                                        icon={<PrinterOutlined />}
+                                        onClick={() => {
+                                            setSelectedSale(item);
+                                            setIsInvoiceModalOpen(true);
+                                        }}
+                                        style={{ padding: 0, fontWeight: 600 }}
+                                    >
+                                        Imprimir
+                                    </Button>
+                                    <Space size={12}>
+                                        <Button
+                                            type="text"
+                                            size="middle"
+                                            icon={<EditOutlined style={{ color: '#8c8c8c' }} />}
+                                            onClick={() => {
+                                                setSelectedSale(item);
+                                                setNewPaymentMethod(item.paymentMethod.split(',')[0]);
+                                                setIsEditPaymentModalOpen(true);
+                                            }}
+                                        />
+                                        <Button
+                                            type="text"
+                                            size="middle"
+                                            danger
+                                            icon={<DeleteOutlined />}
+                                            onClick={() => handleDeleteSale(item)}
+                                        />
+                                    </Space>
+                                </div>
+                            </Card>
+                        ))}
+                    </div>
+                    <div style={{ padding: '12px', textAlign: 'center' }}>
+                        <Pagination
+                            size="small"
+                            total={sales.length}
+                            pageSize={10}
+                            simple
+                            onChange={(_page: number, size?: number) => setPageSize(size || 10)}
+                        />
+                    </div>
+                </div>
+            )}
 
             <SaleDetailModal
                 open={isDetailModalOpen}

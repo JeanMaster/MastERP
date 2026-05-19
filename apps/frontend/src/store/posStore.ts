@@ -570,43 +570,12 @@ export const usePOSStore = create<POSState>()(
 
             fetchNextInvoiceNumber: async () => {
                 try {
-                    console.log('🔍 Fetching next invoice number...');
-                    // Get all sales to find the last invoice number
-                    const sales = await salesApi.getAll();
-                    console.log('📊 Total sales found:', sales.length);
-
-                    if (sales.length === 0) {
-                        // No sales yet, start with FAC-00000001
-                        console.log('✅ No sales found, setting to FAC-00000001');
-                        set({ nextInvoiceNumber: 'FAC-00000001' });
-                        return;
-                    }
-
-                    // Sort by invoice number to get the latest (assuming format FAC-XXXXXXXX)
-                    const sortedSales = [...sales].sort((a, b) => {
-                        return b.invoiceNumber.localeCompare(a.invoiceNumber);
-                    });
-
-                    const lastInvoice = sortedSales[0].invoiceNumber;
-                    console.log('📄 Last invoice found:', lastInvoice);
-
-                    // Extract number from invoice (e.g., "FAC-00000004" -> 4)
-                    const match = lastInvoice.match(/([A-Z]+)-(\d+)$/);
-                    if (match) {
-                        const prefix = match[1];
-                        const lastNumber = parseInt(match[2], 10);
-                        const nextNumber = lastNumber + 1;
-                        const nextInvoice = `${prefix}-${nextNumber.toString().padStart(8, '0')}`;
-                        console.log('✅ Next invoice calculated:', nextInvoice);
-                        set({ nextInvoiceNumber: nextInvoice });
-                    } else {
-                        // Fallback if format is unexpected
-                        console.warn('⚠️ Could not parse invoice format, using fallback');
-                        set({ nextInvoiceNumber: 'FAC-00000001' });
-                    }
+                    const nextInvoice = await salesApi.getNextInvoiceNumber();
+                    set({ nextInvoiceNumber: nextInvoice });
                 } catch (error) {
                     console.error('❌ Failed to fetch next invoice number:', error);
-                    // Keep current value on error
+                    // Fallback in case the specific endpoint fails
+                    set({ nextInvoiceNumber: 'FAC-00000001' });
                 }
             },
 

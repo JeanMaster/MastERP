@@ -74,6 +74,7 @@ export const LiquidateBatchModal = ({ open, bankAccount, onClose }: LiquidateBat
             okText={t('banks.liquidate.process_btn')}
             cancelText={t('common.cancel')}
             width={500}
+            forceRender
         >
             <div style={{ marginTop: 16 }}>
                 <Alert

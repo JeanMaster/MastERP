@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Card, Table, Button, Input, Tag, Typography, Statistic, Row, Col, Space, Grid, Tooltip } from 'antd';
+import { Card, Table, Button, Input, Tag, Typography, Statistic, Row, Col, Space, Grid, Tooltip, List } from 'antd';
 import { PlusOutlined, ReloadOutlined, SearchOutlined, DollarOutlined, EditOutlined } from '@ant-design/icons';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
@@ -182,8 +182,7 @@ export const ExpensesPage = () => {
                                 title={t('expenses_page.today_ref')}
                                 value={totalTodayUSD}
                                 precision={2}
-                                valueStyle={{ color: '#cf1322', fontSize: isMobile ? '16px' : '24px' }}
-                                styles={{ content: { color: '#cf1322' } }}
+                                styles={{ content: { color: '#cf1322', fontSize: isMobile ? '16px' : '24px' } }}
                                 prefix={<DollarOutlined />}
                                 suffix="$"
                             />
@@ -195,8 +194,7 @@ export const ExpensesPage = () => {
                                 title={t('expenses_page.month_ref')}
                                 value={totalMonthUSD}
                                 precision={2}
-                                valueStyle={{ color: '#cf1322', fontSize: isMobile ? '16px' : '24px' }}
-                                styles={{ content: { color: '#cf1322' } }}
+                                styles={{ content: { color: '#cf1322', fontSize: isMobile ? '16px' : '24px' } }}
                                 prefix={<DollarOutlined />}
                                 suffix="$"
                             />
@@ -232,14 +230,105 @@ export const ExpensesPage = () => {
                     </Space>
                 }
             >
-                <Table
-                    columns={columns}
-                    dataSource={filteredExpenses}
-                    rowKey="id"
-                    loading={isLoading}
-                    pagination={{ pageSize: 10 }}
-                    scroll={{ x: 'max-content' }}
-                />
+                {!isMobile ? (
+                    <Table
+                        columns={columns}
+                        dataSource={filteredExpenses}
+                        rowKey="id"
+                        loading={isLoading}
+                        pagination={{ pageSize: 10 }}
+                        scroll={{ x: 'max-content' }}
+                    />
+                ) : (
+                    <List
+                        loading={isLoading}
+                        dataSource={filteredExpenses}
+                        rowKey="id"
+                        pagination={{
+                            pageSize: 10,
+                            size: 'small',
+                            simple: true,
+                        }}
+                        renderItem={(item: Expense) => {
+                            let usdAmount = 0;
+                            const rate = Number(item.exchangeRate) || 1;
+                            if (item.currencyCode === 'USD') {
+                                usdAmount = Number(item.amount);
+                            } else {
+                                usdAmount = Number(item.amount) / rate;
+                            }
+
+                            return (
+                                <List.Item
+                                    onClick={() => handleEdit(item)}
+                                    style={{
+                                        padding: '16px',
+                                        background: '#fff',
+                                        marginBottom: 12,
+                                        borderRadius: 16,
+                                        border: '1px solid #f0f0f0',
+                                        boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
+                                        display: 'block',
+                                        cursor: 'pointer'
+                                    }}
+                                >
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
+                                        <div>
+                                            <div style={{ fontSize: 12, color: '#9ca3af', marginBottom: 4 }}>
+                                                {dayjs(item.date).format('DD/MM/YYYY')}
+                                            </div>
+                                            <Tag color="blue" style={{ borderRadius: 4 }}>
+                                                {t(`expenses.categories.${item.category}`, { defaultValue: item.category })}
+                                            </Tag>
+                                        </div>
+                                        <div style={{ textAlign: 'right' }}>
+                                            <div style={{ fontWeight: 700, fontSize: 17, color: '#cf1322' }}>
+                                                -{formatVenezuelanPrice(item.amount, item.currencyCode === 'VES' ? 'Bs' : '$')}
+                                            </div>
+                                            <div style={{ fontSize: 12, color: '#8c8c8c' }}>
+                                                {formatVenezuelanPrice(usdAmount, '$')} (Ref)
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div style={{ marginBottom: 12 }}>
+                                        <div style={{ fontWeight: 600, fontSize: 15, color: '#111827' }}>
+                                            {item.description}
+                                        </div>
+                                        {item.reference && (
+                                            <div style={{ fontSize: 12, color: '#8c8c8c' }}>
+                                                Ref: {item.reference}
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    <div style={{ 
+                                        display: 'flex', 
+                                        justifyContent: 'space-between', 
+                                        alignItems: 'center',
+                                        borderTop: '1px solid #f0f0f0',
+                                        paddingTop: 12
+                                    }}>
+                                        <div style={{ fontSize: 13, color: '#595959' }}>
+                                            <DollarOutlined style={{ marginRight: 4 }} />
+                                            {t(`expenses.payment_methods.${item.paymentMethod}`, { defaultValue: item.paymentMethod })}
+                                            {item.bankAccount && ` • ${item.bankAccount.bankName}`}
+                                        </div>
+                                        <Button 
+                                            type="text" 
+                                            size="small" 
+                                            icon={<EditOutlined style={{ color: '#6366f1' }} />} 
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleEdit(item);
+                                            }}
+                                        />
+                                    </div>
+                                </List.Item>
+                            );
+                        }}
+                    />
+                )}
             </Card>
 
             <CreateExpenseModal

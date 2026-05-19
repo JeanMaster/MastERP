@@ -87,6 +87,7 @@ export const RegisterPaymentModal: React.FC<RegisterPaymentModalProps> = ({
             onCancel={onClose}
             footer={null}
             width={700}
+            forceRender
         >
             {invoice && (
                 <>

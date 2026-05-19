@@ -10,7 +10,9 @@ import {
     Input,
     Tag,
     App,
-    Popconfirm
+    Popconfirm,
+    Grid,
+    List
 } from 'antd';
 import {
     PlusOutlined,
@@ -37,6 +39,8 @@ export const RegistersManagement = () => {
     const [isModalVisible, setIsModalVisible] = useState(false);
     const [editingRegister, setEditingRegister] = useState<CashRegister | null>(null);
     const [form] = Form.useForm();
+    const screens = Grid.useBreakpoint();
+    const isMobile = !screens.lg;
 
     // Fetch registers
     const { data: registers = [], isLoading } = useQuery({
@@ -109,7 +113,7 @@ export const RegistersManagement = () => {
             render: (text: string) => (
                 <Space>
                     <ShopOutlined style={{ color: '#1890ff' }} />
-                    <Text strong>{text}</Text>
+                    <Typography.Text strong>{text}</Typography.Text>
                 </Space>
             )
         },
@@ -120,7 +124,7 @@ export const RegistersManagement = () => {
             render: (text: string) => (
                 <Space>
                     <EnvironmentOutlined style={{ color: '#8c8c8c' }} />
-                    <Text type="secondary">{text || t('common.not_specified', { defaultValue: 'Not specified' })}</Text>
+                    <Typography.Text type="secondary">{text || t('common.not_specified', { defaultValue: 'Not specified' })}</Typography.Text>
                 </Space>
             )
         },
@@ -163,6 +167,79 @@ export const RegistersManagement = () => {
         }
     ];
 
+    const renderRegisterList = () => (
+        !isMobile ? (
+            <Table
+                dataSource={registers}
+                columns={columns}
+                rowKey="id"
+                loading={isLoading}
+                pagination={false}
+            />
+        ) : (
+            <List
+                dataSource={registers}
+                loading={isLoading}
+                renderItem={(item: CashRegister) => (
+                    <List.Item style={{ padding: '8px 0', border: 'none' }}>
+                        <Card
+                            style={{ 
+                                width: '100%', 
+                                borderRadius: '16px', 
+                                boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
+                                border: '1px solid #f0f0f0'
+                            }}
+                            styles={{ body: { padding: '16px' } }}
+                        >
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
+                                <div>
+                                    <Space>
+                                        <ShopOutlined style={{ color: '#1890ff', fontSize: '18px' }} />
+                                        <Typography.Text strong style={{ fontSize: '16px' }}>{item.name}</Typography.Text>
+                                    </Space>
+                                    <div style={{ marginTop: 4 }}>
+                                        <Space>
+                                            <EnvironmentOutlined style={{ color: '#8c8c8c' }} />
+                                            <Typography.Text type="secondary" style={{ fontSize: '13px' }}>
+                                                {item.location || t('common.not_specified', { defaultValue: 'Not specified' })}
+                                            </Typography.Text>
+                                        </Space>
+                                    </div>
+                                </div>
+                                <Tag color={item.isActive ? 'green' : 'red'} style={{ borderRadius: '12px', margin: 0 }}>
+                                    {item.isActive ? t('users.active') : t('users.inactive')}
+                                </Tag>
+                            </div>
+
+                            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', borderTop: '1px solid #f0f0f0', paddingTop: '12px' }}>
+                                <Button 
+                                    icon={<EditOutlined />} 
+                                    onClick={() => handleEdit(item)}
+                                    style={{ borderRadius: '8px' }}
+                                >
+                                    {t('common.edit')}
+                                </Button>
+                                <Popconfirm
+                                    title={t('cash_register.delete_confirm')}
+                                    description={t('products.delete_desc', { defaultValue: 'This action cannot be undone' })}
+                                    onConfirm={() => deleteMutation.mutate(item.id)}
+                                    okText={t('common.yes', { defaultValue: 'Yes' })}
+                                    cancelText={t('common.no', { defaultValue: 'No' })}
+                                >
+                                    <Button 
+                                        danger 
+                                        icon={<DeleteOutlined />} 
+                                        style={{ borderRadius: '8px' }}
+                                    />
+                                </Popconfirm>
+                            </div>
+                        </Card>
+                    </List.Item>
+                )}
+            />
+        )
+    );
+
     return (
         <div style={{ padding: '24px 0' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 32 }}>
@@ -191,14 +268,8 @@ export const RegistersManagement = () => {
                 </Button>
             </div>
 
-            <Card style={{ borderRadius: '16px', boxShadow: '0 4px 20px rgba(0,0,0,0.05)', border: 'none' }}>
-                <Table
-                    dataSource={registers}
-                    columns={columns}
-                    rowKey="id"
-                    loading={isLoading}
-                    pagination={false}
-                />
+            <Card style={{ borderRadius: '16px', boxShadow: '0 4px 20px rgba(0,0,0,0.05)', border: 'none', padding: isMobile ? '0' : 'default' }}>
+                {renderRegisterList()}
             </Card>
 
             <Modal
@@ -209,6 +280,7 @@ export const RegistersManagement = () => {
                 confirmLoading={createMutation.isPending || updateMutation.isPending}
                 okText={editingRegister ? t('common.save', { defaultValue: 'Save' }) : t('common.create', { defaultValue: 'Create' })}
                 cancelText={t('common.cancel')}
+                forceRender
             >
                 <Form
                     form={form}

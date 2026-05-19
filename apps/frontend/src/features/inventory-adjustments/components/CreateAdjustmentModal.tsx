@@ -129,6 +129,7 @@ export const CreateAdjustmentModal = ({ open, onCancel, onSuccess }: CreateAdjus
             okText={`${t('adjustments.confirm')} (F9)`}
             cancelText={t('common.cancel')}
             width={600}
+            forceRender
         >
             <Form
                 form={form}

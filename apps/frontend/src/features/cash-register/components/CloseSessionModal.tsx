@@ -127,6 +127,7 @@ export const CloseSessionModal = ({ open, session, onCancel, onSuccess }: CloseS
             okText="Close Cash (F9)"
             cancelText="Cancel"
             width={600}
+            forceRender
         >
             <Alert
                 message="Session Summary"

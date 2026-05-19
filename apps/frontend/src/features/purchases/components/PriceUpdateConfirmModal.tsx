@@ -109,7 +109,7 @@ export const PriceUpdateConfirmModal: React.FC<PriceUpdateConfirmModalProps> = (
                 if (!hasChange) return <Text type="secondary">{record.currencyName}</Text>;
                 
                 return (
-                    <Space direction="vertical" size={0}>
+                    <Space direction="vertical" size={0} style={{ paddingLeft: 24 }}>
                         <Checkbox 
                             checked={selectedUpdates[record.productId]?.updateCurrency}
                             onChange={(e) => handleToggle(record.productId, 'updateCurrency', e.target.checked)}
@@ -243,7 +243,7 @@ export const PriceUpdateConfirmModal: React.FC<PriceUpdateConfirmModalProps> = (
             confirmLoading={loading}
         >
             <Alert
-                message={t('purchases.price_change_modal.alert_message', { defaultValue: 'Cost price changes detected for the following products' })}
+                title={t('purchases.price_update.warning_title', { defaultValue: 'Attention: Cost Changes Detected' })}
                 description={t('purchases.price_change_modal.alert_desc', { defaultValue: 'Select which updates you would like to apply. Suggested prices maintain the existing profit margin percentage.' })}
                 type="warning"
                 showIcon

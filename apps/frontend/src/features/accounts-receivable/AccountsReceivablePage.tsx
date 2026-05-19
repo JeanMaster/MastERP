@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Card, Tabs, Table, Button, Tag, App, Space, Statistic, Row, Col } from 'antd';
+import { Card, Tabs, Table, Button, Tag, App, Space, Statistic, Row, Col, Grid, List } from 'antd';
 import { FileTextOutlined, ClockCircleOutlined, ReloadOutlined, DeleteOutlined, CloseCircleOutlined } from '@ant-design/icons';
 import { invoicesApi, type Invoice } from '../../services/invoicesApi';
 import { paymentsApi } from '../../services/paymentsApi';
@@ -331,79 +331,202 @@ export const AccountsReceivablePage = () => {
         },
     ];
 
+    const screens = Grid.useBreakpoint();
+    const isMobile = !screens.lg;
+
     return (
-        <div style={{ padding: '24px' }}>
+        <div style={{ padding: isMobile ? '8px' : '24px' }}>
             <div style={{ marginBottom: 24 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-                    <h2 style={{ fontSize: 24, margin: 0 }}>{t('accounts_receivable.title')}</h2>
-                    <Space>
-                        <Button
-                            icon={<ReloadOutlined />}
-                            onClick={() => {
-                                fetchPendingInvoices();
-                                fetchAllPayments();
-                            }}
-                        >
-                            {t('common.refresh')}
-                        </Button>
-                    </Space>
+                    <h2 style={{ fontSize: isMobile ? 20 : 24, margin: 0 }}>{t('accounts_receivable.title')}</h2>
+                    <Button
+                        icon={<ReloadOutlined />}
+                        onClick={() => {
+                            fetchPendingInvoices();
+                            fetchAllPayments();
+                        }}
+                    >
+                        {isMobile ? undefined : t('common.refresh')}
+                    </Button>
                 </div>
 
-                <Row gutter={16}>
-                    <Col span={8}>
-                        <Card>
+                <Row gutter={[16, 16]}>
+                    <Col xs={24} sm={8}>
+                        <Card size={isMobile ? 'small' : 'default'}>
                             <Statistic
                                 title={t('accounts_receivable.total_receivable')}
                                 value={totalReceivable}
                                 precision={2}
                                 prefix="Bs."
-                                valueStyle={{ color: '#cf1322' }}
+                                styles={{ content: { color: '#cf1322', fontSize: isMobile ? 20 : 24 } }}
                             />
                         </Card>
                     </Col>
-                    <Col span={8}>
-                        <Card>
+                    <Col xs={12} sm={8}>
+                        <Card size={isMobile ? 'small' : 'default'}>
                             <Statistic
                                 title={t('accounts_receivable.pending_invoices')}
                                 value={pendingInvoices.length}
                                 prefix={<FileTextOutlined />}
-                                valueStyle={{ color: '#1890ff' }}
+                                styles={{ content: { color: '#1890ff', fontSize: isMobile ? 20 : 24 } }}
                             />
                         </Card>
                     </Col>
-                    <Col span={8}>
-                        <Card>
+                    <Col xs={12} sm={8}>
+                        <Card size={isMobile ? 'small' : 'default'}>
                             <Statistic
                                 title={t('accounts_receivable.overdue_invoices')}
                                 value={overdueInvoices.length}
                                 prefix={<ClockCircleOutlined />}
-                                valueStyle={{ color: '#52c41a' }}
+                                styles={{ content: { color: overdueInvoices.length > 0 ? '#ff4d4f' : '#52c41a', fontSize: isMobile ? 20 : 24 } }}
                             />
                         </Card>
                     </Col>
                 </Row>
             </div>
 
-            <Card>
-                <Tabs activeKey={activeTab} onChange={setActiveTab}>
+            <Card styles={{ body: { padding: isMobile ? 8 : 24 } }}>
+                <Tabs activeKey={activeTab} onChange={setActiveTab} size={isMobile ? 'small' : undefined}>
                     <Tabs.TabPane tab={t('accounts_receivable.pending_invoices')} key="pending">
-                        <Table
-                            dataSource={pendingInvoices}
-                            columns={invoiceColumns}
-                            rowKey="id"
-                            loading={loadingInvoices}
-                            pagination={{ pageSize: 10 }}
-                        />
+                        {!isMobile ? (
+                            <Table
+                                dataSource={pendingInvoices}
+                                columns={invoiceColumns}
+                                rowKey="id"
+                                loading={loadingInvoices}
+                                pagination={{ pageSize: 10 }}
+                            />
+                        ) : (
+                            <List
+                                dataSource={pendingInvoices}
+                                loading={loadingInvoices}
+                                rowKey="id"
+                                pagination={{ pageSize: 10, size: 'small', simple: true }}
+                                renderItem={(item: Invoice) => {
+                                    const isOverdue = item.dueDate && dayjs(item.dueDate).isBefore(dayjs());
+                                    const symbol = item.currencyCode === 'VES' ? 'Bs.' : item.currencyCode;
+                                    
+                                    return (
+                                        <List.Item
+                                            style={{
+                                                padding: '16px',
+                                                background: '#fff',
+                                                marginBottom: 12,
+                                                borderRadius: 16,
+                                                border: '1px solid #f0f0f0',
+                                                boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
+                                                display: 'block'
+                                            }}
+                                        >
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12 }}>
+                                                <div>
+                                                    <div style={{ fontWeight: 700, fontSize: 16 }}>{item.client?.name}</div>
+                                                    <div style={{ fontSize: 12, color: '#8c8c8c' }}>#{item.number} • {dayjs(item.createdAt).format('DD/MM/YYYY')}</div>
+                                                </div>
+                                                <Tag color={isOverdue ? 'red' : 'orange'} style={{ margin: 0 }}>
+                                                    {isOverdue ? t('accounts_receivable.overdue') : t('accounts_receivable.pending')}
+                                                </Tag>
+                                            </div>
+
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                                                <div>
+                                                    <div style={{ fontSize: 11, color: '#8c8c8c', textTransform: 'uppercase' }}>{t('accounts_receivable.due_date')}</div>
+                                                    <div style={{ color: isOverdue ? '#ff4d4f' : '#595959', fontWeight: isOverdue ? 600 : 400 }}>
+                                                        {item.dueDate ? dayjs(item.dueDate).format('DD/MM/YYYY') : '-'}
+                                                    </div>
+                                                </div>
+                                                <div style={{ textAlign: 'right' }}>
+                                                    <div style={{ fontSize: 11, color: '#8c8c8c', textTransform: 'uppercase' }}>{t('common.balance')}</div>
+                                                    <div style={{ fontWeight: 700, fontSize: 18, color: '#cf1322' }}>
+                                                        {symbol} {formatVenezuelanNumber(item.balance)}
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, borderTop: '1px solid #f0f0f0', paddingTop: 12 }}>
+                                                <Button 
+                                                    type="primary" 
+                                                    size="small" 
+                                                    onClick={() => handleRegisterPayment(item)}
+                                                    style={{ flex: 1 }}
+                                                >
+                                                    {t('accounts_receivable.pay')}
+                                                </Button>
+                                                <Button 
+                                                    size="small" 
+                                                    onClick={() => handleRegisterRetention(item)}
+                                                    style={{ flex: 1, backgroundColor: '#722ed1', color: 'white', border: 'none' }}
+                                                >
+                                                    {t('accounts_receivable.retention')}
+                                                </Button>
+                                                <Button 
+                                                    size="small" 
+                                                    onClick={() => handleViewStatement(item.clientId, item.client?.name || 'Customer')}
+                                                    style={{ flex: 1 }}
+                                                >
+                                                    {t('accounts_receivable.statement')}
+                                                </Button>
+                                            </div>
+                                        </List.Item>
+                                    );
+                                }}
+                            />
+                        )}
                     </Tabs.TabPane>
 
                     <Tabs.TabPane tab={t('accounts_receivable.payment_history')} key="payments">
-                        <Table
-                            dataSource={allPayments}
-                            columns={paymentsColumns}
-                            rowKey="id"
-                            loading={loadingPayments}
-                            pagination={{ pageSize: 10 }}
-                        />
+                        {!isMobile ? (
+                            <Table
+                                dataSource={allPayments}
+                                columns={paymentsColumns}
+                                rowKey="id"
+                                loading={loadingPayments}
+                                pagination={{ pageSize: 10 }}
+                            />
+                        ) : (
+                            <List
+                                dataSource={allPayments}
+                                loading={loadingPayments}
+                                rowKey="id"
+                                pagination={{ pageSize: 10, size: 'small', simple: true }}
+                                renderItem={(item: any) => (
+                                    <List.Item
+                                        style={{
+                                            padding: '16px',
+                                            background: '#fff',
+                                            marginBottom: 12,
+                                            borderRadius: 16,
+                                            border: '1px solid #f0f0f0',
+                                            boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
+                                            display: 'block'
+                                        }}
+                                    >
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                                            <div style={{ fontWeight: 700, fontSize: 15 }}>{item.invoice?.client?.name}</div>
+                                            <div style={{ fontWeight: 700, fontSize: 16, color: '#52c41a' }}>
+                                                Bs. {formatVenezuelanNumber(item.amount)}
+                                            </div>
+                                        </div>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                            <div>
+                                                <div style={{ fontSize: 12, color: '#8c8c8c' }}>
+                                                    {dayjs(item.paymentDate).format('DD/MM/YYYY HH:mm')}
+                                                </div>
+                                                <div style={{ fontSize: 13, color: '#595959' }}>
+                                                    {item.paymentMethod} {item.reference ? `• Ref: ${item.reference}` : ''}
+                                                </div>
+                                            </div>
+                                            <Button
+                                                type="text"
+                                                danger
+                                                icon={<DeleteOutlined />}
+                                                onClick={() => handleDeletePayment(item.id)}
+                                            />
+                                        </div>
+                                    </List.Item>
+                                )}
+                            />
+                        )}
                     </Tabs.TabPane>
                 </Tabs>
             </Card>

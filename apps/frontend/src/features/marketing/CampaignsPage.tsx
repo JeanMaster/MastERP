@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Card, Table, Button, Modal, Form, Input, Select, Tag, Space, message, Progress, Divider, Typography, Spin } from 'antd';
+import { Card, Table, Button, Modal, Form, Input, Select, Tag, Space, message, Progress, Divider, Typography, Spin, Grid, List } from 'antd';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { marketingApi } from '../../services/marketingApi';
 import { RocketOutlined, PlusOutlined, WhatsAppOutlined, CheckCircleOutlined } from '@ant-design/icons';
@@ -204,11 +204,21 @@ export const CampaignsPage = () => {
         }
     ];
 
+    const screens = Grid.useBreakpoint();
+    const isMobile = !screens.lg;
+
     return (
-        <div style={{ padding: '24px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+        <div style={{ padding: isMobile ? '8px' : '24px' }}>
+            <div style={{ 
+                display: 'flex', 
+                justifyContent: 'space-between', 
+                alignItems: isMobile ? 'flex-start' : 'center', 
+                marginBottom: 24,
+                flexDirection: isMobile ? 'column' : 'row',
+                gap: isMobile ? 16 : 0
+            }}>
                 <div>
-                    <Title level={2} style={{ margin: 0 }}><RocketOutlined /> {t('marketing.campaigns.mass_campaigns')}</Title>
+                    <Title level={isMobile ? 3 : 2} style={{ margin: 0 }}><RocketOutlined /> {t('marketing.campaigns.mass_campaigns')}</Title>
                     <Text type="secondary">{t('marketing.campaigns.campaigns_subtitle')}</Text>
                 </div>
                 <Button 
@@ -216,21 +226,94 @@ export const CampaignsPage = () => {
                     icon={<PlusOutlined />}
                     onClick={() => setIsCreateModalVisible(true)}
                     size="large"
+                    block={isMobile}
+                    style={{ 
+                        borderRadius: '12px',
+                        height: isMobile ? '48px' : 'auto',
+                        boxShadow: '0 4px 12px rgba(24, 144, 255, 0.2)'
+                    }}
                 >
                     {t('marketing.campaigns.launch_new')}
                 </Button>
             </div>
 
-            <Card bordered={false}>
-                <Table 
-                    columns={columns} 
-                    dataSource={campaigns} 
-                    loading={loadingCampaigns}
-                    rowKey="id"
-                    pagination={{
-                        showTotal: (total) => t('common.pagination_total_campaigns', { defaultValue: `Total: ${total} campaigns`, total })
-                    }}
-                />
+            <Card variant="borderless" styles={{ body: { padding: isMobile ? 8 : 24 } }} style={{ borderRadius: '16px', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
+                {!isMobile ? (
+                    <Table 
+                        columns={columns} 
+                        dataSource={campaigns} 
+                        loading={loadingCampaigns}
+                        rowKey="id"
+                        pagination={{
+                            showTotal: (total) => t('common.pagination_total_campaigns', { defaultValue: `Total: ${total} campaigns`, total })
+                        }}
+                    />
+                ) : (
+                    <List
+                        loading={loadingCampaigns}
+                        dataSource={campaigns}
+                        rowKey="id"
+                        pagination={{ pageSize: 10, size: 'small', simple: true }}
+                        renderItem={(item: any) => {
+                            const percent = item.totalRecipients > 0 ? Math.round((item.sentCount / item.totalRecipients) * 100) : 0;
+                            return (
+                                <List.Item
+                                    style={{
+                                        padding: '16px',
+                                        background: '#fff',
+                                        marginBottom: 12,
+                                        borderRadius: 16,
+                                        border: '1px solid #f0f0f0',
+                                        boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
+                                        display: 'block'
+                                    }}
+                                >
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
+                                        <div>
+                                            <div style={{ fontWeight: 700, fontSize: 16, color: '#111827' }}>{item.name}</div>
+                                            <div style={{ fontSize: 12, color: '#6b7280' }}>
+                                                {dayjs(item.createdAt).format('DD/MM/YYYY HH:mm')}
+                                            </div>
+                                        </div>
+                                        <Tag color={item.status === 'COMPLETED' ? 'success' : item.status === 'PENDING' ? 'processing' : 'default'} style={{ borderRadius: '8px', margin: 0 }}>
+                                            {t(`common.status_${item.status.toLowerCase()}`, { defaultValue: item.status })}
+                                        </Tag>
+                                    </div>
+
+                                    <div style={{ background: '#f9fafb', padding: '12px', borderRadius: 12, marginBottom: 16 }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                                            <Text type="secondary" style={{ fontSize: 12 }}>{t('marketing.campaigns.target_segment')}</Text>
+                                            <Tag color="blue" style={{ margin: 0 }}>{t(`marketing.campaigns.segments.${item.targetSegment.toLowerCase()}`, { defaultValue: item.targetSegment })}</Tag>
+                                        </div>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                            <Text type="secondary" style={{ fontSize: 12 }}>{t('marketing.campaigns.message_template')}</Text>
+                                            <Text strong style={{ fontSize: 12 }}>{item.template?.name || 'N/A'}</Text>
+                                        </div>
+                                    </div>
+
+                                    <div style={{ marginBottom: 16 }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                                            <Text strong style={{ fontSize: 13 }}>{t('marketing.campaigns.delivery_progress')}</Text>
+                                            <Text style={{ fontSize: 12 }}>{t('marketing.campaigns.sent_count', { sent: item.sentCount, total: item.totalRecipients })}</Text>
+                                        </div>
+                                        <Progress percent={percent} size="small" status={percent === 100 ? 'success' : 'active'} />
+                                    </div>
+
+                                    <Button 
+                                        type="primary" 
+                                        ghost 
+                                        block
+                                        icon={<RocketOutlined />}
+                                        onClick={() => setViewCampaignId(item.id)}
+                                        style={{ borderRadius: '12px', height: '40px' }}
+                                    >
+                                        {t('marketing.campaigns.monitor_execute')}
+                                    </Button>
+                                </List.Item>
+                            );
+                        }}
+                    />
+                )}
             </Card>
 
             <Modal
@@ -240,6 +323,7 @@ export const CampaignsPage = () => {
                 onCancel={() => setIsCreateModalVisible(false)}
                 confirmLoading={createMutation.isPending}
                 okText={t('marketing.campaigns.launch_button_shortcut', { defaultValue: 'Initialize Campaign (F9)' })}
+                forceRender
             >
                 <Form form={form} layout="vertical" style={{ marginTop: 20 }}>
                     <Form.Item 
@@ -288,7 +372,9 @@ export const CampaignsPage = () => {
                         {t('marketing.campaigns.close_monitor')}
                     </Button>
                 ]}
-                width={900}
+                width={isMobile ? '100%' : 900}
+                style={{ top: isMobile ? 0 : 100 }}
+                styles={{ body: { padding: isMobile ? 12 : 24 } }}
             >
                 {loadingDetails ? (
                     <div style={{ textAlign: 'center', padding: 50 }}><Spin size="large" /></div>
@@ -296,7 +382,7 @@ export const CampaignsPage = () => {
                     <div>
                         <div style={{ marginBottom: 24 }}>
                             <Text strong>{t('marketing.campaigns.original_template')}</Text>
-                            <div style={{ padding: '12px', background: '#f9f9f9', border: '1px solid #eee', borderRadius: '8px', whiteSpace: 'pre-wrap', marginTop: 8 }}>
+                            <div style={{ padding: '12px', background: '#f9f9f9', border: '1px solid #eee', borderRadius: '8px', whiteSpace: 'pre-wrap', marginTop: 8, fontSize: isMobile ? '13px' : '14px' }}>
                                 {campaignDetails.template?.content}
                             </div>
                         </div>
@@ -308,15 +394,67 @@ export const CampaignsPage = () => {
                             type="info"
                             showIcon
                             style={{ marginBottom: 16 }}
+                            isMobile={isMobile}
                         />
-                        <Table 
-                            columns={recipientColumns} 
-                            dataSource={campaignDetails.recipients}
-                            rowKey="id"
-                            size="small"
-                            pagination={{ pageSize: 10 }}
-                            bordered
-                        />
+                        
+                        {!isMobile ? (
+                            <Table 
+                                columns={recipientColumns} 
+                                dataSource={campaignDetails.recipients}
+                                rowKey="id"
+                                size="small"
+                                pagination={{ pageSize: 10 }}
+                                bordered
+                            />
+                        ) : (
+                            <List
+                                dataSource={campaignDetails.recipients}
+                                rowKey="id"
+                                pagination={{ pageSize: 5, size: 'small', simple: true }}
+                                renderItem={(item: any) => (
+                                    <List.Item
+                                        style={{
+                                            padding: '12px',
+                                            background: '#fafafa',
+                                            marginBottom: 8,
+                                            borderRadius: 12,
+                                            display: 'block'
+                                        }}
+                                    >
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                                            <div>
+                                                <div style={{ fontWeight: 600 }}>{item.clientName}</div>
+                                                <div style={{ fontSize: 12, color: '#8c8c8c' }}>{item.clientPhone}</div>
+                                            </div>
+                                            <Tag color={item.status === 'SENT' ? 'green' : 'orange'} style={{ margin: 0 }}>
+                                                {item.status === 'SENT' ? t('marketing.campaigns.sent', { defaultValue: 'Sent' }) : t('marketing.campaigns.pending', { defaultValue: 'Pending' })}
+                                            </Tag>
+                                        </div>
+                                        <div style={{ display: 'flex', gap: 8 }}>
+                                            <Button 
+                                                type="primary" 
+                                                style={{ backgroundColor: '#25D366', borderColor: '#25D366', flex: 1 }} 
+                                                icon={<WhatsAppOutlined />}
+                                                onClick={() => handleWhatsAppClick(item.clientPhone, item.message)}
+                                                size="small"
+                                            >
+                                                WA
+                                            </Button>
+                                            <Button 
+                                                type={item.status === 'SENT' ? 'default' : 'primary'}
+                                                icon={<CheckCircleOutlined />}
+                                                disabled={item.status === 'SENT' || markSentMutation.isPending}
+                                                onClick={() => markSentMutation.mutate(item.id)}
+                                                size="small"
+                                                style={{ flex: 1 }}
+                                            >
+                                                {item.status === 'SENT' ? t('marketing.campaigns.done') : t('marketing.campaigns.mark_as_sent')}
+                                            </Button>
+                                        </div>
+                                    </List.Item>
+                                )}
+                            />
+                        )}
                     </div>
                 ) : null}
             </Modal>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Table, Button, Tag, Row, Col, Card, App, Grid, Typography, Space, Tooltip, Popconfirm } from 'antd';
+import { Table, Button, Tag, Row, Col, Card, App, Grid, Typography, Space, Tooltip, Popconfirm, List } from 'antd';
 import { PlusOutlined, ReloadOutlined, WhatsAppOutlined, EyeOutlined, DeleteOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import dayjs from 'dayjs';
@@ -198,19 +198,99 @@ export const PurchaseOrdersPage: React.FC = () => {
                     </Col>
                 </Row>
 
-                <Table
-                    columns={columns}
-                    dataSource={orders}
-                    rowKey="id"
-                    loading={loading}
-                    scroll={{ x: 'max-content' }}
-                    size={isMobile ? 'small' : 'middle'}
-                    pagination={{
-                        pageSize: 10,
-                        size: isMobile ? 'small' : 'default',
-                        responsive: true
-                    }}
-                />
+                {!isMobile ? (
+                    <Table
+                        columns={columns}
+                        dataSource={orders}
+                        rowKey="id"
+                        loading={loading}
+                        scroll={{ x: 'max-content' }}
+                        size={isMobile ? 'small' : 'middle'}
+                        pagination={{
+                            pageSize: 10,
+                            size: isMobile ? 'small' : 'default',
+                            responsive: true
+                        }}
+                    />
+                ) : (
+                    <List
+                        loading={loading}
+                        dataSource={orders}
+                        pagination={{ pageSize: 10, size: 'small', simple: true }}
+                        renderItem={(item: PurchaseOrder) => {
+                            const statusMap: Record<string, { color: string; label: string }> = {
+                                COMPLETED: { color: 'green', label: t('purchase_orders.status_received') },
+                                CANCELLED: { color: 'red',   label: t('purchase_orders.status_cancelled') },
+                                PENDING:   { color: 'blue',   label: t('purchase_orders.status_pending') },
+                            };
+                            const s = statusMap[item.status] || { color: 'orange', label: item.status };
+
+                            return (
+                                <List.Item style={{ padding: '8px 0', border: 'none' }}>
+                                    <Card
+                                        style={{ 
+                                            width: '100%', 
+                                            borderRadius: '16px', 
+                                            boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
+                                            border: '1px solid #f0f0f0'
+                                        }}
+                                        styles={{ body: { padding: '16px' } }}
+                                    >
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
+                                            <div>
+                                                <Typography.Text strong style={{ fontSize: '16px', display: 'block' }}>
+                                                    {item.supplier.comercialName}
+                                                </Typography.Text>
+                                                <Typography.Text type="secondary" style={{ fontSize: '12px' }}>
+                                                    {dayjs(item.orderDate).format('DD/MM/YYYY')} • ID: {item.id.slice(0, 8)}
+                                                </Typography.Text>
+                                            </div>
+                                            <Tag color={s.color} style={{ borderRadius: '12px', margin: 0 }}>
+                                                {s.label}
+                                            </Tag>
+                                        </div>
+
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                                            <Typography.Text type="secondary">{t('common.total')}</Typography.Text>
+                                            <Typography.Text strong style={{ fontSize: '18px', color: '#1f1f1f' }}>
+                                                {item.currencyCode} {Number(item.total).toFixed(2)}
+                                            </Typography.Text>
+                                        </div>
+
+                                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', borderTop: '1px solid #f0f0f0', paddingTop: '12px' }}>
+                                            <Button 
+                                                icon={<EyeOutlined />} 
+                                                onClick={() => handleViewDetails(item)}
+                                                style={{ borderRadius: '8px' }}
+                                            >
+                                                {t('purchase_orders.view_details')}
+                                            </Button>
+                                            <Button 
+                                                icon={<WhatsAppOutlined />} 
+                                                onClick={() => handleShareWhatsApp(item)}
+                                                style={{ borderRadius: '8px', color: '#25D366' }}
+                                            />
+                                            {item.status === 'PENDING' && (
+                                                <Popconfirm
+                                                    title={t('purchase_orders.delete_confirm')}
+                                                    onConfirm={() => handleDelete(item.id)}
+                                                    okText={t('common.yes')}
+                                                    cancelText={t('common.no')}
+                                                >
+                                                    <Button 
+                                                        danger 
+                                                        icon={<DeleteOutlined />} 
+                                                        style={{ borderRadius: '8px' }}
+                                                    />
+                                                </Popconfirm>
+                                            )}
+                                        </div>
+                                    </Card>
+                                </List.Item>
+                            );
+                        }}
+                    />
+                )}
             </Card>
 
             <CreatePurchaseOrderModal

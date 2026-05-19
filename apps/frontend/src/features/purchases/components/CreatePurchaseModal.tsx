@@ -349,6 +349,7 @@ export const CreatePurchaseModal: React.FC<CreatePurchaseModalProps> = ({ visibl
             open={visible}
             onCancel={onCancel}
             width={900}
+            forceRender
             footer={[
                 <Button key="back" onClick={onCancel}>{t('common.cancel')}</Button>,
                 <Button key="submit" type="primary" loading={loading} onClick={handleSubmit}>
@@ -417,105 +418,105 @@ export const CreatePurchaseModal: React.FC<CreatePurchaseModalProps> = ({ visibl
                         </Col>
                     )}
                 </Row>
-            </Form>
 
-            <Divider>{t('common.products')}</Divider>
+                <Divider>{t('common.products')}</Divider>
 
-            <div style={{ marginBottom: 16 }}>
-                <Select
-                    showSearch
-                    placeholder={t('purchases.register.search_product_placeholder')}
-                    style={{ width: '100%' }}
-                    defaultActiveFirstOption={false}
-                    showArrow={false}
-                    filterOption={false}
-                    onSearch={setSearchText}
-                    onChange={(val) => {
-                        const prod = products.find(p => p.id === val);
-                        if (prod) {
-                            handleAddItem(prod);
-                            setSearchText('');
-                        }
-                    }}
-                    notFoundContent={null}
-                >
-                    {products.map(p => (
-                        <Select.Option key={p.id} value={p.id}>
-                            {p.name} ({p.sku}) - {t('purchases.register.stock')}: {p.stock}
-                        </Select.Option>
-                    ))}
-                </Select>
-            </div>
+                <div style={{ marginBottom: 16 }}>
+                    <Select
+                        showSearch
+                        placeholder={t('purchases.register.search_product_placeholder')}
+                        style={{ width: '100%' }}
+                        defaultActiveFirstOption={false}
+                        suffixIcon={null}
+                        filterOption={false}
+                        onSearch={setSearchText}
+                        onChange={(val) => {
+                            const prod = products.find(p => p.id === val);
+                            if (prod) {
+                                handleAddItem(prod);
+                                setSearchText('');
+                            }
+                        }}
+                        notFoundContent={null}
+                    >
+                        {products.map(p => (
+                            <Select.Option key={p.id} value={p.id}>
+                                {p.name} ({p.sku}) - {t('purchases.register.stock')}: {p.stock}
+                            </Select.Option>
+                        ))}
+                    </Select>
+                </div>
 
-            <Table
-                columns={columns}
-                dataSource={selectedItems}
-                rowKey="productId"
-                pagination={false}
-                size="small"
-                summary={() => {
-                    const subtotal = calculateTotal();
-                    const taxAmount = form.getFieldValue('taxAmount') || 0;
-                    const total = subtotal + taxAmount;
-                    return (
-                        <>
-                            <Table.Summary.Row>
-                                <Table.Summary.Cell index={0} colSpan={3} align="right">
-                                    <Typography.Text strong>{t('common.subtotal')}</Typography.Text>
-                                </Table.Summary.Cell>
-                                <Table.Summary.Cell index={1}>
-                                    <Typography.Text strong>
-                                        {selectedCurrency?.symbol || ''} {subtotal.toFixed(2)}
-                                    </Typography.Text>
-                                </Table.Summary.Cell>
-                            </Table.Summary.Row>
-                            <Table.Summary.Row>
-                                <Table.Summary.Cell index={0} colSpan={3} align="right">
-                                    <Space>
-                                        <Typography.Text type="secondary">{t('purchases.register.tax_deductible')}</Typography.Text>
-                                        <Form.Item name="isTaxable" valuePropName="checked" noStyle>
-                                            <Select
+                <Table
+                    columns={columns}
+                    dataSource={selectedItems}
+                    rowKey="productId"
+                    pagination={false}
+                    size="small"
+                    summary={() => {
+                        const subtotal = calculateTotal();
+                        const taxAmount = form.getFieldValue('taxAmount') || 0;
+                        const total = subtotal + taxAmount;
+                        return (
+                            <>
+                                <Table.Summary.Row>
+                                    <Table.Summary.Cell index={0} colSpan={3} align="right">
+                                        <Typography.Text strong>{t('common.subtotal')}</Typography.Text>
+                                    </Table.Summary.Cell>
+                                    <Table.Summary.Cell index={1}>
+                                        <Typography.Text strong>
+                                            {selectedCurrency?.symbol || ''} {subtotal.toFixed(2)}
+                                        </Typography.Text>
+                                    </Table.Summary.Cell>
+                                </Table.Summary.Row>
+                                <Table.Summary.Row>
+                                    <Table.Summary.Cell index={0} colSpan={3} align="right">
+                                        <Space>
+                                            <Typography.Text type="secondary">{t('purchases.register.tax_deductible')}</Typography.Text>
+                                            <Form.Item name="isTaxable" valuePropName="checked" noStyle>
+                                                <Select
+                                                    size="small"
+                                                    style={{ width: 60 }}
+                                                    onChange={(val) => {
+                                                        if (!val) form.setFieldValue('taxAmount', 0);
+                                                        else form.setFieldValue('taxAmount', subtotal * 0.16);
+                                                    }}
+                                                    options={[
+                                                        { value: true, label: t('common.yes') },
+                                                        { value: false, label: t('common.no') }
+                                                    ]}
+                                                />
+                                            </Form.Item>
+                                            <Typography.Text strong>{t('purchases.register.vat_16')}</Typography.Text>
+                                        </Space>
+                                    </Table.Summary.Cell>
+                                    <Table.Summary.Cell index={1}>
+                                        <Form.Item name="taxAmount" noStyle>
+                                            <InputNumber
                                                 size="small"
-                                                style={{ width: 60 }}
-                                                onChange={(val) => {
-                                                    if (!val) form.setFieldValue('taxAmount', 0);
-                                                    else form.setFieldValue('taxAmount', subtotal * 0.16);
-                                                }}
-                                                options={[
-                                                    { value: true, label: t('common.yes') },
-                                                    { value: false, label: t('common.no') }
-                                                ]}
+                                                min={0}
+                                                step={0.01}
+                                                style={{ width: 100 }}
+                                                disabled={!form.getFieldValue('isTaxable')}
                                             />
                                         </Form.Item>
-                                        <Typography.Text strong>{t('purchases.register.vat_16')}</Typography.Text>
-                                    </Space>
-                                </Table.Summary.Cell>
-                                <Table.Summary.Cell index={1}>
-                                    <Form.Item name="taxAmount" noStyle>
-                                        <InputNumber
-                                            size="small"
-                                            min={0}
-                                            step={0.01}
-                                            style={{ width: 100 }}
-                                            disabled={!form.getFieldValue('isTaxable')}
-                                        />
-                                    </Form.Item>
-                                </Table.Summary.Cell>
-                            </Table.Summary.Row>
-                            <Table.Summary.Row style={{ background: '#fafafa' }}>
-                                <Table.Summary.Cell index={0} colSpan={3} align="right">
-                                    <Typography.Text strong style={{ fontSize: 16 }}>{t('common.total')}</Typography.Text>
-                                </Table.Summary.Cell>
-                                <Table.Summary.Cell index={1}>
-                                    <Typography.Text type="success" strong style={{ fontSize: 16 }}>
-                                        {selectedCurrency?.symbol || ''} {total.toFixed(2)}
-                                    </Typography.Text>
-                                </Table.Summary.Cell>
-                            </Table.Summary.Row>
-                        </>
-                    );
-                }}
-            />
+                                    </Table.Summary.Cell>
+                                </Table.Summary.Row>
+                                <Table.Summary.Row style={{ background: '#fafafa' }}>
+                                    <Table.Summary.Cell index={0} colSpan={3} align="right">
+                                        <Typography.Text strong style={{ fontSize: 16 }}>{t('common.total')}</Typography.Text>
+                                    </Table.Summary.Cell>
+                                    <Table.Summary.Cell index={1}>
+                                        <Typography.Text type="success" strong style={{ fontSize: 16 }}>
+                                            {selectedCurrency?.symbol || ''} {total.toFixed(2)}
+                                        </Typography.Text>
+                                    </Table.Summary.Cell>
+                                </Table.Summary.Row>
+                            </>
+                        );
+                    }}
+                />
+            </Form>
 
             <PriceUpdateConfirmModal
                 visible={priceUpdateModalVisible}

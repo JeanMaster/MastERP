@@ -107,7 +107,7 @@ export const SocialAssistant = () => {
 
             <Row gutter={[24, 24]}>
                 <Col xs={24} lg={14}>
-                    <Card bordered={false} title={<span><RobotOutlined style={{ color: '#1890ff' }} /> {t('marketing.social.ai_powered')}</span>}>
+                    <Card variant="borderless" title={<span><RobotOutlined style={{ color: '#1890ff' }} /> {t('marketing.social.ai_powered')}</span>}>
                         <div style={{ marginBottom: 24 }}>
                             <Title level={5}>{t('marketing.social.select_product')}</Title>
                             {selectedProduct ? (
@@ -209,7 +209,7 @@ export const SocialAssistant = () => {
                 </Col>
 
                 <Col xs={24} lg={10}>
-                    <Card title={t('marketing.social.recent_drafts')} bordered={false} style={{ height: '100%', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
+                    <Card title={t('marketing.social.recent_drafts')} variant="borderless" style={{ height: '100%', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
                         {loadingDrafts ? <div style={{ textAlign: 'center', padding: 20 }}><Spin /></div> : (
                             <List
                                 dataSource={drafts}

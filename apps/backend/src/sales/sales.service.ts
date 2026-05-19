@@ -34,8 +34,28 @@ export class SalesService {
     const {
       items,
       invoiceNumber: reservedInvoiceNumber,
+      date: saleDateStr,
       ...saleData
     } = createSaleDto;
+
+    // 🛡️ SECURITY: Validate Retroactive Sale Permission & Date
+    if (saleDateStr) {
+      const canCreateRetroactive = user.role === Role.ADMIN || user?.permissions?.includes('CREATE_RETROACTIVE_SALES');
+      if (!canCreateRetroactive) {
+        throw new UnauthorizedException(
+          'Unauthorized: You do not have permission to create retroactive sales.',
+        );
+      }
+
+      // Prevent recording sales in the future
+      const saleDate = new Date(saleDateStr);
+      const now = new Date();
+      if (saleDate > now) {
+        throw new BadRequestException(
+          'Security Alert: Cannot record sales in the future.',
+        );
+      }
+    }
 
     // Validate products, stock and prepare items with cost
     const itemsWithCost: any[] = [];
@@ -170,6 +190,7 @@ export class SalesService {
       const newSale = await prisma.sale.create({
         data: {
           ...saleData,
+          date: saleDateStr ? new Date(saleDateStr) : undefined,
           invoiceNumber,
           controlNumber,
           igtfAmount: createSaleDto.igtfAmount || 0,

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Card, Table, Button, Space, Input, App, Popconfirm, Tag, Tooltip, Image, Grid } from 'antd';
+import { Card, Table, Button, Space, Input, App, Popconfirm, Tag, Tooltip, Image, Grid, List } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined, ReloadOutlined, PictureOutlined, ShopOutlined, CloudUploadOutlined, CheckCircleOutlined, CloseCircleOutlined, EyeOutlined } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { productsApi } from '../../services/productsApi';
@@ -379,22 +379,103 @@ export const ProductsPage = () => {
                 </div>
             )}
 
-            <Table
-                columns={columns}
-                dataSource={filteredData}
-                rowKey="id"
-                loading={isLoading}
-                scroll={{ x: isMobile ? 800 : undefined }}
-                pagination={{
-                    defaultPageSize: 15,
-                    showSizeChanger: true,
-                    pageSizeOptions: ['10', '15', '20', '50', '100'],
-                    showTotal: (total, range) => t('products.finished.pagination_total', { rangeStart: range[0], rangeEnd: range[1], total }),
-                    size: isMobile ? 'small' : 'default',
-                    responsive: true,
-                    position: ['bottomRight']
-                }}
-            />
+            {!isMobile ? (
+                <Table
+                    columns={columns}
+                    dataSource={filteredData}
+                    rowKey="id"
+                    loading={isLoading}
+                    pagination={{
+                        defaultPageSize: 15,
+                        showSizeChanger: true,
+                        pageSizeOptions: ['10', '15', '20', '50', '100'],
+                        showTotal: (total, range) => t('products.finished.pagination_total', { rangeStart: range[0], rangeEnd: range[1], total }),
+                        responsive: true,
+                        position: ['bottomRight']
+                    }}
+                />
+            ) : (
+                <List
+                    loading={isLoading}
+                    dataSource={filteredData}
+                    pagination={{
+                        pageSize: 10,
+                        size: 'small',
+                        simple: true,
+                        showTotal: (total, range) => t('products.finished.pagination_total', { rangeStart: range[0], rangeEnd: range[1], total }),
+                    }}
+                    renderItem={(item: Product) => (
+                        <List.Item
+                            onClick={() => handleEdit(item)}
+                            style={{ 
+                                padding: '12px', 
+                                cursor: 'pointer',
+                                background: '#fff',
+                                marginBottom: 8,
+                                borderRadius: 8,
+                                border: '1px solid #f0f0f0',
+                                boxShadow: '0 2px 4px rgba(0,0,0,0.02)'
+                            }}
+                        >
+                            <div style={{ display: 'flex', width: '100%', alignItems: 'center', gap: 12 }}>
+                                <div style={{
+                                    width: 50,
+                                    height: 50,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    border: '1px solid #f0f0f0',
+                                    borderRadius: 6,
+                                    overflow: 'hidden',
+                                    backgroundColor: '#fafafa',
+                                    flexShrink: 0
+                                }}>
+                                    {item.images && item.images.length > 0 ? (
+                                        <img
+                                            src={item.images[0]}
+                                            alt="thumb"
+                                            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                        />
+                                    ) : (
+                                        <PictureOutlined style={{ color: '#ccc', fontSize: 24 }} />
+                                    )}
+                                </div>
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                    <div style={{ 
+                                        fontWeight: 600, 
+                                        fontSize: 15, 
+                                        color: '#111827',
+                                        whiteSpace: 'nowrap',
+                                        overflow: 'hidden',
+                                        textOverflow: 'ellipsis'
+                                    }}>
+                                        {item.name}
+                                    </div>
+                                    <div style={{ fontSize: 12, color: '#6b7280' }}>
+                                        {item.sku} • {item.category.name}
+                                    </div>
+                                    <div style={{ marginTop: 4, display: 'flex', alignItems: 'center', gap: 8 }}>
+                                        <span style={{ fontWeight: 700, color: '#059669', fontSize: 14 }}>
+                                            {item.currency.symbol} {item.salePrice.toFixed(2)}
+                                        </span>
+                                        {item.type === 'COMPOSED' && (
+                                            <Tag color="purple" style={{ fontSize: '10px', margin: 0 }}>COMBO</Tag>
+                                        )}
+                                    </div>
+                                </div>
+                                <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                                    <Tag 
+                                        color={item.type === 'SERVICE' ? 'blue' : item.stock > 10 ? 'green' : item.stock > 0 ? 'orange' : 'red'}
+                                        style={{ margin: 0, fontWeight: 600 }}
+                                    >
+                                        {item.type === 'SERVICE' ? '∞' : item.stock} {item.unit?.abbreviation || ''}
+                                    </Tag>
+                                </div>
+                            </div>
+                        </List.Item>
+                    )}
+                />
+            )}
 
             <ProductFormModal
                 open={isModalOpen}

@@ -1,7 +1,7 @@
 import { Layout, Typography, Row, Col, Space, Popover, Grid, Button, Tooltip, Tag, Alert } from 'antd';
 import { useState, useEffect } from 'react';
 import { usePOSStore } from '../../../store/posStore';
-import { SyncOutlined, LogoutOutlined, FullscreenOutlined, FullscreenExitOutlined, ShopOutlined } from '@ant-design/icons';
+import { SyncOutlined, LogoutOutlined, FullscreenOutlined, FullscreenExitOutlined, ShopOutlined, HistoryOutlined } from '@ant-design/icons';
 import { cashRegisterApi } from '../../../services/cashRegisterApi';
 import { formatVenezuelanPrice, formatVenezuelanPriceOnly } from '../../../utils/formatters';
 import { ClientPurchaseHistoryCompact } from '../../../components/ClientPurchaseHistory';
@@ -17,7 +17,7 @@ const { Title, Text } = Typography;
  * Displays real-time information at the top of the POS interface.
  * Shows active customer details, current totals (multi-currency), system clock, and cash register session status.
  */
-export const POSHeader = ({ onCajaClick }: { onCajaClick?: () => void }) => {
+export const POSHeader = ({ onCajaClick, onBatchSalesClick }: { onCajaClick?: () => void, onBatchSalesClick?: () => void }) => {
     const { t } = useTranslation();
     const screens = Grid.useBreakpoint();
     const isMobile = !screens.lg;
@@ -221,6 +221,17 @@ export const POSHeader = ({ onCajaClick }: { onCajaClick?: () => void }) => {
                                 size={isMobile ? "small" : "middle"}
                             />
                         </Tooltip>
+
+                        {(user?.role === 'ADMIN' || user?.permissions?.includes('CREATE_RETROACTIVE_SALES')) && (
+                            <Tooltip title="Ventas Atrasadas (Lote)">
+                                <Button
+                                    icon={<HistoryOutlined />}
+                                    onClick={onBatchSalesClick}
+                                    size={isMobile ? "small" : "middle"}
+                                    type="dashed"
+                                />
+                            </Tooltip>
+                        )}
 
                         {user?.role === 'CASHIER' && (
                             <Space size="small">

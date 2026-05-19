@@ -107,14 +107,24 @@ export const LoginPage = () => {
                         name="username"
                         rules={[{ required: true, message: t('auth.username_required') }]}
                     >
-                        <Input prefix={<UserOutlined style={{ color: '#94a3b8' }} />} placeholder={t('auth.username_placeholder')} style={{ borderRadius: '8px' }} />
+                        <Input 
+                            prefix={<UserOutlined style={{ color: '#94a3b8' }} />} 
+                            placeholder={t('auth.username_placeholder')} 
+                            style={{ borderRadius: '8px' }} 
+                            autoComplete="username"
+                        />
                     </Form.Item>
 
                     <Form.Item
                         name="password"
                         rules={[{ required: true, message: t('auth.password_required') }]}
                     >
-                        <Input.Password prefix={<LockOutlined style={{ color: '#94a3b8' }} />} placeholder={t('auth.password_placeholder')} style={{ borderRadius: '8px' }} />
+                        <Input.Password 
+                            prefix={<LockOutlined style={{ color: '#94a3b8' }} />} 
+                            placeholder={t('auth.password_placeholder')} 
+                            style={{ borderRadius: '8px' }} 
+                            autoComplete="current-password"
+                        />
                     </Form.Item>
 
                     <Form.Item style={{ marginBottom: 8 }}>

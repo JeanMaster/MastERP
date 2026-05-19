@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Table, Button, Input, Space, Card, Tag, Tooltip, Switch, App, Grid } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined, UserOutlined, ShopOutlined, ReloadOutlined } from '@ant-design/icons';
+import { Table, Button, Input, Space, Card, Tag, Tooltip, Switch, App, Grid, List, Typography } from 'antd';
+import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined, UserOutlined, ShopOutlined, ReloadOutlined, PhoneOutlined, MailOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import { suppliersApi } from '../../services/suppliersApi';
 import type { Supplier, CreateSupplierDto, UpdateSupplierDto } from '../../services/suppliersApi';
@@ -193,7 +193,7 @@ export const SuppliersPage: React.FC = () => {
                     marginBottom: 16,
                     gap: 16
                 }}>
-                    <Space direction={isMobile ? 'vertical' : 'horizontal'} style={{ width: isMobile ? '100%' : 'auto' }}>
+                    <Space orientation={isMobile ? 'vertical' : 'horizontal'} style={{ width: isMobile ? '100%' : 'auto' }}>
                         <Space>
                             <ShopOutlined style={{ fontSize: isMobile ? '20px' : '24px', color: '#1890ff' }} />
                             <h1 style={{ margin: 0, fontSize: isMobile ? '20px' : '24px' }}>{t('purchases.suppliers.title')}</h1>
@@ -234,19 +234,108 @@ export const SuppliersPage: React.FC = () => {
                     </Space>
                 </div>
 
-                <Table
-                    columns={columns}
-                    dataSource={suppliers}
-                    rowKey="id"
-                    loading={loading}
-                    pagination={{
-                        defaultPageSize: 10,
-                        showSizeChanger: true,
-                        pageSizeOptions: ['10', '20', '50', '100'],
-                        showTotal: (total, range) => t('common.pagination_total', { rangeStart: range[0], rangeEnd: range[1], total })
-                    }}
-                    scroll={{ x: 'max-content' }}
-                />
+                {!isMobile ? (
+                    <Table
+                        columns={columns}
+                        dataSource={suppliers}
+                        rowKey="id"
+                        loading={loading}
+                        pagination={{
+                            defaultPageSize: 10,
+                            showSizeChanger: true,
+                            pageSizeOptions: ['10', '20', '50', '100'],
+                            showTotal: (total, range) => t('common.pagination_total', { rangeStart: range[0], rangeEnd: range[1], total })
+                        }}
+                        scroll={{ x: 'max-content' }}
+                    />
+                ) : (
+                    <List
+                        loading={loading}
+                        dataSource={suppliers}
+                        pagination={{
+                            pageSize: 10,
+                            size: 'small',
+                            simple: true
+                        }}
+                        renderItem={(item: Supplier) => (
+                            <List.Item style={{ padding: '8px 0', border: 'none' }}>
+                                <Card 
+                                    style={{ 
+                                        width: '100%', 
+                                        borderRadius: '16px', 
+                                        boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
+                                        border: '1px solid #f0f0f0'
+                                    }}
+                                    styles={{ body: { padding: '16px' } }}
+                                >
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
+                                        <div style={{ flex: 1 }}>
+                                            <Typography.Title level={5} style={{ margin: 0, color: '#1f1f1f' }}>
+                                                {item.comercialName}
+                                            </Typography.Title>
+                                            <Tag color="blue" style={{ marginTop: 4, borderRadius: '4px' }}>{item.rif}</Tag>
+                                        </div>
+                                        <Tag color={item.active ? 'success' : 'error'} style={{ borderRadius: '12px', margin: 0 }}>
+                                            {item.active ? t('common.active') : t('common.inactive')}
+                                        </Tag>
+                                    </div>
+
+                                    {item.legalName && (
+                                        <Typography.Text type="secondary" style={{ display: 'block', fontSize: '13px', marginBottom: 12 }}>
+                                            {item.legalName}
+                                        </Typography.Text>
+                                    )}
+
+                                    <div style={{ background: '#fafafa', borderRadius: '12px', padding: '12px', marginBottom: 16 }}>
+                                        <Space direction="vertical" size={8} style={{ width: '100%' }}>
+                                            {item.contactName && (
+                                                <Space>
+                                                    <UserOutlined style={{ color: '#8c8c8c' }} />
+                                                    <Typography.Text>{item.contactName}</Typography.Text>
+                                                </Space>
+                                            )}
+                                            {item.phone && (
+                                                <Space>
+                                                    <PhoneOutlined style={{ color: '#8c8c8c' }} />
+                                                    <Typography.Text>{item.phone}</Typography.Text>
+                                                </Space>
+                                            )}
+                                            {item.email && (
+                                                <Space>
+                                                    <MailOutlined style={{ color: '#8c8c8c' }} />
+                                                    <Typography.Text style={{ color: '#1890ff' }}>{item.email}</Typography.Text>
+                                                </Space>
+                                            )}
+                                            {item.category && (
+                                                <Tag style={{ marginTop: 4 }}>{item.category}</Tag>
+                                            )}
+                                        </Space>
+                                    </div>
+
+                                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', borderTop: '1px solid #f0f0f0', paddingTop: '12px' }}>
+                                        <Button 
+                                            icon={<EditOutlined />} 
+                                            onClick={() => openEditModal(item)}
+                                            style={{ borderRadius: '8px' }}
+                                        >
+                                            {t('common.edit')}
+                                        </Button>
+                                        {item.active && (
+                                            <Button 
+                                                danger 
+                                                icon={<DeleteOutlined />} 
+                                                onClick={() => handleDelete(item.id)}
+                                                style={{ borderRadius: '8px' }}
+                                            >
+                                                {t('common.deactivate')}
+                                            </Button>
+                                        )}
+                                    </div>
+                                </Card>
+                            </List.Item>
+                        )}
+                    />
+                )}
             </Card>
 
             <CreateSupplierModal

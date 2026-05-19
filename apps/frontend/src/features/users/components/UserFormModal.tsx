@@ -38,6 +38,7 @@ export const UserFormModal = ({ open, onCancel, user }: UserFormModalProps) => {
                 { label: t('users.permissions.options.view_sales'), value: 'VIEW_SALES' },
                 { label: t('users.permissions.options.manage_cash'), value: 'MANAGE_CASH_REGISTER' },
                 { label: t('users.permissions.options.void_sales'), value: 'VOID_SALES' },
+                { label: t('users.permissions.options.retroactive_sales', 'Ventas Atrasadas (Lote)'), value: 'CREATE_RETROACTIVE_SALES' },
             ]
         },
         {
@@ -124,6 +125,7 @@ export const UserFormModal = ({ open, onCancel, user }: UserFormModalProps) => {
             width={700}
             confirmLoading={mutation.isPending}
             style={{ top: 20 }}
+            forceRender
         >
             <Form
                 form={form}

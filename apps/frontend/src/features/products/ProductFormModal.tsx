@@ -627,6 +627,7 @@ export const ProductFormModal = ({ open, product, onClose, defaultType }: Produc
                 okText={`${product ? t('common.update') : t('common.create')} (F9)`}
                 cancelText={t('common.cancel')}
                 width={900}
+                forceRender
             >
                 <Form
                     form={form}

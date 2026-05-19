@@ -6,6 +6,7 @@ import {
   IsNumber,
   Min,
   ValidateNested,
+  IsDateString,
 } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
@@ -37,6 +38,11 @@ export class CreateSaleDto {
   @IsString()
   @IsOptional()
   clientId?: string;
+
+  @ApiProperty({ example: '2023-10-25T10:00:00.000Z', required: false, description: 'Retroactive date of the sale' })
+  @IsDateString()
+  @IsOptional()
+  date?: string;
 
   @ApiProperty({ type: [CreateSaleItemDto], description: 'List of sale items' })
   @IsArray()

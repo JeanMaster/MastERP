@@ -75,6 +75,7 @@ export const AddMovementModal = ({ open, sessionId, onCancel, onSuccess }: AddMo
             okText="Register (F9)"
             cancelText="Cancel"
             width={500}
+            forceRender
         >
             <Form
                 form={form}

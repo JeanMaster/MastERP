@@ -213,6 +213,7 @@ export const CreatePurchaseOrderModal: React.FC<CreatePurchaseOrderModalProps> =
             open={visible}
             onCancel={onCancel}
             width={900}
+            forceRender
             footer={[
                 <Button key="back" onClick={onCancel}>{t('common.cancel')}</Button>,
                 <Button key="submit" type="primary" loading={loading} onClick={handleSubmit}>
@@ -278,7 +279,7 @@ export const CreatePurchaseOrderModal: React.FC<CreatePurchaseOrderModalProps> =
                     placeholder={t('common.search_product_placeholder', { defaultValue: 'Search product by SKU or Name...' })}
                     style={{ width: '100%' }}
                     defaultActiveFirstOption={false}
-                    showArrow={false}
+                    suffixIcon={null}
                     filterOption={false}
                     onSearch={setSearchText}
                     onChange={(val) => {

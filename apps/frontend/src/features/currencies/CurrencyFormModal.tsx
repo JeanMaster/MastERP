@@ -117,6 +117,7 @@ export const CurrencyFormModal = ({ open, currency, onClose }: CurrencyFormModal
             okText={currency ? `${t('common.save')} (F9)` : `${t('common.add')} (F9)`}
             cancelText={t('common.cancel')}
             width={600}
+            forceRender
         >
             <Form form={form} layout="vertical" style={{ marginTop: 20 }}>
                 <Form.Item

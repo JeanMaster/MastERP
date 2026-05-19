@@ -132,6 +132,7 @@ export const ClientFormModal = ({ open, client, onClose }: ClientFormModalProps)
             cancelText={t('common.cancel')}
             width={700}
             centered
+            forceRender
         >
             <Form
                 form={form}

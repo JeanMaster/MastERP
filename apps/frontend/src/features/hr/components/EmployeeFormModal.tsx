@@ -82,6 +82,7 @@ export const EmployeeFormModal: React.FC<Props> = ({ visible, onClose, employee 
             confirmLoading={mutation.isPending}
             okText={`${t('common.save')} (F9)`}
             width={700}
+            forceRender
         >
             <Form form={form} layout="vertical">
                 <Divider orientation={"left" as any}>{t('hr.personal_info')}</Divider>

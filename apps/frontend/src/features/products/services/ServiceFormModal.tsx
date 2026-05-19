@@ -156,6 +156,7 @@ const ServiceFormModalContent = ({ open, service, onClose }: ServiceFormModalPro
             okText={service ? `${t('common.save')} (F9)` : `${t('common.add')} (F9)`}
             cancelText={t('common.cancel')}
             width={700}
+            forceRender
         >
             <Form form={form} layout="vertical" style={{ marginTop: 20 }}>
                 <Row gutter={16}>

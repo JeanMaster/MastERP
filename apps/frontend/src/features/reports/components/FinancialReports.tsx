@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Card, Spin, Empty, Row, Col, Statistic, Radio, Typography, Space } from 'antd';
+import { Card, Spin, Empty, Row, Col, Statistic, Radio, Typography, Grid } from 'antd';
 import {
     DollarOutlined,
     ShoppingOutlined,
@@ -23,6 +23,8 @@ const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8'];
  * Supports granular date filtering and multi-currency reporting.
  */
 export const FinancialReports = () => {
+    const screens = Grid.useBreakpoint();
+    const isMobile = !screens.lg;
     const [report, setReport] = useState<FinanceReport | null>(null);
     const [loading, setLoading] = useState(true);
     const { primaryCurrency, currencies } = usePOSStore();
@@ -81,7 +83,9 @@ export const FinancialReports = () => {
     if (loading) {
         return (
             <div style={{ padding: 50, textAlign: 'center' }}>
-                <Spin size="large" tip="Calculating financial metrics..." />
+                <Spin size="large" tip="Calculating financial metrics...">
+                    <div style={{ padding: 50 }} />
+                </Spin>
             </div>
         );
     }
@@ -92,7 +96,7 @@ export const FinancialReports = () => {
 
     const displayIncome = report.monthlySalesTotal;
     const profit = displayIncome - report.totalCostOfSales - report.totalExpenses;
-    const paymentData = report.paymentMethodsBreakdown.map((item) => ({
+    const paymentData = report.paymentMethodsBreakdown.map((item: any) => ({
         name: item.method,
         value: item.amount,
     }));
@@ -144,143 +148,139 @@ export const FinancialReports = () => {
         };
     };
 
+
     return (
-        <div style={{ padding: '4px' }}>
+        <div style={{ padding: '0px' }}>
             {/* Header & Filters */}
-            <Card bordered={false} style={{ marginBottom: 20, boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
-                <Row gutter={[16, 16]} align="middle" justify="space-between">
-                    <Col xs={24} md={12}>
-                        <Space direction="vertical">
-                            <Title level={4} style={{ margin: 0 }}>📈 Executive Summary</Title>
-                            <Radio.Group
-                                value={dateFilter}
-                                onChange={(e) => setDateFilter(e.target.value)}
-                                buttonStyle="solid"
-                            >
-                                <Radio.Button value="day">Today</Radio.Button>
-                                <Radio.Button value="yesterday">Yesterday</Radio.Button>
-                                <Radio.Button value="month">Current Month</Radio.Button>
-                                <Radio.Button value="lastMonth">Last Month</Radio.Button>
-                                <Radio.Button value="all">Lifetime</Radio.Button>
-                            </Radio.Group>
-                        </Space>
+            <div style={{ marginBottom: 24, background: '#fff', padding: isMobile ? 16 : 24, borderRadius: 16, boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
+                <Row gutter={[16, 24]} align="middle">
+                    <Col xs={24} lg={12}>
+                        <Title level={isMobile ? 4 : 2} style={{ margin: 0 }}>Reporte Financiero</Title>
+                        <Text type="secondary" style={{ fontSize: isMobile ? 12 : 14 }}>Resumen ejecutivo de ingresos, costos y utilidad.</Text>
                     </Col>
-                    <Col xs={24} md={12}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 12, justifyContent: 'flex-end' }}>
-                            <Text strong>Reporting Currency:</Text>
-                            <ReportCurrencySelector
-                                value={selectedCurrency}
-                                onChange={setSelectedCurrency}
-                                style={{ width: 200 }}
-                            />
+                    <Col xs={24} lg={12}>
+                        <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: 16, justifyContent: isMobile ? 'flex-start' : 'flex-end' }}>
+                            <div style={{ minWidth: isMobile ? '100%' : 200 }}>
+                                <Text strong style={{ fontSize: 11, color: '#8c8c8c', display: 'block', marginBottom: 4 }}>MONEDA</Text>
+                                <ReportCurrencySelector
+                                    value={selectedCurrency}
+                                    onChange={setSelectedCurrency}
+                                />
+                            </div>
+                            <div>
+                                <Text strong style={{ fontSize: 11, color: '#8c8c8c', display: 'block', marginBottom: 4 }}>PERÍODO</Text>
+                                <Radio.Group
+                                    value={dateFilter}
+                                    onChange={(e) => setDateFilter(e.target.value)}
+                                    buttonStyle="solid"
+                                    size="large"
+                                    block={isMobile}
+                                >
+                                    <Radio.Button value="day">Hoy</Radio.Button>
+                                    <Radio.Button value="month">Mes</Radio.Button>
+                                    <Radio.Button value="lastMonth">Ant.</Radio.Button>
+                                    <Radio.Button value="all">Todo</Radio.Button>
+                                </Radio.Group>
+                            </div>
                         </div>
                     </Col>
                 </Row>
-            </Card>
+            </div>
 
             {/* Core Metrics Row */}
-            <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
-                <Col xs={24} sm={12} lg={6}>
-                    <Card bordered={false} hoverable>
+            <Row gutter={[12, 12]} style={{ marginBottom: 12 }}>
+                <Col xs={12} lg={6}>
+                    <Card variant="borderless" style={{ borderRadius: 12, boxShadow: '0 4px 12px rgba(0,0,0,0.05)', background: '#f6ffed' }} styles={{ body: { padding: isMobile ? 12 : 16 } }}>
                         <Statistic
-                            title="Gross Revenue"
+                            title={<Text type="secondary" style={{ fontSize: 11 }}>INGRESOS TOTALES</Text>}
                             value={displayIncome}
                             precision={2}
                             prefix={currencySymbol}
-                            valueStyle={{ color: '#52c41a' }}
-                            suffix={<DollarOutlined />}
+                            styles={{ content: { color: '#52c41a', fontSize: isMobile ? 20 : 24, fontWeight: 800 } }}
+                            suffix={<DollarOutlined style={{ opacity: 0.5 }} />}
                         />
                     </Card>
                 </Col>
-                <Col xs={24} sm={12} lg={6}>
-                    <Card bordered={false} hoverable>
+                <Col xs={12} lg={6}>
+                    <Card variant="borderless" style={{ borderRadius: 12, boxShadow: '0 4px 12px rgba(0,0,0,0.05)', background: '#fff7e6' }} styles={{ body: { padding: 12 } }}>
                         <Statistic
-                            title="Cost of Goods (COGS)"
+                            title={<Text type="secondary" style={{ fontSize: 11 }}>COSTO DE VENTAS</Text>}
                             value={report.totalCostOfSales}
                             precision={2}
                             prefix={currencySymbol}
-                            valueStyle={{ color: '#faad14' }}
-                            suffix={<ShoppingOutlined />}
+                            styles={{ content: { color: '#faad14', fontSize: isMobile ? 20 : 24, fontWeight: 800 } }}
+                            suffix={<ShoppingOutlined style={{ opacity: 0.5 }} />}
                         />
                     </Card>
                 </Col>
-                <Col xs={24} sm={12} lg={6}>
-                    <Card bordered={false} hoverable>
+                <Col xs={12} lg={6}>
+                    <Card variant="borderless" style={{ borderRadius: 12, boxShadow: '0 4px 12px rgba(0,0,0,0.05)', background: '#fff1f0' }} styles={{ body: { padding: 12 } }}>
                         <Statistic
-                            title="Operating Expenses"
+                            title={<Text type="secondary" style={{ fontSize: 11 }}>GASTOS TOTALES</Text>}
                             value={report.totalExpenses}
                             precision={2}
                             prefix={currencySymbol}
-                            valueStyle={{ color: '#ff4d4f' }}
-                            suffix={<ShoppingOutlined />}
+                            styles={{ content: { color: '#ff4d4f', fontSize: isMobile ? 20 : 24, fontWeight: 800 } }}
+                            suffix={<CreditCardOutlined style={{ opacity: 0.5 }} />}
                         />
                     </Card>
                 </Col>
-                <Col xs={24} sm={12} lg={6}>
-                    <Card bordered={false} style={{ background: profit >= 0 ? '#f6ffed' : '#fff1f0' }}>
+                <Col xs={12} lg={6}>
+                    <Card variant="borderless" style={{ borderRadius: 12, boxShadow: '0 4px 12px rgba(0,0,0,0.05)', background: profit >= 0 ? '#e6f7ff' : '#fff1f0' }} styles={{ body: { padding: 12 } }}>
                         <Statistic
-                            title="Net Operational Profit"
+                            title={<Text type="secondary" style={{ fontSize: 11 }}>UTILIDAD NETA</Text>}
                             value={profit}
                             precision={2}
                             prefix={currencySymbol}
-                            valueStyle={{ color: profit >= 0 ? '#52c41a' : '#ff4d4f' }}
-                            suffix={<RiseOutlined />}
+                            styles={{ content: { color: profit >= 0 ? '#1890ff' : '#cf1322', fontSize: isMobile ? 20 : 24, fontWeight: 800 } }}
+                            suffix={<RiseOutlined style={{ opacity: 0.5 }} />}
                         />
-                        <Text type="secondary" style={{ fontSize: 10 }}>Formula: Revenue - Costs - Expenses</Text>
                     </Card>
                 </Col>
             </Row>
 
             {/* Secondary Metrics Row */}
-            <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
-                <Col xs={24} sm={12} lg={6}>
-                    <Card bordered={false} size="small">
+            <Row gutter={[12, 12]} style={{ marginBottom: 24 }}>
+                <Col xs={12} lg={6}>
+                    <Card variant="borderless" size="small" style={{ borderRadius: 12, boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
                         <Statistic
-                            title="Monetary Refunds"
+                            title={<Text type="secondary" style={{ fontSize: 10 }}>Monetizaciones</Text>}
                             value={report.totalMonetaryRefunds}
                             precision={2}
                             prefix={currencySymbol}
-                            valueStyle={{ color: '#ff4d4f', fontSize: '20px' }}
-                            suffix={<CreditCardOutlined />}
+                            styles={{ content: { color: '#ff4d4f', fontSize: 16, fontWeight: 700 } }}
                         />
-                        <Text type="secondary" style={{ fontSize: 10 }}>Direct cash returned to customers</Text>
                     </Card>
                 </Col>
-                <Col xs={24} sm={12} lg={6}>
-                    <Card bordered={false} size="small">
+                <Col xs={12} lg={6}>
+                    <Card variant="borderless" size="small" style={{ borderRadius: 12, boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
                         <Statistic
-                            title="Product Exchanges"
-                            value={report.totalExchangeValue}
-                            precision={2}
-                            prefix={currencySymbol}
-                            valueStyle={{ color: '#faad14', fontSize: '20px' }}
-                            suffix={<ShoppingOutlined />}
+                            title={<Text type="secondary" style={{ fontSize: 10 }}>Margen Bruto</Text>}
+                            value={displayIncome > 0 ? ((displayIncome - report.totalCostOfSales) / displayIncome) * 100 : 0}
+                            precision={1}
+                            suffix="%"
+                            styles={{ content: { color: '#faad14', fontSize: 16, fontWeight: 700 } }}
                         />
-                        <Text type="secondary" style={{ fontSize: 10 }}>Value of items swapped</Text>
                     </Card>
                 </Col>
-                <Col xs={24} sm={12} lg={6}>
-                    <Card bordered={false} size="small">
+                <Col xs={12} lg={6}>
+                    <Card variant="borderless" size="small" style={{ borderRadius: 12, boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
                         <Statistic
-                            title="New Stock Investment"
-                            value={report.monthlyPurchasesTotal}
-                            precision={2}
-                            prefix={currencySymbol}
-                            valueStyle={{ color: '#1890ff', fontSize: '20px' }}
-                            suffix={<ShoppingOutlined />}
+                            title={<Text type="secondary" style={{ fontSize: 10 }}>Ratio de Gastos</Text>}
+                            value={displayIncome > 0 ? (report.totalExpenses / displayIncome) * 100 : 0}
+                            precision={1}
+                            suffix="%"
+                            styles={{ content: { color: '#1890ff', fontSize: 16, fontWeight: 700 } }}
                         />
-                        <Text type="secondary" style={{ fontSize: 10 }}>Total procurement from suppliers</Text>
                     </Card>
                 </Col>
-                <Col xs={24} sm={12} lg={6}>
-                    <Card bordered={false} size="small">
+                <Col xs={12} lg={6}>
+                    <Card variant="borderless" size="small" style={{ borderRadius: 12, boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
                         <Statistic
-                            title="Active Payment Methods"
+                            title={<Text type="secondary" style={{ fontSize: 11 }}>Métodos Pago</Text>}
                             value={report.paymentMethodsBreakdown.length}
-                            valueStyle={{ color: '#722ed1', fontSize: '20px' }}
-                            suffix={<CreditCardOutlined />}
+                            styles={{ content: { color: '#722ed1', fontSize: 16, fontWeight: 700 } }}
                         />
-                        <Text type="secondary" style={{ fontSize: 10 }}>Unique modalities used in this period</Text>
                     </Card>
                 </Col>
             </Row>
@@ -288,56 +288,60 @@ export const FinancialReports = () => {
             {/* Charts Section */}
             <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
                 <Col xs={24} lg={14}>
-                    <Card bordered={false} title="Sales Volume Tendency" style={{ height: '100%', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
-                        <ResponsiveContainer width="100%" height={320}>
-                            <BarChart data={report.dailySalesData}>
-                                <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                                <XAxis dataKey="date" axisLine={false} tickLine={false} />
-                                <YAxis axisLine={false} tickLine={false} />
-                                <Tooltip
-                                    formatter={(value: number) => formatVenezuelanPrice(value, currencySymbol)}
-                                    contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
-                                />
-                                <Bar dataKey="amount" fill="#1890ff" radius={[4, 4, 0, 0]} />
-                            </BarChart>
-                        </ResponsiveContainer>
+                    <Card variant="borderless" title={<Text strong>Volumen de Ventas Diario</Text>} style={{ height: '100%', borderRadius: 16, boxShadow: '0 4px 12px rgba(0,0,0,0.05)', minWidth: 0 }}>
+                        <div style={{ width: '100%', height: isMobile ? 250 : 350, minHeight: isMobile ? 250 : 350, minWidth: 0, position: 'relative' }}>
+                            <ResponsiveContainer minWidth={0} width="100%" height="100%" debounce={50}>
+                                <BarChart data={report.dailySalesData}>
+                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                                    <XAxis dataKey="date" axisLine={false} tickLine={false} fontSize={10} tickFormatter={(val) => dayjs(val).format('DD/MM')} />
+                                    <YAxis axisLine={false} tickLine={false} fontSize={10} tickFormatter={(val) => isMobile ? `${(val/1000).toFixed(0)}k` : val.toLocaleString()} />
+                                    <Tooltip
+                                        formatter={(value: number) => formatVenezuelanPrice(value, currencySymbol)}
+                                        contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+                                    />
+                                    <Bar dataKey="amount" fill="#1890ff" radius={[4, 4, 0, 0]} />
+                                </BarChart>
+                            </ResponsiveContainer>
+                        </div>
                     </Card>
                 </Col>
                 <Col xs={24} lg={10}>
-                    <Card bordered={false} title="Payment Distribution" style={{ height: '100%', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
-                        <ResponsiveContainer width="100%" height={320}>
-                            <PieChart>
-                                <Pie
-                                    data={paymentData}
-                                    cx="50%"
-                                    cy="45%"
-                                    labelLine={false}
-                                    label={(entry) => `${entry.name}: ${((entry.value / report.monthlySalesTotal) * 100).toFixed(0)}%`}
-                                    outerRadius={85}
-                                    innerRadius={50}
-                                    paddingAngle={5}
-                                    dataKey="value"
-                                >
-                                    {paymentData.map((_entry, index) => (
-                                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                                    ))}
-                                </Pie>
-                                <Tooltip formatter={(value: number) => formatVenezuelanPrice(value, currencySymbol)} />
-                                <Legend verticalAlign="bottom" height={36} />
-                            </PieChart>
-                        </ResponsiveContainer>
+                    <Card variant="borderless" title={<Text strong>Distribución de Cobros</Text>} style={{ height: '100%', borderRadius: 16, boxShadow: '0 4px 12px rgba(0,0,0,0.05)', minWidth: 0 }}>
+                        <div style={{ width: '100%', height: isMobile ? 300 : 350, minHeight: isMobile ? 300 : 350, minWidth: 0, position: 'relative' }}>
+                            <ResponsiveContainer minWidth={0} width="100%" height="100%" debounce={50}>
+                                <PieChart>
+                                    <Pie
+                                        data={paymentData}
+                                        cx="50%"
+                                        cy="45%"
+                                        labelLine={false}
+                                        label={(entry) => isMobile ? `${((entry.value / report.monthlySalesTotal) * 100).toFixed(0)}%` : `${entry.name}: ${((entry.value / report.monthlySalesTotal) * 100).toFixed(0)}%`}
+                                        outerRadius={isMobile ? 70 : 85}
+                                        innerRadius={isMobile ? 40 : 50}
+                                        paddingAngle={5}
+                                        dataKey="value"
+                                    >
+                                        {paymentData.map((_entry: any, index: number) => (
+                                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                        ))}
+                                    </Pie>
+                                    <Tooltip formatter={(value: number) => formatVenezuelanPrice(value, currencySymbol)} />
+                                    <Legend verticalAlign="bottom" height={36} iconType="circle" />
+                                </PieChart>
+                            </ResponsiveContainer>
+                        </div>
                     </Card>
                 </Col>
             </Row>
 
             {/* Currency Type Summary Breakdown */}
-            <Card bordered={false} title="Currency Type Performance Summary" style={{ marginBottom: 24, boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
+            <Card variant="borderless" title={<Text strong>Ingresos por Tipo de Moneda</Text>} style={{ marginBottom: 24, borderRadius: 16, boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
                 <Row gutter={[16, 16]}>
-                    {Object.entries(report.currencyTypeBreakdown).map(([type, amount]) => {
+                    {Object.entries(report.currencyTypeBreakdown).map(([type, amount]: [string, any]) => {
                         const typeKey = type as 'LOCAL' | 'FOREIGN';
                         const info = {
-                            LOCAL: { displayName: 'Local Currency (VES)', icon: '🇻🇪', color: '#52c41a', bgColor: '#f6ffed' },
-                            FOREIGN: { displayName: 'Foreign Exchange (USD/EUR/etc)', icon: '🌎', color: '#1890ff', bgColor: '#e6f7ff' }
+                            LOCAL: { displayName: 'Moneda Local (VES)', icon: '🇻🇪', color: '#52c41a', bgColor: '#f6ffed' },
+                            FOREIGN: { displayName: 'Divisas (USD/EUR)', icon: '🌎', color: '#1890ff', bgColor: '#e6f7ff' }
                         }[typeKey];
 
                         const percentage = ((amount / report.monthlySalesTotal) * 100).toFixed(1);
@@ -346,34 +350,32 @@ export const FinancialReports = () => {
                         return (
                             <Col xs={24} sm={12} key={type}>
                                 <Card
+                                    variant="borderless"
                                     style={{
                                         borderLeft: `4px solid ${info.color}`,
                                         backgroundColor: info.bgColor,
-                                        borderRadius: '8px'
+                                        borderRadius: '12px'
                                     }}
-                                    styles={{ body: { padding: 20 } }}
+                                    styles={{ body: { padding: isMobile ? 16 : 20 } }}
                                 >
                                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                                         <div>
                                             <div style={{
-                                                fontSize: 14,
+                                                fontSize: 13,
                                                 fontWeight: 600,
-                                                marginBottom: 8,
+                                                marginBottom: 4,
                                                 color: info.color,
                                                 display: 'flex',
                                                 alignItems: 'center',
                                                 gap: 8
                                             }}>
-                                                <span style={{ fontSize: 24 }}>{info.icon}</span>
+                                                <span style={{ fontSize: 20 }}>{info.icon}</span>
                                                 {info.displayName}
                                             </div>
-                                            <div style={{ fontSize: 28, fontWeight: 'bold', color: '#262626' }}>
+                                            <div style={{ fontSize: isMobile ? 22 : 26, fontWeight: 800, color: '#262626' }}>
                                                 {formatVenezuelanPrice(amount, currencySymbol)}
                                             </div>
-                                            <Text type="secondary">{percentage}% of total revenue</Text>
-                                        </div>
-                                        <div style={{ fontSize: 40, fontWeight: 'bold', color: info.color, opacity: 0.15 }}>
-                                            {percentage}%
+                                            <Text type="secondary" style={{ fontSize: 12 }}>{percentage}% del total recaudado</Text>
                                         </div>
                                     </div>
                                 </Card>
@@ -384,27 +386,27 @@ export const FinancialReports = () => {
             </Card>
 
             {/* Detailed Payment Breakdown Grid */}
-            <Card bordered={false} title="Granular Payment Method Breakdown" style={{ boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
-                <Row gutter={[16, 16]}>
-                    {report.paymentMethodsBreakdown.map((payment) => {
+            <Card variant="borderless" title={<Text strong>Desglose Detallado por Método</Text>} style={{ borderRadius: 16, boxShadow: '0 4px 12px rgba(0,0,0,0.05)', marginBottom: 24 }}>
+                <Row gutter={[12, 12]}>
+                    {report.paymentMethodsBreakdown.map((payment: any) => {
                         const info = getPaymentMethodInfo(payment.method);
                         const percentage = ((payment.amount / report.monthlySalesTotal) * 100).toFixed(1);
 
                         return (
                             <Col xs={24} sm={12} lg={8} key={payment.method}>
                                 <Card
+                                    variant="borderless"
                                     style={{
                                         border: '1px solid #f0f0f0',
                                         backgroundColor: info.bgColor,
-                                        borderRadius: '8px'
+                                        borderRadius: '12px'
                                     }}
-                                    hoverable
                                     styles={{ body: { padding: 16 } }}
                                 >
                                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                                         <div>
                                             <div style={{
-                                                fontSize: 13,
+                                                fontSize: 12,
                                                 fontWeight: 600,
                                                 color: info.color,
                                                 display: 'flex',
@@ -412,13 +414,13 @@ export const FinancialReports = () => {
                                                 gap: 8,
                                                 marginBottom: 4
                                             }}>
-                                                <span style={{ fontSize: 20 }}>{info.icon}</span>
+                                                <span style={{ fontSize: 18 }}>{info.icon}</span>
                                                 {info.displayName}
                                             </div>
-                                            <div style={{ fontSize: 20, fontWeight: 'bold', color: '#262626' }}>
+                                            <div style={{ fontSize: 20, fontWeight: 800, color: '#262626' }}>
                                                 {formatVenezuelanPrice(payment.amount, currencySymbol)}
                                             </div>
-                                            <Text type="secondary" style={{ fontSize: 12 }}>Share: {percentage}%</Text>
+                                            <Text type="secondary" style={{ fontSize: 11 }}>Representa el {percentage}%</Text>
                                         </div>
                                     </div>
                                 </Card>

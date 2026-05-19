@@ -5,6 +5,9 @@ import { marketingApi } from '../../services/marketingApi';
 import { PlusOutlined, DeleteOutlined, FileTextOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { useTranslation } from 'react-i18next';
+import { Grid, List } from 'antd';
+
+const { useBreakpoint } = Grid;
 
 const { TextArea } = Input;
 const { Title, Text } = Typography;
@@ -16,6 +19,8 @@ const { Title, Text } = Typography;
  */
 export const TemplatesManager = () => {
     const { t } = useTranslation();
+    const screens = useBreakpoint();
+    const isMobile = !screens.lg;
     const [isModalVisible, setIsModalVisible] = useState(false);
     const [form] = Form.useForm();
     const queryClient = useQueryClient();
@@ -131,10 +136,17 @@ export const TemplatesManager = () => {
     ];
 
     return (
-        <div style={{ padding: '24px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+        <div style={{ padding: isMobile ? '12px' : '24px' }}>
+            <div style={{ 
+                display: 'flex', 
+                flexDirection: isMobile ? 'column' : 'row',
+                justifyContent: 'space-between', 
+                alignItems: isMobile ? 'flex-start' : 'center', 
+                marginBottom: 24,
+                gap: 16
+            }}>
                 <div>
-                    <Title level={2} style={{ margin: 0 }}><FileTextOutlined /> {t('marketing.templates.title')}</Title>
+                    <Title level={isMobile ? 3 : 2} style={{ margin: 0 }}><FileTextOutlined /> {t('marketing.templates.title')}</Title>
                     <Text type="secondary">{t('marketing.templates.subtitle')}</Text>
                 </div>
                 <Button 
@@ -142,20 +154,60 @@ export const TemplatesManager = () => {
                     icon={<PlusOutlined />}
                     onClick={() => setIsModalVisible(true)}
                     size="large"
+                    block={isMobile}
+                    style={{ borderRadius: '12px' }}
                 >
                     {t('marketing.templates.create_button')}
                 </Button>
             </div>
 
-            <Card bordered={false}>
-                <Table 
-                    columns={columns} 
-                    dataSource={templates} 
-                    loading={isLoading}
-                    rowKey="id"
-                    pagination={{ pageSize: 10 }}
-                    bordered
-                />
+            <Card variant="borderless" styles={{ body: { padding: isMobile ? 0 : 24 } }} style={{ borderRadius: '16px', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
+                {!isMobile ? (
+                    <Table 
+                        columns={columns} 
+                        dataSource={templates} 
+                        loading={isLoading}
+                        rowKey="id"
+                        pagination={{ pageSize: 10 }}
+                        bordered
+                    />
+                ) : (
+                    <List
+                        loading={isLoading}
+                        dataSource={templates}
+                        renderItem={(item: any) => (
+                            <Card 
+                                size="small" 
+                                style={{ margin: '12px', borderRadius: '12px', border: '1px solid #f0f0f0' }}
+                                actions={[
+                                    <Popconfirm
+                                        key="delete"
+                                        title={t('marketing.templates.delete_confirm')}
+                                        onConfirm={() => deleteMutation.mutate(item.id)}
+                                        okText={t('common.yes')}
+                                        cancelText={t('common.no')}
+                                    >
+                                        <Button type="text" danger icon={<DeleteOutlined />}>{t('common.delete')}</Button>
+                                    </Popconfirm>
+                                ]}
+                            >
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
+                                    <Text strong style={{ fontSize: '16px' }}>{item.name}</Text>
+                                    <Tag color={{ PROMOTIONAL: 'blue', INFO: 'cyan', BIRTHDAY: 'magenta', RETENTION: 'purple' }[item.category as string] || 'default'}>
+                                        {t(`marketing.templates.categories.${item.category.toLowerCase()}`)}
+                                    </Tag>
+                                </div>
+                                <Typography.Paragraph type="secondary" ellipsis={{ rows: 2 }} style={{ marginBottom: 8 }}>
+                                    {item.content}
+                                </Typography.Paragraph>
+                                <Text type="secondary" style={{ fontSize: '12px' }}>
+                                    {dayjs(item.createdAt).format('MM/DD/YYYY')}
+                                </Text>
+                            </Card>
+                        )}
+                        pagination={{ pageSize: 5, simple: true, style: { textAlign: 'center', marginBottom: 16 } }}
+                    />
+                )}
             </Card>
 
             <Modal
@@ -169,6 +221,7 @@ export const TemplatesManager = () => {
                 confirmLoading={createMutation.isPending}
                 okText={t('marketing.templates.create_button_shortcut')}
                 width={600}
+                forceRender
             >
                 <Form form={form} layout="vertical" style={{ marginTop: 20 }}>
                     <Form.Item 

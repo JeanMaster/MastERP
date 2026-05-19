@@ -22,10 +22,10 @@ import { ApiTags, ApiOperation, ApiResponse, ApiQuery } from '@nestjs/swagger';
 @ApiTags('banks')
 @Controller('banks')
 @UseGuards(AuthGuard('jwt'), RolesGuard)
-@Roles(Role.ADMIN, Role.MANAGER)
 export class BanksController {
   constructor(private readonly banksService: BanksService) {}
 
+  @Roles(Role.ADMIN, Role.MANAGER)
   @Post('liquidate-pos')
   @ApiOperation({ summary: 'Liquidate a POS batch and transfer net funds to bank account' })
   @ApiResponse({ status: 200, description: 'Batch liquidated successfully' })
@@ -33,6 +33,7 @@ export class BanksController {
     return this.banksService.liquidatePosBatch(dto, req.user.id);
   }
 
+  @Roles(Role.ADMIN, Role.MANAGER)
   @Post()
   @ApiOperation({ summary: 'Create a new bank account' })
   @ApiResponse({ status: 201, description: 'Bank account created successfully' })
@@ -55,6 +56,7 @@ export class BanksController {
     return this.banksService.findOne(id);
   }
 
+  @Roles(Role.ADMIN, Role.MANAGER)
   @Get(':id/history')
   @ApiOperation({ summary: 'Retrieve movement history for a bank account' })
   @ApiQuery({ name: 'limit', required: false, type: Number, description: 'Maximum number of records' })
@@ -62,6 +64,7 @@ export class BanksController {
     return this.banksService.getHistory(id, limit ? Number(limit) : 50);
   }
 
+  @Roles(Role.ADMIN, Role.MANAGER)
   @Post('movements')
   @ApiOperation({ summary: 'Record a manual bank movement' })
   @ApiResponse({ status: 201, description: 'Movement recorded successfully' })
@@ -69,6 +72,7 @@ export class BanksController {
     return this.banksService.addMovement(dto);
   }
 
+  @Roles(Role.ADMIN, Role.MANAGER)
   @Patch(':id')
   @ApiOperation({ summary: 'Update bank account information' })
   @ApiResponse({ status: 200, description: 'Bank account updated successfully' })
@@ -76,6 +80,7 @@ export class BanksController {
     return this.banksService.update(id, updateBankDto);
   }
 
+  @Roles(Role.ADMIN, Role.MANAGER)
   @Delete(':id')
   @ApiOperation({ summary: 'Deactivate a bank account (soft delete)' })
   @ApiResponse({ status: 200, description: 'Bank account deactivated' })

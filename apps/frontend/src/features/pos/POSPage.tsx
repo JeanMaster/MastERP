@@ -18,6 +18,7 @@ import { useAuth } from '../auth/AuthProvider';
 import type { Sale } from '../../services/salesApi';
 import { SessionSummaryModal } from './components/SessionSummaryModal';
 import { CashCountModal } from '../cash-register/components/CashCountModal';
+import { BatchSalesModal } from './components/BatchSalesModal';
 
 const { Text, Title } = Typography;
 const { Content, Sider, Footer } = Layout;
@@ -41,8 +42,9 @@ export const POSPage = () => {
     const [isClientModalOpen, setIsClientModalOpen] = useState(false);
     const [isCouponModalOpen, setIsCouponModalOpen] = useState(false);
     const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
+    const [isBatchSalesModalOpen, setIsBatchSalesModalOpen] = useState(false);
     const [completedSale, setCompletedSale] = useState<Sale | null>(null);
-    const { processSale, setCustomer, refreshInvoiceNumber, initialize, resetPOS } = usePOSStore();
+    const { processSale, setCustomer, refreshInvoiceNumber, initialize, resetPOS, exchangeRate } = usePOSStore();
     const queryClient = useQueryClient();
 
     const [isSummaryOpen, setIsSummaryOpen] = useState(false);
@@ -280,7 +282,10 @@ export const POSPage = () => {
 
     return (
         <Layout style={{ height: '100vh', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-            <POSHeader onCajaClick={handleCajaClick} />
+            <POSHeader 
+                onCajaClick={handleCajaClick} 
+                onBatchSalesClick={() => setIsBatchSalesModalOpen(true)}
+            />
 
             {activeSession?.status === 'AWAITING_CLOSE' && (
                 <div style={{ padding: '0 20px', marginTop: 10 }}>
@@ -452,6 +457,13 @@ export const POSPage = () => {
                     queryClient.invalidateQueries({ queryKey: ['activeSession'] });
                 }}
                 onCancel={() => setIsClosingArqueoOpen(false)}
+            />
+
+            <BatchSalesModal
+                open={isBatchSalesModalOpen}
+                onCancel={() => setIsBatchSalesModalOpen(false)}
+                exchangeRate={exchangeRate}
+                cashSessionId={activeSession?.id}
             />
         </Layout>
     );

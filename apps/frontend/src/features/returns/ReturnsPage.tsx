@@ -11,7 +11,8 @@ import {
     Typography,
     Spin,
     Modal,
-    Grid
+    Grid,
+    List
 } from 'antd';
 import { useTranslation } from 'react-i18next';
 import {
@@ -306,24 +307,102 @@ export const ReturnsPage = () => {
                 </Space>
             </Card>
 
-            <Card>
+            <Card styles={{ body: { padding: isMobile ? 8 : 24 } }} style={{ borderRadius: '16px', boxShadow: '0 4px 20px rgba(0,0,0,0.05)', border: 'none', overflow: 'hidden' }}>
                 {isLoading ? (
                     <div style={{ textAlign: 'center', padding: 50 }}>
                         <Spin size="large" />
                     </div>
-                ) : (
+                ) : !isMobile ? (
                     <Table
                         dataSource={returns}
                         columns={columns}
                         rowKey="id"
                         scroll={{ x: 'max-content' }}
-                        size={isMobile ? 'small' : 'middle'}
+                        size="middle"
                         pagination={{
                             pageSize: 20,
                             showSizeChanger: true,
-                            size: isMobile ? 'small' : 'default',
-                            showTotal: (total) => `${t('common.total', { defaultValue: 'Total' })}: ${total} ${t('common.entries', { defaultValue: 'entries' })}`
+                            showTotal: (total) => `${t('common.total', { defaultValue: 'Total' })}: ${total}`
                         }}
+                        className="premium-table"
+                    />
+                ) : (
+                    <List
+                        dataSource={returns}
+                        pagination={{ pageSize: 10, size: 'small', simple: true }}
+                        renderItem={(item: Return) => (
+                            <List.Item style={{ padding: '8px 0', border: 'none' }}>
+                                <Card
+                                    style={{ 
+                                        width: '100%', 
+                                        borderRadius: '16px', 
+                                        boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
+                                        border: '1px solid #f0f0f0'
+                                    }}
+                                    styles={{ body: { padding: '16px' } }}
+                                >
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
+                                        <div>
+                                            <Typography.Text strong style={{ fontSize: '15px', display: 'block', color: '#1890ff' }}>
+                                                {item.creditNoteNumber}
+                                            </Typography.Text>
+                                            <Typography.Text type="secondary" style={{ fontSize: '12px' }}>
+                                                {dayjs(item.createdAt).format('DD/MM/YYYY')} • Invoice: {item.originalSale.invoiceNumber}
+                                            </Typography.Text>
+                                        </div>
+                                        {getStatusTag(item.status)}
+                                    </div>
+
+                                    <div style={{ background: '#fafafa', borderRadius: '12px', padding: '12px', marginBottom: 16 }}>
+                                        <Space direction="vertical" size={0}>
+                                            <Typography.Text type="secondary" style={{ fontSize: '11px', textTransform: 'uppercase' }}>{t('returns.table.customer')}</Typography.Text>
+                                            <Typography.Text strong>{item.originalSale.client?.name || t('common.walk_in_customer')}</Typography.Text>
+                                        </Space>
+                                        <div style={{ marginTop: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                            {getTypeTag(item.returnType)}
+                                            <Typography.Text strong style={{ fontSize: '16px' }}>
+                                                {formatVenezuelanPrice(item.refundAmount)}
+                                            </Typography.Text>
+                                        </div>
+                                    </div>
+
+                                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', borderTop: '1px solid #f0f0f0', paddingTop: '12px' }}>
+                                        <Button 
+                                            icon={<EyeOutlined />} 
+                                            onClick={() => handleViewDetails(item)}
+                                            style={{ borderRadius: '8px' }}
+                                        >
+                                            {t('common.view')}
+                                        </Button>
+                                        {item.status === 'PENDING' && (
+                                            <Space>
+                                                <Button 
+                                                    type="primary" 
+                                                    icon={<CheckCircleOutlined />} 
+                                                    onClick={() => handleApprove(item.id)}
+                                                    style={{ borderRadius: '8px' }}
+                                                />
+                                                <Button 
+                                                    danger 
+                                                    icon={<CloseCircleOutlined />} 
+                                                    onClick={() => handleReject(item.id)}
+                                                    style={{ borderRadius: '8px' }}
+                                                />
+                                            </Space>
+                                        )}
+                                        {item.status === 'APPROVED' && (
+                                            <Button 
+                                                type="primary" 
+                                                onClick={() => handleProcess(item.id)}
+                                                style={{ borderRadius: '8px' }}
+                                            >
+                                                {t('returns.table.process')}
+                                            </Button>
+                                        )}
+                                    </div>
+                                </Card>
+                            </List.Item>
+                        )}
                     />
                 )}
             </Card>

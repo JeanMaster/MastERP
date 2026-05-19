@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Card, Table, Tag, Button, App, Space, Typography, DatePicker } from 'antd';
+import { Card, Table, Tag, Button, App, Space, Typography, DatePicker, Grid, List } from 'antd';
 import { ReloadOutlined, DeleteOutlined, ExportOutlined } from '@ant-design/icons';
 import { taxRetentionsApi, type TaxRetention } from '../../../services/taxRetentionsApi';
 import { formatVenezuelanNumber } from '../../../utils/formatters';
@@ -19,6 +19,8 @@ export const RetentionsListPage = () => {
     const { message, modal } = App.useApp();
     const queryClient = useQueryClient();
     const [dateRange, setDateRange] = useState<any>(null);
+    const screens = Grid.useBreakpoint();
+    const isMobile = !screens.lg;
 
     const { data: retentions = [], isLoading, refetch } = useQuery({
         queryKey: ['tax-retentions'],
@@ -173,51 +175,136 @@ export const RetentionsListPage = () => {
     ];
 
     return (
-        <div style={{ padding: '24px 32px', background: '#f8fafc', minHeight: '100vh' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 32 }}>
-                <Title level={2} style={{ margin: 0, fontWeight: 800, color: '#1e293b' }}>
+        <div style={{ padding: isMobile ? '12px' : '24px 32px', background: '#f8fafc', minHeight: '100vh' }}>
+            <div style={{ 
+                display: 'flex', 
+                flexDirection: isMobile ? 'column' : 'row',
+                justifyContent: 'space-between', 
+                alignItems: isMobile ? 'flex-start' : 'center', 
+                marginBottom: 24,
+                gap: 16
+            }}>
+                <Title level={isMobile ? 3 : 2} style={{ margin: 0, fontWeight: 800, color: '#1e293b' }}>
                     {t('tax_retention.list.title')}
                 </Title>
-                <Space size="middle">
+                <Space size={isMobile ? "small" : "middle"} wrap={isMobile} style={{ width: isMobile ? '100%' : 'auto' }}>
                     <DatePicker.RangePicker 
                         onChange={setDateRange} 
-                        style={{ borderRadius: '8px' }}
+                        style={{ borderRadius: '8px', width: isMobile ? '100%' : 'auto' }}
                         placeholder={[t('common.date'), t('common.date')]}
                     />
-                    <Button 
-                        icon={<ExportOutlined />} 
-                        onClick={handleExportTxt}
-                        disabled={isLoading}
-                        style={{ borderRadius: '8px', height: '40px' }}
-                    >
-                        SENIAT TXT
-                    </Button>
-                    <Button 
-                        type="primary" 
-                        icon={<ReloadOutlined />} 
-                        onClick={() => refetch()}
-                        style={{ 
-                            borderRadius: '8px', 
-                            height: '40px',
-                            background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
-                            border: 'none',
-                            boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)'
-                        }}
-                    >
-                        {t('common.refresh')}
-                    </Button>
+                    <div style={{ display: 'flex', gap: '8px', width: isMobile ? '100%' : 'auto' }}>
+                        <Button 
+                            icon={<ExportOutlined />} 
+                            onClick={handleExportTxt}
+                            disabled={isLoading}
+                            style={{ borderRadius: '8px', height: '40px', flex: isMobile ? 1 : 'none' }}
+                        >
+                            SENIAT
+                        </Button>
+                        <Button 
+                            type="primary" 
+                            icon={<ReloadOutlined />} 
+                            onClick={() => refetch()}
+                            style={{ 
+                                borderRadius: '8px', 
+                                height: '40px',
+                                background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
+                                border: 'none',
+                                boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)',
+                                flex: isMobile ? 1 : 'none'
+                            }}
+                        >
+                            {isMobile ? '' : t('common.refresh')}
+                        </Button>
+                    </div>
                 </Space>
             </div>
 
-            <Card style={{ borderRadius: '16px', boxShadow: '0 4px 20px rgba(0,0,0,0.05)', border: 'none', overflow: 'hidden' }}>
-                <Table
-                    dataSource={retentions}
-                    columns={columns}
-                    rowKey="id"
-                    loading={isLoading}
-                    pagination={{ pageSize: 15 }}
-                    className="premium-table"
-                />
+            <Card styles={{ body: { padding: isMobile ? 8 : 24 } }} style={{ borderRadius: '16px', boxShadow: '0 4px 20px rgba(0,0,0,0.05)', border: 'none', overflow: 'hidden' }}>
+                {!isMobile ? (
+                    <Table
+                        dataSource={retentions}
+                        columns={columns}
+                        rowKey="id"
+                        loading={isLoading}
+                        pagination={{ pageSize: 15 }}
+                        className="premium-table"
+                    />
+                ) : (
+                    <List
+                        dataSource={retentions}
+                        loading={isLoading}
+                        pagination={{ pageSize: 10, size: 'small', simple: true }}
+                        renderItem={(item: TaxRetention) => {
+                            const colors: any = { IVA: 'blue', ISLR: 'purple', MUNICIPAL: 'orange' };
+                            return (
+                                <List.Item style={{ padding: '8px 0', border: 'none' }}>
+                                    <Card
+                                        style={{ 
+                                            width: '100%', 
+                                            borderRadius: '16px', 
+                                            boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
+                                            border: '1px solid #f0f0f0'
+                                        }}
+                                        styles={{ body: { padding: '16px' } }}
+                                    >
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
+                                            <div>
+                                                <Typography.Text strong style={{ fontSize: '16px', display: 'block' }}>
+                                                    {item.voucherNumber}
+                                                </Typography.Text>
+                                                <Typography.Text type="secondary" style={{ fontSize: '12px' }}>
+                                                    {dayjs(item.voucherDate).format('DD/MM/YYYY')}
+                                                </Typography.Text>
+                                            </div>
+                                            <Tag color={colors[item.type] || 'default'} style={{ borderRadius: '12px', margin: 0, fontWeight: 600 }}>
+                                                {item.type}
+                                            </Tag>
+                                        </div>
+
+                                        <div style={{ background: '#fafafa', borderRadius: '12px', padding: '12px', marginBottom: 16 }}>
+                                            {item.invoice ? (
+                                                <Space direction="vertical" size={0}>
+                                                    <Typography.Text style={{ fontSize: '13px' }}>Invoice: {item.invoice.number}</Typography.Text>
+                                                    <Typography.Text type="secondary" style={{ fontSize: '12px' }}>Client: {item.invoice.client?.name}</Typography.Text>
+                                                </Space>
+                                            ) : item.purchase ? (
+                                                <Space direction="vertical" size={0}>
+                                                    <Typography.Text style={{ fontSize: '13px' }}>Purchase: {item.purchase.invoiceNumber}</Typography.Text>
+                                                    <Typography.Text type="secondary" style={{ fontSize: '12px' }}>Supplier: {item.purchase.supplier?.name}</Typography.Text>
+                                                </Space>
+                                            ) : '-'}
+                                        </div>
+
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                                            <Typography.Text type="secondary">{t('tax_retention.list.taxable_base')}</Typography.Text>
+                                            <Typography.Text>Bs. {formatVenezuelanNumber(item.baseAmount)}</Typography.Text>
+                                        </div>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                                            <Typography.Text type="secondary">{t('tax_retention.retained_amount')} ({item.retentionPercent}%)</Typography.Text>
+                                            <Typography.Text strong style={{ color: '#cf1322', fontSize: '16px' }}>
+                                                Bs. {formatVenezuelanNumber(item.amount)}
+                                            </Typography.Text>
+                                        </div>
+
+                                        <div style={{ display: 'flex', justifyContent: 'flex-end', borderTop: '1px solid #f0f0f0', paddingTop: '12px', marginTop: '12px' }}>
+                                            <Button 
+                                                danger 
+                                                type="text" 
+                                                icon={<DeleteOutlined />} 
+                                                onClick={() => handleDelete(item.id)}
+                                                style={{ borderRadius: '8px' }}
+                                            >
+                                                {t('common.delete')}
+                                            </Button>
+                                        </div>
+                                    </Card>
+                                </List.Item>
+                            );
+                        }}
+                    />
+                )}
             </Card>
         </div>
     );

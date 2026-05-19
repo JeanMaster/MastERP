@@ -136,6 +136,7 @@ export const DepartmentFormModal = ({ open, department, onClose }: DepartmentFor
             confirmLoading={createMutation.isPending || updateMutation.isPending}
             okText={department ? `${t('common.save')} (F9)` : `${t('common.add')} (F9)`}
             cancelText={t('common.cancel')}
+            forceRender
         >
             <Form form={form} layout="vertical" style={{ marginTop: 20 }}>
                 <Form.Item

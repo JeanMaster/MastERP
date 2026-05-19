@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Card, Row, Col, Radio, Space, Typography, Tooltip, Empty, Badge } from 'antd';
+import { Card, Row, Col, Radio, Space, Typography, Tooltip, Empty, Badge, Grid } from 'antd';
 import {
 } from '@ant-design/icons';
 import { useQuery } from '@tanstack/react-query';
@@ -11,6 +11,8 @@ import dayjs from 'dayjs';
 const { Title, Text } = Typography;
 
 const MonthlyDailyPerformanceReport: React.FC = () => {
+    const screens = Grid.useBreakpoint();
+    const isMobile = !screens.lg;
     const [dateFilter, setDateFilter] = useState<'month' | 'lastMonth' | 'all'>('month');
     const [currency, setCurrency] = useState<'VES' | 'USD' | 'EUR' | 'UDT'>('VES');
 
@@ -63,48 +65,62 @@ const MonthlyDailyPerformanceReport: React.FC = () => {
     return (
         <div style={{ padding: '0px' }}>
             {/* Header section */}
-            <div style={{ marginBottom: 24, background: '#fff', padding: 20, borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
-                <Row gutter={16} align="middle">
-                    <Col xs={24} md={10}>
-                        <Space direction="vertical">
-                            <Title level={4} style={{ margin: 0 }}>Mapa de Calor de Ventas Diarias</Title>
-                            <Text type="secondary">Intensidad de ventas cada día en {periodName}.</Text>
-                        </Space>
+            <div style={{ marginBottom: 24, background: '#fff', padding: isMobile ? 16 : 24, borderRadius: 16, boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
+                <Row gutter={[16, 24]} align="middle">
+                    <Col xs={24} lg={10}>
+                        <Title level={isMobile ? 4 : 2} style={{ margin: 0 }}>Mapa de Calor</Title>
+                        <Text type="secondary" style={{ fontSize: isMobile ? 12 : 14 }}>Intensidad de facturación en {periodName}.</Text>
                     </Col>
-                    <Col xs={24} md={14} style={{ textAlign: 'right' }}>
-                        <Space wrap>
-                            <Radio.Group value={dateFilter} onChange={(e) => setDateFilter(e.target.value)} buttonStyle="solid">
+                    <Col xs={24} lg={14} style={{ textAlign: isMobile ? 'left' : 'right' }}>
+                        <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: 12, justifyContent: isMobile ? 'flex-start' : 'flex-end' }}>
+                            <Radio.Group 
+                                value={dateFilter} 
+                                onChange={(e) => setDateFilter(e.target.value)} 
+                                buttonStyle="solid"
+                                size="large"
+                                block={isMobile}
+                            >
                                 <Radio.Button value="month">Este Mes</Radio.Button>
-                                <Radio.Button value="lastMonth">Mes Anterior</Radio.Button>
+                                <Radio.Button value="lastMonth">Anterior</Radio.Button>
                                 <Radio.Button value="all">Todo</Radio.Button>
                             </Radio.Group>
-                            <Radio.Group value={currency} onChange={(e) => setCurrency(e.target.value)} buttonStyle="solid">
+                            <Radio.Group 
+                                value={currency} 
+                                onChange={(e) => setCurrency(e.target.value)} 
+                                buttonStyle="solid"
+                                size="large"
+                                block={isMobile}
+                            >
                                 <Radio.Button value="VES">VES</Radio.Button>
                                 <Radio.Button value="USD">USD</Radio.Button>
                                 <Radio.Button value="EUR">EUR</Radio.Button>
                                 <Radio.Button value="UDT">UDT</Radio.Button>
                             </Radio.Group>
-                        </Space>
+                        </div>
                     </Col>
                 </Row>
             </div>
 
             {/* Legend and Summary */}
-            <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <Space>
-                    <Badge color="#52c41a" text="Alto" />
-                    <Badge color="#faad14" text="Promedio" />
-                    <Badge color="#ff4d4f" text="Bajo" />
+            <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 8px' }}>
+                <Space size={16}>
+                    <Badge color="#52c41a" text={<Text strong style={{ fontSize: 11 }}>ALTO</Text>} />
+                    <Badge color="#faad14" text={<Text strong style={{ fontSize: 11 }}>MEDIO</Text>} />
+                    <Badge color="#ff4d4f" text={<Text strong style={{ fontSize: 11 }}>BAJO</Text>} />
                 </Space>
-                <Text type="secondary" style={{ fontSize: 12 }}>Valores en {currency} (Sin decimales)</Text>
+                <Text type="secondary" style={{ fontSize: 11, fontWeight: 700 }}>VALORES EN {currency}</Text>
             </div>
 
             {/* Heatmap Grid */}
-            <Card bordered={false} bodyStyle={{ padding: 12 }}>
+            <Card 
+                variant="borderless" 
+                style={{ borderRadius: 12, boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }} 
+                styles={{ body: { padding: isMobile ? 8 : 16 } }}
+            >
                 <div style={{
                     display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fill, minmax(75px, 1fr))',
-                    gap: '6px'
+                    gridTemplateColumns: `repeat(${isMobile ? 5 : 7}, 1fr)`,
+                    gap: isMobile ? '4px' : '8px'
                 }}>
                     {performance.map((day: any) => (
                         <Tooltip
@@ -118,8 +134,8 @@ const MonthlyDailyPerformanceReport: React.FC = () => {
                             }
                         >
                             <div style={{
-                                minHeight: '65px',
-                                borderRadius: '6px',
+                                minHeight: isMobile ? '50px' : '65px',
+                                borderRadius: '8px',
                                 border: `2px solid ${day.total > 0 ? getStatusColor(day.status) : '#f0f0f0'}`,
                                 background: day.total > 0 ? getStatusBg(day.status) : '#fafafa',
                                 display: 'flex',
@@ -128,25 +144,17 @@ const MonthlyDailyPerformanceReport: React.FC = () => {
                                 justifyContent: 'center',
                                 cursor: 'pointer',
                                 transition: 'all 0.2s',
-                                padding: '4px'
-                            }}
-                                onMouseEnter={(e) => {
-                                    e.currentTarget.style.transform = 'translateY(-2px)';
-                                    e.currentTarget.style.boxShadow = '0 4px 8px rgba(0,0,0,0.1)';
-                                }}
-                                onMouseLeave={(e) => {
-                                    e.currentTarget.style.transform = 'translateY(0)';
-                                    e.currentTarget.style.boxShadow = 'none';
-                                }}
-                            >
+                                padding: '4px',
+                                boxShadow: day.total > 0 ? `0 2px 4px ${getStatusColor(day.status)}22` : 'none'
+                            }}>
                                 <Text strong style={{
-                                    fontSize: '1em',
+                                    fontSize: isMobile ? '0.85em' : '1em',
                                     color: day.total > 0 ? getStatusColor(day.status) : '#bfbfbf',
                                     lineHeight: 1
                                 }}>
                                     {day.day}
                                 </Text>
-                                {day.total > 0 ? (
+                                {day.total > 0 && !isMobile && (
                                     <Text style={{
                                         fontSize: '10px',
                                         color: '#262626',
@@ -159,8 +167,6 @@ const MonthlyDailyPerformanceReport: React.FC = () => {
                                     }}>
                                         {formatVenezuelanPrice(day.total, '', 0)}
                                     </Text>
-                                ) : (
-                                    <Text style={{ fontSize: '9px', color: '#d9d9d9', marginTop: 4 }}>-</Text>
                                 )}
                             </div>
                         </Tooltip>
@@ -169,32 +175,45 @@ const MonthlyDailyPerformanceReport: React.FC = () => {
             </Card>
 
             {/* Trend Chart */}
-            <Card title="Recorrido de Facturación" bordered={false} style={{ marginTop: 24 }}>
-                <ResponsiveContainer width="100%" height={250}>
-                    <AreaChart data={performance} margin={{ top: 10, right: 30, left: 10, bottom: 0 }}>
-                        <defs>
-                            <linearGradient id="colorTotal" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="5%" stopColor="#1890ff" stopOpacity={0.1} />
-                                <stop offset="95%" stopColor="#1890ff" stopOpacity={0} />
-                            </linearGradient>
-                        </defs>
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                        <XAxis dataKey="day" />
-                        <YAxis tickFormatter={(val) => `${currency} ${val.toLocaleString()}`} />
-                        <ChartTooltip
-                            formatter={(value: number) => [`${currency} ${formatVenezuelanPrice(value)}`, 'Venta']}
-                            labelFormatter={(label) => `Día ${label}`}
-                        />
-                        <Area
-                            type="monotone"
-                            dataKey="total"
-                            stroke="#1890ff"
-                            fillOpacity={1}
-                            fill="url(#colorTotal)"
-                            strokeWidth={2}
-                        />
-                    </AreaChart>
-                </ResponsiveContainer>
+            <Card 
+                title={<Text strong style={{ fontSize: 16 }}>Recorrido de Facturación</Text>} 
+                variant="borderless" 
+                style={{ marginTop: 24, borderRadius: 16, boxShadow: '0 4px 12px rgba(0,0,0,0.05)', background: '#fff' }}
+            >
+                <div style={{ height: isMobile ? 250 : 350, minHeight: isMobile ? 250 : 350, width: '100%', minWidth: 0, position: 'relative' }}>
+                    <ResponsiveContainer width="100%" height="100%" minWidth={0} debounce={50}>
+                        <AreaChart data={performance} margin={{ top: 10, right: 30, left: isMobile ? -20 : 10, bottom: 0 }}>
+                            <defs>
+                                <linearGradient id="colorTotal" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="5%" stopColor="#1890ff" stopOpacity={0.2} />
+                                    <stop offset="95%" stopColor="#1890ff" stopOpacity={0} />
+                                </linearGradient>
+                            </defs>
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                            <XAxis dataKey="day" fontSize={10} hide={isMobile} axisLine={false} tickLine={false} />
+                            <YAxis 
+                                axisLine={false} 
+                                tickLine={false}
+                                fontSize={10} 
+                                tickFormatter={(val) => isMobile ? `${(val/1000).toFixed(0)}k` : val.toLocaleString()} 
+                                width={isMobile ? 35 : 60}
+                            />
+                            <ChartTooltip
+                                formatter={(value: number) => [`${currency} ${formatVenezuelanPrice(value)}`, 'Venta']}
+                                labelFormatter={(label) => `Día ${label}`}
+                                contentStyle={{ borderRadius: 12, border: 'none', boxShadow: '0 8px 24px rgba(0,0,0,0.12)' }}
+                            />
+                            <Area
+                                type="monotone"
+                                dataKey="total"
+                                stroke="#1890ff"
+                                fillOpacity={1}
+                                fill="url(#colorTotal)"
+                                strokeWidth={3}
+                            />
+                        </AreaChart>
+                    </ResponsiveContainer>
+                </div>
             </Card>
         </div>
     );

@@ -319,12 +319,13 @@ export const POSLeftPanel = () => {
             </div>
 
             {/* Quick Action Buttons */}
-            <div style={{ display: 'flex', gap: 5, overflowX: 'auto', paddingBottom: 5, marginTop: isMobile ? 0 : 5 }}>
+            <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', paddingBottom: 5, marginTop: isMobile ? 0 : 5 }}>
                 <Button
                     size={isMobile ? "middle" : "small"}
                     icon={<NumberOutlined />}
                     disabled={!selectedItemId}
                     onClick={() => setIsQuantityModalOpen(true)}
+                    style={isMobile ? { flex: '1 1 calc(50% - 4px)', minWidth: 0 } : undefined}
                 >
                     {isMobile ? t('pos.cart.qty') : `F4 ${t('pos.cart.qty')}`}
                 </Button>
@@ -333,6 +334,7 @@ export const POSLeftPanel = () => {
                     icon={<DollarOutlined />}
                     disabled={!selectedItemId}
                     onClick={() => setIsPriceModalOpen(true)}
+                    style={isMobile ? { flex: '1 1 calc(50% - 4px)', minWidth: 0 } : undefined}
                 >
                     {isMobile ? t('common.price') : `F5 ${t('common.price')}`}
                 </Button>
@@ -348,6 +350,7 @@ export const POSLeftPanel = () => {
                             onOk: () => removeItem(selectedItemId!),
                         });
                     }}
+                    style={isMobile ? { flex: '1 1 calc(33% - 4px)', minWidth: 0 } : undefined}
                 >
                     {isMobile ? t('common.delete') : `F6 ${t('common.delete')}`}
                 </Button>
@@ -356,6 +359,7 @@ export const POSLeftPanel = () => {
                     icon={<PercentageOutlined />}
                     disabled={!selectedItemId}
                     onClick={() => setIsDiscountModalOpen(true)}
+                    style={isMobile ? { flex: '1 1 calc(33% - 4px)', minWidth: 0 } : undefined}
                 >
                     {isMobile ? t('common.discount') : `F7 ${t('common.discount')}`}
                 </Button>
@@ -364,6 +368,7 @@ export const POSLeftPanel = () => {
                     icon={<SyncOutlined />}
                     disabled={!selectedItemId}
                     onClick={toggleSelectedItemUnit}
+                    style={isMobile ? { flex: '1 1 calc(33% - 4px)', minWidth: 0 } : undefined}
                 >
                     {isMobile ? "Alt" : `F8 ${t('pos.footer.unit', { defaultValue: 'Alt Unit' })}`}
                 </Button>

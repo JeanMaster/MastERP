@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Modal, Button, Row, Col, Typography, Table, InputNumber, Space, Card, Divider, Switch, Input } from 'antd';
+import { Modal, Button, Row, Col, Typography, Table, InputNumber, Space, Card, Divider, Switch, Input, Grid } from 'antd';
 import {
     DollarOutlined,
     CreditCardOutlined,
@@ -58,7 +58,6 @@ export const CheckoutModal = ({ open, onCancel, onProcess }: CheckoutModalProps)
         igtfEnabled,
         igtfRate,
         customerPoints,
-        customerPointsValueUsd,
         pointsRate
     } = usePOSStore();
 
@@ -375,16 +374,26 @@ export const CheckoutModal = ({ open, onCancel, onProcess }: CheckoutModalProps)
         },
     ];
 
+    const screens = Grid.useBreakpoint();
+    const isMobile = !screens.lg;
+
     return (
         <Modal
             title={null}
             open={open}
             onCancel={onCancel}
             footer={null}
-            width={1200}
+            width={isMobile ? '98%' : 1200}
             centered
             maskClosable={false}
-            styles={{ body: { padding: 0, overflow: 'hidden' } }}
+            styles={{ 
+                body: { 
+                    padding: 0, 
+                    overflowX: 'hidden',
+                    overflowY: 'auto',
+                    maxHeight: '90vh'
+                } 
+            }}
         >
             {/* Bank Selection Sub-modal */}
             <Modal
@@ -393,7 +402,7 @@ export const CheckoutModal = ({ open, onCancel, onProcess }: CheckoutModalProps)
                 onCancel={() => setBankSelectorOpen(false)}
                 footer={null}
                 centered
-                width={400}
+                width={isMobile ? '90%' : 400}
                 zIndex={2000}
             >
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -425,7 +434,7 @@ export const CheckoutModal = ({ open, onCancel, onProcess }: CheckoutModalProps)
                 okText={t('pos.checkout.add_retention')}
                 cancelText={t('pos.checkout.cancel')}
                 centered
-                width={400}
+                width={isMobile ? '90%' : 400}
                 zIndex={2000}
             >
                 <div style={{ padding: '8px 0' }}>
@@ -443,51 +452,51 @@ export const CheckoutModal = ({ open, onCancel, onProcess }: CheckoutModalProps)
             </Modal>
 
             {/* Header */}
-            <div style={{ background: '#f0f2f5', padding: '16px 24px', borderBottom: '2px solid #d9d9d9' }}>
-                <Row gutter={24}>
-                    <Col span={12}>
-                        <Text type="secondary">{t('pos.header.customer')}:</Text>
-                        <Title level={5} style={{ margin: '4px 0' }}>{activeCustomer}</Title>
+            <div style={{ background: '#f0f2f5', padding: isMobile ? '12px' : '16px 24px', borderBottom: '2px solid #d9d9d9' }}>
+                <Row gutter={[12, 12]}>
+                    <Col xs={12} sm={12}>
+                        <Text type="secondary" style={{ fontSize: isMobile ? '10px' : 'inherit' }}>{t('pos.header.customer')}:</Text>
+                        <Title level={5} style={{ margin: '0', fontSize: isMobile ? '14px' : 'inherit' }}>{activeCustomer}</Title>
                     </Col>
-                    <Col span={12} style={{ textAlign: 'right' }}>
-                        <Text type="secondary">{t('pos.header.next_invoice')}:</Text>
-                        <Title level={5} style={{ margin: '4px 0' }}>{reservedInvoiceNumber || nextInvoiceNumber}</Title>
+                    <Col xs={12} sm={12} style={{ textAlign: 'right' }}>
+                        <Text type="secondary" style={{ fontSize: isMobile ? '10px' : 'inherit' }}>{t('pos.header.next_invoice')}:</Text>
+                        <Title level={5} style={{ margin: '0', fontSize: isMobile ? '14px' : 'inherit' }}>{reservedInvoiceNumber || nextInvoiceNumber}</Title>
                     </Col>
                 </Row>
             </div>
 
-            <div style={{ maxHeight: 'calc(100vh - 200px)', overflowY: 'auto', paddingBottom: 20 }}>
+            <div style={{ maxHeight: isMobile ? 'none' : 'calc(100vh - 200px)', overflowY: isMobile ? 'visible' : 'auto', paddingBottom: 20 }}>
                 {/* Totals Summary */}
-                <div style={{ background: '#fff', padding: '20px 24px', borderBottom: '1px solid #f0f0f0' }}>
-                    <Row gutter={16}>
-                        <Col span={12}>
-                            <Card size="small" style={{ background: '#e6f7ff', border: '1px solid #91d5ff' }}>
-                                <Text type="secondary">{t('pos.checkout.sale_total')} {taxEnabled && `(${t('pos.header.tax_iva')} Incl.)`}</Text>
-                                <Title level={3} style={{ margin: '4px 0', color: '#1890ff' }}>
+                <div style={{ background: '#fff', padding: isMobile ? '12px' : '20px 24px', borderBottom: '1px solid #f0f0f0' }}>
+                    <Row gutter={[12, 12]}>
+                        <Col xs={12}>
+                            <Card size="small" style={{ background: '#e6f7ff', border: '1px solid #91d5ff' }} styles={{ body: { padding: isMobile ? 8 : 12 } }}>
+                                <Text type="secondary" style={{ fontSize: isMobile ? '10px' : 'inherit' }}>{t('pos.checkout.sale_total')}</Text>
+                                <Title level={isMobile ? 4 : 3} style={{ margin: '2px 0', color: '#1890ff' }}>
                                     {formatVenezuelanPrice(totals.total, primaryCurrency?.symbol)}
                                 </Title>
                                 {preferredSecondaryCurrency && (
-                                    <Text type="secondary" style={{ fontSize: '11px' }}>
+                                    <Text type="secondary" style={{ fontSize: '10px' }}>
                                         {formatVenezuelanPrice(totals.totalUsd, preferredSecondaryCurrency.symbol)}
                                     </Text>
                                 )}
                             </Card>
                         </Col>
-                        <Col span={12}>
+                        <Col xs={12}>
                             <Card size="small" style={{
                                 background: isFullyPaid ? '#f6ffed' : '#fff2e8',
                                 border: isFullyPaid ? '1px solid #b7eb8f' : '1px solid #ffbb96'
-                            }}>
-                                <Text type="secondary">{t('pos.checkout.change')}</Text>
-                                <Title level={3} style={{
-                                    margin: '4px 0',
+                            }} styles={{ body: { padding: isMobile ? 8 : 12 } }}>
+                                <Text type="secondary" style={{ fontSize: isMobile ? '10px' : 'inherit' }}>{isFullyPaid ? t('pos.checkout.change') : t('pos.checkout.remaining')}</Text>
+                                <Title level={isMobile ? 4 : 3} style={{
+                                    margin: '2px 0',
                                     color: isFullyPaid ? '#52c41a' : '#fa8c16'
                                 }}>
-                                    {formatVenezuelanPrice(remaining, primaryCurrency?.symbol)}
+                                    {formatVenezuelanPrice(isFullyPaid ? Math.max(0, totalPaid - (totals.total + totalIGTF)) : remaining, primaryCurrency?.symbol)}
                                 </Title>
                                 {preferredSecondaryCurrency && (
-                                    <Text type="secondary" style={{ fontSize: '11px' }}>
-                                        {formatVenezuelanPrice(remaining / (preferredSecondaryCurrency.exchangeRate || 1), preferredSecondaryCurrency.symbol)}
+                                    <Text type="secondary" style={{ fontSize: '10px' }}>
+                                        {formatVenezuelanPrice((isFullyPaid ? Math.max(0, totalPaid - (totals.total + totalIGTF)) : remaining) / (preferredSecondaryCurrency.exchangeRate || 1), preferredSecondaryCurrency.symbol)}
                                     </Text>
                                 )}
                             </Card>
@@ -496,9 +505,9 @@ export const CheckoutModal = ({ open, onCancel, onProcess }: CheckoutModalProps)
                 </div>
 
                 {/* Body Content */}
-                <div style={{ padding: '24px' }}>
-                    <Row gutter={32}>
-                        <Col span={11}>
+                <div style={{ padding: isMobile ? '16px' : '24px' }}>
+                    <Row gutter={[24, 24]}>
+                        <Col xs={24} lg={11}>
                             <Title level={5}>{t('pos.checkout.payment_methods')}</Title>
                             
                             {customerId && customerPoints > 0 && (
@@ -508,11 +517,6 @@ export const CheckoutModal = ({ open, onCancel, onProcess }: CheckoutModalProps)
                                         <Title level={4} style={{ margin: 0, color: '#d48806' }}>
                                             {customerPoints.toFixed(0)} <span style={{ fontSize: '0.6em' }}>{t('pos.checkout.pts')}</span>
                                         </Title>
-                                        {preferredSecondaryCurrency && (
-                                            <Text type="secondary" style={{ fontSize: '11px' }}>
-                                                {t('pos.checkout.points_value')}: {formatVenezuelanPrice(customerPointsValueUsd * (usePOSStore.getState().exchangeRate || 1))}
-                                            </Text>
-                                        )}
                                     </Space>
                                 </Card>
                             )}
@@ -531,9 +535,9 @@ export const CheckoutModal = ({ open, onCancel, onProcess }: CheckoutModalProps)
                                 />
                             </div>
 
-                            <div style={{ marginBottom: 16 }}>
+                            <div style={{ marginBottom: 24 }}>
                                 <Text type="secondary" style={{ fontSize: '0.9em' }}>{t('pos.checkout.base_currency')} ({primaryCurrency?.name || 'VES'})</Text>
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 8 }}>
+                                <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : '1fr 1fr', gap: 8, marginTop: 8 }}>
                                     {bsPaymentMethods.map(method => {
                                         const isCredit = method.key === 'ACCOUNT_CREDIT';
                                         const isRetention = method.key === 'RETENTION_IVA';
@@ -553,9 +557,20 @@ export const CheckoutModal = ({ open, onCancel, onProcess }: CheckoutModalProps)
                                                         addPayment(method.key, method.label, isCredit ? creditCurrencyId || undefined : undefined);
                                                     }}
                                                     disabled={isDisabled}
-                                                    style={{ height: 80, width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4 }}
+                                                    style={{ 
+                                                        height: isMobile ? 70 : 80, 
+                                                        width: '100%', 
+                                                        display: 'flex', 
+                                                        flexDirection: 'column', 
+                                                        alignItems: 'center', 
+                                                        justifyContent: 'center', 
+                                                        gap: 2,
+                                                        padding: '4px'
+                                                    }}
                                                 >
-                                                    <Space size={4}>{method.icon}<span>{method.label}</span></Space>
+                                                    <div style={{ fontSize: isMobile ? '12px' : '14px', textAlign: 'center', lineHeight: '1.2' }}>
+                                                        {method.icon} <span style={{ marginLeft: 4 }}>{method.label}</span>
+                                                    </div>
                                                 </Button>
                                                 {isCredit && (
                                                     <div style={{ marginTop: 4, display: 'flex', gap: 2 }}>
@@ -571,7 +586,7 @@ export const CheckoutModal = ({ open, onCancel, onProcess }: CheckoutModalProps)
                             </div>
 
                             {foreignCurrencies.length > 0 && (
-                                <div>
+                                <div style={{ marginBottom: 24 }}>
                                     <Text type="secondary" style={{ fontSize: '0.9em' }}>{t('pos.checkout.foreign_currency')}</Text>
                                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 8 }}>
                                         {foreignCurrencies.map((currency, index) => {
@@ -585,9 +600,19 @@ export const CheckoutModal = ({ open, onCancel, onProcess }: CheckoutModalProps)
                                                     size="large" 
                                                     onClick={() => addPayment(`CURRENCY_${currency.code}`, `CT+F${index + 9} ${currency.name}`, currency.id)} 
                                                     disabled={isFullyPaid || !inputAmount || inputAmount <= 0} 
-                                                    style={{ height: 80, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4 }}
+                                                    style={{ 
+                                                        height: isMobile ? 70 : 80, 
+                                                        display: 'flex', 
+                                                        flexDirection: 'column', 
+                                                        alignItems: 'center', 
+                                                        justifyContent: 'center', 
+                                                        gap: 2,
+                                                        padding: '4px'
+                                                    }}
                                                 >
-                                                    <Space size={4}><DollarOutlined /><span>CT+F{index + 9} {currency.name}</span></Space>
+                                                    <div style={{ fontSize: isMobile ? '12px' : '14px', textAlign: 'center', lineHeight: '1.2' }}>
+                                                        <DollarOutlined /> <span style={{ marginLeft: 4 }}>{currency.name}</span>
+                                                    </div>
                                                     <Text type="secondary" style={{ fontSize: '10px' }}>{formatVenezuelanPrice(displayValue, currency.symbol)}</Text>
                                                 </Button>
                                             );
@@ -597,11 +622,11 @@ export const CheckoutModal = ({ open, onCancel, onProcess }: CheckoutModalProps)
                             )}
                         </Col>
 
-                        <Col span={13}>
+                        <Col xs={24} lg={13}>
                             <Title level={5}>{t('pos.checkout.payment_breakdown')}</Title>
                             <Table 
                                 dataSource={payments} 
-                                columns={columns} 
+                                columns={isMobile ? columns.slice(0, 2) : columns} 
                                 rowKey="id" 
                                 pagination={false} 
                                 size="small" 
@@ -620,12 +645,21 @@ export const CheckoutModal = ({ open, onCancel, onProcess }: CheckoutModalProps)
                                     icon={<DeleteOutlined />} 
                                     onClick={() => removePayment(selectedPaymentId)} 
                                     style={{ marginTop: 12, marginBottom: 12 }}
+                                    block={isMobile}
                                 >
-                                    F6 {t('pos.checkout.remove_payment')}
+                                    {t('pos.checkout.remove_payment')}
                                 </Button>
                             )}
 
-                            <Card size="small" style={{ background: '#fafafa', marginTop: 16, border: '1px solid #d9d9d9' }}>
+                            <Card 
+                                size="small" 
+                                style={{ 
+                                    background: '#fafafa', 
+                                    marginTop: 24, 
+                                    border: '1px solid #d9d9d9',
+                                    borderRadius: 12
+                                }}
+                            >
                                 {taxEnabled && (
                                     <>
                                         <Row><Col span={12}><Text type="secondary">{t('pos.checkout.taxable_base')}:</Text></Col><Col span={12} style={{ textAlign: 'right' }}><Text>{formatVenezuelanPrice(totals.subtotal, primaryCurrency?.symbol)}</Text></Col></Row>
@@ -636,8 +670,8 @@ export const CheckoutModal = ({ open, onCancel, onProcess }: CheckoutModalProps)
                                 <Row><Col span={12}><Text strong>{t('pos.checkout.sale_total')}:</Text></Col><Col span={12} style={{ textAlign: 'right' }}><Text strong>{formatVenezuelanPrice(totals.total, primaryCurrency?.symbol)}</Text></Col></Row>
                                 {igtfEnabled && (
                                     <Row style={{ marginTop: 8, alignItems: 'center' }}>
-                                        <Col span={12}><Space direction="vertical" size={0}><Text strong style={{ color: '#ff4d4f' }}>{t('pos.checkout.igtf_tax')} ({igtfRate}%):</Text><Text type="secondary" style={{ fontSize: '10px' }}>{t('pos.checkout.foreign_surcharge')}</Text></Space></Col>
-                                        <Col span={12} style={{ textAlign: 'right' }}><Space><Text strong style={{ color: '#ff4d4f' }}>{formatVenezuelanPrice(totalIGTF, primaryCurrency?.symbol)}</Text><Switch size="small" checked={applyIGTF} onChange={setApplyIGTF} /></Space></Col>
+                                        <Col span={16}><Space direction="vertical" size={0}><Text strong style={{ color: '#ff4d4f' }}>{t('pos.checkout.igtf_tax')} ({igtfRate}%):</Text></Space></Col>
+                                        <Col span={8} style={{ textAlign: 'right' }}><Space><Text strong style={{ color: '#ff4d4f' }}>{formatVenezuelanPrice(totalIGTF, primaryCurrency?.symbol)}</Text><Switch size="small" checked={applyIGTF} onChange={setApplyIGTF} /></Space></Col>
                                     </Row>
                                 )}
                                 <Divider style={{ margin: '12px 0' }} />
@@ -649,11 +683,6 @@ export const CheckoutModal = ({ open, onCancel, onProcess }: CheckoutModalProps)
                                         <Text strong style={{ color: totalPaid > (totals.total + totalIGTF) ? '#52c41a' : 'inherit', fontSize: '1.2em' }}>
                                             {formatVenezuelanPrice(Math.max(0, totalPaid - (totals.total + totalIGTF)), primaryCurrency?.symbol)}
                                         </Text>
-                                        {preferredSecondaryCurrency && totalPaid > (totals.total + totalIGTF) && (
-                                            <Text type="secondary" style={{ color: '#52c41a', fontSize: '11px' }}>
-                                                ({formatVenezuelanPrice((totalPaid - (totals.total + totalIGTF)) / (preferredSecondaryCurrency.exchangeRate || 1), preferredSecondaryCurrency.symbol)})
-                                            </Text>
-                                        )}
                                     </Col>
                                 </Row>
                             </Card>
@@ -663,10 +692,10 @@ export const CheckoutModal = ({ open, onCancel, onProcess }: CheckoutModalProps)
             </div>
 
             {/* Sticky Footer */}
-            <div style={{ padding: '16px 24px', borderTop: '1px solid #d9d9d9', background: '#f0f2f5', borderBottomLeftRadius: 8, borderBottomRightRadius: 8 }}>
-                <Row gutter={16}>
-                    <Col span={12}><Button size="large" block onClick={onCancel}>Esc {t('pos.checkout.cancel')}</Button></Col>
-                    <Col span={12}><Button type="primary" size="large" block onClick={handleProcessSale} disabled={!isFullyPaid || isProcessing} loading={isProcessing} icon={<CheckCircleOutlined />}>F9 {t('pos.checkout.register_sale')}</Button></Col>
+            <div style={{ padding: isMobile ? '12px' : '16px 24px', borderTop: '1px solid #d9d9d9', background: '#f0f2f5', borderBottomLeftRadius: 8, borderBottomRightRadius: 8 }}>
+                <Row gutter={[12, 12]}>
+                    <Col xs={12}><Button size="large" block onClick={onCancel}>{isMobile ? t('common.cancel') : `Esc ${t('pos.checkout.cancel')}`}</Button></Col>
+                    <Col xs={12}><Button type="primary" size="large" block onClick={handleProcessSale} disabled={!isFullyPaid || isProcessing} loading={isProcessing} icon={<CheckCircleOutlined />}>{isMobile ? t('common.process') : `F9 ${t('pos.checkout.register_sale')}`}</Button></Col>
                 </Row>
             </div>
         </Modal>

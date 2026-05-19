@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Table, Button, Space, Typography, Tag, Tooltip, Popconfirm, App } from 'antd';
+import { Table, Button, Space, Typography, Tag, Tooltip, Popconfirm, App, Grid, List } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, UserOutlined } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
@@ -136,24 +136,105 @@ export const EmployeesPage = () => {
         }
     ];
 
+    const screens = Grid.useBreakpoint();
+    const isMobile = !screens.lg;
+
     return (
-        <div style={{ padding: '24px' }}>
+        <div style={{ padding: isMobile ? '8px' : '24px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '24px', alignItems: 'center' }}>
-                <Title level={2} style={{ margin: 0 }}>👥 {t('hr.employees.title')}</Title>
+                <Title level={isMobile ? 3 : 2} style={{ margin: 0 }}>👥 {t('hr.employees.title')}</Title>
                 <Button type="primary" icon={<PlusOutlined />} onClick={handleCreate}>
-                    {t('hr.employees.register_button')}
+                    {isMobile ? undefined : t('hr.employees.register_button')}
                 </Button>
             </div>
 
-            <Table
-                columns={columns}
-                dataSource={employees}
-                rowKey="id"
-                loading={isLoading}
-                pagination={{
-                    showTotal: (total) => t('hr.employees.messages.total_employees', { total })
-                }}
-            />
+            {!isMobile ? (
+                <Table
+                    columns={columns}
+                    dataSource={employees}
+                    rowKey="id"
+                    loading={isLoading}
+                    pagination={{
+                        showTotal: (total) => t('hr.employees.messages.total_employees', { total })
+                    }}
+                />
+            ) : (
+                <List
+                    loading={isLoading}
+                    dataSource={employees}
+                    rowKey="id"
+                    pagination={{ pageSize: 10, size: 'small', simple: true }}
+                    renderItem={(item: Employee) => (
+                        <List.Item
+                            style={{
+                                padding: '16px',
+                                background: '#fff',
+                                marginBottom: 12,
+                                borderRadius: 16,
+                                border: '1px solid #f0f0f0',
+                                boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
+                                display: 'block'
+                            }}
+                        >
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
+                                <div onClick={() => handleEdit(item)} style={{ cursor: 'pointer' }}>
+                                    <div style={{ fontWeight: 700, fontSize: 17, color: '#111827' }}>
+                                        {item.firstName} {item.lastName}
+                                    </div>
+                                    <div style={{ fontSize: 13, color: '#6b7280' }}>
+                                        {item.position} • {item.department}
+                                    </div>
+                                </div>
+                                <Tag color={item.isActive ? 'green' : 'red'} style={{ margin: 0 }}>
+                                    {item.isActive ? t('hr.active') : t('hr.inactive')}
+                                </Tag>
+                            </div>
+
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                                <div>
+                                    <div style={{ fontSize: 11, color: '#8c8c8c', textTransform: 'uppercase' }}>{t('hr.employees.table.identification')}</div>
+                                    <div style={{ fontSize: 14 }}>{item.identification}</div>
+                                </div>
+                                <div style={{ textAlign: 'right' }}>
+                                    <div style={{ fontSize: 11, color: '#8c8c8c', textTransform: 'uppercase' }}>{t('hr.employees.table.base_salary')}</div>
+                                    <div style={{ fontWeight: 600, fontSize: 16 }}>
+                                        {item.baseSalary} <small>{item.currency || 'VES'}</small>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid #f0f0f0', paddingTop: 12 }}>
+                                <div style={{ fontSize: 13, color: '#595959' }}>
+                                    {t('hr.employees.table.payment_frequency')}: {
+                                        item.paymentFrequency === 'WEEKLY' ? t('hr.employees.frequencies.WEEKLY') :
+                                        item.paymentFrequency === 'BIWEEKLY' ? t('hr.employees.frequencies.BIWEEKLY') :
+                                        t('hr.employees.frequencies.MONTHLY')
+                                    }
+                                </div>
+                                <Space>
+                                    <Button
+                                        icon={<EditOutlined style={{ color: '#6366f1' }} />}
+                                        onClick={() => handleEdit(item)}
+                                        type="text"
+                                    />
+                                    <Popconfirm
+                                        title={t('hr.employees.messages.deactivate_confirm')}
+                                        onConfirm={() => handleDelete(item.id)}
+                                        okText={t('common.yes')}
+                                        cancelText={t('common.no')}
+                                    >
+                                        <Button 
+                                            icon={<DeleteOutlined style={{ color: '#ef4444' }} />} 
+                                            type="text"
+                                            disabled={!item.isActive} 
+                                        />
+                                    </Popconfirm>
+                                </Space>
+                            </div>
+                        </List.Item>
+                    )}
+                />
+            )}
 
             <EmployeeFormModal
                 visible={isModalVisible}

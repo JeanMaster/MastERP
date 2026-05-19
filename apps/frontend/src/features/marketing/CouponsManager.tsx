@@ -1,9 +1,12 @@
 import { useState, useEffect } from 'react';
-import { Table, Button, Space, Modal, Form, Input, DatePicker, InputNumber, Switch, Tag, Typography, Select, App } from 'antd';
+import { Table, Button, Space, Modal, Form, Input, DatePicker, InputNumber, Switch, Tag, Typography, Select, App, Popconfirm } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, PercentageOutlined, DollarOutlined } from '@ant-design/icons';
 import { marketingApi } from '../../services/marketingApi';
 import dayjs from 'dayjs';
 import { useTranslation } from 'react-i18next';
+import { Grid, List, Card as AntdCard } from 'antd';
+
+const { useBreakpoint } = Grid;
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -16,6 +19,8 @@ const { Option } = Select;
 export default function CouponsManager() {
   const { t } = useTranslation();
   const { message } = App.useApp();
+  const screens = useBreakpoint();
+  const isMobile = !screens.lg;
   const [coupons, setCoupons] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalVisible, setIsModalVisible] = useState(false);
@@ -178,28 +183,96 @@ export default function CouponsManager() {
   ];
 
   return (
-    <div style={{ padding: '4px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+    <div style={{ padding: isMobile ? '12px' : '24px', maxWidth: '100vw', overflowX: 'hidden' }}>
+      <div style={{ 
+        display: 'flex', 
+        flexDirection: isMobile ? 'column' : 'row',
+        justifyContent: 'space-between', 
+        alignItems: isMobile ? 'flex-start' : 'center', 
+        marginBottom: 24,
+        gap: 16
+      }}>
         <div>
-          <Title level={3} style={{ margin: 0 }}>🎟️ {t('marketing.coupons.title')}</Title>
+          <Title level={isMobile ? 3 : 2} style={{ margin: 0 }}>🎟️ {t('marketing.coupons.title')}</Title>
           <Text type="secondary">{t('marketing.coupons.subtitle')}</Text>
         </div>
-        <Button type="primary" icon={<PlusOutlined />} onClick={handleAddNew} size="large">
+        <Button 
+            type="primary" 
+            icon={<PlusOutlined />} 
+            onClick={handleAddNew} 
+            size="large"
+            block={isMobile}
+            style={{ borderRadius: '12px' }}
+        >
           {t('marketing.coupons.new_button')}
         </Button>
       </div>
 
-      <Table 
-        columns={columns} 
-        dataSource={coupons} 
-        rowKey="id" 
-        loading={loading}
-        pagination={{ 
-            pageSize: 10,
-            showTotal: (total) => `${t('users.total')}: ${total}`
-        }}
-        bordered
-      />
+      <AntdCard variant="borderless" styles={{ body: { padding: isMobile ? 0 : 24 } }} style={{ borderRadius: '16px', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
+        {!isMobile ? (
+          <Table 
+            columns={columns} 
+            dataSource={coupons} 
+            rowKey="id" 
+            loading={loading}
+            pagination={{ 
+                pageSize: 10,
+                showTotal: (total) => `${t('users.total')}: ${total}`
+            }}
+            bordered
+          />
+        ) : (
+          <List
+            loading={loading}
+            dataSource={coupons}
+            renderItem={(item: any) => (
+              <AntdCard 
+                size="small" 
+                style={{ margin: '12px', borderRadius: '12px', border: '1px solid #f0f0f0' }}
+                actions={[
+                  <Button type="text" key="edit" icon={<EditOutlined />} onClick={() => handleEdit(item)}>{t('common.edit')}</Button>,
+                  <Popconfirm
+                    key="delete"
+                    title={t('marketing.coupons.messages.delete_confirm')}
+                    onConfirm={() => handleDelete(item.id)}
+                    okText={t('common.yes')}
+                    cancelText={t('common.no')}
+                  >
+                    <Button type="text" danger icon={<DeleteOutlined />}>{t('common.delete')}</Button>
+                  </Popconfirm>
+                ]}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                  <Text strong style={{ fontSize: '18px', letterSpacing: '1px' }}>{item.code}</Text>
+                  <Tag color={item.isActive ? 'success' : 'default'}>{item.isActive ? t('users.active') : t('users.inactive')}</Tag>
+                </div>
+                
+                <div style={{ marginBottom: 12 }}>
+                  {item.discountType === 'PERCENTAGE' 
+                    ? <Tag color="blue" icon={<PercentageOutlined />}> {item.discountValue}%</Tag>
+                    : <Tag color="green" icon={<DollarOutlined />}> ${item.discountValue}</Tag>
+                  }
+                  <Text type="secondary" style={{ fontSize: '13px', marginLeft: 8 }}>
+                    {t('marketing.coupons.usage_text', { 
+                      used: item.usedCount, 
+                      limit: item.usageLimit ? `/ ${item.usageLimit}` : '' 
+                    })}
+                  </Text>
+                </div>
+
+                {item.targetTiers && item.targetTiers.length > 0 ? (
+                  <div style={{ marginTop: 8 }}>
+                    {item.targetTiers.map((tier: string) => <Tag key={tier}>{tier}</Tag>)}
+                  </div>
+                ) : (
+                  <Tag color="default">{t('marketing.coupons.all_customers')}</Tag>
+                )}
+              </AntdCard>
+            )}
+            pagination={{ pageSize: 5, simple: true, style: { textAlign: 'center', marginBottom: 16 } }}
+          />
+        )}
+      </AntdCard>
 
       <Modal
         title={isEditing ? t('marketing.coupons.modal.edit_title') : t('marketing.coupons.modal.new_title')}
@@ -207,10 +280,11 @@ export default function CouponsManager() {
         onCancel={() => setIsModalVisible(false)}
         onOk={() => form.submit()}
         okText={t('marketing.coupons.modal.save_button')}
-        width={750}
+        width={isMobile ? '95%' : 750}
+        forceRender
       >
         <Form form={form} layout="vertical" onFinish={handleSave} style={{ marginTop: 20 }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 16 }}>
             <Form.Item label={t('marketing.coupons.modal.code_label')} name="code" rules={[{ required: true, message: t('marketing.coupons.modal.code_required') }]}>
               <Input placeholder={t('marketing.coupons.modal.code_placeholder')} style={{ textTransform: 'uppercase', fontWeight: 'bold' }} />
             </Form.Item>
@@ -224,7 +298,7 @@ export default function CouponsManager() {
             <Input.TextArea rows={2} placeholder={t('marketing.coupons.modal.description_placeholder')} />
           </Form.Item>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 16 }}>
             <Form.Item label={t('marketing.coupons.modal.discount_calc')} name="discountType" rules={[{ required: true, message: t('common.required') }]}>
               <Select>
                 <Option value="PERCENTAGE">{t('marketing.coupons.modal.percentage')}</Option>
@@ -237,7 +311,7 @@ export default function CouponsManager() {
             </Form.Item>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 16 }}>
              <Form.Item label={t('marketing.coupons.modal.global_limit')} name="usageLimit" tooltip={t('marketing.coupons.modal.limit_tooltip')}>
                <InputNumber style={{ width: '100%' }} min={1} placeholder={t('marketing.coupons.unlimited')} />
              </Form.Item>
@@ -246,7 +320,7 @@ export default function CouponsManager() {
              </Form.Item>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 16 }}>
              <Form.Item label={t('marketing.coupons.modal.valid_from')} name="startDate">
                <DatePicker style={{ width: '100%' }} showTime format="MM/DD/YYYY HH:mm:ss" />
              </Form.Item>

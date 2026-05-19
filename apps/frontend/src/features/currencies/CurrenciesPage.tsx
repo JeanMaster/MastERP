@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Card, Table, Button, Space, Input, message, Popconfirm, Tag, Badge, Grid } from 'antd';
+import { Card, Table, Button, Space, Input, message, Popconfirm, Tag, Badge, Grid, List } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined, StarFilled, ReloadOutlined } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { currenciesApi } from '../../services/currenciesApi';
@@ -157,33 +157,147 @@ export const CurrenciesPage = () => {
 
     return (
         <Card
-            title={t('currencies.title')}
-            extra={
-                <Space direction={isMobile ? 'vertical' : 'horizontal'} style={{ width: isMobile ? '100%' : 'auto' }} align={isMobile ? 'end' : 'center'}>
+            title={!isMobile ? t('currencies.title') : undefined}
+            extra={!isMobile ? (
+                <Space>
                     <Input
                         placeholder={t('currencies.search')}
                         prefix={<SearchOutlined />}
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
-                        style={{ width: isMobile ? '100%' : 250 }}
+                        style={{ width: 250 }}
+                        allowClear
                     />
-                    <Space>
-                        <Button icon={<ReloadOutlined />} onClick={() => queryClient.invalidateQueries({ queryKey: ['currencies'] })} />
-                        <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}>
-                            {isMobile ? t('common.edit') : t('currencies.new')}
-                        </Button>
-                    </Space>
+                    <Button icon={<ReloadOutlined />} onClick={() => queryClient.invalidateQueries({ queryKey: ['currencies'] })} />
+                    <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}>
+                        {t('currencies.new')}
+                    </Button>
                 </Space>
-            }
+            ) : null}
         >
-            <Table
-                columns={columns}
-                dataSource={filteredData}
-                rowKey="id"
-                loading={isLoading}
-                pagination={{ pageSize: 20 }}
-                scroll={{ x: 'max-content' }}
-            />
+            {isMobile && (
+                <div style={{ marginBottom: 16 }}>
+                    <h2 style={{ fontSize: 20, marginBottom: 16 }}>💰 {t('currencies.title')}</h2>
+                    <Space direction="vertical" style={{ width: '100%' }} size="middle">
+                        <Input
+                            placeholder={t('currencies.search')}
+                            prefix={<SearchOutlined />}
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            style={{ width: '100%' }}
+                            size="large"
+                            allowClear
+                        />
+                        <div style={{ display: 'flex', gap: 8 }}>
+                            <Button
+                                type="primary"
+                                icon={<PlusOutlined />}
+                                onClick={handleAdd}
+                                style={{ flex: 1 }}
+                                size="large"
+                            >
+                                {t('currencies.new')}
+                            </Button>
+                            <Button
+                                icon={<ReloadOutlined />}
+                                onClick={() => queryClient.invalidateQueries({ queryKey: ['currencies'] })}
+                                size="large"
+                            />
+                        </div>
+                    </Space>
+                </div>
+            )}
+
+            {!isMobile ? (
+                <Table
+                    columns={columns}
+                    dataSource={filteredData}
+                    rowKey="id"
+                    loading={isLoading}
+                    pagination={{
+                        pageSize: 20,
+                        showSizeChanger: true,
+                        responsive: true,
+                        position: ['bottomRight']
+                    }}
+                />
+            ) : (
+                <List
+                    loading={isLoading}
+                    dataSource={filteredData}
+                    renderItem={(item: Currency) => (
+                        <List.Item
+                            onClick={() => handleEdit(item)}
+                            style={{ 
+                                padding: '16px', 
+                                cursor: 'pointer',
+                                background: '#fff',
+                                marginBottom: 12,
+                                borderRadius: 16,
+                                border: '1px solid #f0f0f0',
+                                boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
+                                display: 'block'
+                            }}
+                        >
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                                    <div style={{
+                                        width: 44,
+                                        height: 44,
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        borderRadius: 12,
+                                        backgroundColor: item.isPrimary ? '#fff7e6' : '#f0f7ff',
+                                        color: item.isPrimary ? '#faad14' : '#1890ff',
+                                        fontSize: 20,
+                                        fontWeight: 700,
+                                        border: `1px solid ${item.isPrimary ? '#ffe58f' : '#91d5ff'}`
+                                    }}>
+                                        {item.symbol}
+                                    </div>
+                                    <div>
+                                        <div style={{ fontWeight: 700, fontSize: 17, color: '#111827' }}>
+                                            {item.name} {item.isPrimary && <StarFilled style={{ color: '#faad14', fontSize: 12 }} />}
+                                        </div>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                            <Tag color="blue" style={{ margin: 0, fontSize: 11, borderRadius: 4 }}>{item.code}</Tag>
+                                            <Badge 
+                                                status={item.isPrimary ? "success" : "default"} 
+                                                text={item.isPrimary ? t('currencies.primary') : t('currencies.secondary')}
+                                                style={{ fontSize: 12 }}
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+                                <EditOutlined style={{ color: '#9ca3af', fontSize: 16 }} />
+                            </div>
+                            
+                            {!item.isPrimary && (
+                                <div style={{ 
+                                    background: '#f8fafc', 
+                                    padding: '12px', 
+                                    borderRadius: 12,
+                                    display: 'flex',
+                                    justifyContent: 'space-between',
+                                    alignItems: 'center',
+                                    border: '1px solid #f1f5f9'
+                                }}>
+                                    <span style={{ fontSize: 13, color: '#64748b', fontWeight: 500 }}>{t('currencies.rate')}</span>
+                                    <div style={{ textAlign: 'right' }}>
+                                        <span style={{ fontWeight: 700, fontSize: 17, color: '#0f172a' }}>
+                                            {item.exchangeRate?.toFixed(4)}
+                                        </span>
+                                        <span style={{ marginLeft: 4, fontSize: 12, color: '#94a3b8', fontWeight: 600 }}>
+                                            {primaryCurrency?.symbol}
+                                        </span>
+                                    </div>
+                                </div>
+                            )}
+                        </List.Item>
+                    )}
+                />
+            )}
 
             <CurrencyFormModal
                 open={isModalOpen}

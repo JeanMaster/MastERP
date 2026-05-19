@@ -240,6 +240,7 @@ export const CreateExpenseModal = ({ open, onCancel, expense }: CreateExpenseMod
             okText={expense ? t('expenses.save_changes') : t('expenses.register')}
             cancelText={t('common.cancel')}
             width={600}
+            forceRender
         >
             <Form
                 form={form}

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { formatVenezuelanPrice } from '../../utils/formatters';
-import { Card, Table, Button, Space, Input, App, Popconfirm, Grid, Tooltip } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined, ReloadOutlined } from '@ant-design/icons';
+import { Card, Table, Button, Space, Input, App, Popconfirm, Grid, Tooltip, List, Tag } from 'antd';
+import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined, ReloadOutlined, NodeIndexOutlined } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { productsApi } from '../../services/productsApi';
 import { currenciesApi } from '../../services/currenciesApi';
@@ -173,52 +173,159 @@ export const ServicesPage = () => {
     ];
 
     return (
-        <div className="fade-in" style={{ padding: isMobile ? '8px' : '0' }}>
-            <div style={{
-                display: 'flex',
-                flexDirection: isMobile ? 'column' : 'row',
-                justifyContent: 'space-between',
-                alignItems: isMobile ? 'flex-start' : 'center',
-                marginBottom: 16,
-                gap: isMobile ? 12 : 0
-            }}>
-                <h1 style={{ margin: 0, fontSize: isMobile ? '1.5rem' : '2rem' }}>{t('products.services.title')}</h1>
-                <Space direction={isMobile ? 'vertical' : 'horizontal'} style={{ width: isMobile ? '100%' : 'auto' }} align={isMobile ? 'end' : 'center'}>
+        <Card
+            title={!isMobile ? t('products.services.title') : undefined}
+            extra={!isMobile ? (
+                <Space>
                     <Input
                         placeholder={t('products.services.search_placeholder')}
                         prefix={<SearchOutlined />}
                         value={searchTerm}
-                        onChange={e => setSearchTerm(e.target.value)}
-                        style={{ width: isMobile ? '100%' : 250 }}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        style={{ width: 250 }}
+                        allowClear
                     />
-                    <Space>
-                        <Button
-                            icon={<ReloadOutlined />}
-                            onClick={() => queryClient.invalidateQueries({ queryKey: ['services'] })}
-                        />
-                        <Button type="primary" icon={<PlusOutlined />} onClick={() => setIsModalOpen(true)}>
-                            {isMobile ? t('common.add') : t('products.services.new_button')}
-                        </Button>
-                    </Space>
+                    <Button icon={<ReloadOutlined />} onClick={() => queryClient.invalidateQueries({ queryKey: ['services'] })} />
+                    <Button type="primary" icon={<PlusOutlined />} onClick={() => setIsModalOpen(true)}>
+                        {t('products.services.new_button')}
+                    </Button>
                 </Space>
-            </div>
+            ) : null}
+        >
+            {isMobile && (
+                <div style={{ marginBottom: 16 }}>
+                    <h2 style={{ fontSize: 20, marginBottom: 16 }}>🛠️ {t('products.services.title')}</h2>
+                    <Space direction="vertical" style={{ width: '100%' }} size="middle">
+                        <Input
+                            placeholder={t('products.services.search_placeholder')}
+                            prefix={<SearchOutlined />}
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            style={{ width: '100%' }}
+                            size="large"
+                            allowClear
+                        />
+                        <div style={{ display: 'flex', gap: 8 }}>
+                            <Button
+                                type="primary"
+                                icon={<PlusOutlined />}
+                                onClick={() => setIsModalOpen(true)}
+                                style={{ flex: 1 }}
+                                size="large"
+                            >
+                                {t('common.add')}
+                            </Button>
+                            <Button
+                                icon={<ReloadOutlined />}
+                                onClick={() => queryClient.invalidateQueries({ queryKey: ['services'] })}
+                                size="large"
+                            />
+                        </div>
+                    </Space>
+                </div>
+            )}
 
-            <Card styles={{ body: { padding: 0 } }}>
+            {!isMobile ? (
                 <Table
                     columns={columns}
                     dataSource={filteredServices}
                     rowKey="id"
                     loading={isLoadingServices}
-                    pagination={{ pageSize: 10 }}
-                    scroll={{ x: 'max-content' }}
+                    pagination={{
+                        defaultPageSize: 15,
+                        showSizeChanger: true,
+                        pageSizeOptions: ['10', '15', '20', '50', '100'],
+                        responsive: true,
+                        position: ['bottomRight']
+                    }}
                 />
-            </Card>
+            ) : (
+                <List
+                    loading={isLoadingServices}
+                    dataSource={filteredServices}
+                    pagination={{
+                        pageSize: 10,
+                        size: 'small',
+                        simple: true,
+                    }}
+                    renderItem={(item: Product) => (
+                        <List.Item
+                            onClick={() => handleEdit(item)}
+                            style={{ 
+                                padding: '16px', 
+                                cursor: 'pointer',
+                                background: '#fff',
+                                marginBottom: 12,
+                                borderRadius: 16,
+                                border: '1px solid #f0f0f0',
+                                boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
+                                display: 'block'
+                            }}
+                        >
+                            <div style={{ display: 'flex', width: '100%', alignItems: 'center', gap: 12, marginBottom: 12 }}>
+                                <div style={{
+                                    width: 44,
+                                    height: 44,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    borderRadius: 12,
+                                    backgroundColor: '#eff6ff',
+                                    color: '#3b82f6',
+                                    flexShrink: 0
+                                }}>
+                                    <NodeIndexOutlined style={{ fontSize: 20 }} />
+                                </div>
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                    <div style={{ 
+                                        fontWeight: 700, 
+                                        fontSize: 16, 
+                                        color: '#111827',
+                                        lineHeight: '1.2',
+                                        marginBottom: 4
+                                    }}>
+                                        {item.name}
+                                    </div>
+                                    <div style={{ fontSize: 12, color: '#6b7280' }}>
+                                        <Tag color="blue" style={{ fontSize: 10, margin: 0, borderRadius: 4 }}>{item.sku}</Tag>
+                                        <span style={{ marginLeft: 8 }}>{item.category.name}</span>
+                                    </div>
+                                </div>
+                                <EditOutlined style={{ color: '#9ca3af', fontSize: 16 }} />
+                            </div>
+
+                            <div style={{ 
+                                background: '#f8fafc', 
+                                padding: '12px', 
+                                borderRadius: 12,
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'center',
+                                border: '1px solid #f1f5f9'
+                            }}>
+                                <div>
+                                    <div style={{ fontSize: 11, color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>{t('common.sale_price')}</div>
+                                    <div style={{ fontWeight: 800, color: '#10b981', fontSize: 18 }}>
+                                        {formatVenezuelanPrice(item.salePrice, item.currency.symbol)}
+                                    </div>
+                                </div>
+                                <div style={{ textAlign: 'right' }}>
+                                    <div style={{ fontSize: 11, color: '#94a3b8', textTransform: 'uppercase', fontWeight: 600 }}>{t('common.cost')}</div>
+                                    <div style={{ fontWeight: 600, color: '#64748b', fontSize: 14 }}>
+                                        {item.currency.symbol}{item.costPrice.toFixed(2)}
+                                    </div>
+                                </div>
+                            </div>
+                        </List.Item>
+                    )}
+                />
+            )}
 
             <ServiceFormModal
                 open={isModalOpen}
                 service={editingService}
                 onClose={handleCloseModal}
             />
-        </div>
+        </Card>
     );
 };

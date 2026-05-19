@@ -71,7 +71,7 @@ export const TransferToTreasuryModal = ({ open, sessionId, onClose }: TransferTo
             confirmLoading={mutation.isPending}
             okText="Confirm Transfer (F9)"
             cancelText="Cancel"
-            destroyOnClose
+            forceRender
         >
             <Alert
                 message="Attention"

@@ -72,6 +72,7 @@ export const CreateSupplierModal: React.FC<CreateSupplierModalProps> = ({
             okText={isEditing ? `${t('common.save')} (F9)` : `${t('common.add')} (F9)`}
             cancelText={t('common.cancel')}
             width={700}
+            forceRender
         >
             <Form
                 form={form}

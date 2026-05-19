@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Card, Table, Button, Input, Space, message, Popconfirm, Tooltip, Grid, Row, Col, Typography } from 'antd';
+import { Card, Table, Button, Input, Space, message, Popconfirm, Tooltip, Grid, Row, Col, Typography, List } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined, WhatsAppOutlined, InstagramOutlined, FacebookOutlined, TwitterOutlined, ReloadOutlined } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { clientsApi } from '../../services/clientsApi';
@@ -209,21 +209,114 @@ export const ClientsPage = () => {
                     />
                 </div>
 
+            {!isMobile ? (
                 <Table
                     columns={columns}
                     dataSource={clients}
                     loading={isLoading}
                     rowKey="id"
                     scroll={{ x: 'max-content' }}
-                    size={isMobile ? 'small' : 'middle'}
+                    size="middle"
                     pagination={{
                         defaultPageSize: 10,
                         showSizeChanger: true,
                         pageSizeOptions: ['10', '20', '50', '100'],
-                        size: isMobile ? 'small' : 'default',
                         showTotal: (total) => t('clients.total_count', { total }),
                     }}
                 />
+            ) : (
+                <List
+                    loading={isLoading}
+                    dataSource={clients}
+                    rowKey="id"
+                    pagination={{
+                        pageSize: 10,
+                        size: 'small',
+                        simple: true,
+                    }}
+                    renderItem={(item: Client) => (
+                        <List.Item
+                            style={{
+                                padding: '16px',
+                                background: '#fff',
+                                marginBottom: 12,
+                                borderRadius: 16,
+                                border: '1px solid #f0f0f0',
+                                boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
+                                display: 'block'
+                            }}
+                        >
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
+                                <div onClick={() => handleEdit(item)} style={{ cursor: 'pointer', flex: 1 }}>
+                                    <div style={{ fontWeight: 700, fontSize: 17, color: '#111827', marginBottom: 2 }}>
+                                        {item.name}
+                                    </div>
+                                    <div style={{ fontSize: 13, color: '#6b7280', fontFamily: 'monospace' }}>
+                                        {item.id}
+                                    </div>
+                                </div>
+                                <div style={{ display: 'flex', gap: 8 }}>
+                                    <ClientPurchaseHistory clientId={item.id} clientName={item.name} />
+                                    <Button 
+                                        type="text" 
+                                        icon={<EditOutlined style={{ color: '#6366f1' }} />} 
+                                        onClick={() => handleEdit(item)} 
+                                    />
+                                </div>
+                            </div>
+
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+                                    {item.phone && (
+                                        <div 
+                                            onClick={() => item.hasWhatsapp && window.open(formatWhatsAppUrl(item.phone || '', item.name), '_blank')}
+                                            style={{ 
+                                                display: 'flex', 
+                                                alignItems: 'center', 
+                                                gap: 4, 
+                                                color: item.hasWhatsapp ? '#25D366' : '#6b7280',
+                                                fontSize: 14,
+                                                fontWeight: 500
+                                            }}
+                                        >
+                                            <WhatsAppOutlined /> {item.phone}
+                                        </div>
+                                    )}
+                                </div>
+
+                                <div style={{ display: 'flex', gap: 12 }}>
+                                    {item.social1 && (
+                                        <InstagramOutlined 
+                                            style={{ color: '#E1306C', fontSize: 18 }} 
+                                            onClick={() => window.open(`https://instagram.com/${item.social1}`, '_blank')}
+                                        />
+                                    )}
+                                    {item.social2 && (
+                                        <FacebookOutlined 
+                                            style={{ color: '#4267B2', fontSize: 18 }} 
+                                            onClick={() => window.open(`https://facebook.com/${item.social2}`, '_blank')}
+                                        />
+                                    )}
+                                    <Popconfirm
+                                        title={t('clients.delete_confirm')}
+                                        onConfirm={() => handleDelete(item.id)}
+                                        okText={t('common.yes')}
+                                        cancelText={t('common.no')}
+                                    >
+                                        <DeleteOutlined style={{ color: '#ef4444', fontSize: 18, marginLeft: 8 }} />
+                                    </Popconfirm>
+                                </div>
+                            </div>
+                            
+                            {item.email && (
+                                <div style={{ marginTop: 8, fontSize: 12, color: '#9ca3af', fontStyle: 'italic' }}>
+                                    {item.email}
+                                </div>
+                            )}
+                        </List.Item>
+                    )}
+                />
+            )}
             </Card>
 
             <ClientFormModal

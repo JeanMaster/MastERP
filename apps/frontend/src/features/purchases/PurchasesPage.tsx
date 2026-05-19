@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Table, Button, Tag, Row, Col, Card, App, Grid, Typography, Space } from 'antd';
+import { Table, Button, Tag, Row, Col, Card, App, Grid, Typography, Space, List } from 'antd';
 import { PlusOutlined, EyeOutlined, ReloadOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import dayjs from 'dayjs';
@@ -125,19 +125,77 @@ export const PurchasesPage: React.FC = () => {
                     </Col>
                 </Row>
 
-                <Table
-                    columns={columns}
-                    dataSource={purchases}
-                    rowKey="id"
-                    loading={loading}
-                    scroll={{ x: 'max-content' }}
-                    size={isMobile ? 'small' : 'middle'}
-                    pagination={{
-                        pageSize: 10,
-                        size: isMobile ? 'small' : 'default',
-                        responsive: true
-                    }}
-                />
+                {!isMobile ? (
+                    <Table
+                        columns={columns}
+                        dataSource={purchases}
+                        rowKey="id"
+                        loading={loading}
+                        scroll={{ x: 'max-content' }}
+                        size="middle"
+                        pagination={{
+                            pageSize: 10,
+                            responsive: true
+                        }}
+                    />
+                ) : (
+                    <List
+                        loading={loading}
+                        dataSource={purchases}
+                        rowKey="id"
+                        pagination={{
+                            pageSize: 10,
+                            size: 'small',
+                            simple: true,
+                        }}
+                        renderItem={(item: Purchase) => (
+                            <List.Item
+                                onClick={() => handleViewDetails(item)}
+                                style={{
+                                    padding: '16px',
+                                    background: '#fff',
+                                    marginBottom: 12,
+                                    borderRadius: 16,
+                                    border: '1px solid #f0f0f0',
+                                    boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
+                                    display: 'block',
+                                    cursor: 'pointer'
+                                }}
+                            >
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
+                                    <div>
+                                        <div style={{ fontWeight: 700, fontSize: 16, color: '#111827' }}>
+                                            {item.supplier?.comercialName || 'S/N'}
+                                        </div>
+                                        <div style={{ fontSize: 12, color: '#8c8c8c' }}>
+                                            {dayjs(item.invoiceDate).format('DD/MM/YYYY')}
+                                        </div>
+                                    </div>
+                                    <Tag color={item.status === 'COMPLETED' ? 'green' : 'orange'} style={{ margin: 0 }}>
+                                        {item.status === 'COMPLETED' ? t('purchases.completed') : item.status}
+                                    </Tag>
+                                </div>
+
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <div>
+                                        <div style={{ fontSize: 13, color: '#595959' }}>
+                                            <strong>{t('purchases.table.invoice_number')}:</strong> {item.invoiceNumber || 'N/A'}
+                                        </div>
+                                        <div style={{ fontSize: 12, color: '#8c8c8c' }}>
+                                            {item.items.length} {t('purchases.table.items', { defaultValue: 'items' })}
+                                        </div>
+                                    </div>
+                                    <div style={{ textAlign: 'right' }}>
+                                        <div style={{ fontWeight: 700, fontSize: 16, color: '#111827' }}>
+                                            {item.currencyCode} {Number(item.total).toFixed(2)}
+                                        </div>
+                                        <EyeOutlined style={{ color: '#1890ff', fontSize: 18, marginTop: 4 }} />
+                                    </div>
+                                </div>
+                            </List.Item>
+                        )}
+                    />
+                )}
             </Card>
 
             <CreatePurchaseModal

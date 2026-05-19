@@ -246,6 +246,7 @@ export const RegisterPurchasePaymentModal = ({ open, purchase, onClose }: Regist
             confirmLoading={registerPaymentMutation.isPending}
             okText={t('accounts_payable.modal.submit_btn')}
             cancelText={t('common.cancel')}
+            forceRender
         >
             <div style={{ marginBottom: 16 }}>
                 <p><strong>{t('accounts_payable.modal.supplier')}</strong> {purchase.supplier.comercialName}</p>
@@ -330,7 +331,7 @@ export const RegisterPurchasePaymentModal = ({ open, purchase, onClose }: Regist
 
                 {paymentCurrency !== purchase.currencyCode && (
                     <Alert
-                        message={
+                        title={
                             <div style={{ display: 'flex', flexDirection: 'column' }}>
                                 <span>{t('accounts_payable.modal.invoice_equivalent')}</span>
                                 <span style={{ fontWeight: 'bold', fontSize: '16px' }}>
@@ -395,7 +396,7 @@ export const RegisterPurchasePaymentModal = ({ open, purchase, onClose }: Regist
                             }
                             return bank.balance < deduction ? 'error' : 'success';
                         })()}
-                        message={(() => {
+                        title={(() => {
                             const bank = banks.find((b: any) => b.id === watchBankId);
                             if (!bank) return '';
                             let deduction = watchAmount || 0;
