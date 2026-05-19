@@ -54,6 +54,7 @@ export const SalesReports = () => {
     const [isEditPaymentModalOpen, setIsEditPaymentModalOpen] = useState(false);
     const [newPaymentMethod, setNewPaymentMethod] = useState<string>('');
     const [pageSize, setPageSize] = useState<number>(10);
+    const [currentPage, setCurrentPage] = useState<number>(1);
     const queryClient = useQueryClient();
     const { t } = useTranslation();
 
@@ -117,6 +118,14 @@ export const SalesReports = () => {
     const sales = data?.sales || [];
     const summary = data?.summary || { totalSales: 0, grossRevenue: 0, nominalRevenue: 0, discounts: 0, averageTicket: 0 };
 
+    const totalPages = Math.max(1, Math.ceil(sales.length / pageSize));
+    const activePage = currentPage > totalPages ? 1 : currentPage;
+
+    const paginatedSales = sales.slice(
+        (activePage - 1) * pageSize,
+        activePage * pageSize
+    );
+
 
 
     const { data: clients = [] } = useQuery({
@@ -145,6 +154,7 @@ export const SalesReports = () => {
                 endDate: undefined
             }));
         }
+        setCurrentPage(1);
     };
 
     const handleFilterChange = (key: keyof SalesFilters, value: any) => {
@@ -152,11 +162,13 @@ export const SalesReports = () => {
             ...prev,
             [key]: value || undefined
         }));
+        setCurrentPage(1);
     };
 
     const handleResetFilters = () => {
         setFilters({});
         setDateRange(null);
+        setCurrentPage(1);
     };
 
     const columns = [
@@ -473,9 +485,13 @@ export const SalesReports = () => {
                         rowKey="id"
                         loading={isLoading}
                         pagination={{
+                            current: activePage,
                             pageSize,
+                            onChange: (page, size) => {
+                                setCurrentPage(page);
+                                setPageSize(size);
+                            },
                             showSizeChanger: true,
-                            onShowSizeChange: (_, size) => setPageSize(size),
                             pageSizeOptions: ['10', '20', '50', '100'],
                             responsive: true
                         }}
@@ -486,7 +502,7 @@ export const SalesReports = () => {
             ) : (
                 <div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                        {sales.map((item: Sale) => (
+                        {paginatedSales.map((item: Sale) => (
                             <Card
                                 key={item.id}
                                 variant="borderless"
@@ -577,10 +593,14 @@ export const SalesReports = () => {
                     <div style={{ padding: '12px', textAlign: 'center' }}>
                         <Pagination
                             size="small"
+                            current={activePage}
                             total={sales.length}
-                            pageSize={10}
+                            pageSize={pageSize}
                             simple
-                            onChange={(_page: number, size?: number) => setPageSize(size || 10)}
+                            onChange={(page, size) => {
+                                setCurrentPage(page);
+                                if (size) setPageSize(size);
+                            }}
                         />
                     </div>
                 </div>
