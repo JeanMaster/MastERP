@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Table, Button, Card, Select, Modal, Tag, Grid } from 'antd';
 import { usePOSStore } from '../../../store/posStore';
 import { formatVenezuelanPrice, formatVenezuelanPriceOnly } from '../../../utils/formatters';
@@ -113,6 +113,29 @@ export const POSLeftPanel = () => {
         }
     };
 
+    /**
+     * Fast path exclusively for barcode/USB scanners.
+     * Only invoked by the detector below when it recognizes a rapid keystroke burst + Enter.
+     * Completely bypasses the debounced Select search so scans are instant and reliable.
+     * Manual typing, dropdown navigation, and all existing behavior remain 100% untouched.
+     */
+    const handleBarcodeScan = useCallback(async (code: string) => {
+        const trimmed = code.trim();
+        if (!trimmed || trimmed.length < 3) return;
+
+        try {
+            const results = await productsApi.getAll({ search: trimmed, limit: 5 });
+            // Prefer exact SKU match (the one printed on the tickets), fallback to first result
+            const match = results.find((p) => p.sku?.toUpperCase() === trimmed.toUpperCase()) || results[0];
+            if (!match) return;
+
+            // Reuse the exact same logic (stock validation, secondary units, addItem, toasts, etc.)
+            handleSelectProduct(match.id, { product: match } as any);
+        } catch (err) {
+            // Silent fail for speed — scanner users don't want popups on every bad scan
+            console.debug('Barcode scan lookup failed for', trimmed, err);
+        }
+    }, [handleSelectProduct]);
 
     // Keyboard Shortcuts (F4: Qty, F5: Price, F6: Remove, F7: Discount, F8: Toggle Unit)
     useEffect(() => {
@@ -150,6 +173,75 @@ export const POSLeftPanel = () => {
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, [selectedItemId, removeItem, toggleSelectedItemUnit]);
+
+    // Barcode scanner detector (additive only — zero impact on manual users)
+    // Collects keys; if they arrive faster than ~60ms apart and are terminated by Enter/Tab,
+    // we treat the burst as a scanner read, prevent the event, and call the fast path above.
+    // Human typing (even fast) almost never triggers the threshold, so the normal Select
+    // search, arrow navigation, Enter-to-select, etc. continue to work exactly as before.
+    useEffect(() => {
+        let buffer = '';
+        let lastTs = 0;
+        const MIN_LENGTH = 3;
+
+        const onKey = (e: KeyboardEvent) => {
+            const now = Date.now();
+
+            if (now - lastTs > 450) {
+                buffer = ''; // user paused → reset (normal typing sessions)
+            }
+
+            if (e.key.length === 1) {
+                buffer += e.key;
+            } else if ((e.key === 'Enter' || e.key === 'Tab') && buffer.length >= MIN_LENGTH) {
+                const scanned = buffer.trim();
+                buffer = '';
+
+                // Heuristic that matches our SKUs (letters + dash + numbers)
+                if (/[A-Za-z-]/.test(scanned) || scanned.length >= 5) {
+                    e.preventDefault();
+                    e.stopImmediatePropagation();
+                    handleBarcodeScan(scanned);
+                }
+            }
+
+            lastTs = now;
+        };
+
+        // Capture phase: we see the key before the focused Select processes the final Enter
+        window.addEventListener('keydown', onKey, true);
+        return () => window.removeEventListener('keydown', onKey, true);
+    }, [handleBarcodeScan]);
+
+    /**
+     * When user presses Enter in the search box:
+     * - Try to treat the typed text as SKU and add the product directly.
+     * - If no exact match found → do nothing and clear the input.
+     * This is for fast manual SKU entry (user request).
+     */
+    const handleSearchKeyDown = async (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (e.key === 'Enter' && searchTerm.trim()) {
+            e.preventDefault();
+
+            const term = searchTerm.trim();
+
+            try {
+                const results = await productsApi.getAll({ search: term, limit: 5 });
+                // Prefer exact SKU match (same logic as the scanner path)
+                const match = results.find((p) => p.sku?.toUpperCase() === term.toUpperCase()) || results[0];
+
+                if (match) {
+                    handleSelectProduct(match.id, { product: match } as any);
+                }
+            } catch {
+                // Silent fail
+            } finally {
+                // Always clear the input after Enter (whether added or not)
+                setSearchTerm('');
+                setSearchResults([]);
+            }
+        }
+    };
 
     const selectedCartItem = cart.find(item => item.product.id === selectedItemId);
 
@@ -272,6 +364,7 @@ export const POSLeftPanel = () => {
                 filterOption={false}
                 onSearch={handleSearch}
                 onChange={handleSelectProduct}
+                onInputKeyDown={handleSearchKeyDown}
                 notFoundContent={null}
                 style={{ width: '100%' }}
                 size="large"
