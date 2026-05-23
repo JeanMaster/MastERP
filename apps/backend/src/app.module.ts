@@ -34,6 +34,7 @@ import { AIModule } from './ai/ai.module';
 import { MercadoLibreModule } from './mercadolibre/mercadolibre.module';
 import { MarketingModule } from './marketing/marketing.module';
 import { TaxRetentionsModule } from './tax-retentions/tax-retentions.module';
+import { CatalogModule } from './catalog/catalog.module';
 
 @Module({
   imports: [
@@ -46,6 +47,7 @@ import { TaxRetentionsModule } from './tax-retentions/tax-retentions.module';
       envFilePath: '.env',
     }),
     PrismaModule,
+    CatalogModule,
     ClientsModule,
     SuppliersModule,
     ProductsModule,

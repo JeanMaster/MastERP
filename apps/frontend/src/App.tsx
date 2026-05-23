@@ -39,6 +39,8 @@ import { BanksPage } from './features/banks/BanksPage'; // Importación
 import { UsersPage } from './features/users/UsersPage';
 import { AISettingsPage } from './features/configuration/AISettingsPage';
 import { RetentionsListPage } from './features/tax-retentions/pages/RetentionsListPage';
+import { CatalogoPage } from './features/catalog/CatalogoPage';
+import { PriceTicketsPage } from './features/catalog/PriceTicketsPage';
 import {
   ShoppingCartOutlined,
   ShoppingOutlined,
@@ -68,6 +70,8 @@ function App() {
           </ProtectedRoute>
         }>
           <Route index element={<DashboardPage />} />
+          <Route path="catalog/products" element={<CatalogoPage />} />
+          <Route path="catalog/tickets" element={<PriceTicketsPage />} />
           <Route path="configuration" element={<ModulePage title="Configuración" icon={<SettingOutlined />} />} />
           <Route path="configuration/company" element={<CompanySettingsPage />} />
           <Route path="configuration/dev-tools" element={<DevToolsPage />} />

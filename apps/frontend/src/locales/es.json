@@ -336,6 +336,10 @@
       "mandatory_bank_desc": "Fuente de Banco Obligatoria",
       "mandatory_bank_help": "Cuando está habilitado, el personal se verá obligado a seleccionar una cuenta bancaria específica o caja al registrar Gastos o pagar a Proveedores.",
       "save_changes": "Guardar Cambios (F9)",
+      "address": "Dirección de la Empresa",
+      "address_placeholder": "ej. Av. Principal, Edificio X, Piso 3",
+      "phone": "Teléfono de Contacto",
+      "phone_placeholder": "ej. +58 212 123-4567",
       "messages": {
         "logo_loaded": "Logo cargado. Guarde los cambios para aplicar.",
         "success_update": "Configuración de la empresa actualizada exitosamente",
@@ -465,6 +469,15 @@
     "banks": "Bancos / Efectivo",
     "reports": "Reportes Avanzados",
     "mercadolibre": "Sincronización ML",
+    "catalog": {
+      "label": "Catálogo / Tickets",
+      "products": "Catálogo",
+      "tickets": "Tickets"
+    },
+    "impresiones": {
+      "label": "Impresiones",
+      "create": "Generar Catálogo PDF"
+    },
     "settings": {
       "label": "Configuración Sistema",
       "business": "Perfil del Negocio",
@@ -836,7 +849,9 @@
         "inventory_adj": "Ajustes de Inventario",
         "purchases": "Gestión de Compras",
         "expenses": "Control de Gastos",
-        "reports": "Reportes Avanzados",
+    "reports": "Reportes Avanzados",
+    "catalog": "Catálogo y Reportes",
+    "catalog_create": "Generar Catálogo",
         "config": "Configuración del Sistema"
       }
     }
@@ -950,6 +965,44 @@
       "categories": {
         "sale_transfer": "Transferencia de Ventas"
       }
+    }
+  },
+  "catalog": {
+    "page_title": "Catálogo de Productos",
+    "page_subtitle": "Genere y comparta catálogos de productos con precios en la moneda que prefiera.",
+    "primary": "Principal",
+    "currency_label": "Moneda del Catálogo",
+    "select_currency": "Seleccionar moneda",
+    "categories_label": "Categorías",
+    "all_categories": "Todas (vacío = todas)",
+    "download_pdf": "Descargar PDF",
+    "send_whatsapp": "Enviar por WhatsApp",
+    "send_to_whatsapp": "Enviar Catálogo",
+    "whatsapp_placeholder": "Seleccione moneda...",
+    "whatsapp_hint": "📱 Envíe el catálogo en PDF directamente por WhatsApp a un número de la empresa o de un cliente.",
+    "table": {
+      "product": "Producto",
+      "category": "Categoría",
+      "department": "Departamento",
+      "price": "Precio 1",
+      "stock": "Stock",
+      "status": "Estado",
+      "of": "de"
+    },
+    "status": {
+      "available": "DISPONIBLE",
+      "out_of_stock": "AGOTADO"
+    },
+    "total_products": "Total de productos:",
+    "in_stock": "en stock",
+    "messages": {
+        "loading": "Cargando catálogo...",
+        "no_products": "No hay productos activos en el catálogo.",
+        "download_success": "Catálogo descargado exitosamente",
+        "download_error": "Error al generar el catálogo PDF",
+        "whatsapp_phone_required": "Seleccione un número de teléfono",
+        "whatsapp_sent": "Catálogo enviado exitosamente por WhatsApp",
+        "whatsapp_error": "Error al enviar el catálogo por WhatsApp"
     }
   },
   "reports": {

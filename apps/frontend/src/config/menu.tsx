@@ -225,6 +225,24 @@ export const menuItems: AppMenuItem[] = [
         labelKey: 'menu.reports'
     },
     {
+        key: '/app/catalog',
+        icon: <BarChartOutlined />,
+        label: 'Catálogo / Tickets',
+        labelKey: 'menu.catalog.label',
+        children: [
+            {
+                key: '/app/catalog/products',
+                label: 'Catálogo',
+                labelKey: 'menu.catalog.products',
+            },
+            {
+                key: '/app/catalog/tickets',
+                label: 'Tickets',
+                labelKey: 'menu.catalog.tickets',
+            },
+        ],
+    },
+    {
         key: '/app/mercadolibre',
         icon: <ShopOutlined />,
         label: 'Mercado Libre Sync',

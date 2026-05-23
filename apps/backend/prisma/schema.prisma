@@ -250,6 +250,8 @@ model CompanySettings {
   name                          String
   rif                           String
   logoUrl                       String?
+  address                       String?
+  phone                         String?
   preferredSecondaryCurrencyId  String?
   autoUpdateRates               Boolean   @default(false)
   updateFrequency               Int       @default(60)

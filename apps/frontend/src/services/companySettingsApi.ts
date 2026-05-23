@@ -5,6 +5,8 @@ export interface CompanySettings {
     name: string;
     rif: string;
     logoUrl?: string;
+    address?: string;
+    phone?: string;
     preferredSecondaryCurrencyId?: string;
     taxEnabled: boolean;
     taxRate: number;
@@ -22,6 +24,8 @@ export interface UpdateCompanySettingsDto {
     name: string;
     rif: string;
     logoUrl?: string;
+    address?: string;
+    phone?: string;
     preferredSecondaryCurrencyId?: string;
     taxEnabled?: boolean;
     taxRate?: number;

@@ -28,6 +28,10 @@ const CompanySettingsForm = ({ settings, onSubmit, isUpdating }: { settings: any
             if (settings.logoUrl) {
                 setLogoUrl(settings.logoUrl);
             }
+            form.setFieldsValue({
+                address: settings.address || '',
+                phone: settings.phone || '',
+            });
         }
     }, [settings, form]);
 
@@ -81,6 +85,20 @@ const CompanySettingsForm = ({ settings, onSubmit, isUpdating }: { settings: any
                 rules={[{ required: true, message: t('settings.company.tax_id_required') }]}
             >
                 <Input placeholder="J-12345678-9" size="large" />
+            </Form.Item>
+
+            <Form.Item
+                label={t('settings.company.address')}
+                name="address"
+            >
+                <Input placeholder={t('settings.company.address_placeholder')} size="large" />
+            </Form.Item>
+
+            <Form.Item
+                label={t('settings.company.phone')}
+                name="phone"
+            >
+                <Input placeholder={t('settings.company.phone_placeholder')} size="large" />
             </Form.Item>
 
             <Form.Item label={t('settings.company.logo')}>

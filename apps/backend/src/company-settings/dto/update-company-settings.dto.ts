@@ -31,6 +31,24 @@ export class UpdateCompanySettingsDto {
   logoUrl?: string;
 
   @ApiProperty({
+    example: 'Av. Principal, Edificio X, Piso 3',
+    required: false,
+    description: 'Company address',
+  })
+  @IsOptional()
+  @IsString()
+  address?: string;
+
+  @ApiProperty({
+    example: '+58 212 123-4567',
+    required: false,
+    description: 'Company phone number',
+  })
+  @IsOptional()
+  @IsString()
+  phone?: string;
+
+  @ApiProperty({
     example: 'uuid-123',
     required: false,
     description: 'ID of the preferred secondary currency',

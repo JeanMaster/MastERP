@@ -337,6 +337,10 @@
       "mandatory_bank_desc": "Mandatory Bank Source",
       "mandatory_bank_help": "When enabled, staff will be forced to select an specific bank account or cash drawer when recording Expenses or paying Suppliers.",
       "save_changes": "Save Changes (F9)",
+      "address": "Company Address",
+      "address_placeholder": "e.g., Main St, Building X, Floor 3",
+      "phone": "Contact Phone",
+      "phone_placeholder": "e.g., +1 234 567-8900",
       "messages": {
         "logo_loaded": "Logo loaded. Save changes to apply.",
         "success_update": "Company settings updated successfully",
@@ -465,7 +469,16 @@
     },
     "banks": "Banking / Cash",
     "reports": "Advanced Reports",
+    "catalog": {
+      "label": "Catalog / Tickets",
+      "products": "Catalog",
+      "tickets": "Tickets"
+    },
     "mercadolibre": "Mercado Libre Sync",
+    "impresiones": {
+      "label": "Print Module",
+      "create": "Generate PDF Catalog"
+    },
     "settings": {
       "label": "System Settings",
       "business": "Business Profile",
@@ -951,6 +964,44 @@
       "categories": {
         "sale_transfer": "Sales Transfer"
       }
+    }
+  },
+  "catalog": {
+    "page_title": "Product Catalog",
+    "page_subtitle": "Generate and share product catalogs with prices in your preferred currency.",
+    "primary": "Primary",
+    "currency_label": "Catalog Currency",
+    "select_currency": "Select currency",
+    "categories_label": "Categories",
+    "all_categories": "All (empty = all)",
+    "download_pdf": "Download PDF",
+    "send_whatsapp": "Send via WhatsApp",
+    "send_to_whatsapp": "Send Catalog",
+    "whatsapp_placeholder": "Select phone...",
+    "whatsapp_hint": "📱 Send the PDF catalog directly via WhatsApp to a company or customer number.",
+    "table": {
+      "product": "Product",
+      "category": "Category",
+      "department": "Department",
+      "price": "Price 1",
+      "stock": "Stock",
+      "status": "Status",
+      "of": "of"
+    },
+    "status": {
+      "available": "AVAILABLE",
+      "out_of_stock": "OUT OF STOCK"
+    },
+    "total_products": "Total products:",
+    "in_stock": "in stock",
+    "messages": {
+        "loading": "Loading catalog...",
+        "no_products": "No active products found in the catalog.",
+        "download_success": "Catalog downloaded successfully",
+        "download_error": "Error generating catalog PDF",
+        "whatsapp_phone_required": "Select a phone number",
+        "whatsapp_sent": "Catalog sent successfully via WhatsApp",
+        "whatsapp_error": "Error sending catalog via WhatsApp"
     }
   },
   "reports": {
