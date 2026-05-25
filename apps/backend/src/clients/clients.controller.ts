@@ -31,7 +31,9 @@ export class ClientsController {
     return this.clientsService.create(createClientDto);
   }
 
-  @Roles(Role.ADMIN, Role.MANAGER)
+  // CASHIER role included to support client search/selection in POS (ClientSelectionModal + BatchSalesModal).
+  // This is required for core checkout operations; matches pattern in SalesController.
+  @Roles(Role.ADMIN, Role.MANAGER, Role.CASHIER)
   @Get()
   @ApiOperation({ summary: 'Retrieve all clients' })
   @ApiQuery({
