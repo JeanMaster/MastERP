@@ -830,7 +830,8 @@
       "admin": "Administrador",
       "supervisor": "Supervisor",
       "cashier": "Cajero",
-      "user": "Usuario"
+      "user": "Usuario",
+      "seller": "Vendedor"
     },
     "permissions": {
       "title": "Permisos de Acceso Granulares",

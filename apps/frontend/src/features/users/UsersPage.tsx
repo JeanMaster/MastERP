@@ -87,7 +87,8 @@ export const UsersPage = () => {
                     ADMIN: 'red',
                     SUPERVISOR: 'gold',
                     CASHIER: 'green',
-                    USER: 'blue'
+                    USER: 'blue',
+                    SELLER: 'purple'
                 };
                 return <Tag color={colors[role] || 'blue'}>{t(`users.roles.${role.toLowerCase()}`)}</Tag>;
             }

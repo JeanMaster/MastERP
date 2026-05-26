@@ -1,10 +1,12 @@
 import { api } from './apiConfig';
 
+export type RoleType = 'ADMIN' | 'USER' | 'MANAGER' | 'CASHIER' | 'SELLER';
+
 export interface User {
     id: string;
     username: string;
     name: string;
-    role: string;
+    role: RoleType;
     permissions: string[];
     isActive: boolean;
     createdAt?: string;

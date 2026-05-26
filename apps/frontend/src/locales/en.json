@@ -831,7 +831,8 @@
       "admin": "Administrator",
       "supervisor": "Supervisor",
       "cashier": "Cashier",
-      "user": "User"
+      "user": "User",
+      "seller": "Seller"
     },
     "permissions": {
       "title": "Granular Access Permissions",

@@ -28,6 +28,7 @@ export const UserFormModal = ({ open, onCancel, user }: UserFormModalProps) => {
         { label: t('users.roles.admin'), value: 'ADMIN' },
         { label: t('users.roles.supervisor'), value: 'SUPERVISOR' },
         { label: t('users.roles.cashier'), value: 'CASHIER' },
+        { label: t('users.roles.seller'), value: 'SELLER' },
     ];
 
     const PERMISSIONS = [
