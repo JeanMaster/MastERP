@@ -1,6 +1,7 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Form, Input, Button, Card, Typography, Alert, Divider, Segmented } from 'antd';
-import { UserOutlined, LockOutlined, BarcodeOutlined } from '@ant-design/icons';
+import { UserOutlined, LockOutlined } from '@ant-design/icons';
 import { useAuth } from './AuthProvider';
 import { authApi } from '../../services/authApi';
 import { useTranslation } from 'react-i18next';
@@ -15,6 +16,7 @@ const { Title, Text } = Typography;
  */
 export const LoginPage = () => {
     const { login } = useAuth();
+    const navigate = useNavigate();
     const { t, i18n } = useTranslation();
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
@@ -134,24 +136,7 @@ export const LoginPage = () => {
                     </Form.Item>
                 </Form>
 
-                <Divider plain><Text type="secondary" style={{ fontSize: '12px' }}>{t('auth.or')}</Text></Divider>
-
-                <Button
-                    type="default"
-                    block
-                    size="large"
-                    icon={<BarcodeOutlined />}
-                    onClick={() => window.location.href = '/visor'}
-                    style={{ 
-                        borderColor: '#1e293b', 
-                        color: '#1e293b', 
-                        height: 48, 
-                        borderRadius: '8px',
-                        fontWeight: 500
-                    }}
-                >
-                    {t('auth.open_visor')}
-                </Button>
+                {/* Visor de precios removido del login por requisito de seguridad */}
             </Card>
         </div >
     );
