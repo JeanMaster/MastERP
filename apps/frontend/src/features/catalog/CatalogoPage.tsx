@@ -234,15 +234,16 @@ export const CatalogoPage = () => {
 
                 {/* Controls row */}
                 <Space size="middle" wrap style={{ marginBottom: 16 }}>
-                    <Form layout="inline" form={form} initialValues={{ currency: 'VES' }}>
+                    <Form layout={isMobile ? "vertical" : "inline"} form={form} initialValues={{ currency: 'VES' }} style={{ width: isMobile ? '100%' : undefined }}>
                          <Form.Item
                             label={t('catalog.currency_label')}
                             name="currency"
+                            style={{ width: isMobile ? '100%' : undefined }}
                         >
                             <Select
                                 value={selectedCurrency}
                                 onChange={(val) => setSelectedCurrency(val)}
-                                style={{ minWidth: 200 }}
+                                style={{ minWidth: isMobile ? '100%' : 200 }}
                                 placeholder={t('catalog.select_currency')}
                             >
                                 {currencies.map((c) => (
@@ -254,12 +255,12 @@ export const CatalogoPage = () => {
                             </Select>
                         </Form.Item>
 
-                        <Form.Item label={t('catalog.categories_label')}>
+                        <Form.Item label={t('catalog.categories_label')} style={{ width: isMobile ? '100%' : undefined }}>
                             <Select
                                 mode="multiple"
                                 allowClear
                                 placeholder={t('catalog.all_categories')}
-                                style={{ minWidth: 260 }}
+                                style={{ minWidth: isMobile ? '100%' : 260 }}
                                 value={selectedCategoryIds}
                                 onChange={setSelectedCategoryIds}
                                 options={categories.map((c) => ({ value: c.id, label: c.name }))}
@@ -267,8 +268,8 @@ export const CatalogoPage = () => {
                         </Form.Item>
                     </Form>
 
-                    <div style={{ marginLeft: 'auto' }}>
-                        <Space>
+                    <div style={{ marginLeft: isMobile ? 0 : 'auto', marginTop: isMobile ? 12 : 0 }}>
+                        <Space direction={isMobile ? "vertical" : "horizontal"} size={isMobile ? 8 : undefined}>
                             <Button
                                 icon={<WhatsAppOutlined />}
                                 type="default"
@@ -278,7 +279,7 @@ export const CatalogoPage = () => {
                                     setSendLoading(true);
                                     handleSendWhatsApp().then(() => setSendLoading(false));
                                 }}
-                                style={{ borderRadius: 8 }}
+                                style={{ borderRadius: 8, width: isMobile ? '100%' : undefined }}
                                 loading={sendLoading}
                             >
                                 {t('catalog.send_whatsapp')}
@@ -287,7 +288,7 @@ export const CatalogoPage = () => {
                                 icon={<DownloadOutlined />}
                                 type="primary"
                                 onClick={handleDownloadPdf}
-                                style={{ borderRadius: 8 }}
+                                style={{ borderRadius: 8, width: isMobile ? '100%' : undefined }}
                                 loading={loading}
                             >
                                 {t('catalog.download_pdf')}
@@ -299,7 +300,7 @@ export const CatalogoPage = () => {
                 {/* WhatsApp Send Row */}
                 <div style={{
                     display: 'grid',
-                    gridTemplateColumns: '1fr auto auto',
+                    gridTemplateColumns: isMobile ? '1fr' : '1fr auto auto',
                     gap: 12,
                     alignItems: 'center',
                     marginBottom: 16,
@@ -317,7 +318,7 @@ export const CatalogoPage = () => {
                         value={whatsappPhone}
                         onChange={setWhatsappPhone}
                         placeholder={t('catalog.whatsapp_placeholder')}
-                        style={{ width: 240 }}
+                        style={{ width: isMobile ? '100%' : 240 }}
                         options={[
                             { label: '+58 412 000-0000 (Venezuela)', value: '+58' },
                             { label: '+1 234 567-8900 (EEUU)', value: '+1' },
@@ -332,6 +333,7 @@ export const CatalogoPage = () => {
                             backgroundColor: '#25D366',
                             borderColor: '#25D366',
                             color: '#fff',
+                            width: isMobile ? '100%' : undefined,
                         }}
                         disabled={!whatsappPhone}
                     >

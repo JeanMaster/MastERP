@@ -14,10 +14,13 @@ export class UsersService {
    * @returns The created user record.
    */
   async create(createUserDto: CreateUserDto) {
-    const hashedPassword = await bcrypt.hash(createUserDto.password, 10);
+    // Ensure role is provided; default to USER if not present
+    const dataToCreate: any = { ...createUserDto };
+    if (!dataToCreate.role) dataToCreate.role = 'USER';
+    const hashedPassword = await bcrypt.hash(dataToCreate.password, 10);
     return (this.prisma as any).user.create({
       data: {
-        ...createUserDto,
+        ...dataToCreate,
         password: hashedPassword,
         permissions: createUserDto.permissions || [],
       },

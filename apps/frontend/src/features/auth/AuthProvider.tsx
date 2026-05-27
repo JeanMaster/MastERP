@@ -7,11 +7,13 @@ import { useTranslation } from 'react-i18next';
 
 // Hardcoded for now, should match backend
 
+type RoleType = 'ADMIN' | 'USER' | 'MANAGER' | 'CASHIER' | 'SELLER';
+
 interface User {
     id: string;
     username: string;
     name: string;
-    role: string;
+    role: RoleType;
     permissions: string[];
 }
 
@@ -56,7 +58,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         localStorage.setItem('user', JSON.stringify(newUser));
         axios.defaults.headers.common['Authorization'] = `Bearer ${newToken}`;
         message.success(t('auth.welcome', { name: newUser.name }));
-        navigate('/app');
+        // Redirect sellers directly to the price viewer
+        if (newUser.role === 'SELLER') {
+            // preserve navigation state behaviour
+            navigate('/visor', { replace: true });
+        } else {
+            navigate('/app', { replace: true });
+        }
     };
 
     const logout = () => {

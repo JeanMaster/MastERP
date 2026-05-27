@@ -68,7 +68,7 @@ export class StatsService {
 
     // 2. Get Gross Sales revalued
     const sales = await this.prisma.sale.findMany({
-      where: { active: true, createdAt: dateFilter },
+      where: { active: true, date: dateFilter },
       select: { total: true, exchangeRate: true, paymentMethod: true },
     });
 
@@ -272,11 +272,11 @@ export class StatsService {
     } else if (range === 'all') {
       const firstSale = await this.prisma.sale.findFirst({
         where: { active: true },
-        orderBy: { createdAt: 'asc' },
+        orderBy: { date: 'asc' },
       });
 
       const startDate = firstSale
-        ? dayjs(firstSale.createdAt).startOf('month')
+        ? dayjs(firstSale.date).startOf('month')
         : dayjs().subtract(5, 'month').startOf('month');
       const now = dayjs().endOf('month');
 
@@ -455,17 +455,17 @@ export class StatsService {
     const [sales30, sales90, sales180] = await Promise.all([
       this.prisma.saleItem.groupBy({
         by: ['productId'],
-        where: { createdAt: { gte: thirtyDaysAgo }, sale: { isCancelled: false } },
+        where: { sale: { date: { gte: thirtyDaysAgo }, isCancelled: false } },
         _sum: { quantity: true },
       }),
       this.prisma.saleItem.groupBy({
         by: ['productId'],
-        where: { createdAt: { gte: ninetyDaysAgo }, sale: { isCancelled: false } },
+        where: { sale: { date: { gte: ninetyDaysAgo }, isCancelled: false } },
         _sum: { quantity: true },
       }),
       this.prisma.saleItem.groupBy({
         by: ['productId'],
-        where: { createdAt: { gte: sixMonthsAgo }, sale: { isCancelled: false } },
+        where: { sale: { date: { gte: sixMonthsAgo }, isCancelled: false } },
         _sum: { quantity: true },
       }),
     ]);
@@ -579,12 +579,12 @@ export class StatsService {
     const salesInRange = await this.prisma.sale.findMany({
       where: {
         active: true,
-        createdAt: dateFilter,
+        date: dateFilter,
       },
       select: {
         total: true,
         paymentMethod: true,
-        createdAt: true,
+        date: true,
         exchangeRate: true,
         items: {
           select: {
@@ -624,11 +624,11 @@ export class StatsService {
     let totalCostOfSales = 0;
 
     salesInRange.forEach((sale) => {
-      const date = dayjs(sale.createdAt).format('YYYY-MM-DD');
+      const date = dayjs(sale.date).format('YYYY-MM-DD');
       const saleNominalTotal = Number(sale.total || 0);
       totalSalesNominal += saleNominalTotal;
 
-      const closingRate = getMonthRate(sale.createdAt);
+      const closingRate = getMonthRate(sale.date);
       // Adjust cross-rate factor for this specific month
       const monthCrossRateFactor =
         currencyCode === 'VES' ? closingRate : crossRateFactor;
@@ -964,7 +964,7 @@ export class StatsService {
 
     // 1. Fetch Sales and their Items for COGS
     const sales = await this.prisma.sale.findMany({
-      where: { active: true, createdAt: dateFilter },
+      where: { active: true, date: dateFilter },
       include: {
         items: {
           include: {
@@ -1007,7 +1007,7 @@ export class StatsService {
       totalSalesNominal += saleNominalTotal;
 
       // ECONOMIC MODEL: Calculate Real Value of this sale using monthly closing rate
-      const closingRate = getMonthRate(sale.createdAt);
+      const closingRate = getMonthRate(sale.date);
 
       // Adjust cross-rate factor for this specific month closing rate if target is VES
       const monthCrossRateFactor =
@@ -1350,7 +1350,7 @@ export class StatsService {
       const end = currentMonth.endOf('month').toDate();
 
       const sales = await this.prisma.sale.findMany({
-        where: { createdAt: { gte: start, lte: end }, active: true },
+        where: { date: { gte: start, lte: end }, active: true },
         include: {
           items: {
             include: {
@@ -1586,7 +1586,7 @@ export class StatsService {
     const sales = await this.prisma.sale.findMany({
       where: {
         active: true,
-        createdAt: dateFilter,
+        date: dateFilter,
       },
       include: {
         items: {
@@ -1621,7 +1621,7 @@ export class StatsService {
 
     sales.forEach((sale) => {
       const saleNominalTotal = Number(sale.total || 0);
-      const closingRate = getMonthRate(sale.createdAt);
+      const closingRate = getMonthRate(sale.date);
       const monthCrossRateFactor =
         currencyCode === 'VES' ? closingRate : crossRateFactor;
 
@@ -1701,7 +1701,7 @@ export class StatsService {
 
     // 1. Tax Debits (Sales)
     const sales = await this.prisma.sale.findMany({
-      where: { active: true, createdAt: dateFilter },
+      where: { active: true, date: dateFilter },
       select: { subtotal: true, tax: true, igtfAmount: true }
     });
 
@@ -1799,14 +1799,14 @@ export class StatsService {
     const dateFilter = { gte: start, lte: end };
 
     const sales = await this.prisma.sale.findMany({
-      where: { active: true, createdAt: dateFilter },
+      where: { active: true, date: dateFilter },
       include: { 
         client: true,
         invoice: {
           include: { retentions: { where: { type: 'IVA' } } }
         }
       },
-      orderBy: { createdAt: 'asc' }
+      orderBy: { date: 'asc' }
     });
 
     const returns = await this.prisma.return.findMany({
@@ -1822,7 +1822,7 @@ export class StatsService {
       const retention = s.invoice?.retentions[0];
       return {
         id: s.id,
-        date: s.createdAt,
+        date: s.date,
         rif: s.client?.id || 'V-00000000-0', // ID is RIF in your system
         name: s.client?.name || 'CONTADO',
         invoiceNumber: s.invoiceNumber,
@@ -1958,11 +1958,11 @@ export class StatsService {
     // 1. Fetch all required data
     const [sales, allReturns, inventoryLosses, expenses] = await Promise.all([
       this.prisma.sale.findMany({
-        where: { active: true, createdAt: dateFilter },
+        where: { active: true, date: dateFilter },
         select: {
           total: true,
           paymentMethod: true,
-          createdAt: true,
+          date: true,
           exchangeRate: true,
           items: {
             select: {
@@ -2065,9 +2065,9 @@ export class StatsService {
 
     // 3. Process Sales
     sales.forEach((sale) => {
-      const dateStr = dayjs(sale.createdAt).format('YYYY-MM-DD');
-      const m = getMonthRecord(sale.createdAt);
-      const closingRate = getMonthRate(sale.createdAt);
+      const dateStr = dayjs(sale.date).format('YYYY-MM-DD');
+      const m = getMonthRecord(sale.date);
+      const closingRate = getMonthRate(sale.date);
 
       // Use revalueSaleByPayments (Target VES) using CLOSING RATE
       const { totalInTarget: saleRevaluedVES, breakdown: methodPayments } =
@@ -2372,10 +2372,10 @@ export class StatsService {
     }
 
     const sales = await this.prisma.sale.findMany({
-      where: { active: true, createdAt: dateFilter },
+      where: { active: true, date: dateFilter },
       select: {
         total: true,
-        createdAt: true,
+        date: true,
         exchangeRate: true,
         paymentMethod: true,
       },
@@ -2411,8 +2411,8 @@ export class StatsService {
     };
 
     sales.forEach((sale) => {
-      const dayIndex = dayjs(sale.createdAt).day();
-      const closingRate = getMonthRate(sale.createdAt);
+      const dayIndex = dayjs(sale.date).day();
+      const closingRate = getMonthRate(sale.date);
       const monthCrossRateFactor =
         currencyCode === 'VES' ? closingRate : crossRateFactor;
 
@@ -2489,10 +2489,10 @@ export class StatsService {
     }
 
     const sales = await this.prisma.sale.findMany({
-      where: { active: true, createdAt: dateFilter },
+      where: { active: true, date: dateFilter },
       select: {
         total: true,
-        createdAt: true,
+        date: true,
         exchangeRate: true,
         paymentMethod: true,
       },
@@ -2521,9 +2521,9 @@ export class StatsService {
     };
 
     sales.forEach((sale) => {
-      const dayOfMonth = dayjs(sale.createdAt).date();
+      const dayOfMonth = dayjs(sale.date).date();
       if (performance[dayOfMonth]) {
-        const closingRate = getMonthRate(sale.createdAt);
+        const closingRate = getMonthRate(sale.date);
         const monthCrossRateFactor =
           currencyCode === 'VES' ? closingRate : crossRateFactor;
 
@@ -2655,12 +2655,12 @@ export class StatsService {
 
     // 3. Fetch Total Sales for Comparison
     const sales = await this.prisma.sale.findMany({
-      where: { active: true, createdAt: dateFilter },
+      where: { active: true, date: dateFilter },
       select: {
         total: true,
         paymentMethod: true,
         exchangeRate: true,
-        createdAt: true,
+        date: true,
       },
     });
 
@@ -2676,7 +2676,7 @@ export class StatsService {
 
     let totalSales = 0;
     sales.forEach((sale) => {
-      const closingRate = getMonthRate(sale.createdAt);
+      const closingRate = getMonthRate(sale.date);
       const monthCrossRateFactor =
         currencyCode === 'VES' ? closingRate : crossRateFactor;
 
@@ -2779,10 +2779,10 @@ export class StatsService {
     }
 
     const sales = await this.prisma.sale.findMany({
-      where: { active: true, createdAt: dateFilter },
+      where: { active: true, date: dateFilter },
       select: {
         total: true,
-        createdAt: true,
+        date: true,
         exchangeRate: true,
         paymentMethod: true,
       },
@@ -2808,13 +2808,13 @@ export class StatsService {
     };
 
     sales.forEach((sale) => {
-      const saleDate = dayjs(sale.createdAt);
+      const saleDate = dayjs(sale.date);
       const dayOfWeek = saleDate.day(); // 0 = Sunday
 
       if (!includeSundays && dayOfWeek === 0) return;
 
       const hour = saleDate.hour();
-      const closingRate = getMonthRate(sale.createdAt);
+      const closingRate = getMonthRate(sale.date);
       const monthCrossRateFactor =
         currencyCode === 'VES' ? closingRate : crossRateFactor;
 
@@ -2866,14 +2866,15 @@ export class StatsService {
     const monthDates: Record<string, Date> = {};
 
     sales.forEach((sale) => {
-      const monthKey = dayjs(sale.createdAt).format('YYYY-MM');
+      const saleDate = sale.date || sale.createdAt;
+      const monthKey = dayjs(saleDate).format('YYYY-MM');
       const rate = Number(sale.exchangeRate) || currentRefRate;
       if (
         !monthClosingRates[monthKey] ||
-        dayjs(sale.createdAt).isAfter(dayjs(monthDates[monthKey]))
+        dayjs(saleDate).isAfter(dayjs(monthDates[monthKey]))
       ) {
         monthClosingRates[monthKey] = rate;
-        monthDates[monthKey] = sale.createdAt;
+        monthDates[monthKey] = saleDate;
       }
     });
 
@@ -2996,17 +2997,17 @@ export class StatsService {
     const [sales30, sales90, sales180] = await Promise.all([
       this.prisma.saleItem.groupBy({
         by: ['productId'],
-        where: { createdAt: { gte: thirtyDaysAgo }, sale: { isCancelled: false } },
+        where: { sale: { date: { gte: thirtyDaysAgo }, isCancelled: false } },
         _sum: { quantity: true },
       }),
       this.prisma.saleItem.groupBy({
         by: ['productId'],
-        where: { createdAt: { gte: ninetyDaysAgo }, sale: { isCancelled: false } },
+        where: { sale: { date: { gte: ninetyDaysAgo }, isCancelled: false } },
         _sum: { quantity: true },
       }),
       this.prisma.saleItem.groupBy({
         by: ['productId'],
-        where: { createdAt: { gte: sixMonthsAgo }, sale: { isCancelled: false } },
+        where: { sale: { date: { gte: sixMonthsAgo }, isCancelled: false } },
         _sum: { quantity: true },
       }),
     ]);

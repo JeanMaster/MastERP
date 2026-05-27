@@ -182,6 +182,16 @@ npm run test:e2e     # Tests E2E
 cd apps/backend
 
 npx prisma generate        # Generar cliente
+# Para agregar el nuevo enum Role y la columna role en users, siga estos pasos:
+# 1) Crear la migración en modo create-only y revisar el SQL generado:
+#    npx prisma migrate dev --name add-user-role --create-only
+# 2) Edite la migración SQL si necesita un paso intermedio (crear enum, convertir la columna con USING o crear columna temporal).
+# 3) Luego aplique la migración en dev:
+#    npx prisma migrate dev --name add-user-role
+# 4) Para producción, respalde la base de datos y use:
+#    npx prisma migrate deploy
+# Nota: No aplique la migración en producción sin revisar el SQL y asegurarse de que los valores existentes en users.role son compatibles con el enum.
+
 npx prisma migrate dev     # Crear migración
 npx prisma migrate deploy  # Aplicar migraciones (producción)
 npx prisma studio          # GUI de base de datos

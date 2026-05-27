@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import {
-    Card, Form, Select, Button, Space, Typography, message, Spin,
+    Card, Form, Select, Button, Space, Typography, message, Spin, Switch,
 } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { catalogoApi, type CatalogProduct, type CatalogCurrency } from '../../services/catalogoApi';
@@ -21,6 +21,7 @@ export const PriceTicketsPage = () => {
     const [ticketProductId, setTicketProductId] = useState<string | null>(null);
     const [manualTicketList, setManualTicketList] = useState<Array<{ productId: string; quantity: number; name: string }>>([]);
     const [ticketsLoading, setTicketsLoading] = useState(false);
+    const [includeBarcode, setIncludeBarcode] = useState(true);
 
     // Load currencies
     useEffect(() => {
@@ -45,9 +46,11 @@ export const PriceTicketsPage = () => {
         if (!ticketProductId) return;
         setTicketsLoading(true);
         try {
-            const blob = await catalogoApi.generatePriceTickets(selectedCurrency, [
-                { productId: ticketProductId, quantity: 10 },
-            ]);
+            const blob = await catalogoApi.generatePriceTickets(
+                selectedCurrency,
+                [{ productId: ticketProductId, quantity: 14 }],
+                includeBarcode,
+            );
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
@@ -91,7 +94,7 @@ export const PriceTicketsPage = () => {
         setTicketsLoading(true);
         try {
             const payload = manualTicketList.map(t => ({ productId: t.productId, quantity: t.quantity }));
-            const blob = await catalogoApi.generatePriceTickets(selectedCurrency, payload);
+            const blob = await catalogoApi.generatePriceTickets(selectedCurrency, payload, includeBarcode);
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
@@ -108,27 +111,27 @@ export const PriceTicketsPage = () => {
     };
 
     return (
-        <div style={{ padding: 24 }}>
+        <div style={{ padding: 16 }}>
             <Card
                 bordered={false}
                 style={{ boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}
             >
-                <div style={{ marginBottom: 20 }}>
+                <div style={{ marginBottom: 16 }}>
                     <Title level={2} style={{ margin: 0 }}>
                         🎫 Tickets de Precios
                     </Title>
                     <Text type="secondary">
-                        Genera hojas con etiquetas de precio para imprimir. <strong>10 tickets por página</strong> (2 columnas × 5 filas).
+                        Genera hojas con etiquetas de precio. Actualmente: <strong>14 tickets por página</strong>.
                     </Text>
                 </div>
 
                 {/* Currency selector */}
-                <Form layout="inline" style={{ marginBottom: 24 }}>
-                    <Form.Item label={t('catalog.currency_label')}>
+                <Form layout="vertical" style={{ marginBottom: 16 }}>
+                    <Form.Item label={t('catalog.currency_label')} style={{ width: '100%' }}>
                         <Select
                             value={selectedCurrency}
                             onChange={setSelectedCurrency}
-                            style={{ minWidth: 200 }}
+                            style={{ minWidth: '100%' }}
                             options={currencies.map(c => ({
                                 value: c.code,
                                 label: `${c.name} (${c.symbol})${c.isPrimary ? ' — Principal' : ''}`
@@ -137,8 +140,22 @@ export const PriceTicketsPage = () => {
                     </Form.Item>
                 </Form>
 
+                {/* Toggle de código de barras */}
+                <div style={{ marginBottom: 16 }}>
+                    <Space direction="vertical" style={{ width: '100%' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <Text strong>Incluir códigos de barras:</Text>
+                            <Switch
+                                checked={includeBarcode}
+                                onChange={setIncludeBarcode}
+                            />
+                        </div>
+                        <Text type="secondary">14 tickets por página</Text>
+                    </Space>
+                </div>
+
                 <Spin spinning={loading}>
-                    <Space direction="vertical" size="large" style={{ width: '100%' }}>
+                    <Space direction="vertical" size="middle" style={{ width: '100%' }}>
                         <div>
                             <Text strong>Producto:</Text>
                             <Select
@@ -157,19 +174,21 @@ export const PriceTicketsPage = () => {
                             />
                         </div>
 
-                        <Space wrap>
+                        <Space direction="vertical" style={{ width: '100%' }}>
                             <Button
                                 type="primary"
                                 onClick={handleFillPageWithProduct}
                                 disabled={!ticketProductId}
                                 loading={ticketsLoading}
+                                style={{ width: '100%' }}
                             >
-                                Llenar hoja completa (10 tickets del mismo producto)
+                                Llenar hoja completa (14 tickets del mismo producto)
                             </Button>
 
                             <Button
                                 onClick={addToManualTickets}
                                 disabled={!ticketProductId}
+                                style={{ width: '100%' }}
                             >
                                 + Agregar 1 ticket de este producto
                             </Button>
@@ -178,15 +197,15 @@ export const PriceTicketsPage = () => {
                         {manualTicketList.length > 0 && (
                             <div>
                                 <Text strong>Tickets en la lista ({manualTicketList.reduce((s, t) => s + t.quantity, 0)} total):</Text>
-                                <div style={{ marginTop: 8, display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                                <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 8 }}>
                                     {manualTicketList.map((t, idx) => (
                                         <div key={idx} style={{
                                             background: '#f0f0f0',
-                                            padding: '4px 10px',
+                                            padding: '8px 10px',
                                             borderRadius: 6,
                                             display: 'flex',
+                                            justifyContent: 'space-between',
                                             alignItems: 'center',
-                                            gap: 8,
                                         }}>
                                             <span>{t.name} × {t.quantity}</span>
                                             <Button size="small" danger onClick={() => removeManualTicket(t.productId)}>
@@ -198,7 +217,7 @@ export const PriceTicketsPage = () => {
 
                                 <Button
                                     type="primary"
-                                    style={{ marginTop: 12 }}
+                                    style={{ marginTop: 12, width: '100%' }}
                                     onClick={handleGenerateManualTickets}
                                     loading={ticketsLoading}
                                 >

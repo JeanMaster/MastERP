@@ -7,6 +7,8 @@ import {
   IsArray,
 } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
+import { IsEnum } from 'class-validator';
+import { Role } from '../../common/decorators/roles.decorator';
 
 export class CreateUserDto {
   @ApiProperty({ example: 'jdoe', description: 'Unique username for login' })
@@ -25,10 +27,11 @@ export class CreateUserDto {
   @IsString()
   name: string;
 
-  @ApiProperty({ example: 'ADMIN', description: 'Role (ADMIN, SUPERVISOR, CASHIER)' })
+  @ApiProperty({ example: 'ADMIN', description: 'Role (ADMIN, MANAGER, CASHIER, SELLER)' })
   @IsNotEmpty()
   @IsString()
-  role: string;
+  @IsEnum(Role)
+  role: Role;
 
   @ApiProperty({ example: ['sales.create', 'products.view'], required: false, description: 'Specific granular permissions' })
   @IsOptional()

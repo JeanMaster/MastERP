@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Layout, Input, Row, Col, Card, Typography, Button, Spin, Empty, FloatButton, Breadcrumb } from 'antd';
+import { Layout, Input, Row, Col, Card, Typography, Button, Spin, Empty, FloatButton, Breadcrumb, Grid } from 'antd';
 import { SearchOutlined, ArrowLeftOutlined, BarcodeOutlined, ShopOutlined, AppstoreOutlined, HomeOutlined } from '@ant-design/icons';
 import { productsApi, type Product } from '../../services/productsApi';
 import { departmentsApi, type Department } from '../../services/departmentsApi';
@@ -12,6 +12,7 @@ import { useTranslation } from 'react-i18next';
 
 const { Header, Content } = Layout;
 const { Title, Text } = Typography;
+const { useBreakpoint } = Grid;
 
 /**
  * PriceCheckerPage Component
@@ -23,6 +24,8 @@ const { Title, Text } = Typography;
 export const PriceCheckerPage = () => {
     const { t } = useTranslation();
     const navigate = useNavigate();
+    const screens = useBreakpoint();
+    const isMobile = !screens.lg;
     const [searchTerm, setSearchTerm] = useState('');
     const [products, setProducts] = useState<Product[]>([]);
     const [loading, setLoading] = useState(false);
@@ -210,19 +213,19 @@ export const PriceCheckerPage = () => {
     };
 
     const renderDepartmentCard = (dept: Department) => (
-        <Col xs={12} sm={8} md={6} lg={4} key={dept.id}>
+        <Col xs={24} sm={12} md={8} lg={6} key={dept.id}>
             <Card
                 hoverable
                 onClick={() => handleDeptClick(dept)}
                 style={{
                     textAlign: 'center',
-                    height: 140,
+                    height: isMobile ? 100 : 140,
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     border: '1px solid #91caff',
                     background: '#e6f7ff',
-                    borderRadius: 16,
+                    borderRadius: 12,
                     boxShadow: '0 4px 10px rgba(0,0,0,0.05)'
                 }}
             >
@@ -263,40 +266,41 @@ export const PriceCheckerPage = () => {
         const { primary, primarySymbol, secondary, secondarySymbol } = getDualPrices(product);
 
         return (
-            <Col xs={12} sm={8} md={6} lg={4} key={product.id}>
+            <Col xs={24} sm={12} md={8} lg={6} key={product.id}>
                 <Card
                     hoverable
                     onClick={() => handleProductClick(product)}
-                    style={{ height: '100%', borderRadius: 16, overflow: 'hidden', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}
-                    styles={{ body: { padding: 12, display: 'flex', flexDirection: 'column', height: '100%' } }}
+                    style={{ height: '100%', borderRadius: 12, overflow: 'hidden', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}
+                    styles={{ body: { padding: isMobile ? 8 : 12, display: 'flex', flexDirection: 'column', height: '100%' } }}
                 >
-                    <div style={{
-                        height: 140,
+                        <div style={{
+                        height: isMobile ? 100 : 140,
                         marginBottom: 12,
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
                         position: 'relative',
                         background: '#fafafa',
-                        borderRadius: 12
+                        borderRadius: 12,
+                        padding: isMobile ? 6 : 0
                     }}>
                         <img
                             alt={product.name}
                             src={(product.images && product.images.length > 0) ? product.images[0] : 'https://via.placeholder.com/200?text=No+Image'}
-                            style={{ maxHeight: '90%', maxWidth: '90%', objectFit: 'contain' }}
+                            style={{ maxHeight: isMobile ? '84%' : '90%', maxWidth: '90%', objectFit: 'contain', borderRadius: 8 }}
                         />
                     </div>
 
                     <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
                         <Text strong style={{
-                            fontSize: 14,
-                            marginBottom: 8,
+                            fontSize: isMobile ? 13 : 14,
+                            marginBottom: isMobile ? 6 : 8,
                             lineHeight: 1.2,
                             display: '-webkit-box',
                             WebkitLineClamp: 2,
                             WebkitBoxOrient: 'vertical',
                             overflow: 'hidden',
-                            height: 34
+                            height: isMobile ? 44 : 34
                         }}>
                             {product.name}
                         </Text>
@@ -306,15 +310,15 @@ export const PriceCheckerPage = () => {
                                 background: '#f6ffed',
                                 border: '1px solid #b7eb8f',
                                 borderRadius: 8,
-                                padding: '6px 8px',
+                                padding: isMobile ? '6px 6px' : '6px 8px',
                                 textAlign: 'center',
                                 marginBottom: 4
                             }}>
-                                <Text strong style={{ color: '#389e0d', fontSize: 20, display: 'block' }}>
+                                <Text strong style={{ color: '#389e0d', fontSize: isMobile ? 18 : 20, display: 'block' }}>
                                     {formatVenezuelanPrice(primary, primarySymbol)}
                                 </Text>
                                 {companySettings?.taxEnabled && (
-                                    <span style={{ fontSize: 10, color: product.isTaxExempt ? '#8c8c8c' : '#52c41a', fontWeight: 'bold', textTransform: 'uppercase' }}>
+                                    <span style={{ fontSize: isMobile ? 9 : 10, color: product.isTaxExempt ? '#8c8c8c' : '#52c41a', fontWeight: 'bold', textTransform: 'uppercase' }}>
                                         {product.isTaxExempt ? t('price_checker.tax_exempt') : t('price_checker.tax_included')}
                                     </span>
                                 )}
@@ -322,7 +326,7 @@ export const PriceCheckerPage = () => {
 
                             {secondary > 0 && (
                                 <div style={{ textAlign: 'center' }}>
-                                    <Text type="secondary" style={{ fontSize: 15, fontWeight: 600 }}>
+                                    <Text type="secondary" style={{ fontSize: isMobile ? 14 : 15, fontWeight: 600 }}>
                                         {secondarySymbol} {secondary.toFixed(2)}
                                     </Text>
                                 </div>
@@ -369,11 +373,11 @@ export const PriceCheckerPage = () => {
         <Layout style={{ minHeight: '100vh', background: '#f8fafc' }}>
             <Header style={{
                 background: '#1e293b',
-                padding: '0 24px',
+                padding: isMobile ? '12px' : '0 24px',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
-                height: '80px',
+                height: isMobile ? '64px' : '80px',
                 position: 'sticky',
                 top: 0,
                 zIndex: 100,
@@ -413,21 +417,20 @@ export const PriceCheckerPage = () => {
                 </Button>
             </Header>
 
-            <Content style={{ padding: '24px', maxWidth: '1600px', margin: '0 auto', width: '100%' }}>
+            <Content style={{ padding: isMobile ? '12px' : '24px', maxWidth: '1600px', margin: '0 auto', width: '100%' }}>
                 {/* Search Bar Container */}
-                <div style={{ marginBottom: '32px', textAlign: 'center' }}>
+                <div style={{ marginBottom: isMobile ? '16px' : '32px', textAlign: 'center' }}>
                     <Input.Search
                         ref={searchInputRef}
                         placeholder={t('price_checker.search_placeholder')}
                         allowClear
                         enterButton={
-                            <Button type="primary" icon={<SearchOutlined />} size="large" style={{ height: 56, padding: '0 32px' }}>
+                            <Button type="primary" icon={<SearchOutlined />} size={isMobile ? 'middle' : 'large'} style={{ height: isMobile ? 44 : 56, padding: isMobile ? '0 12px' : '0 32px' }}>
                                 {t('price_checker.search_button')}
                             </Button>
                         }
-                        size="large"
-                        style={{ maxWidth: '900px', width: '100%' }}
-                        styles={{ input: { height: 56, borderRadius: '12px 0 0 12px', fontSize: 18 } }}
+                        size={isMobile ? 'middle' : 'large'}
+                        style={{ maxWidth: isMobile ? '100%' : '900px', width: '100%' }}
                         onSearch={handleSearch}
                         onChange={(e) => setSearchTerm(e.target.value)}
                         value={searchTerm}

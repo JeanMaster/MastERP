@@ -1,6 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Form, Input, Button, Card, Typography, Alert, Divider, Segmented } from 'antd';
+import { Form, Input, Button, Card, Typography, Alert, Segmented } from 'antd';
 import { UserOutlined, LockOutlined } from '@ant-design/icons';
 import { useAuth } from './AuthProvider';
 import { authApi } from '../../services/authApi';
@@ -16,7 +15,6 @@ const { Title, Text } = Typography;
  */
 export const LoginPage = () => {
     const { login } = useAuth();
-    const navigate = useNavigate();
     const { t, i18n } = useTranslation();
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');

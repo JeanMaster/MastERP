@@ -13,7 +13,7 @@ model User {
   username    String    @unique
   password    String
   name        String
-  role        String
+  role        Role
   permissions String[]
   isActive    Boolean   @default(true)
   lastLogin   DateTime?
@@ -886,6 +886,14 @@ model AIConfig {
   updatedAt DateTime @updatedAt
 
   @@map("ai_config")
+}
+
+enum Role {
+  ADMIN
+  USER
+  MANAGER
+  CASHIER
+  SELLER
 }
 
 enum ProductType {

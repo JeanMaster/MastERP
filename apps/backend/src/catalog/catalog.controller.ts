@@ -112,10 +112,14 @@ export class CatalogController {
   @Post('price-tickets')
   @ApiOperation({ summary: 'Generate price tickets PDF' })
   async generatePriceTickets(
-    @Body() body: { currencyCode?: string; tickets: Array<{ productId: string; quantity: number }> },
+    @Body() body: {
+      currencyCode?: string;
+      tickets: Array<{ productId: string; quantity: number }>;
+      includeBarcode?: boolean;
+    },
     @Res() res: Response,
   ) {
-    const { currencyCode = 'VES', tickets = [] } = body;
+    const { currencyCode = 'VES', tickets = [], includeBarcode = true } = body;
 
     if (!tickets.length) {
       return res.status(400).send({ message: 'Debe enviar al menos un ticket' });
@@ -124,6 +128,7 @@ export class CatalogController {
     const pdfBuffer = await this.catalogService.generatePriceTicketsPdf({
       currencyCode,
       tickets,
+      includeBarcode,
     });
 
     res.set({

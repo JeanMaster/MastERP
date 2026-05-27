@@ -62,7 +62,7 @@ function App() {
       <Routes>
         <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<LoginPage />} />
-        <Route path="/visor" element={<PriceCheckerPage />} />
+        <Route path="/visor" element={<ProtectedRoute><PriceCheckerPage /></ProtectedRoute>} />
 
         <Route path="/app" element={
           <ProtectedRoute>

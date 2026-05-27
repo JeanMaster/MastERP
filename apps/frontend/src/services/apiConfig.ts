@@ -49,7 +49,7 @@ api.interceptors.response.use(
 
             // Prevent redirect loops and redirect only if not already on login/auth pages
             const path = window.location.pathname;
-            const isPublicPath = path.includes('/login') || path.includes('/register') || path === '/' || path === '/visor';
+            const isPublicPath = path.includes('/login') || path.includes('/register') || path === '/';
 
             if (!isPublicPath) {
                 // Short timeout to allow any pending UI updates to settle

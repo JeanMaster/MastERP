@@ -134,7 +134,7 @@ export class CatalogService {
     const roundingFactor = settings?.roundingFactor ?? 10;
 
     // Attach logoUrl to settings for the PDF
-    settings?.logoUrl;
+    const logoUrl = settings?.logoUrl || null;
 
     // ── Prepare data + download images BEFORE creating the PDF stream ──
     const catalogProducts = products.map((p: any) => {
@@ -450,42 +450,39 @@ export class CatalogService {
     const binary = base64Str ? Buffer.from(base64Str, 'base64') : pdfBuffer;
 
     try {
-      const form = new FormData() as any;
-      form.append('chatId', `${phoneNumber.replace(/\D/g, '')}@c.us`);
-      form.append(
-        'document',
-        new Blob([binary] as any, { type: 'application/pdf' }),
-        `catalogo-${currencyCode}.pdf`,
-      );
-      form.append('caption', message);
+const FormDataPkg = require('form-data');
+       const form = new FormDataPkg();
+       form.append('chatId', `${phoneNumber.replace(/\D/g, '')}@c.us`);
+       form.append('document', binary, { filename: `catalogo-${currencyCode}.pdf`, contentType: 'application/pdf' });
+       form.append('caption', message);
 
-      // WhatsApp Business API endpoint — this is a placeholder
-      // Replace with actual WhatsApp Cloud API or Twilio endpoint
-      const WHATSAPP_API_URL = process.env.WHATSAPP_API_URL || '';
-      const WHATSAPP_API_TOKEN = process.env.WHATSAPP_API_TOKEN || '';
+       // WhatsApp Business API endpoint — this is a placeholder
+       // Replace with actual WhatsApp Cloud API or Twilio endpoint
+       const WHATSAPP_API_URL = process.env.WHATSAPP_API_URL || '';
+       const WHATSAPP_API_TOKEN = process.env.WHATSAPP_API_TOKEN || '';
 
-      if (!WHATSAPP_API_URL || !WHATSAPP_API_TOKEN) {
-        // Development fallback — open WhatsApp Web with pre-filled message + clipboard instruction
-        this.logger.warn(
-          'WhatsApp API not configured — catalog will open WhatsApp with text message and PDF must be sent manually.',
-        );
-        return {
-          success: false,
-          message:
-            'WhatsApp Business API no está configurada. Revisa la documentación para configurar WHATSAPP_API_URL y WHATSAPP_API_TOKEN.',
-        };
-      }
+       if (!WHATSAPP_API_URL || !WHATSAPP_API_TOKEN) {
+         // Development fallback — open WhatsApp Web with pre-filled message + clipboard instruction
+         this.logger.warn(
+           'WhatsApp API not configured — catalog will open WhatsApp with text message and PDF must be sent manually.',
+         );
+         return {
+           success: false,
+           message:
+             'WhatsApp Business API no está configurada. Revisa la documentación para configurar WHATSAPP_API_URL y WHATSAPP_API_TOKEN.',
+         };
+       }
 
-      const response = await axios.post(
-        `${WHATSAPP_API_URL}/messages/document`,
-        form,
-        {
-          headers: {
-            Authorization: `Bearer ${WHATSAPP_API_TOKEN}`,
-            ...form.getHeaders(),
-          },
-        },
-      );
+       const response = await axios.post(
+         `${WHATSAPP_API_URL}/messages/document`,
+         form,
+         {
+           headers: {
+             Authorization: `Bearer ${WHATSAPP_API_TOKEN}`,
+             ...form.getHeaders(),
+           },
+         },
+       );
 
       if (response.data) {
         this.logger.log(`Catalog sent to ${phoneNumber} via WhatsApp`);
@@ -510,13 +507,16 @@ export class CatalogService {
   }
 
   /**
-   * Generates a PDF with multiple price tickets (etiquetas).
-   * Layout: 2 columns x 5 rows = 10 tickets per A4 page (comfortable readable size).
-   */
+     * Generates a PDF with multiple price tickets (etiquetas).
+     * Layout: Always 2 columns × 7 rows = 14 tickets per A4 page (hardcoded rows=7).
+     * Barcode mode uses slightly more internal spacing per ticket.
+     */
   async generatePriceTicketsPdf(params: {
     currencyCode: string;
     tickets: Array<{ productId: string; quantity: number }>;
+    includeBarcode?: boolean;
   }): Promise<Buffer> {
+    const includeBarcode = params.includeBarcode ?? true;
     const [settings, allProducts, allCurrencies] = await Promise.all([
       this.prisma.companySettings.findFirst(),
       this.prisma.product.findMany({
@@ -571,36 +571,43 @@ export class CatalogService {
       }
     }
 
-    // Pre-generate barcodes (Code128) before entering the PDFKit Promise (bwipjs.toBuffer is async)
-    const barcodeCache = new Map<string, Buffer>();
-    const ticketsWithBarcode = await Promise.all(
-      expandedTickets.map(async (t) => {
-        if (!t.sku) {
-          return { ...t, barcodePng: null as Buffer | null };
-        }
-        if (barcodeCache.has(t.sku)) {
-          return { ...t, barcodePng: barcodeCache.get(t.sku)! };
-        }
-        try {
-          const png = await bwipjs.toBuffer({
-            bcid: 'code128',
-            text: t.sku,
-            scale: 2.5,
-            height: 9,
-            includetext: true,
-            textxalign: 'center',
-            textsize: 7,
-          });
-          barcodeCache.set(t.sku, png);
-          return { ...t, barcodePng: png };
-        } catch (_err) {
-          this.logger.warn(
-            `No se pudo generar código de barras para SKU: ${t.sku}`,
-          );
-          return { ...t, barcodePng: null as Buffer | null };
-        }
-      }),
-    );
+    // Pre-generate barcodes only if requested
+    let ticketsWithBarcode: any[] = expandedTickets;
+
+    if (includeBarcode) {
+      const barcodeCache = new Map<string, Buffer>();
+      ticketsWithBarcode = await Promise.all(
+        expandedTickets.map(async (t) => {
+          if (!t.sku) {
+            return { ...t, barcodePng: null as Buffer | null };
+          }
+          if (barcodeCache.has(t.sku)) {
+            return { ...t, barcodePng: barcodeCache.get(t.sku)! };
+          }
+          try {
+            const png = await bwipjs.toBuffer({
+              bcid: 'code128',
+              text: t.sku,
+              scale: 2.5,
+              height: 9,
+              includetext: true,
+              textxalign: 'center',
+              textsize: 7,
+            });
+            barcodeCache.set(t.sku, png);
+            return { ...t, barcodePng: png };
+          } catch (_err) {
+            this.logger.warn(
+              `No se pudo generar código de barras para SKU: ${t.sku}`,
+            );
+            return { ...t, barcodePng: null as Buffer | null };
+          }
+        }),
+      );
+    } else {
+      // No barcodes requested → attach null so drawing logic can skip them
+      ticketsWithBarcode = expandedTickets.map((t) => ({ ...t, barcodePng: null }));
+    }
 
     return new Promise<Buffer>((resolve, reject) => {
       const doc = new PDFDocument({ margin: 25, size: 'A4' });
@@ -616,7 +623,8 @@ export class CatalogService {
       const usableHeight = pageHeight - margin * 2;
 
       const cols = 2;
-      const rows = 5;
+      const rows = 7; // Fijado en 7 filas para ambos modos (14 tickets por página)
+      // debug: rows used in ticket generation — removed console.log
       const ticketWidth = usableWidth / cols;
       const ticketHeight = usableHeight / rows;
 
@@ -657,50 +665,88 @@ export class CatalogService {
             const contentX = x + padding;
             const contentWidth = ticketWidth - padding * 2;
 
-            // Name (slightly higher to give room)
+            // === LAYOUT CON ESPACIADO INTELIGENTE ===
+
+            let currentY = y + 5;
+
+            // Nombre
             doc
               .fillColor('#1A1A2E')
               .font('Helvetica-Bold')
               .fontSize(9)
-              .text(t.name, contentX, y + 6, {
+              .text(t.name, contentX, currentY, {
                 width: contentWidth,
-                height: 26,
+                height: 20,
                 ellipsis: true,
               });
 
-            // Price (big, adjusted up)
-            const priceStr = `${t.price.toFixed(2)} ${t.symbol}`;
-            doc
-              .fillColor('#1B75BC')
-              .font('Helvetica-Bold')
-              .fontSize(14)
-              .text(priceStr, contentX, y + 32, {
-                width: contentWidth,
-                align: 'center',
-              });
+            if (includeBarcode) {
+              // MODO CON CÓDIGO DE BARRAS → espaciado generoso para reducir el hueco inferior
+              currentY += 26;
 
-            // Code128 barcode (centered in the former blank space)
-            if (t.barcodePng) {
-              const barcodeWidth = contentWidth * 0.82;
-              const barcodeHeight = 34;
-              const bx = contentX + (contentWidth - barcodeWidth) / 2;
-              const by = y + 55;
-              doc.image(t.barcodePng, bx, by, {
-                width: barcodeWidth,
-                height: barcodeHeight,
-              });
-            }
-
-            // Category only (SKU now rendered inside the barcode via includetext)
-            if (t.category) {
+              // Precio
+              const priceStr = `${t.price.toFixed(2)} ${t.symbol}`;
               doc
-                .fillColor('#666666')
-                .font('Helvetica')
-                .fontSize(6)
-                .text(t.category, contentX, y + ticketHeight - 16, {
+                .fillColor('#1B75BC')
+                .font('Helvetica-Bold')
+                .fontSize(14)
+                .text(priceStr, contentX, currentY, {
                   width: contentWidth,
                   align: 'center',
                 });
+              currentY += 28;
+
+              // Código de barras
+              if (t.barcodePng) {
+                const barcodeWidth = contentWidth * 0.82;
+                const barcodeHeight = 32;
+                const bx = contentX + (contentWidth - barcodeWidth) / 2;
+                doc.image(t.barcodePng, bx, currentY, {
+                  width: barcodeWidth,
+                  height: barcodeHeight,
+                });
+                currentY += barcodeHeight + 12; // espacio decente después del código
+              }
+
+              // Categoría
+              if (t.category) {
+                doc
+                  .fillColor('#666666')
+                  .font('Helvetica')
+                  .fontSize(6)
+                  .text(t.category, contentX, currentY, {
+                    width: contentWidth,
+                    align: 'center',
+                  });
+              }
+
+            } else {
+              // MODO SIN CÓDIGO DE BARRAS → diseño compacto (como querías)
+              currentY += 18;
+
+              // Precio
+              const priceStr = `${t.price.toFixed(2)} ${t.symbol}`;
+              doc
+                .fillColor('#1B75BC')
+                .font('Helvetica-Bold')
+                .fontSize(14)
+                .text(priceStr, contentX, currentY, {
+                  width: contentWidth,
+                  align: 'center',
+                });
+              currentY += 16;
+
+              // Categoría
+              if (t.category) {
+                doc
+                  .fillColor('#666666')
+                  .font('Helvetica')
+                  .fontSize(7)
+                  .text(t.category, contentX, currentY, {
+                    width: contentWidth,
+                    align: 'center',
+                  });
+              }
             }
 
             index++;

@@ -59,10 +59,16 @@ export const catalogoApi = {
   /**
    * Generates price tickets PDF.
    */
-  generatePriceTickets: async (currencyCode: string, tickets: Array<{ productId: string; quantity: number }>): Promise<Blob> => {
-    const response = await api.post('/catalog/price-tickets', { currencyCode, tickets }, {
-      responseType: 'blob',
-    });
+  generatePriceTickets: async (
+    currencyCode: string,
+    tickets: Array<{ productId: string; quantity: number }>,
+    includeBarcode: boolean = true,
+  ): Promise<Blob> => {
+    const response = await api.post(
+      '/catalog/price-tickets',
+      { currencyCode, tickets, includeBarcode },
+      { responseType: 'blob' },
+    );
     return response.data;
   },
 };
