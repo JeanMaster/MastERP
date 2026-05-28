@@ -1,0 +1,7 @@
+{
+  "name": "masterp-erp",
+  "private": true,
+  "workspaces": [
+    "apps/*"
+  ]
+}
