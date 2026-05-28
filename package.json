@@ -3,5 +3,10 @@
   "private": true,
   "workspaces": [
     "apps/*"
-  ]
+  ],
+  "scripts": {
+    "build": "npm run build --workspace=backend",
+    "start": "npm run start:prod --workspace=backend",
+    "prisma:generate": "npx prisma generate --schema=apps/backend/prisma/schema.prisma"
+  }
 }
