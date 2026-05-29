@@ -206,11 +206,11 @@ export const PurchaseOrdersPage: React.FC = () => {
                         loading={loading}
                         scroll={{ x: 'max-content' }}
                         size={isMobile ? 'small' : 'middle'}
-                        pagination={{
-                            pageSize: 10,
-                            size: isMobile ? 'small' : 'default',
-                            responsive: true
-                        }}
+pagination={{
+                             pageSize: 10,
+                             size: isMobile ? 'small' : 'middle',
+                             responsive: true
+                         }}
                     />
                 ) : (
                     <List

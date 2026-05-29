@@ -170,11 +170,11 @@ const WeeklyPerformanceReport: React.FC = () => {
                                         tickFormatter={(val) => isMobile ? `${(val/1000).toFixed(0)}k` : val.toLocaleString()} 
                                         width={isMobile ? 35 : 60}
                                     />
-                                    <ChartTooltip
-                                        formatter={(value: number) => [`${currency} ${formatVenezuelanPrice(value)}`, 'Venta Total']}
-                                        labelStyle={{ fontWeight: 'bold' }}
-                                        contentStyle={{ borderRadius: 12, border: 'none', boxShadow: '0 8px 24px rgba(0,0,0,0.12)' }}
-                                    />
+<ChartTooltip
+                                            formatter={(value) => [`${currency} ${formatVenezuelanPrice(value as number)}`, 'Venta Total']}
+                                            labelStyle={{ fontWeight: 'bold' }}
+                                            contentStyle={{ borderRadius: 12, border: 'none', boxShadow: '0 8px 24px rgba(0,0,0,0.12)' }}
+                                        />
                                     <Bar dataKey="total" radius={[6, 6, 0, 0]}>
                                         {performance.map((entry, index) => (
                                             <Cell

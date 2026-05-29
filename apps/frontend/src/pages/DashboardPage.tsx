@@ -271,10 +271,10 @@ export const DashboardPage = () => {
                                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
                                     <XAxis dataKey="date" axisLine={false} tickLine={false} fontSize={10} />
                                     <YAxis axisLine={false} tickLine={false} fontSize={10} />
-                                    <Tooltip
-                                        formatter={(value: number) => formatVenezuelanPrice(value, currentSymbol)}
-                                        contentStyle={{ borderRadius: 8, border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
-                                    />
+<Tooltip
+                            formatter={(value) => formatVenezuelanPrice(value as number, currentSymbol)}
+                            contentStyle={{ borderRadius: 8, border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+                        />
                                     <Line
                                         type="monotone"
                                         dataKey={(data) => getConvertedAmount(data.sales)}

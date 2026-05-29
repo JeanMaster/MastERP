@@ -228,7 +228,7 @@ export const ExpenseReports = () => {
                                             <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                                         ))}
                                     </Pie>
-                                    <Tooltip formatter={(value: number) => formatVenezuelanPrice(value)} />
+                                    <Tooltip formatter={(value) => formatVenezuelanPrice(value as number)} />
                                     <Legend verticalAlign="bottom" height={36} iconType="circle" />
                                 </PieChart>
                             </ResponsiveContainer>
@@ -248,7 +248,7 @@ export const ExpenseReports = () => {
                                     <XAxis type="number" axisLine={false} tickLine={false} fontSize={10} tickFormatter={(val) => isMobile ? `${(val/1000).toFixed(0)}k` : val.toLocaleString()} />
                                     <YAxis type="category" dataKey="category" width={isMobile ? 80 : 100} axisLine={false} tickLine={false} fontSize={10} />
                                     <Tooltip 
-                                        formatter={(value: number) => formatVenezuelanPrice(value)}
+                                        formatter={(value) => formatVenezuelanPrice(value as number)}
                                         contentStyle={{ borderRadius: 8, border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
                                     />
                                     <Bar dataKey="amount" name="Monto" fill="#FF8042" radius={[0, 4, 4, 0]} />

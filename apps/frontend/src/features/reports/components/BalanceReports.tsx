@@ -225,8 +225,8 @@ export const BalanceReports = () => {
                                 tickFormatter={(val) => isMobile ? `${(val/1000).toFixed(0)}k` : val.toLocaleString()}
                                 width={isMobile ? 35 : 60}
                             />
-                            <Tooltip 
-                                formatter={(value: number) => [`${currencySymbol} ${formatVenezuelanPrice(value)}`, '']}
+                            <Tooltip
+                                formatter={(value) => [`${currencySymbol} ${formatVenezuelanPrice(value as number)}`, '']}
                                 contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
                             />
                             {!isMobile && <Legend iconType="circle" verticalAlign="top" height={36} />}

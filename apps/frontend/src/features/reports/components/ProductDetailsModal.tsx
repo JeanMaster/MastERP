@@ -108,8 +108,8 @@ export const ProductDetailsModal: React.FC<ProductDetailsModalProps> = ({ produc
                                         <YAxis yAxisId="left" orientation="left" axisLine={false} tickLine={false} fontSize={10} stroke="#8884d8" />
                                         <YAxis yAxisId="right" orientation="right" axisLine={false} tickLine={false} fontSize={10} stroke="#82ca9d" />
                                         <RechartsTooltip 
-                                            formatter={(value: any, name: string) => {
-                                                if (name === t('common.revenue')) return formatVenezuelanPrice(value, primaryCurrency?.symbol);
+                                            formatter={(value, name) => {
+                                                if (name === t('common.revenue')) return formatVenezuelanPrice(value as number, primaryCurrency?.symbol);
                                                 return [value, t('common.units_sold')];
                                             }}
                                             contentStyle={{ borderRadius: 8, border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}

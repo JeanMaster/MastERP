@@ -49,11 +49,16 @@ export const HourlyPerformanceReport = ({ currency, startDate, endDate }: Hourly
         }
     };
 
-    const formatHour = (hour: number) => {
+    const formatHour = (hour: number): string => {
         if (!use12Hour) return `${hour}:00`;
         const period = hour >= 12 ? 'PM' : 'AM';
         const displayHour = hour % 12 || 12;
         return `${displayHour} ${period}`;
+    };
+
+    const formatHourLabel = (label: any) => {
+        const hour = Number(label);
+        return Number.isInteger(hour) ? formatHour(hour) : label;
     };
 
     if (loading && !data) {
@@ -163,9 +168,9 @@ export const HourlyPerformanceReport = ({ currency, startDate, endDate }: Hourly
                                 width={isMobile ? 35 : 60}
                             />
                             <Tooltip
-                                labelFormatter={formatHour}
-                                formatter={(value: number) => [
-                                    `${formatVenezuelanPrice(value, currencySymbol)}`,
+                                labelFormatter={formatHourLabel}
+                                formatter={(value) => [
+                                    `${formatVenezuelanPrice(value as number, currencySymbol)}`,
                                     'Ventas'
                                 ]}
                                 contentStyle={{ borderRadius: 12, border: 'none', boxShadow: '0 8px 24px rgba(0,0,0,0.12)' }}

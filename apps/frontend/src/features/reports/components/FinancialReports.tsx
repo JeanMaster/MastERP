@@ -296,7 +296,7 @@ export const FinancialReports = () => {
                                     <XAxis dataKey="date" axisLine={false} tickLine={false} fontSize={10} tickFormatter={(val) => dayjs(val).format('DD/MM')} />
                                     <YAxis axisLine={false} tickLine={false} fontSize={10} tickFormatter={(val) => isMobile ? `${(val/1000).toFixed(0)}k` : val.toLocaleString()} />
                                     <Tooltip
-                                        formatter={(value: number) => formatVenezuelanPrice(value, currencySymbol)}
+                                        formatter={(value) => formatVenezuelanPrice(value as number, currencySymbol)}
                                         contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
                                     />
                                     <Bar dataKey="amount" fill="#1890ff" radius={[4, 4, 0, 0]} />
@@ -325,7 +325,7 @@ export const FinancialReports = () => {
                                             <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                                         ))}
                                     </Pie>
-                                    <Tooltip formatter={(value: number) => formatVenezuelanPrice(value, currencySymbol)} />
+                                    <Tooltip formatter={(value) => formatVenezuelanPrice(value as number, currencySymbol)} />
                                     <Legend verticalAlign="bottom" height={36} iconType="circle" />
                                 </PieChart>
                             </ResponsiveContainer>

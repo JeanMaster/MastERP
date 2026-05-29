@@ -175,14 +175,14 @@ export const ProductsReport = () => {
                         </Card>
                     ))}
                     <div style={{ display: 'flex', justifyContent: 'center', marginTop: 12, paddingBottom: 24 }}>
-                        <Pagination 
-                            current={currentPage}
-                            total={filteredProducts.length}
-                            pageSize={pageSize}
-                            onChange={setCurrentPage}
-                            size="default"
-                            showSizeChanger={false}
-                        />
+<Pagination
+                             current={currentPage}
+                             total={filteredProducts.length}
+                             pageSize={pageSize}
+                             onChange={setCurrentPage}
+                             size="middle"
+                             showSizeChanger={false}
+                         />
                     </div>
                 </div>
             )}

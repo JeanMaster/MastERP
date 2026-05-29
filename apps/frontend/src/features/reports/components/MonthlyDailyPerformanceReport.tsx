@@ -199,7 +199,7 @@ const MonthlyDailyPerformanceReport: React.FC = () => {
                                 width={isMobile ? 35 : 60}
                             />
                             <ChartTooltip
-                                formatter={(value: number) => [`${currency} ${formatVenezuelanPrice(value)}`, 'Venta']}
+                                formatter={(value) => [`${currency} ${formatVenezuelanPrice(value as number)}`, 'Venta']}
                                 labelFormatter={(label) => `Día ${label}`}
                                 contentStyle={{ borderRadius: 12, border: 'none', boxShadow: '0 8px 24px rgba(0,0,0,0.12)' }}
                             />

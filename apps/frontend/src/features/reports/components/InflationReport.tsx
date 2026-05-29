@@ -297,10 +297,10 @@ const InflationReport: React.FC = () => {
                                         fontSize={10}
                                         width={isMobile ? 35 : 60}
                                     />
-                                    <ChartTooltip
-                                        formatter={(value: number) => [`Bs. ${formatVenezuelanPrice(value)}`, 'Pérdida']}
-                                        contentStyle={{ borderRadius: 8, border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
-                                    />
+<ChartTooltip
+                                            formatter={(value) => [`Bs. ${formatVenezuelanPrice(value as number)}`, 'Pérdida']}
+                                            contentStyle={{ borderRadius: 8, border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+                                        />
                                     {!isMobile && <Legend iconType="circle" verticalAlign="top" height={36} />}
                                     <Line
                                         name="Pérdida Diaria"
