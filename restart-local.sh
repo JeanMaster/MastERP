@@ -32,8 +32,8 @@ if [ -f "./stop-local.sh" ]; then
     ./stop-local.sh || true
 else
     # Matamos de forma segura solo lo relacionado con el proyecto
-    pkill -9 -f "node.*/ValeryPort/apps/backend" 2>/dev/null || true
-    pkill -9 -f "node.*/ValeryPort/apps/frontend" 2>/dev/null || true
+    pkill -9 -f "node.*/MastERP/apps/backend" 2>/dev/null || true
+    pkill -9 -f "node.*/MastERP/apps/frontend" 2>/dev/null || true
     pkill -9 -f "vite.*--host" 2>/dev/null || true
     pkill -9 -f "nest start" 2>/dev/null || true
     pkill -9 -f "dist/src/main" 2>/dev/null || true
@@ -46,7 +46,7 @@ echo -e "${YELLOW}🧹 Paso 2: Matando procesos residuales de forma segura...${N
 
 # Matamos solo procesos específicos del proyecto (no tocamos VSCode Server)
 sudo pkill -9 -f "dist/src/main" 2>/dev/null || true
-sudo pkill -9 -f "ValeryPort/apps/backend" 2>/dev/null || true
+sudo pkill -9 -f "MastERP/apps/backend" 2>/dev/null || true
 sudo pkill -9 -f "vite" 2>/dev/null || true
 sudo pkill -9 -f "nest start" 2>/dev/null || true
 
@@ -114,13 +114,19 @@ cd "$PROJECT_ROOT"
 # Iniciar Backend en modo desarrollo
 echo -e "${GREEN}📦 Iniciando Backend (modo desarrollo)...${NC}"
 cd "$PROJECT_ROOT/apps/backend"
+BACKEND_PID_FILE="$PROJECT_ROOT/backend.pid"
 nohup npm run start:dev > ../../backend.prod.log 2>&1 &
+echo $! > "$BACKEND_PID_FILE"
 disown
-sleep 2
-BACKEND_PID=$(pgrep -f "node.*/ValeryPort/apps/backend" | tail -n 1)
+sleep 3
+BACKEND_PID=$(cat "$BACKEND_PID_FILE" 2>/dev/null || echo "")
 cd "$PROJECT_ROOT"
-echo $BACKEND_PID > .masterp.pids
-echo "   ✅ Backend corriendo [PID: $BACKEND_PID]"
+if [ -n "$BACKEND_PID" ] && ps -p "$BACKEND_PID" > /dev/null 2>&1; then
+    echo "$BACKEND_PID" > .masterp.pids
+    echo "   ✅ Backend corriendo [PID: $BACKEND_PID]"
+else
+    echo -e "   ${YELLOW}⚠ Backend iniciando... verifica con: cat backend.prod.log${NC}"
+fi
 
 # Iniciar Frontend
 echo -e "${GREEN}💻 Iniciando Frontend...${NC}"

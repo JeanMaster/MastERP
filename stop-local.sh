@@ -14,8 +14,8 @@ PROJECT_ROOT=$(cd "$(dirname "$0")" && pwd)
 cd "$PROJECT_ROOT"
 
 # Matamos procesos específicos del proyecto (seguro)
-pkill -9 -f "node.*/ValeryPort/apps/backend" 2>/dev/null || true
-pkill -9 -f "node.*/ValeryPort/apps/frontend" 2>/dev/null || true
+pkill -9 -f "node.*/MastERP/apps/backend" 2>/dev/null || true
+pkill -9 -f "node.*/MastERP/apps/frontend" 2>/dev/null || true
 pkill -9 -f "vite.*--host" 2>/dev/null || true
 pkill -9 -f "nest start" 2>/dev/null || true
 pkill -9 -f "dist/src/main" 2>/dev/null || true

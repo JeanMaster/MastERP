@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Card, Table, Button, Input, Tag, Typography, Statistic, Row, Col, Space, Grid, Tooltip, List } from 'antd';
+import { Card, Table, Button, Input, Tag, Typography, Statistic, Row, Col, Space, Grid, Tooltip, Pagination } from 'antd';
 import { PlusOutlined, ReloadOutlined, SearchOutlined, DollarOutlined, EditOutlined } from '@ant-design/icons';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
@@ -8,7 +8,7 @@ import { expensesApi, type Expense } from '../../services/expensesApi';
 import { CreateExpenseModal } from './components/CreateExpenseModal';
 import { formatVenezuelanPrice } from '../../utils/formatters';
 
-const { Title } = Typography;
+const { Title, Text } = Typography;
 
 /**
  * ExpensesPage Component
@@ -21,11 +21,18 @@ export const ExpensesPage = () => {
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
     const [searchText, setSearchText] = useState('');
+    const [currentPage, setCurrentPage] = useState(1);
+    const [pageSize, setPageSize] = useState(10);
 
     const { data: expenses = [], isLoading, refetch } = useQuery({
         queryKey: ['expenses'],
         queryFn: expensesApi.getAll
     });
+
+    const handleSearch = (value: string) => {
+        setSearchText(value);
+        setCurrentPage(1);
+    };
 
     const handleCreate = () => {
         setEditingExpense(null);
@@ -209,7 +216,7 @@ export const ExpensesPage = () => {
                         <Input
                             placeholder={t('expenses_page.search_placeholder')}
                             prefix={<SearchOutlined />}
-                            onChange={e => setSearchText(e.target.value)}
+                            onChange={e => handleSearch(e.target.value)}
                             style={{ width: isMobile ? '100%' : 200 }}
                         />
                         <Space>
@@ -236,20 +243,23 @@ export const ExpensesPage = () => {
                         dataSource={filteredExpenses}
                         rowKey="id"
                         loading={isLoading}
-                        pagination={{ pageSize: 10 }}
+                        pagination={{
+                            current: currentPage,
+                            pageSize: pageSize,
+                            onChange: (page, size) => {
+                                setCurrentPage(page);
+                                setPageSize(size);
+                            },
+                            showSizeChanger: true,
+                            pageSizeOptions: ['10', '15', '20', '50', '100'],
+                            showTotal: (total, range) => t('common.pagination_total', { rangeStart: range[0], rangeEnd: range[1], total }),
+                            position: ['bottomRight']
+                        }}
                         scroll={{ x: 'max-content' }}
                     />
                 ) : (
-                    <List
-                        loading={isLoading}
-                        dataSource={filteredExpenses}
-                        rowKey="id"
-                        pagination={{
-                            pageSize: 10,
-                            size: 'small',
-                            simple: true,
-                        }}
-                        renderItem={(item: Expense) => {
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                        {filteredExpenses.slice((currentPage - 1) * pageSize, currentPage * pageSize).map((item: Expense) => {
                             let usdAmount = 0;
                             const rate = Number(item.exchangeRate) || 1;
                             if (item.currencyCode === 'USD') {
@@ -259,38 +269,22 @@ export const ExpensesPage = () => {
                             }
 
                             return (
-                                <List.Item
+                                <Card
+                                    key={item.id}
+                                    variant="borderless"
+                                    styles={{ body: { padding: 16 } }}
+                                    style={{ borderRadius: 16, boxShadow: '0 4px 12px rgba(0,0,0,0.05)', cursor: 'pointer' }}
                                     onClick={() => handleEdit(item)}
-                                    style={{
-                                        padding: '16px',
-                                        background: '#fff',
-                                        marginBottom: 12,
-                                        borderRadius: 16,
-                                        border: '1px solid #f0f0f0',
-                                        boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
-                                        display: 'block',
-                                        cursor: 'pointer'
-                                    }}
                                 >
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
-                                        <div>
-                                            <div style={{ fontSize: 12, color: '#9ca3af', marginBottom: 4 }}>
-                                                {dayjs(item.date).format('DD/MM/YYYY')}
-                                            </div>
-                                            <Tag color="blue" style={{ borderRadius: 4 }}>
-                                                {t(`expenses.categories.${item.category}`, { defaultValue: item.category })}
-                                            </Tag>
-                                        </div>
-                                        <div style={{ textAlign: 'right' }}>
-                                            <div style={{ fontWeight: 700, fontSize: 17, color: '#cf1322' }}>
-                                                -{formatVenezuelanPrice(item.amount, item.currencyCode === 'VES' ? 'Bs' : '$')}
-                                            </div>
-                                            <div style={{ fontSize: 12, color: '#8c8c8c' }}>
-                                                {formatVenezuelanPrice(usdAmount, '$')} (Ref)
-                                            </div>
-                                        </div>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4 }}>
+                                        <Text strong style={{ fontSize: 16, color: '#1890ff', flex: 1, marginRight: 8, lineHeight: 1.2 }}>{dayjs(item.date).format('DD/MM/YYYY')}</Text>
+                                        <Tag color="blue" style={{ borderRadius: 4 }}>
+                                            {t(`expenses.categories.${item.category}`, { defaultValue: item.category })}
+                                        </Tag>
                                     </div>
-
+                                    <div style={{ fontWeight: 700, fontSize: 15, color: '#cf1322', marginBottom: 4 }}>
+                                        -{formatVenezuelanPrice(item.amount, item.currencyCode === 'VES' ? 'Bs' : '$')}
+                                    </div>
                                     <div style={{ marginBottom: 12 }}>
                                         <div style={{ fontWeight: 600, fontSize: 15, color: '#111827' }}>
                                             {item.description}
@@ -301,33 +295,27 @@ export const ExpensesPage = () => {
                                             </div>
                                         )}
                                     </div>
-
-                                    <div style={{ 
-                                        display: 'flex', 
-                                        justifyContent: 'space-between', 
-                                        alignItems: 'center',
-                                        borderTop: '1px solid #f0f0f0',
-                                        paddingTop: 12
-                                    }}>
-                                        <div style={{ fontSize: 13, color: '#595959' }}>
-                                            <DollarOutlined style={{ marginRight: 4 }} />
-                                            {t(`expenses.payment_methods.${item.paymentMethod}`, { defaultValue: item.paymentMethod })}
-                                            {item.bankAccount && ` • ${item.bankAccount.bankName}`}
-                                        </div>
-                                        <Button 
-                                            type="text" 
-                                            size="small" 
-                                            icon={<EditOutlined style={{ color: '#6366f1' }} />} 
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                handleEdit(item);
-                                            }}
-                                        />
+                                    <div style={{ fontSize: 13, color: '#595959' }}>
+                                        <DollarOutlined style={{ marginRight: 4 }} />
+                                        {t(`expenses.payment_methods.${item.paymentMethod}`, { defaultValue: item.paymentMethod })}
+                                        {item.bankAccount && ` • ${item.bankAccount.bankName}`}
                                     </div>
-                                </List.Item>
+                                </Card>
                             );
-                        }}
-                    />
+                        })}
+                        <div style={{ display: 'flex', justifyContent: 'center', marginTop: 12, paddingBottom: 24 }}>
+                            <Pagination
+                                current={currentPage}
+                                total={filteredExpenses.length}
+                                pageSize={pageSize}
+                                onChange={(page) => {
+                                    setCurrentPage(page);
+                                }}
+                                size="middle"
+                                showSizeChanger={false}
+                            />
+                        </div>
+                    </div>
                 )}
             </Card>
 
