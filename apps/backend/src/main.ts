@@ -18,12 +18,14 @@ async function bootstrap() {
     contentSecurityPolicy: process.env.NODE_ENV === 'production' ? undefined : false, // Disable CSP in dev to not break Swagger
   }));
 
-  // CORS - Restricted configuration
-  const allowedOrigins = [
-    process.env.CORS_ORIGIN,
-    'http://localhost:5173',
-    'http://127.0.0.1:5173',
-  ].filter(Boolean);
+// CORS - Restricted configuration
+   const allowedOrigins = [
+     process.env.CORS_ORIGIN,
+     'http://localhost:5173',
+     'http://127.0.0.1:5173',
+     'https://mast-erp-frontend.vercel.app',
+     /\.vercel\.app$/,
+   ].filter(Boolean);
 
   app.enableCors({
     origin: (origin, callback) => {
@@ -62,8 +64,13 @@ async function bootstrap() {
     SwaggerModule.setup('api/docs', app, document);
   }
 
-  // Global route prefix for all endpoints
-  app.setGlobalPrefix('api');
+// Global route prefix for all endpoints
+   app.setGlobalPrefix('api');
+
+   // Health check endpoint at root for Render/Vercel
+   app.getHttpAdapter().get('/', (req, res) => {
+     res.status(200).json({ status: 'ok', message: 'MastERP API is running' });
+   });
 
   // Trust proxy for production (important for getting real IP and secure cookies behind Render/Vercel/Railway)
   if (process.env.NODE_ENV === 'production') {
