@@ -362,7 +362,7 @@ export const POSPage = () => {
                                     </span>
                                 ),
                                 children: (
-                                    <div style={{ padding: 8, height: 'calc(100vh - 180px)', overflow: 'hidden' }}>
+                                    <div style={{ padding: 8, height: 'calc(100vh - 220px)', overflow: 'hidden' }}>
                                         <POSRightPanel />
                                     </div>
                                 )
@@ -376,7 +376,7 @@ export const POSPage = () => {
                                     </span>
                                 ),
                                 children: (
-                                    <div style={{ padding: 8, height: 'calc(100vh - 180px)', overflow: 'hidden' }}>
+                                    <div style={{ padding: 8, height: 'calc(100vh - 220px)', overflow: 'hidden' }}>
                                         <POSLeftPanel />
                                     </div>
                                 )

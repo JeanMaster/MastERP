@@ -282,8 +282,13 @@ export const ExpensesPage = () => {
                                             {t(`expenses.categories.${item.category}`, { defaultValue: item.category })}
                                         </Tag>
                                     </div>
-                                    <div style={{ fontWeight: 700, fontSize: 15, color: '#cf1322', marginBottom: 4 }}>
-                                        -{formatVenezuelanPrice(item.amount, item.currencyCode === 'VES' ? 'Bs' : '$')}
+                                    <div style={{ fontWeight: 700, fontSize: 15, color: '#cf1322', marginBottom: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                        <span>-{formatVenezuelanPrice(item.amount, item.currencyCode === 'VES' ? 'Bs' : '$')}</span>
+                                        {item.currencyCode !== 'USD' && (
+                                            <span style={{ fontSize: 12, fontWeight: 'normal', color: '#8c8c8c' }}>
+                                                ({formatVenezuelanPrice(usdAmount, '$')})
+                                            </span>
+                                        )}
                                     </div>
                                     <div style={{ marginBottom: 12 }}>
                                         <div style={{ fontWeight: 600, fontSize: 15, color: '#111827' }}>

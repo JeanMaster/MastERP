@@ -78,7 +78,7 @@ export const POSHeader = ({ onCajaClick, onBatchSalesClick }: { onCajaClick?: ()
         }}>
             <Row style={{ width: '100%' }} align="middle" justify="space-between" gutter={[8, 8]}>
                 {/* Left Section: System Context & Customer */}
-                <Col xs={14} md={12}>
+                <Col xs={8} md={12}>
                     <Space size={isMobile ? "small" : "large"} wrap={!isMobile}>
                         {!isMobile && (
                             <>
@@ -136,7 +136,7 @@ export const POSHeader = ({ onCajaClick, onBatchSalesClick }: { onCajaClick?: ()
                 </Col>
 
                 {/* Right Section: Multi-currency Totals & Quick Actions */}
-                <Col xs={10} md={12} style={{ textAlign: 'right' }}>
+                <Col xs={16} md={12} style={{ textAlign: 'right' }}>
                     <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: isMobile ? 8 : 24 }}>
                         {!isMobile && (
                             <>
@@ -202,7 +202,9 @@ export const POSHeader = ({ onCajaClick, onBatchSalesClick }: { onCajaClick?: ()
                                 borderRadius: 8,
                                 border: '1px solid #91caff',
                                 textAlign: 'right',
-                                cursor: 'help'
+                                cursor: 'help',
+                                whiteSpace: 'nowrap',
+                                flexShrink: 0
                             }}>
                                 <Text type="secondary" style={{ fontSize: isMobile ? 9 : 11, display: 'block' }}>{t('pos.footer.total')}</Text>
                                 <Title level={isMobile ? 5 : 2} style={{ margin: 0, color: '#096dd9', lineHeight: 1 }}>

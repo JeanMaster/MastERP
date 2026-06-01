@@ -401,7 +401,7 @@ export const POSLeftPanel = () => {
                     columns={columns}
                     pagination={false}
                     size="small"
-                    scroll={{ y: isMobile ? 'calc(100vh - 430px)' : 'calc(100vh - 300px)' }}
+                    scroll={{ y: isMobile ? 'calc(100vh - 470px)' : 'calc(100vh - 300px)' }}
                     rowKey={(record) => record.product.id}
                     locale={{ emptyText: t('pos.cart.empty') }}
                     rowClassName={(record) => record.product.id === selectedItemId ? 'pos-row-selected' : 'pos-row'}
