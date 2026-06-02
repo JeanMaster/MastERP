@@ -23,6 +23,7 @@ export interface SalesFilters {
   endDate?: string;
   clientId?: string;
   productId?: string;
+  productName?: string;
   paymentMethod?: string;
   minAmount?: number;
   maxAmount?: number;
@@ -64,6 +65,7 @@ export class SalesController {
     @Query('endDate') endDate?: string,
     @Query('clientId') clientId?: string,
     @Query('productId') productId?: string,
+    @Query('productName') productName?: string,
     @Query('paymentMethod') paymentMethod?: string,
     @Query('minAmount') minAmount?: string,
     @Query('maxAmount') maxAmount?: string,
@@ -75,6 +77,7 @@ export class SalesController {
     if (endDate) filters.endDate = endDate;
     if (clientId) filters.clientId = clientId;
     if (productId) filters.productId = productId;
+    if (productName) filters.productName = productName;
     if (paymentMethod) filters.paymentMethod = paymentMethod;
     if (minAmount) filters.minAmount = parseFloat(minAmount);
     if (maxAmount) filters.maxAmount = parseFloat(maxAmount);

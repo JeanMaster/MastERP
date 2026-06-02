@@ -65,6 +65,7 @@ export interface SalesFilters {
     endDate?: string;
     clientId?: string;
     productId?: string;
+    productName?: string;
     paymentMethod?: string;
     minAmount?: number;
     maxAmount?: number;
@@ -108,6 +109,7 @@ export const salesApi = {
         if (filters.endDate) params.append('endDate', filters.endDate);
         if (filters.clientId) params.append('clientId', filters.clientId);
         if (filters.productId) params.append('productId', filters.productId);
+        if (filters.productName) params.append('productName', filters.productName);
         if (filters.paymentMethod) params.append('paymentMethod', filters.paymentMethod);
         if (filters.minAmount) params.append('minAmount', filters.minAmount.toString());
         if (filters.maxAmount) params.append('maxAmount', filters.maxAmount.toString());

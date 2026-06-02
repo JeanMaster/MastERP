@@ -583,8 +583,20 @@ export class SalesService {
       }
     }
 
-    // Filter by product
-    if (filters.productId) {
+    // Filter by product name (search in product name)
+    if (filters.productName) {
+      where.items = {
+        some: {
+          product: {
+            name: {
+              contains: filters.productName,
+              mode: 'insensitive',
+            },
+          },
+        },
+      };
+    } else if (filters.productId) {
+      // Filter by product ID (exact match)
       where.items = {
         some: {
           productId: filters.productId,
