@@ -1139,6 +1139,7 @@
       "all_customers": "All Customers",
       "product": "Product",
       "all_products": "All Products",
+      "product_placeholder": "Search product by SKU or name...",
       "payment": "Payment",
       "all_methods": "All Methods",
       "min_amount": "Min Amount",

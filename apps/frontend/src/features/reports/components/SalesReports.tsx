@@ -27,7 +27,9 @@ import {
     DeleteOutlined
 } from '@ant-design/icons';
 import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
-import { Modal, message } from 'antd';
+import { Modal, message, AutoComplete } from 'antd';
+import { productsApi } from '../../../services/productsApi';
+import type { Product } from '../../../services/productsApi';
 import { salesApi, type Sale, type SalesFilters } from '../../../services/salesApi';
 import { clientsApi } from '../../../services/clientsApi';
 import { formatVenezuelanPrice } from '../../../utils/formatters';
@@ -55,6 +57,8 @@ export const SalesReports = () => {
     const [newPaymentMethod, setNewPaymentMethod] = useState<string>('');
     const [pageSize, setPageSize] = useState<number>(10);
     const [currentPage, setCurrentPage] = useState<number>(1);
+    const [productSearch, setProductSearch] = useState<string>('');
+    const [productOptions, setProductOptions] = useState<Array<{ value: string; label: string }>>([]);
     const queryClient = useQueryClient();
     const { t } = useTranslation();
 
@@ -168,6 +172,8 @@ export const SalesReports = () => {
     const handleResetFilters = () => {
         setFilters({});
         setDateRange(null);
+        setProductSearch('');
+        setProductOptions([]);
         setCurrentPage(1);
     };
 
@@ -441,7 +447,7 @@ export const SalesReports = () => {
                             <Select.Option value="MOBILE">{t('pos.checkout.mobile_pay')}</Select.Option>
                         </Select>
                     </Col>
-                    <Col xs={12} md={6} lg={4}>
+<Col xs={12} md={6} lg={4}>
                         <Text strong style={{ fontSize: 12, color: '#8c8c8c', display: 'block', marginBottom: 8 }}>{t('sales_history.filters.min_amount').toUpperCase()}</Text>
                         <InputNumber
                             style={{ width: '100%' }}
@@ -452,7 +458,36 @@ export const SalesReports = () => {
                             size="large"
                         />
                     </Col>
-                    
+
+                    <Col xs={12} md={6} lg={4}>
+                        <Text strong style={{ fontSize: 12, color: '#8c8c8c', display: 'block', marginBottom: 8 }}>{t('sales_history.filters.product').toUpperCase()}</Text>
+                        <AutoComplete
+                            style={{ width: '100%' }}
+                            placeholder={t('sales_history.filters.product_placeholder', { defaultValue: 'Buscar producto...' })}
+                            value={productSearch}
+                            onChange={(value) => setProductSearch(value)}
+                            onSelect={(value, option) => {
+                                handleFilterChange('productId', value);
+                                setProductSearch((option as any).label);
+                            }}
+                            onSearch={async (value) => {
+                                if (value.length >= 2) {
+                                    const results = await productsApi.getAll({ search: value, limit: 10 });
+                                    setProductOptions(results.map((p: Product) => ({ value: p.id, label: `${p.sku} - ${p.name}` })));
+                                } else {
+                                    setProductOptions([]);
+                                }
+                            }}
+                            options={productOptions}
+                            size="large"
+                            allowClear
+                            onClear={() => {
+                                setProductSearch('');
+                                handleFilterChange('productId', undefined);
+                            }}
+                        />
+                    </Col>
+
                     <Col xs={24} lg={8}>
                         <Text strong style={{ fontSize: 12, color: '#8c8c8c', display: 'block', marginBottom: 8 }}>{t('sales_history.filters.customer').toUpperCase()}</Text>
                         <Select

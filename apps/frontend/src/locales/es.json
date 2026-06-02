@@ -1140,6 +1140,7 @@
       "all_customers": "Todos los Clientes",
       "product": "Producto",
       "all_products": "Todos los Productos",
+      "product_placeholder": "Buscar producto por SKU o nombre...",
       "payment": "Pago",
       "all_methods": "Todos los Métodos",
       "min_amount": "Monto Mínimo",
