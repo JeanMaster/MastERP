@@ -708,15 +708,19 @@ export const ProductFormModal = ({ open, product, onClose, defaultType }: Produc
                                     name="image"
                                     listType="picture-card"
                                     showUploadList={false}
-                                    beforeUpload={async (file) => {
-                                        if (images.length >= 12) {
-                                            message.warning(t('products.images_max'));
-                                            return false;
-                                        }
-                                        try {
-                                            const maxWidth = 1000;
-                                            const maxHeight = 1000;
-                                            const quality = 0.8;
+beforeUpload={async (file) => {
+                                                if (images.length >= 12) {
+                                                    message.warning(t('products.images_max'));
+                                                    return false;
+                                                }
+                                                if (file.size && file.size > 2 * 1024 * 1024) {
+                                                    message.error(t('products.image_too_large'));
+                                                    return false;
+                                                }
+                                                try {
+                                                    const maxWidth = 600;
+                                                    const maxHeight = 600;
+                                                    const quality = 0.6;
 
                                             const compressImage = (file: File): Promise<string> => {
                                                 return new Promise((resolve, reject) => {

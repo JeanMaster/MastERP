@@ -554,6 +554,7 @@
     "image_processing": "Procesando imagen...",
     "image_added": "Imagen agregada",
     "image_error": "Error al procesar imagen",
+    "image_too_large": "La imagen excede el tamaño máximo (2MB)",
     "create": "Crear Producto",
     "edit": "Editar Producto",
     "currency_required": "La moneda es obligatoria",

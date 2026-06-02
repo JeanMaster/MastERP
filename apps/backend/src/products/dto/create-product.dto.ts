@@ -4,14 +4,36 @@ import {
   IsOptional,
   IsNumber,
   Min,
-  IsInt,
   IsUUID,
   ValidateIf,
   IsEnum,
   IsArray,
+  Validate,
+  ValidatorConstraint,
+  ValidatorConstraintInterface,
 } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
+
+@ValidatorConstraint({ name: 'imageSize', async: false })
+export class ImageSizeValidator implements ValidatorConstraintInterface {
+  validate(images: unknown): boolean {
+    if (!images || !Array.isArray(images)) return true;
+    const imageArray = images as string[];
+    const totalBytes = imageArray.reduce((acc, img) => {
+      if (typeof img === 'string' && img.startsWith('data:image')) {
+        const base64Length = img.length - img.indexOf(',') - 1;
+        return acc + (base64Length * 3) / 4;
+      }
+      return acc;
+    }, 0);
+    return totalBytes <= 2 * 1024 * 1024;
+  }
+
+  defaultMessage(): string {
+    return 'El total de imágenes supera el límite de 2MB. Reduzca el tamaño o número de imágenes.';
+  }
+}
 
 export enum ProductType {
   PRODUCT = 'PRODUCT',
@@ -211,11 +233,12 @@ export class CreateProductDto {
   @ApiProperty({
     example: ['https://example.com/image1.jpg'],
     required: false,
-    description: 'Product image URLs',
+    description: 'Product image URLs (base64 or URL)',
   })
   @IsOptional()
   @IsArray()
   @IsString({ each: true })
+  @Validate(ImageSizeValidator, { each: false })
   images?: string[];
 
   @ApiProperty({
@@ -228,4 +251,3 @@ export class CreateProductDto {
   @Type(() => Object)
   components?: Array<{ componentProductId: string; quantity: number }>;
 }
-
