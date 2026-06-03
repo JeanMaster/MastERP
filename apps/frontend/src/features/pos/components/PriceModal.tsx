@@ -4,6 +4,7 @@ import { CalculatorInput } from '../../../components/common/CalculatorInput';
 import { usePOSStore, type CartItem } from '../../../store/posStore';
 import { formatVenezuelanPrice } from '../../../utils/formatters';
 import { getRoundedPrice } from '../../../utils/rounding';
+import { useTranslation } from 'react-i18next';
 
 interface PriceModalProps {
     open: boolean;
@@ -13,6 +14,7 @@ interface PriceModalProps {
 }
 
 export const PriceModal = ({ open, cartItem, onOk, onCancel }: PriceModalProps) => {
+    const { t } = useTranslation();
     const { primaryCurrency, currencies, roundingEnabled, roundingFactor } = usePOSStore();
     const [selectedTier, setSelectedTier] = useState<'normal' | 'offer' | 'wholesale' | 'custom'>('normal');
     const [customPrice, setCustomPrice] = useState<number>(0);
@@ -85,7 +87,7 @@ export const PriceModal = ({ open, cartItem, onOk, onCancel }: PriceModalProps) 
         const effectivePrice = price - discountAmount;
 
         if (effectivePrice < costInPrimary) {
-            return `Precio final (${effectivePrice.toFixed(2)}) menor al costo (${costInPrimary.toFixed(2)})`;
+            return t('pos.modals.price.custom_below_cost', { price: effectivePrice.toFixed(2), cost: costInPrimary.toFixed(2) });
         }
 
         return null;
@@ -152,10 +154,10 @@ export const PriceModal = ({ open, cartItem, onOk, onCancel }: PriceModalProps) 
         const effectivePrice = finalPrice - discountAmount;
 
         if (effectivePrice < costInPrimary) {
-            let errorMsg = `El precio final (${effectivePrice.toFixed(2)}) no puede ser menor al costo (${costInPrimary.toFixed(2)}).`;
+            let errorMsg = t('pos.modals.price.final_price_below_cost', { price: effectivePrice.toFixed(2), cost: costInPrimary.toFixed(2) });
 
             if (discountPercent > 0) {
-                errorMsg += ` El producto tiene un descuento activo del ${discountPercent}%.`;
+                errorMsg += t('pos.modals.price.discount_active', { percent: discountPercent });
             }
 
             Modal.error({
@@ -172,14 +174,14 @@ export const PriceModal = ({ open, cartItem, onOk, onCancel }: PriceModalProps) 
 
     return (
         <Modal
-            title="Seleccionar Precio"
+            title={t('pos.modals.price.title')}
             open={open}
             onOk={handleSubmit}
             onCancel={onCancel}
             width={400}
             footer={[
-                <Button key="back" onClick={onCancel}>Cancelar</Button>,
-                <Button key="submit" type="primary" onClick={handleSubmit}>Aceptar (F9)</Button>
+                <Button key="back" onClick={onCancel}>{t('pos.modals.price.cancel')}</Button>,
+                <Button key="submit" type="primary" onClick={handleSubmit}>{t('pos.modals.price.accept')}</Button>
             ]}
             centered
         >
@@ -194,23 +196,23 @@ export const PriceModal = ({ open, cartItem, onOk, onCancel }: PriceModalProps) 
                     style={{ display: 'flex', flexDirection: 'column', gap: 10 }}
                 >
                     <Radio value="normal" style={{ fontSize: 16 }}>
-                        Normal: <strong>{currencySymbol} {normalPrice.toFixed(2)}</strong>
+                        {t('pos.modals.price.normal')}: <strong>{currencySymbol} {normalPrice.toFixed(2)}</strong>
                     </Radio>
 
                     {offerPrice > 0 && (
                         <Radio value="offer" style={{ fontSize: 16 }}>
-                            Oferta: <strong>{currencySymbol} {offerPrice.toFixed(2)}</strong>
+                            {t('pos.modals.price.offer')}: <strong>{currencySymbol} {offerPrice.toFixed(2)}</strong>
                         </Radio>
                     )}
 
                     {wholesalePrice > 0 && (
                         <Radio value="wholesale" style={{ fontSize: 16 }}>
-                            Mayor: <strong>{currencySymbol} {wholesalePrice.toFixed(2)}</strong>
+                            {t('pos.modals.price.wholesale')}: <strong>{currencySymbol} {wholesalePrice.toFixed(2)}</strong>
                         </Radio>
                     )}
 
                     <Radio value="custom" style={{ fontSize: 16 }}>
-                        Personalizado
+                        {t('pos.modals.price.custom')}
                     </Radio>
                 </Radio.Group>
 

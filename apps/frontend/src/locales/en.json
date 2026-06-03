@@ -157,7 +157,7 @@
     "review": "Review",
     "select": "Select",
     "credit_note": "Credit Note",
-    "next": "Next",
+"next": "Next",
     "search_placeholder": "Search...",
     "type": "Type",
     "person": "Natural Person",
@@ -165,9 +165,11 @@
     "optional": "Optional",
     "view_details": "View Details",
     "view": "View",
-    "configuration": "Configuration"
-  },
-  "pos": {
+    "configuration": "Configuration",
+    "other": "Other",
+    "cash": "Cash"
+   },
+   "pos": {
     "wa_hello": "Hello",
     "wa_details_prefix": "here are your purchase details",
     "wa_thank_you": "Thank you for your purchase!",
@@ -308,15 +310,86 @@
       "closure_in_progress": "CLOSURE IN PROGRESS",
       "closure_requested": "A shift closure has been requested. Please wait for the administrator to authorize your cash count to continue or exit."
     },
+    "modals": {
+      "select_customer": "Select Customer",
+      "select_customer_search": "Search by Name, ID (RIF) or Email...",
+      "new_customer": "New Customer (F2)",
+      "discount": {
+        "title": "Apply Discount",
+        "percent_tab": "Percent (%)",
+        "amount_tab": "Amount (Bs)",
+        "original_price": "Original Price:",
+        "final_price": "Final Price:",
+        "cancel": "Cancel",
+        "apply": "Apply (F9)",
+        "percent_placeholder": "E.g: 10",
+        "amount_placeholder": "E.g: 50.00",
+        "equiv_discount": "Equivalent to: {{percent}}% discount",
+        "max_discount": "Maximum allowed discount is 30%",
+        "below_cost": "Final price ({{price}}) cannot be lower than cost ({{cost}})",
+        "above_price": "Discount cannot exceed price"
+      },
+      "quantity": {
+        "title": "Change Quantity",
+        "cancel": "Cancel",
+        "accept": "OK (F9)"
+      },
+      "price": {
+        "title": "Select Price",
+        "normal": "Normal",
+        "offer": "Offer",
+        "wholesale": "Wholesale",
+        "custom": "Custom",
+        "cancel": "Cancel",
+        "accept": "OK (F9)",
+"final_price_below_cost": "Final price ({{price}}) cannot be lower than cost ({{cost}}).",
+        "discount_active": " The product has an active discount of {{percent}}%.",
+        "custom_below_cost": "Final price ({{price}}) lower than cost ({{cost}})"
+       }
+     },
     "catalog": {
       "back": "Back",
       "departments": "Departments",
       "results_for": "Results for: \"{{term}}\"",
       "no_items": "No items found",
       "no_image": "No image",
-      "more": "More..."
+"more": "More..."
+    },
+    "batch_sales": {
+      "title": "Batch Retroactive Sales",
+      "subtitle": "Transcribe notebook entries",
+      "hour_block": "Hour Block",
+      "select_block": "Select hour block",
+      "client": "Customer",
+      "select_client": "Select",
+      "close_modal": "Close",
+      "process_batch": "Process Batch",
+      "products_card": "Products",
+      "search_product": "Search product...",
+      "qty": "Qty.",
+      "price": "Price Bs",
+      "amount": "Amount",
+      "add_product": "Add Product",
+      "payments_card": "Payment Methods (Multi-currency)",
+      "paid": "Paid:",
+      "remaining": "Remaining:",
+      "change": "Change:",
+      "total": "TOTAL",
+      "base": "Base:",
+      "vat": "VAT:",
+      "cash": "Cash (Bs)",
+      "pos": "Point of Sale",
+      "mobile_pay": "Mobile Pay",
+      "credit": "Credit",
+      "retroactive_sale": "Sale #{idx} ({label})",
+      "delete_sale": "Delete sale from batch",
+      "cash_sales": "CUT SALES",
+      "contado": "CASH",
+      "success": "Batch of {{count}} sales processed successfully",
+      "error_form": "Please verify that all active sale form fields are correct.",
+      "error_submit": "Error processing sales batch."
     }
-  },
+   },
   "settings": {
     "company": {
       "title": "Company Settings",
