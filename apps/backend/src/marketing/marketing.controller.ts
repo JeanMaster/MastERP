@@ -1,4 +1,13 @@
-import { Controller, Get, Patch, Post, Delete, Body, Param, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Patch,
+  Post,
+  Delete,
+  Body,
+  Param,
+  UseGuards,
+} from '@nestjs/common';
 import { MarketingService } from './marketing.service';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
@@ -56,11 +65,15 @@ export class MarketingController {
     @Param('clientId') clientId: string,
     @Body() body: { amount: number; notes: string },
   ) {
-    return this.marketingService.adjustPoints(clientId, body.amount, body.notes);
+    return this.marketingService.adjustPoints(
+      clientId,
+      body.amount,
+      body.notes,
+    );
   }
 
   @Get('loyalty/:clientId/value')
-  @ApiOperation({ summary: 'Retrieve the monetary value of a client\'s points' })
+  @ApiOperation({ summary: "Retrieve the monetary value of a client's points" })
   async getPointsValue(@Param('clientId') clientId: string) {
     return this.marketingService.getRedemptionValue(clientId);
   }
@@ -75,7 +88,9 @@ export class MarketingController {
   @Roles(Role.ADMIN, Role.MANAGER)
   @Post('templates')
   @ApiOperation({ summary: 'Create a new message template' })
-  async createTemplate(@Body() data: { name: string; content: string; category?: string }) {
+  async createTemplate(
+    @Body() data: { name: string; content: string; category?: string },
+  ) {
     return this.marketingService.createTemplate(data);
   }
 
@@ -102,7 +117,9 @@ export class MarketingController {
   @Roles(Role.ADMIN, Role.MANAGER)
   @Post('campaigns')
   @ApiOperation({ summary: 'Create a campaign and calculate recipients' })
-  async createCampaign(@Body() data: { name: string; templateId: string; targetSegment: string }) {
+  async createCampaign(
+    @Body() data: { name: string; templateId: string; targetSegment: string },
+  ) {
     return this.marketingService.createCampaign(data);
   }
 
@@ -142,10 +159,12 @@ export class MarketingController {
 
   @Post('coupons/validate')
   @ApiOperation({ summary: 'Validate a coupon from POS' })
-  async validateCoupon(@Body() body: { code: string; clientId?: string; cartItems: any[] }) {
+  async validateCoupon(
+    @Body() body: { code: string; clientId?: string; cartItems: any[] },
+  ) {
     return this.marketingService.validateCoupon(body.code.toUpperCase(), {
       clientId: body.clientId,
-      cartItems: body.cartItems
+      cartItems: body.cartItems,
     });
   }
 
@@ -154,7 +173,12 @@ export class MarketingController {
   @Post('social/generate')
   @ApiOperation({ summary: 'Generate a social media post using AI' })
   async generateSocialPost(
-    @Body() body: { productId: string; platform: string; instructions?: string },
+    @Body()
+    body: {
+      productId: string;
+      platform: string;
+      instructions?: string;
+    },
   ) {
     return this.marketingService.generateSocialPost(
       body.productId,

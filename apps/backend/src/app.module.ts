@@ -38,10 +38,12 @@ import { CatalogModule } from './catalog/catalog.module';
 
 @Module({
   imports: [
-    ThrottlerModule.forRoot([{
-      ttl: 60000, // 1 minute
-      limit: 100, // max 100 requests per minute
-    }]),
+    ThrottlerModule.forRoot([
+      {
+        ttl: 60000, // 1 minute
+        limit: 100, // max 100 requests per minute
+      },
+    ]),
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: '.env',
@@ -79,12 +81,12 @@ import { CatalogModule } from './catalog/catalog.module';
   ],
   controllers: [AppController, DevToolsController],
   providers: [
-    AppService, 
+    AppService,
     DevToolsService,
     {
       provide: APP_GUARD,
       useClass: ThrottlerGuard,
-    }
+    },
   ],
 })
 export class AppModule {}

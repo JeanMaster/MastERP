@@ -7,7 +7,10 @@ export class CreateUnitDto {
   @IsString()
   name: string;
 
-  @ApiProperty({ example: 'BX', description: 'Abbreviation of the measurement unit' })
+  @ApiProperty({
+    example: 'BX',
+    description: 'Abbreviation of the measurement unit',
+  })
   @IsNotEmpty({ message: 'Abbreviation is required' })
   @IsString()
   abbreviation: string;

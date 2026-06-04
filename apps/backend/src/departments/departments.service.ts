@@ -132,7 +132,9 @@ export class DepartmentsService {
       if (updateDepartmentDto.parentId) {
         // Cannot be its own parent
         if (updateDepartmentDto.parentId === id) {
-          throw new BadRequestException('A department cannot be its own parent');
+          throw new BadRequestException(
+            'A department cannot be its own parent',
+          );
         }
 
         const parent = await this.prisma.department.findUnique({

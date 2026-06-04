@@ -32,7 +32,10 @@ export class InventoryAdjustmentsController {
     description: 'Insufficient stock or invalid data',
   })
   create(@Body() createAdjustmentDto: CreateAdjustmentDto, @Request() req) {
-    return this.inventoryAdjustmentsService.create(createAdjustmentDto, req.user);
+    return this.inventoryAdjustmentsService.create(
+      createAdjustmentDto,
+      req.user,
+    );
   }
 
   @Get()
@@ -55,7 +58,9 @@ export class InventoryAdjustmentsController {
   }
 
   @Get('product/:productId')
-  @ApiOperation({ summary: 'Retrieve adjustment history for a specific product' })
+  @ApiOperation({
+    summary: 'Retrieve adjustment history for a specific product',
+  })
   findByProduct(@Param('productId') productId: string) {
     return this.inventoryAdjustmentsService.findByProduct(productId);
   }

@@ -1,4 +1,13 @@
-import { Controller, Get, Post, Body, Param, Delete, Query, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Param,
+  Delete,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import { TaxRetentionsService } from './tax-retentions.service';
 import { CreateTaxRetentionDto } from './dto/create-tax-retention.dto';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
@@ -44,7 +53,9 @@ export class TaxRetentionsController {
    * Deletes a tax retention voucher and reverts its impact on balances.
    */
   @Delete(':id')
-  @ApiOperation({ summary: 'Delete a tax retention voucher and revert balances' })
+  @ApiOperation({
+    summary: 'Delete a tax retention voucher and revert balances',
+  })
   remove(@Param('id') id: string) {
     return this.taxRetentionsService.remove(id);
   }
@@ -60,8 +71,7 @@ export class TaxRetentionsController {
   ) {
     const startDate = startDateStr ? new Date(startDateStr) : undefined;
     const endDate = endDateStr ? new Date(endDateStr) : undefined;
-    
+
     return this.taxRetentionsService.generateSeniatTxt(startDate, endDate);
   }
 }
-

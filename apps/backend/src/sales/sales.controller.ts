@@ -101,7 +101,7 @@ export class SalesController {
    * Retrieves the most recent purchases for a specific client.
    */
   @Get('client/:clientId/recent')
-  @ApiOperation({ summary: 'Retrieve a client\'s recent purchases' })
+  @ApiOperation({ summary: "Retrieve a client's recent purchases" })
   @ApiResponse({ status: 200, description: 'Recent client purchases' })
   getClientRecentPurchases(
     @Param('clientId') clientId: string,
@@ -149,7 +149,8 @@ export class SalesController {
   })
   @ApiResponse({
     status: 200,
-    description: 'Sale declared uncollectible and deleted without stock restoral',
+    description:
+      'Sale declared uncollectible and deleted without stock restoral',
   })
   markAsUncollectible(@Param('id') id: string) {
     return this.salesService.markAsUncollectible(id);

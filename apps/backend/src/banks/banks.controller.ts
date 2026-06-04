@@ -27,7 +27,9 @@ export class BanksController {
 
   @Roles(Role.ADMIN, Role.MANAGER)
   @Post('liquidate-pos')
-  @ApiOperation({ summary: 'Liquidate a POS batch and transfer net funds to bank account' })
+  @ApiOperation({
+    summary: 'Liquidate a POS batch and transfer net funds to bank account',
+  })
   @ApiResponse({ status: 200, description: 'Batch liquidated successfully' })
   liquidatePosBatch(@Body() dto: LiquidatePosBatchDto, @Request() req) {
     return this.banksService.liquidatePosBatch(dto, req.user.id);
@@ -36,14 +38,21 @@ export class BanksController {
   @Roles(Role.ADMIN, Role.MANAGER)
   @Post()
   @ApiOperation({ summary: 'Create a new bank account' })
-  @ApiResponse({ status: 201, description: 'Bank account created successfully' })
+  @ApiResponse({
+    status: 201,
+    description: 'Bank account created successfully',
+  })
   create(@Body() createBankDto: CreateBankAccountDto) {
     return this.banksService.create(createBankDto);
   }
 
   @Get()
   @ApiOperation({ summary: 'Retrieve all active bank accounts' })
-  @ApiQuery({ name: 'search', required: false, description: 'Search by bank name, holder, or account number' })
+  @ApiQuery({
+    name: 'search',
+    required: false,
+    description: 'Search by bank name, holder, or account number',
+  })
   findAll(@Query('search') search?: string) {
     return this.banksService.findAll(search);
   }
@@ -59,7 +68,12 @@ export class BanksController {
   @Roles(Role.ADMIN, Role.MANAGER)
   @Get(':id/history')
   @ApiOperation({ summary: 'Retrieve movement history for a bank account' })
-  @ApiQuery({ name: 'limit', required: false, type: Number, description: 'Maximum number of records' })
+  @ApiQuery({
+    name: 'limit',
+    required: false,
+    type: Number,
+    description: 'Maximum number of records',
+  })
   getHistory(@Param('id') id: string, @Query('limit') limit?: number) {
     return this.banksService.getHistory(id, limit ? Number(limit) : 50);
   }
@@ -75,7 +89,10 @@ export class BanksController {
   @Roles(Role.ADMIN, Role.MANAGER)
   @Patch(':id')
   @ApiOperation({ summary: 'Update bank account information' })
-  @ApiResponse({ status: 200, description: 'Bank account updated successfully' })
+  @ApiResponse({
+    status: 200,
+    description: 'Bank account updated successfully',
+  })
   update(@Param('id') id: string, @Body() updateBankDto: UpdateBankAccountDto) {
     return this.banksService.update(id, updateBankDto);
   }

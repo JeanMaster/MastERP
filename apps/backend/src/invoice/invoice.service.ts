@@ -169,10 +169,12 @@ export class InvoiceService {
     paidAmount?: number;
     balance?: number;
   }) {
-    const invoiceNumber = data.invoiceNumber || (await this.generateInvoiceNumber());
+    const invoiceNumber =
+      data.invoiceNumber || (await this.generateInvoiceNumber());
     const status = data.status || 'PENDING';
     const paidAmount = data.paidAmount || 0;
-    const balance = data.balance !== undefined ? data.balance : (data.total - paidAmount);
+    const balance =
+      data.balance !== undefined ? data.balance : data.total - paidAmount;
 
     return this.prisma.invoice.create({
       data: {

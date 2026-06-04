@@ -43,7 +43,9 @@ export class CreateInvoiceDto {
   @IsPositive()
   total: number;
 
-  @ApiPropertyOptional({ description: 'Due date for credit invoices (ISO date)' })
+  @ApiPropertyOptional({
+    description: 'Due date for credit invoices (ISO date)',
+  })
   @IsOptional()
   @IsDateString()
   dueDate?: string;

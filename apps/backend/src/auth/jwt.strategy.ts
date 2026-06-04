@@ -17,7 +17,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   async validate(payload: any) {
     // Verify user still exists and is active in DB
     const user = await this.usersService.findOne(payload.sub);
-    
+
     if (!user || !user.isActive) {
       throw new UnauthorizedException('User is inactive or no longer exists');
     }

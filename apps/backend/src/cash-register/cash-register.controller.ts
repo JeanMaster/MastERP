@@ -114,8 +114,16 @@ export class CashRegisterController {
    */
   @Post('sessions/:id/verify')
   @ApiOperation({ summary: 'Verify an open session (Opening audit)' })
-  verifySession(@Param('id') id: string, @Body() verifyDto: any, @Request() req) {
-    return this.cashRegisterService.verifySession(id, verifyDto, req.user.username);
+  verifySession(
+    @Param('id') id: string,
+    @Body() verifyDto: any,
+    @Request() req,
+  ) {
+    return this.cashRegisterService.verifySession(
+      id,
+      verifyDto,
+      req.user.username,
+    );
   }
 
   /**
@@ -131,7 +139,6 @@ export class CashRegisterController {
    * Requests a session closure.
    */
   @Post('sessions/:id/request-close')
-
   @ApiOperation({ summary: 'Request a session closure' })
   requestClose(@Param('id') id: string, @Body() closeDto: CloseSessionDto) {
     return this.cashRegisterService.requestCloseSession(id, closeDto);
@@ -208,5 +215,4 @@ export class CashRegisterController {
   getSession(@Param('id') id: string) {
     return this.cashRegisterService.getSession(id);
   }
-
 }

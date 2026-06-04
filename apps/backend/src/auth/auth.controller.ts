@@ -1,10 +1,4 @@
-import {
-  Controller,
-  Post,
-  UseGuards,
-  Request,
-  Get,
-} from '@nestjs/common';
+import { Controller, Post, UseGuards, Request, Get } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
 import { AuthService } from './auth.service';
@@ -37,4 +31,3 @@ export class AuthController {
     return req.user;
   }
 }
-

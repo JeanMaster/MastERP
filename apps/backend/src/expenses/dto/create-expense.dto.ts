@@ -11,7 +11,10 @@ import { Type } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class CreateExpenseDto {
-  @ApiProperty({ example: 'Electricity Bill', description: 'Description of the expense' })
+  @ApiProperty({
+    example: 'Electricity Bill',
+    description: 'Description of the expense',
+  })
   @IsNotEmpty()
   @IsString()
   description: string;
@@ -28,13 +31,19 @@ export class CreateExpenseDto {
   @IsString()
   currencyCode: string;
 
-  @ApiProperty({ example: 36.5, description: 'Exchange rate used for the transaction' })
+  @ApiProperty({
+    example: 36.5,
+    description: 'Exchange rate used for the transaction',
+  })
   @IsNotEmpty()
   @IsNumber()
   @Type(() => Number)
   exchangeRate: number;
 
-  @ApiProperty({ required: false, description: 'Date of the expense (ISO string)' })
+  @ApiProperty({
+    required: false,
+    description: 'Date of the expense (ISO string)',
+  })
   @IsOptional()
   @IsDateString()
   date?: string;
@@ -49,7 +58,10 @@ export class CreateExpenseDto {
   @IsString()
   paymentMethod: string;
 
-  @ApiProperty({ required: false, description: 'External reference or invoice number' })
+  @ApiProperty({
+    required: false,
+    description: 'External reference or invoice number',
+  })
   @IsOptional()
   @IsString()
   reference?: string;
@@ -59,19 +71,30 @@ export class CreateExpenseDto {
   @IsString()
   notes?: string;
 
-  @ApiProperty({ required: false, default: 0, description: 'Tax amount included' })
+  @ApiProperty({
+    required: false,
+    default: 0,
+    description: 'Tax amount included',
+  })
   @IsOptional()
   @IsNumber()
   @Min(0)
   @Type(() => Number)
   taxAmount?: number;
 
-  @ApiProperty({ required: false, default: false, description: 'Whether the expense is taxable' })
+  @ApiProperty({
+    required: false,
+    default: false,
+    description: 'Whether the expense is taxable',
+  })
   @IsOptional()
   @IsBoolean()
   isTaxable?: boolean;
 
-  @ApiProperty({ required: false, description: 'ID of the bank account if paid by transfer/card' })
+  @ApiProperty({
+    required: false,
+    description: 'ID of the bank account if paid by transfer/card',
+  })
   @IsOptional()
   @IsString()
   bankAccountId?: string;

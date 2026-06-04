@@ -23,19 +23,29 @@ export class OpenSessionDto {
   @IsString()
   registerId: string;
 
-  @ApiProperty({ required: false, description: 'Initial balance in base currency' })
+  @ApiProperty({
+    required: false,
+    description: 'Initial balance in base currency',
+  })
   @IsOptional()
   @IsNumber()
   openingBalance?: number;
 
-  @ApiProperty({ type: [CashCountItemDto], required: false, description: 'Initial cash breakdown' })
+  @ApiProperty({
+    type: [CashCountItemDto],
+    required: false,
+    description: 'Initial cash breakdown',
+  })
   @IsOptional()
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => CashCountItemDto)
   items?: CashCountItemDto[];
 
-  @ApiProperty({ required: false, description: 'Exchange rate used for opening' })
+  @ApiProperty({
+    required: false,
+    description: 'Exchange rate used for opening',
+  })
   @IsOptional()
   @IsNumber()
   exchangeRate?: number;

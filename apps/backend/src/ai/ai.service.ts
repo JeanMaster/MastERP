@@ -18,7 +18,7 @@ export class AIService {
 
   constructor(
     private contextBuilder: ContextBuilderService,
-    private prisma: PrismaService
+    private prisma: PrismaService,
   ) {}
 
   /**
@@ -139,9 +139,7 @@ STYLE RULES:
     // 2. Build business context (sales, inventory, etc.) from the ContextBuilder
     const context = await this.contextBuilder.buildContext('today');
     const contextStr = JSON.stringify(context);
-    this.logger.log(
-      `Business context size: ${contextStr.length} bytes`,
-    );
+    this.logger.log(`Business context size: ${contextStr.length} bytes`);
 
     // 3. Build the final prompt combining instructions and real data
     const prompt = `${this.SYSTEM_PROMPT}
@@ -289,9 +287,7 @@ INSTRUCTIONS:
         );
       }
 
-      throw new Error(
-        'Could not process the message. Please try again.',
-      );
+      throw new Error('Could not process the message. Please try again.');
     }
   }
 

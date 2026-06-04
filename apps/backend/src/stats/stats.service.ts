@@ -4,7 +4,7 @@ import dayjs from 'dayjs';
 
 @Injectable()
 export class StatsService {
-  constructor(private prisma: PrismaService) { }
+  constructor(private prisma: PrismaService) {}
 
   // Reasons why products return to stock (sellable condition)
   private readonly SELLABLE_RETURN_REASONS = ['ERROR', 'UNSATISFIED', 'OTHER'];
@@ -214,25 +214,27 @@ export class StatsService {
 
     // Real liquidity across all open sessions
     const activeSessions = await this.prisma.cashSession.findMany({
-      where: { 
+      where: {
         status: { in: ['OPEN', 'AWAITING_CLOSE'] },
-        active: true 
+        active: true,
       },
-      include: { movements: true }
+      include: { movements: true },
     });
 
     let totalCashLiquidity = 0;
-    activeSessions.forEach(session => {
-        let sessionBalance = Number(session.openingBalance);
-        session.movements.forEach(m => {
-            const amountVES = Number(m.amount) * Number(m.exchangeRate || 1);
-            if (['SALE', 'WITHDRAWAL', 'ADJUSTMENT'].includes(m.type)) {
-                sessionBalance += amountVES;
-            } else if (['EXPENSE', 'DEPOSIT', 'CLOSING', 'CHANGE'].includes(m.type)) {
-                sessionBalance -= amountVES;
-            }
-        });
-        totalCashLiquidity += sessionBalance;
+    activeSessions.forEach((session) => {
+      let sessionBalance = Number(session.openingBalance);
+      session.movements.forEach((m) => {
+        const amountVES = Number(m.amount) * Number(m.exchangeRate || 1);
+        if (['SALE', 'WITHDRAWAL', 'ADJUSTMENT'].includes(m.type)) {
+          sessionBalance += amountVES;
+        } else if (
+          ['EXPENSE', 'DEPOSIT', 'CLOSING', 'CHANGE'].includes(m.type)
+        ) {
+          sessionBalance -= amountVES;
+        }
+      });
+      totalCashLiquidity += sessionBalance;
     });
 
     // Dynamic Sales Trend based on Range
@@ -470,9 +472,15 @@ export class StatsService {
       }),
     ]);
 
-    const map30 = new Map(sales30.map((i) => [i.productId, Number(i._sum.quantity || 0)]));
-    const map90 = new Map(sales90.map((i) => [i.productId, Number(i._sum.quantity || 0)]));
-    const map180 = new Map(sales180.map((i) => [i.productId, Number(i._sum.quantity || 0)]));
+    const map30 = new Map(
+      sales30.map((i) => [i.productId, Number(i._sum.quantity || 0)]),
+    );
+    const map90 = new Map(
+      sales90.map((i) => [i.productId, Number(i._sum.quantity || 0)]),
+    );
+    const map180 = new Map(
+      sales180.map((i) => [i.productId, Number(i._sum.quantity || 0)]),
+    );
 
     // Get all active products with their current stock, sales info, and createdAt
     const allProducts = await this.prisma.product.findMany({
@@ -493,7 +501,12 @@ export class StatsService {
         const q180 = map180.get(p.id) || 0;
         const stock = Number(p.stock);
 
-        const weightedVelocity = this.calculateWeightedVelocity(q30, q90, q180, p.createdAt);
+        const weightedVelocity = this.calculateWeightedVelocity(
+          q30,
+          q90,
+          q180,
+          p.createdAt,
+        );
         if (weightedVelocity <= 0) return []; // No sales, no forecast
 
         const daysRemaining = Math.max(0, Math.ceil(stock / weightedVelocity));
@@ -505,7 +518,10 @@ export class StatsService {
             stock: stock,
             dailySalesVelocity: Number(weightedVelocity.toFixed(4)),
             daysRemaining,
-            unitsNeeded6Months: Math.max(0, Math.ceil(weightedVelocity * projectionDays) - stock),
+            unitsNeeded6Months: Math.max(
+              0,
+              Math.ceil(weightedVelocity * projectionDays) - stock,
+            ),
             category: p.category?.name || 'Uncategorized',
           },
         ];
@@ -1170,7 +1186,7 @@ export class StatsService {
 
       const historicalRate =
         Number(ret.originalSale?.exchangeRate) &&
-          Number(ret.originalSale?.exchangeRate) !== 1
+        Number(ret.originalSale?.exchangeRate) !== 1
           ? Number(ret.originalSale?.exchangeRate)
           : closingRate;
 
@@ -1188,7 +1204,11 @@ export class StatsService {
       returnedValueNominal += returnedValueVES;
 
       // Sychronize Inflation Loss subtraction for returns (mirroring getInflationReport)
-      if (ret.refundAmount && Number(ret.refundAmount) > 0 && ret.refundMethod) {
+      if (
+        ret.refundAmount &&
+        Number(ret.refundAmount) > 0 &&
+        ret.refundMethod
+      ) {
         const method = ret.refundMethod.toUpperCase();
         const isDivisa =
           method === 'ZELLE' ||
@@ -1201,7 +1221,7 @@ export class StatsService {
         if (!isDivisa) {
           const historicalRate =
             Number(ret.originalSale?.exchangeRate) &&
-              Number(ret.originalSale?.exchangeRate) !== 1
+            Number(ret.originalSale?.exchangeRate) !== 1
               ? Number(ret.originalSale?.exchangeRate)
               : closingRate;
 
@@ -1694,72 +1714,101 @@ export class StatsService {
    * @returns Tax report summary.
    */
   async getTaxReport(startDate?: string, endDate?: string) {
-    const start = startDate ? dayjs(startDate).startOf('day').toDate() : dayjs().startOf('month').toDate();
-    const end = endDate ? dayjs(endDate).endOf('day').toDate() : dayjs().endOf('day').toDate();
+    const start = startDate
+      ? dayjs(startDate).startOf('day').toDate()
+      : dayjs().startOf('month').toDate();
+    const end = endDate
+      ? dayjs(endDate).endOf('day').toDate()
+      : dayjs().endOf('day').toDate();
 
     const dateFilter = { gte: start, lte: end };
 
     // 1. Tax Debits (Sales)
     const sales = await this.prisma.sale.findMany({
       where: { active: true, date: dateFilter },
-      select: { subtotal: true, tax: true, igtfAmount: true }
+      select: { subtotal: true, tax: true, igtfAmount: true },
     });
 
-    const totalSalesBase = sales.reduce((sum, s) => sum + Number(s.subtotal), 0);
+    const totalSalesBase = sales.reduce(
+      (sum, s) => sum + Number(s.subtotal),
+      0,
+    );
     const totalVatDebit = sales.reduce((sum, s) => sum + Number(s.tax), 0);
-    const totalIgtfCollected = sales.reduce((sum, s) => sum + Number(s.igtfAmount), 0);
+    const totalIgtfCollected = sales.reduce(
+      (sum, s) => sum + Number(s.igtfAmount),
+      0,
+    );
 
     // 2. Retentions Received (Sales)
     const retentionsReceived = await this.prisma.taxRetention.findMany({
-      where: { 
-        type: 'IVA', 
+      where: {
+        type: 'IVA',
         voucherDate: dateFilter,
-        invoiceId: { not: null }
+        invoiceId: { not: null },
       },
-      select: { amount: true }
+      select: { amount: true },
     });
 
-    const totalRetentionsReceived = retentionsReceived.reduce((sum, r) => sum + Number(r.amount), 0);
+    const totalRetentionsReceived = retentionsReceived.reduce(
+      (sum, r) => sum + Number(r.amount),
+      0,
+    );
 
     // 3. Tax Credits (Purchases)
     const purchases = await this.prisma.purchase.findMany({
       where: { status: 'COMPLETED', createdAt: dateFilter },
-      select: { subtotal: true, taxAmount: true }
+      select: { subtotal: true, taxAmount: true },
     });
 
-    const totalPurchasesBase = purchases.reduce((sum, p) => sum + Number(p.subtotal), 0);
-    const purchasesVatCredit = purchases.reduce((sum, p) => sum + Number(p.taxAmount), 0);
+    const totalPurchasesBase = purchases.reduce(
+      (sum, p) => sum + Number(p.subtotal),
+      0,
+    );
+    const purchasesVatCredit = purchases.reduce(
+      (sum, p) => sum + Number(p.taxAmount),
+      0,
+    );
 
     // 3.1 Tax Credits from Expenses
     const expenses = await this.prisma.expense.findMany({
-      where: { 
-        isTaxable: true, 
-        date: dateFilter // Use document date instead of createdAt
+      where: {
+        isTaxable: true,
+        date: dateFilter, // Use document date instead of createdAt
       },
-      select: { amount: true, taxAmount: true }
+      select: { amount: true, taxAmount: true },
     });
 
-    const totalExpensesBase = expenses.reduce((sum, e) => sum + (Number(e.amount) - Number(e.taxAmount)), 0);
-    const expensesVatCredit = expenses.reduce((sum, e) => sum + Number(e.taxAmount), 0);
+    const totalExpensesBase = expenses.reduce(
+      (sum, e) => sum + (Number(e.amount) - Number(e.taxAmount)),
+      0,
+    );
+    const expensesVatCredit = expenses.reduce(
+      (sum, e) => sum + Number(e.taxAmount),
+      0,
+    );
 
     const totalVatCredit = purchasesVatCredit + expensesVatCredit;
     const totalFiscalBase = totalPurchasesBase + totalExpensesBase;
 
     // 4. Retentions Emitted (Purchases) - Applicable if Special Taxpayer
     const retentionsEmitted = await this.prisma.taxRetention.findMany({
-      where: { 
-        type: 'IVA', 
+      where: {
+        type: 'IVA',
         voucherDate: dateFilter,
-        purchaseId: { not: null }
+        purchaseId: { not: null },
       },
-      select: { amount: true }
+      select: { amount: true },
     });
 
-    const totalRetentionsEmitted = retentionsEmitted.reduce((sum, r) => sum + Number(r.amount), 0);
+    const totalRetentionsEmitted = retentionsEmitted.reduce(
+      (sum, r) => sum + Number(r.amount),
+      0,
+    );
 
     // Final Calculation
     const rawBalance = totalVatDebit - totalVatCredit;
-    const finalVatToPay = rawBalance - totalRetentionsReceived + totalRetentionsEmitted;
+    const finalVatToPay =
+      rawBalance - totalRetentionsReceived + totalRetentionsEmitted;
 
     return {
       period: { start, end },
@@ -1768,21 +1817,21 @@ export class StatsService {
         tax: totalVatDebit,
         retentions: totalRetentionsReceived,
         netDebit: totalVatDebit - totalRetentionsReceived,
-        igtf: totalIgtfCollected
+        igtf: totalIgtfCollected,
       },
       purchases: {
         base: totalFiscalBase,
         tax: totalVatCredit,
         retentions: totalRetentionsEmitted,
-        netCredit: totalVatCredit - totalRetentionsEmitted
+        netCredit: totalVatCredit - totalRetentionsEmitted,
       },
       summary: {
         vatBalance: rawBalance,
         vatToPay: Math.max(0, finalVatToPay),
         vatCreditExcess: finalVatToPay < 0 ? Math.abs(finalVatToPay) : 0,
         igtfToPay: totalIgtfCollected,
-        isAValueFavor: finalVatToPay < 0
-      }
+        isAValueFavor: finalVatToPay < 0,
+      },
     };
   }
 
@@ -1793,32 +1842,36 @@ export class StatsService {
    * @returns List of fiscal sale rows.
    */
   async getLibroVentas(startDate?: string, endDate?: string) {
-    const start = startDate ? dayjs(startDate).startOf('day').toDate() : dayjs().startOf('month').toDate();
-    const end = endDate ? dayjs(endDate).endOf('day').toDate() : dayjs().endOf('day').toDate();
+    const start = startDate
+      ? dayjs(startDate).startOf('day').toDate()
+      : dayjs().startOf('month').toDate();
+    const end = endDate
+      ? dayjs(endDate).endOf('day').toDate()
+      : dayjs().endOf('day').toDate();
 
     const dateFilter = { gte: start, lte: end };
 
     const sales = await this.prisma.sale.findMany({
       where: { active: true, date: dateFilter },
-      include: { 
+      include: {
         client: true,
         invoice: {
-          include: { retentions: { where: { type: 'IVA' } } }
-        }
+          include: { retentions: { where: { type: 'IVA' } } },
+        },
       },
-      orderBy: { date: 'asc' }
+      orderBy: { date: 'asc' },
     });
 
     const returns = await this.prisma.return.findMany({
       where: { active: true, createdAt: dateFilter, status: 'COMPLETED' },
-      include: { 
-        originalSale: { include: { client: true } }
+      include: {
+        originalSale: { include: { client: true } },
       },
-      orderBy: { createdAt: 'asc' }
+      orderBy: { createdAt: 'asc' },
     });
 
     // Format sale rows
-    const saleRows = sales.map(s => {
+    const saleRows = sales.map((s) => {
       const retention = s.invoice?.retentions[0];
       return {
         id: s.id,
@@ -1835,12 +1888,12 @@ export class StatsService {
         vatAmount: Number(s.tax),
         vatRetained: Number(retention?.amount || 0),
         retentionVoucher: retention?.voucherNumber || '',
-        type: 'FACT'
+        type: 'FACT',
       };
     });
 
     // Format return rows (Credit Notes)
-    const returnRows = returns.map(r => ({
+    const returnRows = returns.map((r) => ({
       id: r.id,
       date: r.createdAt,
       rif: r.originalSale.client?.id || 'V-00000000-0',
@@ -1852,15 +1905,20 @@ export class StatsService {
       exemptAmount: 0,
       baseAmount: -Number(r.refundAmount || 0) / 1.16, // Estimated if no breakdown
       vatPercent: 16,
-      vatAmount: -(Number(r.refundAmount || 0) - (Number(r.refundAmount || 0) / 1.16)),
+      vatAmount: -(
+        Number(r.refundAmount || 0) -
+        Number(r.refundAmount || 0) / 1.16
+      ),
       vatRetained: 0,
       retentionVoucher: '',
-      type: 'N/CR'
+      type: 'N/CR',
     }));
 
     return {
       period: { start, end },
-      rows: [...saleRows, ...returnRows].sort((a, b) => dayjs(a.date).diff(dayjs(b.date)))
+      rows: [...saleRows, ...returnRows].sort((a, b) =>
+        dayjs(a.date).diff(dayjs(b.date)),
+      ),
     };
   }
 
@@ -1872,26 +1930,30 @@ export class StatsService {
    * @returns List of fiscal purchase rows.
    */
   async getLibroCompras(startDate?: string, endDate?: string) {
-    const start = startDate ? dayjs(startDate).startOf('day').toDate() : dayjs().startOf('month').toDate();
-    const end = endDate ? dayjs(endDate).endOf('day').toDate() : dayjs().endOf('day').toDate();
+    const start = startDate
+      ? dayjs(startDate).startOf('day').toDate()
+      : dayjs().startOf('month').toDate();
+    const end = endDate
+      ? dayjs(endDate).endOf('day').toDate()
+      : dayjs().endOf('day').toDate();
 
     const dateFilter = { gte: start, lte: end };
 
     const purchases = await this.prisma.purchase.findMany({
       where: { status: 'COMPLETED', createdAt: dateFilter },
-      include: { 
+      include: {
         supplier: true,
-        retentions: { where: { type: 'IVA' } }
+        retentions: { where: { type: 'IVA' } },
       },
-      orderBy: { createdAt: 'asc' }
+      orderBy: { createdAt: 'asc' },
     });
 
     const expenses = await this.prisma.expense.findMany({
       where: { isTaxable: true, date: dateFilter },
-      orderBy: { date: 'asc' }
+      orderBy: { date: 'asc' },
     });
 
-    const purchaseRows = purchases.map(p => {
+    const purchaseRows = purchases.map((p) => {
       const retention = p.retentions[0];
       return {
         id: p.id,
@@ -1907,11 +1969,11 @@ export class StatsService {
         vatAmount: Number(p.taxAmount),
         vatRetained: Number(retention?.amount || 0),
         retentionVoucher: retention?.voucherNumber || '',
-        type: 'COMPRA'
+        type: 'COMPRA',
       };
     });
 
-    const expenseRows = expenses.map(e => ({
+    const expenseRows = expenses.map((e) => ({
       id: e.id,
       date: e.date,
       rif: '', // Should be captured or left blank if generic expense
@@ -1925,12 +1987,14 @@ export class StatsService {
       vatAmount: Number(e.taxAmount),
       vatRetained: 0,
       retentionVoucher: '',
-      type: 'GASTO'
+      type: 'GASTO',
     }));
 
     return {
       period: { start, end },
-      rows: [...purchaseRows, ...expenseRows].sort((a, b) => dayjs(a.date).diff(dayjs(b.date)))
+      rows: [...purchaseRows, ...expenseRows].sort((a, b) =>
+        dayjs(a.date).diff(dayjs(b.date)),
+      ),
     };
   }
 
@@ -2165,7 +2229,7 @@ export class StatsService {
       const closingRate = getMonthRate(ret.createdAt);
       const historicalRate =
         Number(ret.originalSale?.exchangeRate) &&
-          Number(ret.originalSale?.exchangeRate) !== 1
+        Number(ret.originalSale?.exchangeRate) !== 1
           ? Number(ret.originalSale?.exchangeRate)
           : closingRate;
 
@@ -2313,7 +2377,9 @@ export class StatsService {
         totalRevaluedVES: summaryRevaluedVES,
         totalLossVES,
         lossPercentage:
-          summaryRevaluedVES > 0 ? (totalLossVES / summaryRevaluedVES) * 100 : 0,
+          summaryRevaluedVES > 0
+            ? (totalLossVES / summaryRevaluedVES) * 100
+            : 0,
       },
       methodBreakdown: Object.entries(methodBreakdown).map(
         ([method, data]) => ({ method, ...data }),
@@ -3012,9 +3078,15 @@ export class StatsService {
       }),
     ]);
 
-    const map30 = new Map(sales30.map((i) => [i.productId, Number(i._sum.quantity || 0)]));
-    const map90 = new Map(sales90.map((i) => [i.productId, Number(i._sum.quantity || 0)]));
-    const map180 = new Map(sales180.map((i) => [i.productId, Number(i._sum.quantity || 0)]));
+    const map30 = new Map(
+      sales30.map((i) => [i.productId, Number(i._sum.quantity || 0)]),
+    );
+    const map90 = new Map(
+      sales90.map((i) => [i.productId, Number(i._sum.quantity || 0)]),
+    );
+    const map180 = new Map(
+      sales180.map((i) => [i.productId, Number(i._sum.quantity || 0)]),
+    );
 
     // Get all active products with their current stock, sales info, and createdAt
     const allProducts = await this.prisma.product.findMany({
@@ -3028,30 +3100,44 @@ export class StatsService {
       },
     });
 
-    const productsReport = allProducts.map((p) => {
-      const q30 = map30.get(p.id) || 0;
-      const q90 = map90.get(p.id) || 0;
-      const q180 = map180.get(p.id) || 0;
-      const stock = Number(p.stock);
+    const productsReport = allProducts
+      .map((p) => {
+        const q30 = map30.get(p.id) || 0;
+        const q90 = map90.get(p.id) || 0;
+        const q180 = map180.get(p.id) || 0;
+        const stock = Number(p.stock);
 
-      const weightedVelocity = this.calculateWeightedVelocity(q30, q90, q180, p.createdAt);
-      const daysRemaining = weightedVelocity > 0 ? Math.ceil(stock / weightedVelocity) : Number.MAX_SAFE_INTEGER;
+        const weightedVelocity = this.calculateWeightedVelocity(
+          q30,
+          q90,
+          q180,
+          p.createdAt,
+        );
+        const daysRemaining =
+          weightedVelocity > 0
+            ? Math.ceil(stock / weightedVelocity)
+            : Number.MAX_SAFE_INTEGER;
 
-      return {
-        id: p.id,
-        name: p.name,
-        stock: stock,
-        dailySalesVelocity: Number(weightedVelocity.toFixed(4)),
-        daysRemaining: daysRemaining === Number.MAX_SAFE_INTEGER ? -1 : daysRemaining,
-        unitsNeeded6Months: Math.max(0, Math.ceil(weightedVelocity * projectionDays) - stock),
-        category: p.category?.name || 'Uncategorized',
-      };
-    }).sort((a, b) => {
-      // Sort by days remaining (ascending). Products with 0 velocity (-1 daysRemaining) go at the end
-      if (a.daysRemaining === -1) return 1;
-      if (b.daysRemaining === -1) return -1;
-      return a.daysRemaining - b.daysRemaining;
-    });
+        return {
+          id: p.id,
+          name: p.name,
+          stock: stock,
+          dailySalesVelocity: Number(weightedVelocity.toFixed(4)),
+          daysRemaining:
+            daysRemaining === Number.MAX_SAFE_INTEGER ? -1 : daysRemaining,
+          unitsNeeded6Months: Math.max(
+            0,
+            Math.ceil(weightedVelocity * projectionDays) - stock,
+          ),
+          category: p.category?.name || 'Uncategorized',
+        };
+      })
+      .sort((a, b) => {
+        // Sort by days remaining (ascending). Products with 0 velocity (-1 daysRemaining) go at the end
+        if (a.daysRemaining === -1) return 1;
+        if (b.daysRemaining === -1) return -1;
+        return a.daysRemaining - b.daysRemaining;
+      });
 
     return productsReport;
   }
@@ -3068,7 +3154,7 @@ export class StatsService {
       include: {
         category: true,
         currency: true,
-      }
+      },
     });
 
     if (!product) {
@@ -3080,12 +3166,16 @@ export class StatsService {
       where: { code: currencyCode },
     });
     const targetRate = Number(targetCurrency?.exchangeRate || 1);
-    const productRate = product.currency?.isPrimary ? 1 : Number(product.currency?.exchangeRate || 1);
-    
+    const productRate = product.currency?.isPrimary
+      ? 1
+      : Number(product.currency?.exchangeRate || 1);
+
     // Cost in primary
     const costInPrimary = Number(product.costPrice || 0) * productRate;
     // Cost in target
-    const costInTarget = targetCurrency?.isPrimary ? costInPrimary : costInPrimary / targetRate;
+    const costInTarget = targetCurrency?.isPrimary
+      ? costInPrimary
+      : costInPrimary / targetRate;
 
     // Sales history (last 6 months)
     const sixMonthsAgo = dayjs().subtract(5, 'month').startOf('month');
@@ -3093,7 +3183,7 @@ export class StatsService {
       where: {
         productId,
         createdAt: { gte: sixMonthsAgo.toDate() },
-        sale: { isCancelled: false }
+        sale: { isCancelled: false },
       },
       select: {
         quantity: true,
@@ -3101,13 +3191,16 @@ export class StatsService {
         unitPrice: true,
         createdAt: true,
         sale: {
-          select: { exchangeRate: true }
-        }
-      }
+          select: { exchangeRate: true },
+        },
+      },
     });
 
-    const monthlySales: Record<string, { month: string, unitsSold: number, revenue: number }> = {};
-    
+    const monthlySales: Record<
+      string,
+      { month: string; unitsSold: number; revenue: number }
+    > = {};
+
     // Initialize last 6 months
     for (let i = 5; i >= 0; i--) {
       const monthStr = dayjs().subtract(i, 'month').format('MMM YY');
@@ -3117,18 +3210,18 @@ export class StatsService {
     let totalUnitsSold6Months = 0;
     let totalRevenue6Months = 0;
 
-    salesData.forEach(item => {
+    salesData.forEach((item) => {
       const monthStr = dayjs(item.createdAt).format('MMM YY');
       const qty = Number(item.quantity);
-      
-      let itemRevenueInPrimary = Number(item.unitPrice || 0) * qty;
-      let saleRate = Number(item.sale.exchangeRate || 1);
-      
+
+      const itemRevenueInPrimary = Number(item.unitPrice || 0) * qty;
+      const saleRate = Number(item.sale.exchangeRate || 1);
+
       let revenueInTarget = 0;
       if (currencyCode === 'VES') {
-         revenueInTarget = itemRevenueInPrimary;
+        revenueInTarget = itemRevenueInPrimary;
       } else {
-         revenueInTarget = itemRevenueInPrimary / saleRate; 
+        revenueInTarget = itemRevenueInPrimary / saleRate;
       }
 
       if (monthlySales[monthStr]) {
@@ -3142,7 +3235,10 @@ export class StatsService {
 
     const costPriceVal = Number(product.costPrice || 0);
     const salePriceVal = Number(product.salePrice || 0);
-    const calculatedMargin = costPriceVal > 0 ? ((salePriceVal - costPriceVal) / costPriceVal) * 100 : 0;
+    const calculatedMargin =
+      costPriceVal > 0
+        ? ((salePriceVal - costPriceVal) / costPriceVal) * 100
+        : 0;
 
     return {
       product: {
@@ -3151,13 +3247,13 @@ export class StatsService {
         stock: Number(product.stock),
         category: product.category?.name || 'Uncategorized',
         costInTarget: costInTarget,
-        margin: Number(calculatedMargin.toFixed(2))
+        margin: Number(calculatedMargin.toFixed(2)),
       },
       salesHistory: Object.values(monthlySales),
       metrics: {
         totalUnitsSold6Months,
-        totalRevenue6Months
-      }
+        totalRevenue6Months,
+      },
     };
   }
 
@@ -3209,13 +3305,13 @@ export class StatsService {
 
     // Fetch Purchases
     const purchases = await this.prisma.purchase.findMany({
-      where: { 
+      where: {
         createdAt: dateFilter,
-        status: 'COMPLETED'
+        status: 'COMPLETED',
       },
       include: {
-        supplier: true
-      }
+        supplier: true,
+      },
     });
 
     const purchasesBySupplier: Record<string, number> = {};
@@ -3242,14 +3338,16 @@ export class StatsService {
       totalPurchases += valTarget;
 
       // Group by Supplier
-      const supplierName = p.supplier?.comercialName || p.supplier?.legalName || 'Unknown Supplier';
+      const supplierName =
+        p.supplier?.comercialName ||
+        p.supplier?.legalName ||
+        'Unknown Supplier';
       purchasesBySupplier[supplierName] =
         (purchasesBySupplier[supplierName] || 0) + valTarget;
 
       // Group by Date
       const dateStr = dayjs(p.createdAt).format('YYYY-MM-DD');
-      dailyPurchases[dateStr] =
-        (dailyPurchases[dateStr] || 0) + valTarget;
+      dailyPurchases[dateStr] = (dailyPurchases[dateStr] || 0) + valTarget;
     });
 
     const cogsData = await this.getCOGSReport(currencyCode, startDate, endDate);
@@ -3284,13 +3382,13 @@ export class StatsService {
     _createdAt: Date, // Kept for signature compatibility but unused
   ): number {
     // We use fixed denominators to be conservative with new products.
-    // This prevents a single sale in the first few days from projecting 
+    // This prevents a single sale in the first few days from projecting
     // a huge 6-month need.
     const v30 = q30 / 30;
     const v90 = q90 / 90;
     const v180 = q180 / 180;
 
     // Weights: 70% last 30 days, 25% last 90 days, 5% last 180 days
-    return (v30 * 0.7) + (v90 * 0.25) + (v180 * 0.05);
+    return v30 * 0.7 + v90 * 0.25 + v180 * 0.05;
   }
 }

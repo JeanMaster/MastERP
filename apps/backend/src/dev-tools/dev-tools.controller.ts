@@ -41,7 +41,10 @@ export class DevToolsController {
   @ApiOperation({
     summary: 'Financial reset (delete transactions but keep master data)',
   })
-  @ApiResponse({ status: 200, description: 'Financial data cleared successfully' })
+  @ApiResponse({
+    status: 200,
+    description: 'Financial data cleared successfully',
+  })
   async financialReset() {
     return this.devToolsService.financialReset();
   }

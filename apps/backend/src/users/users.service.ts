@@ -98,4 +98,3 @@ export class UsersService {
     return (this.prisma as any).user.delete({ where: { id } });
   }
 }
-

@@ -67,4 +67,3 @@ export class PurchaseOrdersController {
     return this.purchaseOrdersService.remove(id);
   }
 }
-

@@ -14,7 +14,8 @@ export class TaxRetentionsService {
    * @returns The created tax retention record.
    */
   async create(createTaxRetentionDto: CreateTaxRetentionDto) {
-    const { invoiceId, purchaseId, amount, ...retentionData } = createTaxRetentionDto;
+    const { invoiceId, purchaseId, amount, ...retentionData } =
+      createTaxRetentionDto;
 
     return this.prisma.$transaction(async (prisma) => {
       // 1. Check for duplicate voucher number
@@ -22,7 +23,9 @@ export class TaxRetentionsService {
         where: { voucherNumber: retentionData.voucherNumber },
       });
       if (existing) {
-        throw new BadRequestException(`Voucher number ${retentionData.voucherNumber} already exists`);
+        throw new BadRequestException(
+          `Voucher number ${retentionData.voucherNumber} already exists`,
+        );
       }
 
       // 2. Create the retention record
@@ -59,7 +62,7 @@ export class TaxRetentionsService {
         // Update invoice balance and status
         const newBalance = Number(invoice.balance) - Number(amount);
         const newPaidAmount = Number(invoice.paidAmount) + Number(amount);
-        
+
         await prisma.invoice.update({
           where: { id: invoiceId },
           data: {
@@ -77,7 +80,9 @@ export class TaxRetentionsService {
         });
 
         if (!purchase) {
-          throw new BadRequestException('The specified purchase does not exist');
+          throw new BadRequestException(
+            'The specified purchase does not exist',
+          );
         }
 
         // Register a purchase payment record of type RETENTION
@@ -160,7 +165,8 @@ export class TaxRetentionsService {
 
         if (invoice) {
           const newBalance = Number(invoice.balance) + Number(retention.amount);
-          const newPaidAmount = Number(invoice.paidAmount) - Number(retention.amount);
+          const newPaidAmount =
+            Number(invoice.paidAmount) - Number(retention.amount);
 
           await prisma.invoice.update({
             where: { id: retention.invoiceId },
@@ -189,15 +195,19 @@ export class TaxRetentionsService {
         });
 
         if (purchase) {
-          const newBalance = Number(purchase.balance) + Number(retention.amount);
-          const newPaidAmount = Number(purchase.paidAmount) - Number(retention.amount);
+          const newBalance =
+            Number(purchase.balance) + Number(retention.amount);
+          const newPaidAmount =
+            Number(purchase.paidAmount) - Number(retention.amount);
 
           await prisma.purchase.update({
             where: { id: retention.purchaseId },
             data: {
               balance: newBalance,
               paidAmount: Math.max(0, newPaidAmount),
-              paymentStatus: (newPaidAmount <= 0 ? 'PENDING' : 'PARTIAL') as any,
+              paymentStatus: (newPaidAmount <= 0
+                ? 'PENDING'
+                : 'PARTIAL') as any,
             },
           });
 
@@ -225,7 +235,9 @@ export class TaxRetentionsService {
   async generateSeniatTxt(startDate?: Date, endDate?: Date): Promise<string> {
     const company = await this.prisma.companySettings.findFirst();
     if (!company) {
-      throw new BadRequestException('Company settings (RIF) must be configured before exporting.');
+      throw new BadRequestException(
+        'Company settings (RIF) must be configured before exporting.',
+      );
     }
 
     const where: any = {
@@ -250,10 +262,13 @@ export class TaxRetentionsService {
     });
 
     if (retentions.length === 0) {
-      throw new BadRequestException('No retentions found in the selected period.');
+      throw new BadRequestException(
+        'No retentions found in the selected period.',
+      );
     }
 
-    const cleanRif = (rif: string) => rif.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+    const cleanRif = (rif: string) =>
+      rif.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
     const formatDate = (date: Date) => {
       const d = new Date(date);
       return `${d.getDate().toString().padStart(2, '0')}-${(d.getMonth() + 1).toString().padStart(2, '0')}-${d.getFullYear()}`;
@@ -266,7 +281,7 @@ export class TaxRetentionsService {
       if (!p) continue;
 
       const period = `${ret.voucherDate.getFullYear()}${(ret.voucherDate.getMonth() + 1).toString().padStart(2, '0')}`;
-      
+
       const row = [
         cleanRif(company.rif),
         period,
