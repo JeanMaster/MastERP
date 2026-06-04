@@ -18,7 +18,7 @@ export enum ClientTier {
 export class MarketingService implements OnModuleInit {
   constructor(
     private prisma: PrismaService,
-    private aiService: AIService
+    private aiService: AIService,
   ) {}
 
   async onModuleInit() {
@@ -55,7 +55,7 @@ export class MarketingService implements OnModuleInit {
   async updateConfig(data: Partial<MarketingConfig>) {
     const config = await this.getConfig();
     if (!config) throw new Error('Marketing configuration not initialized');
-    
+
     return this.prisma.marketingConfig.update({
       where: { id: config.id },
       data,
@@ -69,7 +69,7 @@ export class MarketingService implements OnModuleInit {
   async getMarketingStats() {
     const config = await this.getConfig();
     if (!config) return null; // Safety check
-    
+
     const now = dayjs();
     const churnDate = now.subtract(config.churnDays, 'day').toDate();
 
@@ -94,7 +94,7 @@ export class MarketingService implements OnModuleInit {
     let churnCount = 0;
     const upcomingBirthdays: any[] = [];
 
-    clientStats.forEach(client => {
+    clientStats.forEach((client) => {
       const totalSpentUSD = this.calculateTotalSpentUSD(client.sales as any[]);
       const tier = this.calculateClientTier(totalSpentUSD, config);
 
@@ -104,7 +104,9 @@ export class MarketingService implements OnModuleInit {
       else tiers.bronze++;
 
       // Check Churn
-      const lastSale = client.sales.sort((a, b) => b.date.getTime() - a.date.getTime())[0];
+      const lastSale = client.sales.sort(
+        (a, b) => b.date.getTime() - a.date.getTime(),
+      )[0];
       if (lastSale && dayjs(lastSale.date).isBefore(churnDate)) {
         churnCount++;
       }
@@ -129,7 +131,8 @@ export class MarketingService implements OnModuleInit {
       churn: {
         count: churnCount,
         totalClients: clientStats.length,
-        percentage: clientStats.length > 0 ? (churnCount / clientStats.length) * 100 : 0,
+        percentage:
+          clientStats.length > 0 ? (churnCount / clientStats.length) * 100 : 0,
         days: config.churnDays,
       },
       upcomingBirthdays: upcomingBirthdays.sort((a, b) => a.day - b.day),
@@ -145,20 +148,20 @@ export class MarketingService implements OnModuleInit {
       where: { active: true },
       include: {
         sales: {
-            where: { active: true },
-            orderBy: { date: 'desc' },
-            take: 1
-        }
-      }
+          where: { active: true },
+          orderBy: { date: 'desc' },
+          take: 1,
+        },
+      },
     });
 
-    return clients.map(c => ({
-        id: c.id,
-        name: c.name,
-        phone: c.phone,
-        email: c.email,
-        lastSale: c.sales[0]?.date || null,
-        totalSales: c.sales.length
+    return clients.map((c) => ({
+      id: c.id,
+      name: c.name,
+      phone: c.phone,
+      email: c.email,
+      lastSale: c.sales[0]?.date || null,
+      totalSales: c.sales.length,
     }));
   }
 
@@ -285,7 +288,11 @@ export class MarketingService implements OnModuleInit {
    * @param data The template data.
    * @returns The created message template.
    */
-  async createTemplate(data: { name: string; content: string; category?: string }) {
+  async createTemplate(data: {
+    name: string;
+    content: string;
+    category?: string;
+  }) {
     return this.prisma.messageTemplate.create({
       data: {
         name: data.name,
@@ -343,7 +350,11 @@ export class MarketingService implements OnModuleInit {
    * @param data Campaign creation data including name, template, and segment.
    * @returns The created campaign.
    */
-  async createCampaign(data: { name: string; templateId: string; targetSegment: string }) {
+  async createCampaign(data: {
+    name: string;
+    templateId: string;
+    targetSegment: string;
+  }) {
     const template = await this.prisma.messageTemplate.findUnique({
       where: { id: data.templateId },
     });
@@ -351,7 +362,7 @@ export class MarketingService implements OnModuleInit {
     if (!template) throw new Error('Template not found');
 
     // 1. Get the clients based on the segment
-    let selectedClients: any[] = [];
+    const selectedClients: any[] = [];
     const config = await this.getConfig();
     if (!config) throw new Error('Marketing config missing');
 
@@ -368,26 +379,40 @@ export class MarketingService implements OnModuleInit {
     const now = dayjs();
     const churnDate = now.subtract(config.churnDays, 'day').toDate();
 
-    allClients.forEach(client => {
+    allClients.forEach((client) => {
       let includeClient = false;
       const totalSpentUSD = this.calculateTotalSpentUSD(client.sales as any[]);
       const clientTier = this.calculateClientTier(totalSpentUSD, config);
 
       if (data.targetSegment === 'ALL') {
         includeClient = true;
-      } else if (data.targetSegment === 'VIP' && clientTier === ClientTier.VIP) {
+      } else if (
+        data.targetSegment === 'VIP' &&
+        clientTier === ClientTier.VIP
+      ) {
         includeClient = true;
-      } else if (data.targetSegment === 'GOLD' && clientTier === ClientTier.GOLD) {
+      } else if (
+        data.targetSegment === 'GOLD' &&
+        clientTier === ClientTier.GOLD
+      ) {
         includeClient = true;
-      } else if (data.targetSegment === 'SILVER' && clientTier === ClientTier.SILVER) {
+      } else if (
+        data.targetSegment === 'SILVER' &&
+        clientTier === ClientTier.SILVER
+      ) {
         includeClient = true;
       } else if (data.targetSegment === 'CHURN') {
-        const lastSale = client.sales.sort((a, b) => b.date.getTime() - a.date.getTime())[0];
+        const lastSale = client.sales.sort(
+          (a, b) => b.date.getTime() - a.date.getTime(),
+        )[0];
         if (lastSale && dayjs(lastSale.date).isBefore(churnDate)) {
           includeClient = true;
         }
       } else if (data.targetSegment === 'BIRTHDAY') {
-        if (client.birthDate && dayjs(client.birthDate).month() === now.month()) {
+        if (
+          client.birthDate &&
+          dayjs(client.birthDate).month() === now.month()
+        ) {
           includeClient = true;
         }
       }
@@ -409,7 +434,9 @@ export class MarketingService implements OnModuleInit {
     });
 
     if (selectedClients.length === 0) {
-      throw new Error('No clients found for this segment with a valid phone number.');
+      throw new Error(
+        'No clients found for this segment with a valid phone number.',
+      );
     }
 
     // 2. Create the campaign and recipients
@@ -425,7 +452,7 @@ export class MarketingService implements OnModuleInit {
       });
 
       await tx.campaignRecipient.createMany({
-        data: selectedClients.map(c => ({
+        data: selectedClients.map((c) => ({
           ...c,
           campaignId: campaign.id,
         })),
@@ -499,7 +526,7 @@ export class MarketingService implements OnModuleInit {
    */
   async getCoupons() {
     return this.prisma.coupon.findMany({
-      orderBy: { createdAt: 'desc' }
+      orderBy: { createdAt: 'desc' },
     });
   }
 
@@ -528,7 +555,10 @@ export class MarketingService implements OnModuleInit {
    * @param payload Validation data including clientId and cartItems.
    * @returns Validation result including discount amount.
    */
-  async validateCoupon(code: string, payload: { clientId?: string, cartItems: any[] }) {
+  async validateCoupon(
+    code: string,
+    payload: { clientId?: string; cartItems: any[] },
+  ) {
     const { clientId, cartItems = [] } = payload;
     const coupon = await this.prisma.coupon.findUnique({ where: { code } });
     if (!coupon) throw new Error('Invalid or non-existent coupon');
@@ -536,8 +566,10 @@ export class MarketingService implements OnModuleInit {
 
     // Dates
     const now = dayjs();
-    if (coupon.startDate && now.isBefore(dayjs(coupon.startDate))) throw new Error('Coupon is not yet valid');
-    if (coupon.endDate && now.isAfter(dayjs(coupon.endDate))) throw new Error('Coupon has expired');
+    if (coupon.startDate && now.isBefore(dayjs(coupon.startDate)))
+      throw new Error('Coupon is not yet valid');
+    if (coupon.endDate && now.isAfter(dayjs(coupon.endDate)))
+      throw new Error('Coupon has expired');
 
     // Global usage limits
     if (coupon.usageLimit !== null && coupon.usedCount >= coupon.usageLimit) {
@@ -546,14 +578,20 @@ export class MarketingService implements OnModuleInit {
 
     // Client Tier
     if (coupon.targetTiers && coupon.targetTiers.length > 0) {
-      if (!clientId) throw new Error('This coupon requires a registered client');
-      
+      if (!clientId)
+        throw new Error('This coupon requires a registered client');
+
       const config = await this.getConfig();
       if (!config) throw new Error('Marketing configuration not found');
-      
+
       const client = await this.prisma.client.findUnique({
         where: { id: clientId },
-        include: { sales: { where: { active: true }, select: { total: true, exchangeRate: true } } }
+        include: {
+          sales: {
+            where: { active: true },
+            select: { total: true, exchangeRate: true },
+          },
+        },
       });
       if (!client) throw new Error('Client does not exist');
 
@@ -561,15 +599,18 @@ export class MarketingService implements OnModuleInit {
       const clientTier = this.calculateClientTier(totalSpentUSD, config);
 
       if (!coupon.targetTiers.includes(clientTier)) {
-        throw new Error(`This coupon is exclusive for tier levels: ${coupon.targetTiers.join(', ')}. Your level is ${clientTier}.`);
+        throw new Error(
+          `This coupon is exclusive for tier levels: ${coupon.targetTiers.join(', ')}. Your level is ${clientTier}.`,
+        );
       }
     }
 
     // Single use
     if (coupon.isSingleUsePerClient) {
-      if (!clientId) throw new Error('Single-use coupon requires a registered client');
+      if (!clientId)
+        throw new Error('Single-use coupon requires a registered client');
       const pastUsage = await this.prisma.sale.findFirst({
-        where: { clientId, couponId: coupon.id, active: true }
+        where: { clientId, couponId: coupon.id, active: true },
       });
       if (pastUsage) throw new Error('You have already used this coupon.');
     }
@@ -582,14 +623,14 @@ export class MarketingService implements OnModuleInit {
       // verify if it passes department/product checks
       let applies = true;
       if (coupon.applicableDepartments.length > 0 && item.categoryId) {
-         if (!coupon.applicableDepartments.includes(item.categoryId)) {
-           applies = false;
-         }
+        if (!coupon.applicableDepartments.includes(item.categoryId)) {
+          applies = false;
+        }
       }
       if (coupon.applicableProducts.length > 0 && item.id) {
-         if (!coupon.applicableProducts.includes(item.id)) {
-           applies = false;
-         }
+        if (!coupon.applicableProducts.includes(item.id)) {
+          applies = false;
+        }
       }
 
       if (applies) {
@@ -599,54 +640,65 @@ export class MarketingService implements OnModuleInit {
     }
 
     if (applicableSubtotal === 0 || applicableItems.length === 0) {
-       throw new Error('The coupon does not apply to any product in your cart. Check restrictions (allowed departments or products).');
+      throw new Error(
+        'The coupon does not apply to any product in your cart. Check restrictions (allowed departments or products).',
+      );
     }
 
     // Min purchase
-    if (coupon.minPurchaseAmount && applicableSubtotal < Number(coupon.minPurchaseAmount)) {
-       throw new Error(`This coupon requires a minimum purchase of $${coupon.minPurchaseAmount} in applicable items`);
+    if (
+      coupon.minPurchaseAmount &&
+      applicableSubtotal < Number(coupon.minPurchaseAmount)
+    ) {
+      throw new Error(
+        `This coupon requires a minimum purchase of $${coupon.minPurchaseAmount} in applicable items`,
+      );
     }
 
     // Calculate discount
     let totalDiscount = 0;
-    
+
     if (coupon.discountType === 'PERCENTAGE') {
-       const percentage = Number(coupon.discountValue) / 100;
-       // We must apply line by line to respect cost
-       for (const item of applicableItems) {
-         const itemTotalSales = Number(item.salePrice) * Number(item.quantity);
-         const itemTotalCost = Number(item.costPrice || 0) * Number(item.quantity);
-         let potentialDiscount = itemTotalSales * percentage;
+      const percentage = Number(coupon.discountValue) / 100;
+      // We must apply line by line to respect cost
+      for (const item of applicableItems) {
+        const itemTotalSales = Number(item.salePrice) * Number(item.quantity);
+        const itemTotalCost =
+          Number(item.costPrice || 0) * Number(item.quantity);
+        let potentialDiscount = itemTotalSales * percentage;
 
-         // Cost protection
-         if (itemTotalSales - potentialDiscount < itemTotalCost) {
-            potentialDiscount = itemTotalSales - itemTotalCost;
-            if (potentialDiscount < 0) potentialDiscount = 0;
-         }
+        // Cost protection
+        if (itemTotalSales - potentialDiscount < itemTotalCost) {
+          potentialDiscount = itemTotalSales - itemTotalCost;
+          if (potentialDiscount < 0) potentialDiscount = 0;
+        }
 
-         totalDiscount += potentialDiscount;
-       }
+        totalDiscount += potentialDiscount;
+      }
     } else {
-       // Fixed amount. We split the fixed amount proportionally and limit by cost
-       let remainingDiscount = Number(coupon.discountValue);
-       
-       for (const item of applicableItems) {
-          if (remainingDiscount <= 0) break;
+      // Fixed amount. We split the fixed amount proportionally and limit by cost
+      let remainingDiscount = Number(coupon.discountValue);
 
-          const itemTotalSales = Number(item.salePrice) * Number(item.quantity);
-          const itemTotalCost = Number(item.costPrice || 0) * Number(item.quantity);
-          const margin = itemTotalSales - itemTotalCost;
+      for (const item of applicableItems) {
+        if (remainingDiscount <= 0) break;
 
-          if (margin > 0) {
-            const applicableHere = Math.min(margin, remainingDiscount);
-            totalDiscount += applicableHere;
-            remainingDiscount -= applicableHere;
-          }
-       }
+        const itemTotalSales = Number(item.salePrice) * Number(item.quantity);
+        const itemTotalCost =
+          Number(item.costPrice || 0) * Number(item.quantity);
+        const margin = itemTotalSales - itemTotalCost;
+
+        if (margin > 0) {
+          const applicableHere = Math.min(margin, remainingDiscount);
+          totalDiscount += applicableHere;
+          remainingDiscount -= applicableHere;
+        }
+      }
     }
 
     if (totalDiscount <= 0) {
-      throw new Error('The coupon is valid but cannot be applied because the products are already at cost or leave no margin.');
+      throw new Error(
+        'The coupon is valid but cannot be applied because the products are already at cost or leave no margin.',
+      );
     }
 
     // round to 2 decimals
@@ -656,7 +708,7 @@ export class MarketingService implements OnModuleInit {
       couponId: coupon.id,
       code: coupon.code,
       discountAmount: totalDiscount,
-      message: `Coupon ${coupon.code} applied successfully! Discount: -${totalDiscount}`
+      message: `Coupon ${coupon.code} applied successfully! Discount: -${totalDiscount}`,
     };
   }
 
@@ -672,9 +724,20 @@ export class MarketingService implements OnModuleInit {
    * @param notes Rationale for the redemption.
    * @returns The created loyalty movement.
    */
-  async redeemPoints(clientId: string, saleId: string | null, pointsToRedeem: number, notes?: string) {
+  async redeemPoints(
+    clientId: string,
+    saleId: string | null,
+    pointsToRedeem: number,
+    notes?: string,
+  ) {
     return this.prisma.$transaction(async (tx) => {
-      return this.redeemPointsWithTx(tx, clientId, saleId, pointsToRedeem, notes);
+      return this.redeemPointsWithTx(
+        tx,
+        clientId,
+        saleId,
+        pointsToRedeem,
+        notes,
+      );
     });
   }
 
@@ -687,20 +750,28 @@ export class MarketingService implements OnModuleInit {
    * @param notes Rationale for the redemption.
    * @returns The created loyalty movement.
    */
-  async redeemPointsWithTx(tx: any, clientId: string, saleId: string | null, pointsToRedeem: number, notes?: string) {
+  async redeemPointsWithTx(
+    tx: any,
+    clientId: string,
+    saleId: string | null,
+    pointsToRedeem: number,
+    notes?: string,
+  ) {
     if (pointsToRedeem <= 0) return null;
 
     const client = await tx.client.findUnique({
       where: { id: clientId },
-      select: { loyaltyPoints: true }
+      select: { loyaltyPoints: true },
     });
 
     if (!client) throw new Error('Client not found');
-    
+
     // Convert to number for comparison as Prisma Decimal might behave differently
     const currentPoints = Number(client.loyaltyPoints);
     if (currentPoints < pointsToRedeem) {
-      throw new Error(`Insufficient points balance. The client only has ${currentPoints} points available, but an attempt was made to redeem ${pointsToRedeem}.`);
+      throw new Error(
+        `Insufficient points balance. The client only has ${currentPoints} points available, but an attempt was made to redeem ${pointsToRedeem}.`,
+      );
     }
 
     const movement = await tx.loyaltyMovement.create({
@@ -732,7 +803,7 @@ export class MarketingService implements OnModuleInit {
     const config = await this.getConfig();
     const client = await this.prisma.client.findUnique({
       where: { id: clientId },
-      select: { loyaltyPoints: true }
+      select: { loyaltyPoints: true },
     });
 
     if (!config || !client) return { points: 0, valueUsd: 0 };
@@ -741,7 +812,7 @@ export class MarketingService implements OnModuleInit {
       points: Number(client.loyaltyPoints),
       valueUsd: Number(client.loyaltyPoints) * Number(config.valuePerPoint),
       rate: Number(config.valuePerPoint),
-      maxRedemptionPercentage: config.maxRedemptionPercentage
+      maxRedemptionPercentage: config.maxRedemptionPercentage,
     };
   }
 
@@ -754,13 +825,17 @@ export class MarketingService implements OnModuleInit {
    * @param instructions Optional custom instructions for the AI.
    * @returns The created social post draft.
    */
-  async generateSocialPost(productId: string, platform: string, instructions?: string) {
+  async generateSocialPost(
+    productId: string,
+    platform: string,
+    instructions?: string,
+  ) {
     const product = await this.prisma.product.findUnique({
       where: { id: productId },
       include: {
         category: true,
-        currency: true
-      }
+        currency: true,
+      },
     });
 
     if (!product) throw new Error('Product not found');
@@ -768,7 +843,7 @@ export class MarketingService implements OnModuleInit {
     const content = await this.aiService.generateSocialPost({
       product,
       platform,
-      customInstructions: instructions
+      customInstructions: instructions,
     });
 
     // Save as draft automatically
@@ -777,8 +852,8 @@ export class MarketingService implements OnModuleInit {
         platform,
         content,
         productId,
-        status: 'DRAFT'
-      }
+        status: 'DRAFT',
+      },
     });
   }
 
@@ -789,7 +864,7 @@ export class MarketingService implements OnModuleInit {
   async getSocialDrafts() {
     return this.prisma.socialPost.findMany({
       orderBy: { createdAt: 'desc' },
-      take: 20
+      take: 20,
     });
   }
 
@@ -810,7 +885,7 @@ export class MarketingService implements OnModuleInit {
   private calculateTotalSpentUSD(sales: any[]): number {
     return sales.reduce((acc, sale) => {
       const rate = Number(sale.exchangeRate) || 1;
-      return acc + (Number(sale.total) / rate);
+      return acc + Number(sale.total) / rate;
     }, 0);
   }
 
@@ -820,11 +895,15 @@ export class MarketingService implements OnModuleInit {
    * @param config The marketing configuration thresholds.
    * @returns The assigned ClientTier.
    */
-  private calculateClientTier(totalSpentUSD: number, config: MarketingConfig): ClientTier {
+  private calculateClientTier(
+    totalSpentUSD: number,
+    config: MarketingConfig,
+  ): ClientTier {
     if (totalSpentUSD >= Number(config.tierVipThreshold)) return ClientTier.VIP;
-    if (totalSpentUSD >= Number(config.tierGoldThreshold)) return ClientTier.GOLD;
-    if (totalSpentUSD >= Number(config.tierSilverThreshold)) return ClientTier.SILVER;
+    if (totalSpentUSD >= Number(config.tierGoldThreshold))
+      return ClientTier.GOLD;
+    if (totalSpentUSD >= Number(config.tierSilverThreshold))
+      return ClientTier.SILVER;
     return ClientTier.BRONZE;
   }
 }
-

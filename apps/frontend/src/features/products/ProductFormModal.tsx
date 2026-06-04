@@ -690,7 +690,10 @@ export const ProductFormModal = ({ open, product, onClose, defaultType }: Produc
                         </Form.Item>
                     )}
 
-                    <Form.Item label="Product Images (Max 12)">
+                    <Form.Item label={t('products.images_label', { defaultValue: 'Product Images (Max 12)' })}>
+                        <div style={{ marginBottom: 8, fontSize: 12, color: '#888' }}>
+                            {t('products.image_auto_compress', { defaultValue: 'Images are automatically compressed on the server' })}
+                        </div>
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                             {images.map((url, index) => (
                                 <div key={index} style={{ position: 'relative', width: 100, height: 100, border: '1px solid #d9d9d9', borderRadius: 8, overflow: 'hidden' }}>
@@ -709,18 +712,18 @@ export const ProductFormModal = ({ open, product, onClose, defaultType }: Produc
                                     listType="picture-card"
                                     showUploadList={false}
 beforeUpload={async (file) => {
-                                                if (images.length >= 12) {
-                                                    message.warning(t('products.images_max'));
-                                                    return false;
-                                                }
-                                                if (file.size && file.size > 2 * 1024 * 1024) {
-                                                    message.error(t('products.image_too_large'));
-                                                    return false;
-                                                }
-                                                try {
-                                                    const maxWidth = 600;
-                                                    const maxHeight = 600;
-                                                    const quality = 0.6;
+                                                         if (images.length >= 12) {
+                                                             message.warning(t('products.images_max'));
+                                                             return false;
+                                                         }
+                                                         if (file.size && file.size > 10 * 1024 * 1024) {
+                                                             message.error(t('products.image_too_large'));
+                                                             return false;
+                                                         }
+try {
+                                                             const maxWidth = 400;
+                                                             const maxHeight = 400;
+                                                             const quality = 0.5;
 
                                             const compressImage = (file: File): Promise<string> => {
                                                 return new Promise((resolve, reject) => {

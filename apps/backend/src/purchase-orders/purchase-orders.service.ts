@@ -37,7 +37,9 @@ export class PurchaseOrdersService {
       });
 
       if (!product) {
-        throw new NotFoundException(`Product with ID ${item.productId} not found`);
+        throw new NotFoundException(
+          `Product with ID ${item.productId} not found`,
+        );
       }
 
       const itemTotal = item.quantity * item.cost;

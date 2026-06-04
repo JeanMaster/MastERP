@@ -392,9 +392,7 @@ export class CashRegisterService {
     }
 
     if (session.status === 'CLOSED') {
-      throw new BadRequestException(
-        'Cannot add movements to a closed session',
-      );
+      throw new BadRequestException('Cannot add movements to a closed session');
     }
 
     // If exchange rate is not provided, try to fetch the current rate for the currency

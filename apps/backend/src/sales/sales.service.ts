@@ -1,4 +1,8 @@
-import { Injectable, BadRequestException, UnauthorizedException } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { Role } from '../common/decorators/roles.decorator';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateSaleDto } from './dto/create-sale.dto';
@@ -40,7 +44,9 @@ export class SalesService {
 
     // 🛡️ SECURITY: Validate Retroactive Sale Permission & Date
     if (saleDateStr) {
-      const canCreateRetroactive = user.role === Role.ADMIN || user?.permissions?.includes('CREATE_RETROACTIVE_SALES');
+      const canCreateRetroactive =
+        user.role === Role.ADMIN ||
+        user?.permissions?.includes('CREATE_RETROACTIVE_SALES');
       if (!canCreateRetroactive) {
         throw new UnauthorizedException(
           'Unauthorized: You do not have permission to create retroactive sales.',
@@ -60,7 +66,7 @@ export class SalesService {
     // Validate products, stock and prepare items with cost
     const itemsWithCost: any[] = [];
     let calculatedSubtotal = 0;
-    let calculatedTax = 0;
+    const calculatedTax = 0;
 
     for (const item of items) {
       const product = await this.prisma.product.findUnique({
@@ -87,7 +93,8 @@ export class SalesService {
       const costInPrimary = Number(product.costPrice || 0) * rate;
 
       if (Number(item.unitPrice) < costInPrimary) {
-        const canSellBelowCost = user.role === Role.ADMIN || user.role === Role.MANAGER;
+        const canSellBelowCost =
+          user.role === Role.ADMIN || user.role === Role.MANAGER;
         if (!canSellBelowCost) {
           throw new UnauthorizedException(
             `Unauthorized: You cannot sell ${product.name} below its cost price (${costInPrimary}). Contact a manager.`,
@@ -137,7 +144,11 @@ export class SalesService {
     // 🛡️ SECURITY: Verify Total Consistency
     // Calculate expected tax and total (this is simplified, should ideally match your tax logic)
     const expectedTax = createSaleDto.tax; // We still use the tax sent but could recalculate if taxRate was known here
-    const expectedTotal = calculatedSubtotal + Number(expectedTax) - Number(createSaleDto.discount || 0) + Number(createSaleDto.igtfAmount || 0);
+    const expectedTotal =
+      calculatedSubtotal +
+      Number(expectedTax) -
+      Number(createSaleDto.discount || 0) +
+      Number(createSaleDto.igtfAmount || 0);
 
     // Allow for small rounding differences (0.01)
     if (Math.abs(expectedTotal - Number(createSaleDto.total)) > 0.01) {
@@ -159,7 +170,10 @@ export class SalesService {
     }
 
     // Validate that if there are VAT retentions, a client must be selected
-    if (saleData.paymentMethod.includes('RETENTION_IVA') && !saleData.clientId) {
+    if (
+      saleData.paymentMethod.includes('RETENTION_IVA') &&
+      !saleData.clientId
+    ) {
       throw new BadRequestException(
         'A client must be selected to apply VAT retentions',
       );
@@ -177,13 +191,13 @@ export class SalesService {
       let controlCounter = await prisma.saleControlCounter.findFirst();
       if (!controlCounter) {
         controlCounter = await prisma.saleControlCounter.create({
-          data: { prefix: '00', currentNumber: 1 }
+          data: { prefix: '00', currentNumber: 1 },
         });
       }
       const controlNumber = `${controlCounter.prefix}-${controlCounter.currentNumber.toString().padStart(8, '0')}`;
       await prisma.saleControlCounter.update({
         where: { id: controlCounter.id },
-        data: { currentNumber: controlCounter.currentNumber + 1 }
+        data: { currentNumber: controlCounter.currentNumber + 1 },
       });
 
       // Create the sale with invoice and control numbers
@@ -216,7 +230,12 @@ export class SalesService {
 
       // Update product stock
       for (const item of newSale.items) {
-        await this.updateProductStockWithTx(prisma, item.productId, Number(item.quantity), 'DECREMENT');
+        await this.updateProductStockWithTx(
+          prisma,
+          item.productId,
+          Number(item.quantity),
+          'DECREMENT',
+        );
       }
 
       // --- Mercado Libre Auto-Sync Hook ---
@@ -245,7 +264,9 @@ export class SalesService {
       // --- Loyalty Points Hook (Redemption) INSIDE Transaction ---
       if (newSale.paymentMethod.toUpperCase().includes('LOYALTY_POINTS')) {
         if (!newSale.clientId) {
-          throw new Error('A registered client is required to pay with loyalty points. "CONTADO" client cannot use points.');
+          throw new Error(
+            'A registered client is required to pay with loyalty points. "CONTADO" client cannot use points.',
+          );
         }
 
         const methods = newSale.paymentMethod.split(', ');
@@ -255,9 +276,11 @@ export class SalesService {
           if (part.toUpperCase().startsWith('LOYALTY_POINTS')) {
             const subparts = part.split(':');
             const pointsToRedeem = subparts[2] ? parseFloat(subparts[2]) : 0;
-            
+
             if (pointsToRedeem <= 0) {
-              throw new Error('Invalid points format or insufficient quantity for redemption.');
+              throw new Error(
+                'Invalid points format or insufficient quantity for redemption.',
+              );
             }
 
             // This is now inside the transaction 'prisma' (tx)
@@ -266,14 +289,16 @@ export class SalesService {
               newSale.clientId,
               newSale.id,
               pointsToRedeem,
-              `Points redemption in Sale #${newSale.invoiceNumber}`
+              `Points redemption in Sale #${newSale.invoiceNumber}`,
             );
             foundAndProcessed = true;
           }
         }
 
         if (!foundAndProcessed) {
-          throw new Error('Error processing points payment: Points information not found in the payment method.');
+          throw new Error(
+            'Error processing points payment: Points information not found in the payment method.',
+          );
         }
       }
 
@@ -308,8 +333,13 @@ export class SalesService {
     // --- Loyalty Points Hook (Earnings) ---
     if (sale.clientId) {
       try {
-        const saleTotalUSD = Number(sale.total) / (Number(sale.exchangeRate) || 1);
-        await this.marketingService.earnPoints(sale.clientId, sale.id, saleTotalUSD);
+        const saleTotalUSD =
+          Number(sale.total) / (Number(sale.exchangeRate) || 1);
+        await this.marketingService.earnPoints(
+          sale.clientId,
+          sale.id,
+          saleTotalUSD,
+        );
       } catch (error) {
         console.error('Error earning loyalty points:', error);
       }
@@ -362,7 +392,7 @@ export class SalesService {
 
             // Create retention record
             let invoice = await this.prisma.invoice.findFirst({
-              where: { saleId: sale.id }
+              where: { saleId: sale.id },
             });
 
             if (!invoice) {
@@ -380,7 +410,7 @@ export class SalesService {
                 notes: `Invoice generated for retention registration - ${sale.invoiceNumber}`,
                 invoiceNumber: sale.invoiceNumber,
                 currencyCode: 'VES',
-                exchangeRate: Number(sale.exchangeRate)
+                exchangeRate: Number(sale.exchangeRate),
               });
             }
 
@@ -793,7 +823,12 @@ export class SalesService {
     return await this.prisma.$transaction(async (prisma) => {
       // 1. Restore stock
       for (const item of sale.items) {
-        await this.updateProductStockWithTx(prisma, item.productId, Number(item.quantity), 'INCREMENT');
+        await this.updateProductStockWithTx(
+          prisma,
+          item.productId,
+          Number(item.quantity),
+          'INCREMENT',
+        );
       }
 
       // 2. Delete associated cash movements
@@ -880,7 +915,7 @@ export class SalesService {
     prisma: any,
     productId: string,
     quantity: number,
-    type: 'INCREMENT' | 'DECREMENT'
+    type: 'INCREMENT' | 'DECREMENT',
   ) {
     const product = await prisma.product.findUnique({
       where: { id: productId },

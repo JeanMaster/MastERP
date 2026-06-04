@@ -14,12 +14,19 @@ export class CloseSessionDto {
   @IsNumber()
   actualBalance: number;
 
-  @ApiProperty({ required: false, description: 'Closing notes or observations' })
+  @ApiProperty({
+    required: false,
+    description: 'Closing notes or observations',
+  })
   @IsOptional()
   @IsString()
   closingNotes?: string;
 
-  @ApiProperty({ type: [CashCountItemDto], required: false, description: 'Closing cash breakdown' })
+  @ApiProperty({
+    type: [CashCountItemDto],
+    required: false,
+    description: 'Closing cash breakdown',
+  })
   @IsOptional()
   @IsArray()
   @ValidateNested({ each: true })

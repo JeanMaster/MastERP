@@ -60,7 +60,10 @@ export class CurrenciesController {
   @Roles(Role.ADMIN, Role.MANAGER)
   @Delete(':id')
   @ApiOperation({ summary: 'Deactivate a currency (soft delete)' })
-  @ApiResponse({ status: 200, description: 'Currency deactivated successfully' })
+  @ApiResponse({
+    status: 200,
+    description: 'Currency deactivated successfully',
+  })
   @ApiResponse({ status: 404, description: 'Currency not found' })
   remove(@Param('id') id: string) {
     return this.currenciesService.remove(id);

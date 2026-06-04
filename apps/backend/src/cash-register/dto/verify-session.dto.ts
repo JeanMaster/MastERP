@@ -10,7 +10,10 @@ import { Type } from 'class-transformer';
 import { CashCountItemDto } from './open-session.dto';
 
 export class VerifySessionDto {
-  @ApiProperty({ type: [CashCountItemDto], description: 'Audit cash breakdown' })
+  @ApiProperty({
+    type: [CashCountItemDto],
+    description: 'Audit cash breakdown',
+  })
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => CashCountItemDto)
@@ -21,7 +24,9 @@ export class VerifySessionDto {
   @IsString()
   notes?: string;
 
-  @ApiProperty({ description: 'Current exchange rate for foreign currency audit' })
+  @ApiProperty({
+    description: 'Current exchange rate for foreign currency audit',
+  })
   @IsNumber()
   exchangeRate: number;
 }

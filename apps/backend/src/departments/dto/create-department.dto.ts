@@ -22,7 +22,8 @@ export class CreateDepartmentDto {
   @ApiProperty({
     example: 'uuid-of-parent-department',
     required: false,
-    description: 'ID of the parent department (only 1 level of nesting allowed)',
+    description:
+      'ID of the parent department (only 1 level of nesting allowed)',
   })
   @IsOptional()
   @IsUUID()

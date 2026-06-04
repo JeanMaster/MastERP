@@ -13,25 +13,32 @@ async function bootstrap() {
   app.useGlobalFilters(new AllExceptionsFilter(httpAdapterHost));
 
   // Security Headers
-  app.use(helmet({
-    crossOriginResourcePolicy: { policy: "cross-origin" }, // Allow images from backend to be loaded by frontend
-    contentSecurityPolicy: process.env.NODE_ENV === 'production' ? undefined : false, // Disable CSP in dev to not break Swagger
-  }));
+  app.use(
+    helmet({
+      crossOriginResourcePolicy: { policy: 'cross-origin' }, // Allow images from backend to be loaded by frontend
+      contentSecurityPolicy:
+        process.env.NODE_ENV === 'production' ? undefined : false, // Disable CSP in dev to not break Swagger
+    }),
+  );
 
-// CORS - Restricted configuration
-   const allowedOrigins = [
-     process.env.CORS_ORIGIN,
-     'http://localhost:5173',
-     'http://127.0.0.1:5173',
-     'https://mast-erp-frontend.vercel.app',
-     /\.vercel\.app$/,
-   ].filter(Boolean);
+  // CORS - Restricted configuration
+  const allowedOrigins = [
+    process.env.CORS_ORIGIN,
+    'http://localhost:5173',
+    'http://127.0.0.1:5173',
+    'https://mast-erp-frontend.vercel.app',
+    /\.vercel\.app$/,
+  ].filter(Boolean);
 
   app.enableCors({
     origin: (origin, callback) => {
-      // Allow requests with no origin (like mobile apps or curl) 
+      // Allow requests with no origin (like mobile apps or curl)
       // or check if the origin is in the whitelist or matches LAN pattern
-      if (!origin || allowedOrigins.includes(origin) || /^http:\/\/192\.168\.\d{1,3}\.\d{1,3}/.test(origin)) {
+      if (
+        !origin ||
+        allowedOrigins.includes(origin) ||
+        /^http:\/\/192\.168\.\d{1,3}\.\d{1,3}/.test(origin)
+      ) {
         callback(null, true);
       } else {
         callback(new Error('Not allowed by CORS'));
@@ -64,13 +71,13 @@ async function bootstrap() {
     SwaggerModule.setup('api/docs', app, document);
   }
 
-// Global route prefix for all endpoints
-   app.setGlobalPrefix('api');
+  // Global route prefix for all endpoints
+  app.setGlobalPrefix('api');
 
-   // Health check endpoint at root for Render/Vercel
-   app.getHttpAdapter().get('/', (req, res) => {
-     res.status(200).json({ status: 'ok', message: 'MastERP API is running' });
-   });
+  // Health check endpoint at root for Render/Vercel
+  app.getHttpAdapter().get('/', (req, res) => {
+    res.status(200).json({ status: 'ok', message: 'MastERP API is running' });
+  });
 
   // Trust proxy for production (important for getting real IP and secure cookies behind Render/Vercel/Railway)
   if (process.env.NODE_ENV === 'production') {

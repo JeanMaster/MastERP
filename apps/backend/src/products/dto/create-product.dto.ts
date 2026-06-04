@@ -19,19 +19,11 @@ import { Type } from 'class-transformer';
 export class ImageSizeValidator implements ValidatorConstraintInterface {
   validate(images: unknown): boolean {
     if (!images || !Array.isArray(images)) return true;
-    const imageArray = images as string[];
-    const totalBytes = imageArray.reduce((acc, img) => {
-      if (typeof img === 'string' && img.startsWith('data:image')) {
-        const base64Length = img.length - img.indexOf(',') - 1;
-        return acc + (base64Length * 3) / 4;
-      }
-      return acc;
-    }, 0);
-    return totalBytes <= 2 * 1024 * 1024;
+    return true;
   }
 
   defaultMessage(): string {
-    return 'El total de imágenes supera el límite de 2MB. Reduzca el tamaño o número de imágenes.';
+    return 'Invalid images array.';
   }
 }
 

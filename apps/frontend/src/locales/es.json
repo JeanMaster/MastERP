@@ -157,16 +157,18 @@
     "select": "Seleccionar",
     "credit_note": "Nota de Crédito",
     "next": "Siguiente",
-    "search_placeholder": "Buscar...",
+"search_placeholder": "Buscar...",
     "type": "Tipo",
     "person": "Persona Natural",
     "birth_date": "Fecha de Nacimiento",
     "optional": "Opcional",
     "view_details": "Ver Detalles",
     "view": "Ver",
-    "configuration": "Configuración"
-  },
-  "pos": {
+    "configuration": "Configuración",
+    "other": "Otro",
+    "cash": "Efectivo"
+   },
+   "pos": {
     "wa_hello": "Hola",
     "wa_details_prefix": "aquí tienes los detalles de tu compra",
     "wa_thank_you": "¡Gracias por su compra!",
@@ -307,15 +309,86 @@
       "closure_in_progress": "CIERRE EN CURSO",
       "closure_requested": "Se ha solicitado el cierre del turno. Espere a que el administrador autorice su arqueo para continuar o salir."
     },
+    "modals": {
+      "select_customer": "Seleccionar Cliente",
+      "select_customer_search": "Buscar por Nombre, ID (RIF) o Email...",
+      "new_customer": "Nuevo Cliente (F2)",
+      "discount": {
+        "title": "Aplicar Descuento",
+        "percent_tab": "Porcentaje (%)",
+        "amount_tab": "Monto (Bs)",
+        "original_price": "Precio Original:",
+        "final_price": "Precio Final:",
+        "cancel": "Cancelar",
+        "apply": "Aplicar (F9)",
+        "percent_placeholder": "Ej: 10",
+        "amount_placeholder": "Ej: 50.00",
+        "equiv_discount": "Equivale a: {{percent}}% de descuento",
+        "max_discount": "El descuento máximo permitido es 30%",
+        "below_cost": "El precio final ({{price}}) no puede ser menor al costo ({{cost}})",
+        "above_price": "El descuento no puede ser mayor al precio"
+      },
+      "quantity": {
+        "title": "Cambiar Cantidad",
+        "cancel": "Cancelar",
+        "accept": "Aceptar (F9)"
+      },
+      "price": {
+        "title": "Seleccionar Precio",
+        "normal": "Normal",
+        "offer": "Oferta",
+        "wholesale": "Mayor",
+        "custom": "Personalizado",
+        "cancel": "Cancelar",
+        "accept": "Aceptar (F9)",
+"final_price_below_cost": "El precio final ({{price}}) no puede ser menor al costo ({{cost}}).",
+        "discount_active": " El producto tiene un descuento activo del {{percent}}%.",
+        "custom_below_cost": "Precio final ({{price}}) menor al costo ({{cost}})"
+       }
+     },
     "catalog": {
       "back": "Volver",
       "departments": "Departamentos",
       "results_for": "Resultados para: \"{{term}}\"",
       "no_items": "No se encontraron artículos",
       "no_image": "Sin imagen",
-      "more": "Más..."
+"more": "Más..."
+    },
+    "batch_sales": {
+      "title": "Ventas Atrasadas por Lote",
+      "subtitle": "Transcribir libreta de apagón",
+      "hour_block": "Bloque de la Hora",
+      "select_block": "Seleccione bloque horario",
+      "client": "Cliente",
+      "select_client": "Seleccionar",
+      "close_modal": "Cerrar",
+      "process_batch": "Procesar Lote",
+      "products_card": "Productos",
+      "search_product": "Buscar producto...",
+      "qty": "Cant.",
+      "price": "Precio Bs",
+      "amount": "Monto",
+      "add_product": "Agregar Producto",
+      "payments_card": "Métodos de Pago (Multimoneda)",
+      "paid": "Pagado:",
+      "remaining": "Restante:",
+      "change": "Cambio:",
+      "total": "TOTAL",
+      "base": "Base:",
+      "vat": "IVA:",
+      "cash": "Efectivo (Bs)",
+      "pos": "Punto de Venta",
+      "mobile_pay": "Pago Móvil",
+      "credit": "Crédito",
+      "retroactive_sale": "Venta #{idx} ({label})",
+      "delete_sale": "Eliminar venta del lote",
+      "cash_sales": "VENTAS DEL CORTE",
+      "contado": "CONTADO",
+      "success": "Lote de {{count}} ventas procesado con éxito",
+      "error_form": "Verifique que todos los campos del formulario de la venta activa estén correctos.",
+      "error_submit": "Error al procesar el lote de ventas."
     }
-  },
+   },
   "settings": {
     "company": {
       "title": "Configuración de Empresa",
@@ -554,7 +627,9 @@
     "image_processing": "Procesando imagen...",
     "image_added": "Imagen agregada",
     "image_error": "Error al procesar imagen",
-    "image_too_large": "La imagen excede el tamaño máximo (2MB)",
+    "image_too_large": "La imagen excede el tamaño máximo (10MB)",
+    "image_auto_compress": "Las imágenes se comprimen automáticamente en el servidor",
+    "images_label": "Imágenes de Producto (Máx 12)",
     "create": "Crear Producto",
     "edit": "Editar Producto",
     "currency_required": "La moneda es obligatoria",

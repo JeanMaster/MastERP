@@ -8,10 +8,14 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { Decimal } from '@prisma/client/runtime/library';
+import { ImageCompressionService } from './image-compression.service';
 
 @Injectable()
 export class ProductsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private imageCompressionService: ImageCompressionService,
+  ) {}
 
   /**
    * Creates a new product.
@@ -35,6 +39,14 @@ export class ProductsService {
           'The selected subcategory does not belong to the specified category',
         );
       }
+    }
+
+    // Compress images if present
+    if (createProductDto.images && createProductDto.images.length > 0) {
+      createProductDto.images =
+        await this.imageCompressionService.compressImages(
+          createProductDto.images,
+        );
     }
 
     // Validate that sale prices are >= cost price
@@ -255,6 +267,14 @@ export class ProductsService {
       }
     }
 
+    // Compress images if present
+    if (updateProductDto.images && updateProductDto.images.length > 0) {
+      updateProductDto.images =
+        await this.imageCompressionService.compressImages(
+          updateProductDto.images,
+        );
+    }
+
     // Validate prices if any price is updated
     if (
       updateProductDto.costPrice !== undefined ||
@@ -268,62 +288,75 @@ export class ProductsService {
     // Detect cost change and calculate margins
     let costChangeInfo: any = null;
     const oldCost = Number(existingProduct.costPrice);
-    const newCost = updateProductDto.costPrice !== undefined ? Number(updateProductDto.costPrice) : oldCost;
+    const newCost =
+      updateProductDto.costPrice !== undefined
+        ? Number(updateProductDto.costPrice)
+        : oldCost;
     const costChanged = Math.abs(oldCost - newCost) > 0.001;
-    
+
     const oldCurrencyId = existingProduct.currencyId;
-    const newCurrencyId = updateProductDto.currencyId !== undefined ? updateProductDto.currencyId : oldCurrencyId;
+    const newCurrencyId =
+      updateProductDto.currencyId !== undefined
+        ? updateProductDto.currencyId
+        : oldCurrencyId;
     const currencyChanged = oldCurrencyId !== newCurrencyId;
 
-    if (((costChanged && oldCost > 0) || currencyChanged) && updateProductDto.costPrice !== undefined) {
-        const salePrice = Number(existingProduct.salePrice);
-        const offerPrice = existingProduct.offerPrice
-          ? Number(existingProduct.offerPrice)
+    if (
+      ((costChanged && oldCost > 0) || currencyChanged) &&
+      updateProductDto.costPrice !== undefined
+    ) {
+      const salePrice = Number(existingProduct.salePrice);
+      const offerPrice = existingProduct.offerPrice
+        ? Number(existingProduct.offerPrice)
+        : null;
+      const wholesalePrice = existingProduct.wholesalePrice
+        ? Number(existingProduct.wholesalePrice)
+        : null;
+
+      const salePriceMargin =
+        salePrice > 0 ? ((salePrice - oldCost) / oldCost) * 100 : 0;
+      const offerPriceMargin =
+        offerPrice && offerPrice > 0
+          ? ((offerPrice - oldCost) / oldCost) * 100
           : null;
-        const wholesalePrice = existingProduct.wholesalePrice
-          ? Number(existingProduct.wholesalePrice)
+      const wholesalePriceMargin =
+        wholesalePrice && wholesalePrice > 0
+          ? ((wholesalePrice - oldCost) / oldCost) * 100
           : null;
 
-        const salePriceMargin =
-          salePrice > 0 ? ((salePrice - oldCost) / oldCost) * 100 : 0;
-        const offerPriceMargin =
-          offerPrice && offerPrice > 0
-            ? ((offerPrice - oldCost) / oldCost) * 100
-            : null;
-        const wholesalePriceMargin =
-          wholesalePrice && wholesalePrice > 0
-            ? ((wholesalePrice - oldCost) / oldCost) * 100
-            : null;
+      // Get currency names for the UI
+      const oldCurrency = await this.prisma.currency.findUnique({
+        where: { id: oldCurrencyId },
+      });
+      const newCurrency = await this.prisma.currency.findUnique({
+        where: { id: newCurrencyId },
+      });
 
-        // Get currency names for the UI
-        const oldCurrency = await this.prisma.currency.findUnique({ where: { id: oldCurrencyId } });
-        const newCurrency = await this.prisma.currency.findUnique({ where: { id: newCurrencyId } });
-
-        costChangeInfo = {
-          productId: existingProduct.id,
-          productName: existingProduct.name,
-          oldCost,
-          newCost,
-          currentSalePrice: salePrice,
-          currentOfferPrice: offerPrice,
-          currentWholesalePrice: wholesalePrice,
-          salePriceMargin,
-          offerPriceMargin,
-          wholesalePriceMargin,
-          suggestedSalePrice: newCost * (1 + salePriceMargin / 100),
-          suggestedOfferPrice:
-            offerPriceMargin !== null
-              ? newCost * (1 + offerPriceMargin / 100)
-              : null,
-          suggestedWholesalePrice:
-            wholesalePriceMargin !== null
-              ? newCost * (1 + wholesalePriceMargin / 100)
-              : null,
-          currencyId: newCurrencyId,
-          currencyName: newCurrency?.name,
-          oldCurrencyId,
-          oldCurrencyName: oldCurrency?.name,
-        };
+      costChangeInfo = {
+        productId: existingProduct.id,
+        productName: existingProduct.name,
+        oldCost,
+        newCost,
+        currentSalePrice: salePrice,
+        currentOfferPrice: offerPrice,
+        currentWholesalePrice: wholesalePrice,
+        salePriceMargin,
+        offerPriceMargin,
+        wholesalePriceMargin,
+        suggestedSalePrice: newCost * (1 + salePriceMargin / 100),
+        suggestedOfferPrice:
+          offerPriceMargin !== null
+            ? newCost * (1 + offerPriceMargin / 100)
+            : null,
+        suggestedWholesalePrice:
+          wholesalePriceMargin !== null
+            ? newCost * (1 + wholesalePriceMargin / 100)
+            : null,
+        currencyId: newCurrencyId,
+        currencyName: newCurrency?.name,
+        oldCurrencyId,
+        oldCurrencyName: oldCurrency?.name,
+      };
     }
 
     // Cost calculation for composed products

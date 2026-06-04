@@ -15,7 +15,10 @@ export class TransferToTreasuryDto {
   @IsString()
   description: string;
 
-  @ApiProperty({ required: false, description: 'Username of the person performing the transfer' })
+  @ApiProperty({
+    required: false,
+    description: 'Username of the person performing the transfer',
+  })
   @IsString()
   performedBy?: string;
 }

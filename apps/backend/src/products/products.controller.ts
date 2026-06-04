@@ -148,4 +148,3 @@ export class ProductsController {
     return this.productsService.batchUpdatePrices(updates);
   }
 }
-

@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Modal, Input, List, Button, Tag, Space, Typography } from 'antd';
 import { SearchOutlined, UserAddOutlined, WhatsAppOutlined } from '@ant-design/icons';
+import { useTranslation } from 'react-i18next';
 import { clientsApi, type Client } from '../../../services/clientsApi';
 import { ClientFormModal } from '../../clients/ClientFormModal';
 import debounce from 'lodash/debounce';
@@ -17,6 +18,7 @@ interface ClientSelectionModalProps {
  * Allows quick creation of new clients without leaving the checkout flow.
  */
 export const ClientSelectionModal = ({ open, onSelect, onCancel }: ClientSelectionModalProps) => {
+    const { t } = useTranslation();
     const [searchTerm, setSearchTerm] = useState('');
     const [clients, setClients] = useState<Client[]>([]);
     const [loading, setLoading] = useState(false);
@@ -57,15 +59,15 @@ export const ClientSelectionModal = ({ open, onSelect, onCancel }: ClientSelecti
 
     return (
         <Modal
-            title="Select Customer"
+            title={t('pos.modals.select_customer')}
             open={open}
             onCancel={onCancel}
             footer={[
                 <Button key="new" type="primary" icon={<UserAddOutlined />} onClick={() => setIsCreateModalOpen(true)}>
-                    New Customer (F2)
+                    {t('pos.modals.new_customer')}
                 </Button>,
                 <Button key="close" onClick={onCancel}>
-                    Close
+                    {t('common.close')}
                 </Button>
             ]}
             width={600}
@@ -73,7 +75,7 @@ export const ClientSelectionModal = ({ open, onSelect, onCancel }: ClientSelecti
             <Input
                 ref={searchInputRef}
                 prefix={<SearchOutlined />}
-                placeholder="Search by Name, ID (RIF) or Email..."
+                placeholder={t('pos.modals.select_customer_search')}
                 value={searchTerm}
                 onChange={handleSearchChange}
                 style={{ marginBottom: 15 }}

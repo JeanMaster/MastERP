@@ -16,7 +16,11 @@ export class CreateUserDto {
   @IsString()
   username: string;
 
-  @ApiProperty({ example: 'secret123', minLength: 6, description: 'User password (hashed on creation)' })
+  @ApiProperty({
+    example: 'secret123',
+    minLength: 6,
+    description: 'User password (hashed on creation)',
+  })
   @IsNotEmpty()
   @IsString()
   @MinLength(6)
@@ -27,20 +31,30 @@ export class CreateUserDto {
   @IsString()
   name: string;
 
-  @ApiProperty({ example: 'ADMIN', description: 'Role (ADMIN, MANAGER, CASHIER, SELLER)' })
+  @ApiProperty({
+    example: 'ADMIN',
+    description: 'Role (ADMIN, MANAGER, CASHIER, SELLER)',
+  })
   @IsNotEmpty()
   @IsString()
   @IsEnum(Role)
   role: Role;
 
-  @ApiProperty({ example: ['sales.create', 'products.view'], required: false, description: 'Specific granular permissions' })
+  @ApiProperty({
+    example: ['sales.create', 'products.view'],
+    required: false,
+    description: 'Specific granular permissions',
+  })
   @IsOptional()
   @IsArray()
   permissions?: string[];
 
-  @ApiProperty({ example: true, required: false, description: 'Whether the user can log in' })
+  @ApiProperty({
+    example: true,
+    required: false,
+    description: 'Whether the user can log in',
+  })
   @IsOptional()
   @IsBoolean()
   isActive?: boolean;
 }
-

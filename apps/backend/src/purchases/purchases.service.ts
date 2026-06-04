@@ -75,9 +75,12 @@ export class PurchasesService {
     const balance = total - paidAmount;
 
     // 🛡️ SECURITY: Verify total consistency
-    if (createPurchaseDto.total && Math.abs(total - Number(createPurchaseDto.total)) > 0.01) {
+    if (
+      createPurchaseDto.total &&
+      Math.abs(total - Number(createPurchaseDto.total)) > 0.01
+    ) {
       throw new BadRequestException(
-        `Security Alert: Purchase total mismatch. Calculated: ${total}, Received: ${createPurchaseDto.total}. Potential data manipulation detected.`
+        `Security Alert: Purchase total mismatch. Calculated: ${total}, Received: ${createPurchaseDto.total}. Potential data manipulation detected.`,
       );
     }
 
@@ -321,37 +324,38 @@ export class PurchasesService {
       // Calculate how much we take from the bank
       const pAmount = Number(paymentAmount || amount);
       const pCurrency = currencyCode || purchase.currencyCode;
-      
+
       amountToDeductFromBank = pAmount; // Default if currencies match
-    // 🛡️ SECURITY: Validate exchange rate sanity
-    if (exchangeRate && currencyCode) {
-      const systemCurrency = await this.prisma.currency.findUnique({
-        where: { code: currencyCode },
-      });
+      // 🛡️ SECURITY: Validate exchange rate sanity
+      if (exchangeRate && currencyCode) {
+        const systemCurrency = await this.prisma.currency.findUnique({
+          where: { code: currencyCode },
+        });
 
-      if (systemCurrency) {
-        const systemRate = Number(systemCurrency.exchangeRate);
-        const providedRate = Number(exchangeRate);
-        const deviation = Math.abs(providedRate - systemRate) / systemRate;
+        if (systemCurrency) {
+          const systemRate = Number(systemCurrency.exchangeRate);
+          const providedRate = Number(exchangeRate);
+          const deviation = Math.abs(providedRate - systemRate) / systemRate;
 
-        if (deviation > 0.1) { // 10% tolerance
-          throw new BadRequestException(
-            `Security Alert: Provided exchange rate (${providedRate}) deviates too much from the system rate (${systemRate}). ` +
-            `Please update the system rate or correct the input.`
-          );
+          if (deviation > 0.1) {
+            // 10% tolerance
+            throw new BadRequestException(
+              `Security Alert: Provided exchange rate (${providedRate}) deviates too much from the system rate (${systemRate}). ` +
+                `Please update the system rate or correct the input.`,
+            );
+          }
         }
       }
-    }
 
-    if (pCurrency !== bankAccount.currency.code) {
-      if (bankAccount.currency.isPrimary) {
-        // Bank is VES, Payment is USD
-        amountToDeductFromBank = pAmount * Number(exchangeRate || 1);
-      } else {
-        // Bank is USD, Payment is VES
-        amountToDeductFromBank = pAmount / Number(exchangeRate || 1);
+      if (pCurrency !== bankAccount.currency.code) {
+        if (bankAccount.currency.isPrimary) {
+          // Bank is VES, Payment is USD
+          amountToDeductFromBank = pAmount * Number(exchangeRate || 1);
+        } else {
+          // Bank is USD, Payment is VES
+          amountToDeductFromBank = pAmount / Number(exchangeRate || 1);
+        }
       }
-    }
 
       if (Number(bankAccount.balance) < amountToDeductFromBank) {
         throw new BadRequestException(

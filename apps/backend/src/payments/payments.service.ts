@@ -124,10 +124,7 @@ export class PaymentsService {
           });
         }
       } catch (cashError) {
-        console.error(
-          'Error recording cash movement for payment:',
-          cashError,
-        );
+        console.error('Error recording cash movement for payment:', cashError);
       }
 
       return { payment, invoice: updatedInvoice };

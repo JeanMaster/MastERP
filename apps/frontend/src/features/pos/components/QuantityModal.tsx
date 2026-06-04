@@ -1,5 +1,6 @@
 import { Modal, InputNumber, Button, Space } from 'antd';
 import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 interface QuantityModalProps {
     open: boolean;
@@ -10,6 +11,7 @@ interface QuantityModalProps {
 }
 
 export const QuantityModal = ({ open, currentQuantity, productName, onOk, onCancel }: QuantityModalProps) => {
+    const { t } = useTranslation();
     const [quantity, setQuantity] = useState(1);
     const inputRef = useRef<any>(null);
 
@@ -50,12 +52,12 @@ export const QuantityModal = ({ open, currentQuantity, productName, onOk, onCanc
 
     return (
         <Modal
-            title="Cambiar Cantidad"
+            title={t('pos.modals.quantity.title')}
             open={open}
             onOk={handleSubmit}
             onCancel={onCancel}
             width={300}
-            footer={null} // Custom footer for better control or just ENTER key usage
+            footer={null}
             styles={{ body: { padding: '20px 0' } }}
             centered
         >
@@ -76,8 +78,8 @@ export const QuantityModal = ({ open, currentQuantity, productName, onOk, onCanc
                     />
 
                     <div style={{ marginTop: 15, display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-                        <Button onClick={onCancel}>Cancelar</Button>
-                        <Button type="primary" onClick={handleSubmit}>Aceptar (F9)</Button>
+                        <Button onClick={onCancel}>{t('pos.modals.quantity.cancel')}</Button>
+                        <Button type="primary" onClick={handleSubmit}>{t('pos.modals.quantity.accept')}</Button>
                     </div>
                 </Space>
             </div>

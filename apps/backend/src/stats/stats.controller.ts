@@ -226,7 +226,7 @@ export class StatsController {
   @ApiQuery({ name: 'currency', required: false })
   getProductStats(
     @Param('id') id: string,
-    @Query('currency') currency: string = 'VES'
+    @Query('currency') currency: string = 'VES',
   ) {
     return this.statsService.getProductStats(id, currency);
   }

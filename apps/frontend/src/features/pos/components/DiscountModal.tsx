@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { CalculatorInput } from '../../../components/common/CalculatorInput';
 import type { Product } from '../../../services/productsApi';
 import { usePOSStore } from '../../../store/posStore';
+import { useTranslation } from 'react-i18next';
 
 interface DiscountModalProps {
     open: boolean;
@@ -16,6 +17,7 @@ interface DiscountModalProps {
 type DiscountMode = 'PERCENT' | 'AMOUNT';
 
 export const DiscountModal = ({ open, product, currentPrice, isSecondaryUnit, onOk, onCancel }: DiscountModalProps) => {
+    const { t } = useTranslation();
     const { calculateCostInPrimary } = usePOSStore();
     const [mode, setMode] = useState<DiscountMode>('PERCENT');
     const [inputValue, setInputValue] = useState(0);
@@ -71,7 +73,7 @@ export const DiscountModal = ({ open, product, currentPrice, isSecondaryUnit, on
 
         // 1. Max 30% discount
         if (equivPercent > 30) {
-            return "El descuento máximo permitido es 30%";
+            return t('pos.modals.discount.max_discount');
         }
 
         // 2. Price cannot go below cost (converted to primary currency)
@@ -79,11 +81,11 @@ export const DiscountModal = ({ open, product, currentPrice, isSecondaryUnit, on
         const costInPrimary = calculateCostInPrimary(product, isSecondaryUnit);
 
         if (newPrice < costInPrimary) {
-            return `El precio final (${newPrice.toFixed(2)}) no puede ser menor al costo (${costInPrimary.toFixed(2)})`;
+            return t('pos.modals.discount.below_cost', { price: newPrice.toFixed(2), cost: costInPrimary.toFixed(2) });
         }
 
         if (currentMode === 'AMOUNT' && val > currentPrice) {
-            return "El descuento no puede ser mayor al precio";
+            return t('pos.modals.discount.above_price');
         }
 
         return null;
@@ -118,7 +120,7 @@ export const DiscountModal = ({ open, product, currentPrice, isSecondaryUnit, on
 
     return (
         <Modal
-            title="Aplicar Descuento"
+            title={t('pos.modals.discount.title')}
             open={open}
             onOk={handleSubmit}
             onCancel={onCancel}
@@ -135,8 +137,8 @@ export const DiscountModal = ({ open, product, currentPrice, isSecondaryUnit, on
                         value={mode}
                         onChange={handleModeChange}
                         options={[
-                            { label: 'Porcentaje (%)', value: 'PERCENT' },
-                            { label: 'Monto (Bs)', value: 'AMOUNT' }
+                            { label: t('pos.modals.discount.percent_tab'), value: 'PERCENT' },
+                            { label: t('pos.modals.discount.amount_tab'), value: 'AMOUNT' }
                         ]}
                     />
 
@@ -149,7 +151,7 @@ export const DiscountModal = ({ open, product, currentPrice, isSecondaryUnit, on
                         onPressEnter={handleSubmit}
                         addonAfter={mode === 'PERCENT' ? '%' : 'Bs'}
                         status={error ? 'error' : ''}
-                        placeholder={mode === 'PERCENT' ? 'Ej: 10' : 'Ej: 50.00'}
+                        placeholder={mode === 'PERCENT' ? t('pos.modals.discount.percent_placeholder') : t('pos.modals.discount.amount_placeholder')}
                     />
 
                     {error && (
@@ -169,13 +171,13 @@ export const DiscountModal = ({ open, product, currentPrice, isSecondaryUnit, on
                         border: '1px solid #e8e8e8'
                     }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                            <Typography.Text type="secondary">Precio Original:</Typography.Text>
+                            <Typography.Text type="secondary">{t('pos.modals.discount.original_price')}</Typography.Text>
                             <Typography.Text style={{ textDecoration: 'line-through' }}>
                                 {currentPrice.toFixed(2)} Bs
                             </Typography.Text>
                         </div>
                         <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                            <Typography.Text strong>Precio Final:</Typography.Text>
+                            <Typography.Text strong>{t('pos.modals.discount.final_price')}</Typography.Text>
                             <Typography.Text strong style={{ color: '#1890ff', fontSize: 18 }}>
                                 {calculateNewPrice(inputValue, mode).toFixed(2)} Bs
                             </Typography.Text>
@@ -183,14 +185,14 @@ export const DiscountModal = ({ open, product, currentPrice, isSecondaryUnit, on
                         {mode === 'AMOUNT' && inputValue > 0 && (
                             <div style={{ textAlign: 'right', marginTop: 4 }}>
                                 <Typography.Text type="secondary" style={{ fontSize: 11 }}>
-                                    Equivale a: {getEquivalentPercent(inputValue, mode).toFixed(1)}% de descuento
+                                    {t('pos.modals.discount.equiv_discount', { percent: getEquivalentPercent(inputValue, mode).toFixed(1) })}
                                 </Typography.Text>
                             </div>
                         )}
                     </div>
 
                     <div style={{ marginTop: 15, display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
-                        <Button onClick={onCancel} size="large">Cancelar</Button>
+                        <Button onClick={onCancel} size="large">{t('pos.modals.discount.cancel')}</Button>
                         <Button
                             type="primary"
                             onClick={handleSubmit}
@@ -198,7 +200,7 @@ export const DiscountModal = ({ open, product, currentPrice, isSecondaryUnit, on
                             size="large"
                             style={{ paddingLeft: 30, paddingRight: 30 }}
                         >
-                            Aplicar (F9)
+                            {t('pos.modals.discount.apply')}
                         </Button>
                     </div>
                 </Space>

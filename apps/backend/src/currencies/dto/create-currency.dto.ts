@@ -29,7 +29,10 @@ export class CreateCurrencyDto {
   @IsString()
   symbol: string;
 
-  @ApiProperty({ example: false, description: 'Whether this is the primary currency' })
+  @ApiProperty({
+    example: false,
+    description: 'Whether this is the primary currency',
+  })
   @IsBoolean()
   isPrimary: boolean;
 
@@ -65,8 +68,7 @@ export class CreateCurrencyDto {
   })
   @ValidateIf((o) => o.isAutomatic)
   @IsNotEmpty({
-    message:
-      'A data source must be selected for automatic updates',
+    message: 'A data source must be selected for automatic updates',
   })
   @IsString()
   apiSymbol?: string;

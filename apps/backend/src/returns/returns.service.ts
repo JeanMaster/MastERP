@@ -195,21 +195,24 @@ export class ReturnsService {
     // 🛡️ SECURITY: Calculate real refund amount based on original sale prices
     const sale = await this.prisma.sale.findUnique({
       where: { id: createReturnDto.originalSaleId },
-      include: { items: true }
+      include: { items: true },
     });
 
     let calculatedMaxRefund = 0;
     for (const item of createReturnDto.items) {
-      const originalItem = sale?.items.find(i => i.productId === item.productId);
+      const originalItem = sale?.items.find(
+        (i) => i.productId === item.productId,
+      );
       if (originalItem) {
-        calculatedMaxRefund += Number(originalItem.unitPrice) * Number(item.quantity);
+        calculatedMaxRefund +=
+          Number(originalItem.unitPrice) * Number(item.quantity);
       }
     }
 
     // Allow for small rounding differences
     if (createReturnDto.refundAmount > calculatedMaxRefund + 0.01) {
       throw new BadRequestException(
-        `Security Alert: Refund amount (${createReturnDto.refundAmount}) exceeds original purchase value (${calculatedMaxRefund}).`
+        `Security Alert: Refund amount (${createReturnDto.refundAmount}) exceeds original purchase value (${calculatedMaxRefund}).`,
       );
     }
 

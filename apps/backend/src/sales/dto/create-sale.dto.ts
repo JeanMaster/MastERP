@@ -34,12 +34,20 @@ class CreateSaleItemDto {
 }
 
 export class CreateSaleDto {
-  @ApiProperty({ example: 'uuid-of-client', required: false, description: 'Client ID' })
+  @ApiProperty({
+    example: 'uuid-of-client',
+    required: false,
+    description: 'Client ID',
+  })
   @IsString()
   @IsOptional()
   clientId?: string;
 
-  @ApiProperty({ example: '2023-10-25T10:00:00.000Z', required: false, description: 'Retroactive date of the sale' })
+  @ApiProperty({
+    example: '2023-10-25T10:00:00.000Z',
+    required: false,
+    description: 'Retroactive date of the sale',
+  })
   @IsDateString()
   @IsOptional()
   date?: string;
@@ -65,47 +73,81 @@ export class CreateSaleDto {
   @Min(0)
   tax: number;
 
-  @ApiProperty({ example: 0.5, required: false, description: 'IGTF (3% tax) amount if applicable' })
+  @ApiProperty({
+    example: 0.5,
+    required: false,
+    description: 'IGTF (3% tax) amount if applicable',
+  })
   @IsNumber({ maxDecimalPlaces: 2 })
   @IsOptional()
   igtfAmount?: number;
 
-  @ApiProperty({ example: 21.5, description: 'Final total amount in primary currency' })
+  @ApiProperty({
+    example: 21.5,
+    description: 'Final total amount in primary currency',
+  })
   @IsNumber({ maxDecimalPlaces: 2 })
   @Min(0)
   total: number;
 
-  @ApiProperty({ example: 'CASH:10.0, DEBIT:11.5', description: 'Raw payment method string' })
+  @ApiProperty({
+    example: 'CASH:10.0, DEBIT:11.5',
+    description: 'Raw payment method string',
+  })
   @IsString()
   @IsNotEmpty()
   paymentMethod: string;
 
-  @ApiProperty({ example: 30.0, required: false, description: 'Amount tendered by the client' })
+  @ApiProperty({
+    example: 30.0,
+    required: false,
+    description: 'Amount tendered by the client',
+  })
   @IsNumber({ maxDecimalPlaces: 2 })
   @IsOptional()
   tendered?: number;
 
-  @ApiProperty({ example: 8.5, required: false, description: 'Change given to the client' })
+  @ApiProperty({
+    example: 8.5,
+    required: false,
+    description: 'Change given to the client',
+  })
   @IsNumber({ maxDecimalPlaces: 2 })
   @IsOptional()
   change?: number;
 
-  @ApiProperty({ example: '000001', required: false, description: 'Pre-reserved invoice number' })
+  @ApiProperty({
+    example: '000001',
+    required: false,
+    description: 'Pre-reserved invoice number',
+  })
   @IsString()
   @IsOptional()
   invoiceNumber?: string;
 
-  @ApiProperty({ example: 36.5, required: false, description: 'Exchange rate used for this sale' })
+  @ApiProperty({
+    example: 36.5,
+    required: false,
+    description: 'Exchange rate used for this sale',
+  })
   @IsNumber({ maxDecimalPlaces: 4 })
   @IsOptional()
   exchangeRate?: number;
 
-  @ApiProperty({ example: 'uuid-of-session', required: false, description: 'Active cash session ID' })
+  @ApiProperty({
+    example: 'uuid-of-session',
+    required: false,
+    description: 'Active cash session ID',
+  })
   @IsString()
   @IsOptional()
   cashSessionId?: string;
 
-  @ApiProperty({ example: 'uuid-of-coupon', required: false, description: 'ID of the used coupon' })
+  @ApiProperty({
+    example: 'uuid-of-coupon',
+    required: false,
+    description: 'ID of the used coupon',
+  })
   @IsString()
   @IsOptional()
   couponId?: string;

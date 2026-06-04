@@ -76,7 +76,10 @@ export class CreateReturnDto {
   @IsEnum(ProductCondition)
   productCondition: ProductCondition;
 
-  @ApiProperty({ type: [CreateReturnItemDto], description: 'Items being returned' })
+  @ApiProperty({
+    type: [CreateReturnItemDto],
+    description: 'Items being returned',
+  })
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => CreateReturnItemDto)

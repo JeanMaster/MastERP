@@ -21,25 +21,40 @@ export class CreateAdjustmentDto {
   @IsString()
   productId: string;
 
-  @ApiProperty({ enum: AdjustmentType, description: 'Type of stock adjustment' })
+  @ApiProperty({
+    enum: AdjustmentType,
+    description: 'Type of stock adjustment',
+  })
   @IsEnum(AdjustmentType)
   type: AdjustmentType;
 
-  @ApiProperty({ description: 'Quantity to adjust (must be positive)', minimum: 0.01 })
+  @ApiProperty({
+    description: 'Quantity to adjust (must be positive)',
+    minimum: 0.01,
+  })
   @IsNumber()
   @Min(0.01)
   quantity: number;
 
-  @ApiProperty({ enum: AdjustmentReason, description: 'Reason for the adjustment' })
+  @ApiProperty({
+    enum: AdjustmentReason,
+    description: 'Reason for the adjustment',
+  })
   @IsEnum(AdjustmentReason)
   reason: AdjustmentReason;
 
-  @ApiProperty({ description: 'Additional notes or observations', required: false })
+  @ApiProperty({
+    description: 'Additional notes or observations',
+    required: false,
+  })
   @IsOptional()
   @IsString()
   notes?: string;
 
-  @ApiProperty({ description: 'Username of the person performing the adjustment', required: false })
+  @ApiProperty({
+    description: 'Username of the person performing the adjustment',
+    required: false,
+  })
   @IsOptional()
   @IsString()
   performedBy?: string;

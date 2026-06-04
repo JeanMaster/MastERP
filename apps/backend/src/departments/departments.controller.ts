@@ -83,9 +83,11 @@ export class DepartmentsController {
   @UseGuards(AuthGuard('jwt'))
   @Delete(':id')
   @ApiOperation({ summary: 'Delete a department (soft delete)' })
-  @ApiResponse({ status: 200, description: 'Department deactivated successfully' })
+  @ApiResponse({
+    status: 200,
+    description: 'Department deactivated successfully',
+  })
   remove(@Param('id') id: string) {
     return this.departmentsService.remove(id);
   }
 }
-

@@ -450,39 +450,42 @@ export class CatalogService {
     const binary = base64Str ? Buffer.from(base64Str, 'base64') : pdfBuffer;
 
     try {
-const FormDataPkg = require('form-data');
-       const form = new FormDataPkg();
-       form.append('chatId', `${phoneNumber.replace(/\D/g, '')}@c.us`);
-       form.append('document', binary, { filename: `catalogo-${currencyCode}.pdf`, contentType: 'application/pdf' });
-       form.append('caption', message);
+      const FormDataPkg = require('form-data');
+      const form = new FormDataPkg();
+      form.append('chatId', `${phoneNumber.replace(/\D/g, '')}@c.us`);
+      form.append('document', binary, {
+        filename: `catalogo-${currencyCode}.pdf`,
+        contentType: 'application/pdf',
+      });
+      form.append('caption', message);
 
-       // WhatsApp Business API endpoint — this is a placeholder
-       // Replace with actual WhatsApp Cloud API or Twilio endpoint
-       const WHATSAPP_API_URL = process.env.WHATSAPP_API_URL || '';
-       const WHATSAPP_API_TOKEN = process.env.WHATSAPP_API_TOKEN || '';
+      // WhatsApp Business API endpoint — this is a placeholder
+      // Replace with actual WhatsApp Cloud API or Twilio endpoint
+      const WHATSAPP_API_URL = process.env.WHATSAPP_API_URL || '';
+      const WHATSAPP_API_TOKEN = process.env.WHATSAPP_API_TOKEN || '';
 
-       if (!WHATSAPP_API_URL || !WHATSAPP_API_TOKEN) {
-         // Development fallback — open WhatsApp Web with pre-filled message + clipboard instruction
-         this.logger.warn(
-           'WhatsApp API not configured — catalog will open WhatsApp with text message and PDF must be sent manually.',
-         );
-         return {
-           success: false,
-           message:
-             'WhatsApp Business API no está configurada. Revisa la documentación para configurar WHATSAPP_API_URL y WHATSAPP_API_TOKEN.',
-         };
-       }
+      if (!WHATSAPP_API_URL || !WHATSAPP_API_TOKEN) {
+        // Development fallback — open WhatsApp Web with pre-filled message + clipboard instruction
+        this.logger.warn(
+          'WhatsApp API not configured — catalog will open WhatsApp with text message and PDF must be sent manually.',
+        );
+        return {
+          success: false,
+          message:
+            'WhatsApp Business API no está configurada. Revisa la documentación para configurar WHATSAPP_API_URL y WHATSAPP_API_TOKEN.',
+        };
+      }
 
-       const response = await axios.post(
-         `${WHATSAPP_API_URL}/messages/document`,
-         form,
-         {
-           headers: {
-             Authorization: `Bearer ${WHATSAPP_API_TOKEN}`,
-             ...form.getHeaders(),
-           },
-         },
-       );
+      const response = await axios.post(
+        `${WHATSAPP_API_URL}/messages/document`,
+        form,
+        {
+          headers: {
+            Authorization: `Bearer ${WHATSAPP_API_TOKEN}`,
+            ...form.getHeaders(),
+          },
+        },
+      );
 
       if (response.data) {
         this.logger.log(`Catalog sent to ${phoneNumber} via WhatsApp`);
@@ -507,10 +510,10 @@ const FormDataPkg = require('form-data');
   }
 
   /**
-     * Generates a PDF with multiple price tickets (etiquetas).
-     * Layout: Always 2 columns × 7 rows = 14 tickets per A4 page (hardcoded rows=7).
-     * Barcode mode uses slightly more internal spacing per ticket.
-     */
+   * Generates a PDF with multiple price tickets (etiquetas).
+   * Layout: Always 2 columns × 7 rows = 14 tickets per A4 page (hardcoded rows=7).
+   * Barcode mode uses slightly more internal spacing per ticket.
+   */
   async generatePriceTicketsPdf(params: {
     currencyCode: string;
     tickets: Array<{ productId: string; quantity: number }>;
@@ -606,7 +609,10 @@ const FormDataPkg = require('form-data');
       );
     } else {
       // No barcodes requested → attach null so drawing logic can skip them
-      ticketsWithBarcode = expandedTickets.map((t) => ({ ...t, barcodePng: null }));
+      ticketsWithBarcode = expandedTickets.map((t) => ({
+        ...t,
+        barcodePng: null,
+      }));
     }
 
     return new Promise<Buffer>((resolve, reject) => {
@@ -719,7 +725,6 @@ const FormDataPkg = require('form-data');
                     align: 'center',
                   });
               }
-
             } else {
               // MODO SIN CÓDIGO DE BARRAS → diseño compacto (como querías)
               currentY += 18;

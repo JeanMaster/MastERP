@@ -54,4 +54,3 @@ export class PaymentsController {
     return this.paymentsService.removePayment(id);
   }
 }
-
