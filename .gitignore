@@ -55,6 +55,7 @@ tmp/
 temp/
 *.tmp
 *.xlsx
+backend.pid
 .zenith.pids
 .masterp.pids
 start-local.sh
