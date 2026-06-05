@@ -180,7 +180,6 @@ export const ProductsReport = () => {
                              total={filteredProducts.length}
                              pageSize={pageSize}
                              onChange={setCurrentPage}
-                             size="middle"
                              showSizeChanger={false}
                          />
                     </div>

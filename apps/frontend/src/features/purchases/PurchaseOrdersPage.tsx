@@ -204,11 +204,9 @@ export const PurchaseOrdersPage: React.FC = () => {
                         dataSource={orders}
                         rowKey="id"
                         loading={loading}
-                        scroll={{ x: 'max-content' }}
-                        size={isMobile ? 'small' : 'middle'}
-pagination={{
+scroll={{ x: 'max-content' }}
+                        pagination={{
                              pageSize: 10,
-                             size: isMobile ? 'small' : 'middle',
                              responsive: true
                          }}
                     />

@@ -316,7 +316,6 @@ export const ExpensesPage = () => {
                                 onChange={(page) => {
                                     setCurrentPage(page);
                                 }}
-                                size="middle"
                                 showSizeChanger={false}
                             />
                         </div>
