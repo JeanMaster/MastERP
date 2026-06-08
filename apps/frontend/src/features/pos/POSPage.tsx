@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Layout, Typography, Spin, Alert, Tabs, Grid, Card, Space, Button, Empty, App } from 'antd';
+import { Layout, Typography, Spin, Alert, Tabs, Grid, Card, Space, Button, Empty, App, Modal, Input } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { ShoppingCartOutlined, AppstoreOutlined, ShopOutlined } from '@ant-design/icons';
 import { POSHeader } from './components/POSHeader';
@@ -10,6 +10,7 @@ import { CheckoutModal } from './components/CheckoutModal';
 import { ClientSelectionModal } from './components/ClientSelectionModal';
 import { InvoiceModal } from './components/InvoiceModal';
 import { CouponModal } from './components/CouponModal';
+import { ParkedSalesModal } from './components/ParkedSalesModal';
 import { usePOSStore } from '../../store/posStore';
 import { cashRegisterApi } from '../../services/cashRegisterApi';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -50,6 +51,7 @@ export const POSPage = () => {
     const [isSummaryOpen, setIsSummaryOpen] = useState(false);
     const [isOpeningArqueoOpen, setIsOpeningArqueoOpen] = useState(false);
     const [isClosingArqueoOpen, setIsClosingArqueoOpen] = useState(false);
+    const [isParkedSalesModalOpen, setIsParkedSalesModalOpen] = useState(false);
 
     // Fetch available cash registers for selection (Admin only or if none selected)
     const { data: registers = [] } = useQuery({
@@ -181,7 +183,37 @@ export const POSPage = () => {
         }
     };
 
-    // Keyboard shortcuts (F2: Coupons, F3: Customer, F9: Checkout, F10: Cash Register, Del: Clear POS)
+    const handleParkSale = () => {
+        const { cart } = usePOSStore.getState();
+        if (cart.length === 0) return;
+
+        let tempNote = '';
+        Modal.confirm({
+            title: t('pos.parked.park_confirm_title'),
+            icon: null,
+            content: (
+                <div>
+                    <p>{t('pos.parked.park_confirm_desc')}</p>
+                    <Input
+                        placeholder={t('pos.parked.note_placeholder')}
+                        onChange={(e) => { tempNote = e.target.value; }}
+                        style={{ marginTop: 10 }}
+                        autoFocus
+                    />
+                </div>
+            ),
+            okText: t('pos.parked.park_button'),
+            cancelText: t('pos.parked.cancel') || 'Cancel',
+            onOk() {
+                const success = usePOSStore.getState().parkCurrentSale(tempNote);
+                if (success) {
+                    message.success(t('pos.parked.parked_success'));
+                }
+            }
+        });
+    };
+
+    // Keyboard shortcuts (F2: Coupons, F3: Customer, F9: Checkout, F10: Cash Register, F12: Park Sale, Del: Clear POS)
     const handleKeyDown = (e: KeyboardEvent) => {
         if (e.key === 'F2') {
             e.preventDefault();
@@ -195,6 +227,9 @@ export const POSPage = () => {
         } else if (e.key === 'F10') {
             e.preventDefault();
             handleCajaClick();
+        } else if (e.key === 'F12') {
+            e.preventDefault();
+            handleParkSale();
         } else if (e.key === 'Delete') {
             resetPOS();
         }
@@ -340,6 +375,8 @@ export const POSPage = () => {
                                 onCouponClick={() => setIsCouponModalOpen(true)}
                                 onCheckoutClick={() => setIsCheckoutOpen(true)}
                                 onCajaClick={handleCajaClick}
+                                onParkClick={handleParkSale}
+                                onViewParkedClick={() => setIsParkedSalesModalOpen(true)}
                             />
                         </Footer>
                     </Layout>
@@ -389,6 +426,8 @@ export const POSPage = () => {
                             onCouponClick={() => setIsCouponModalOpen(true)}
                             onCheckoutClick={() => setIsCheckoutOpen(true)}
                             onCajaClick={handleCajaClick}
+                            onParkClick={handleParkSale}
+                            onViewParkedClick={() => setIsParkedSalesModalOpen(true)}
                         />
                     </Footer>
                 </Content>
@@ -464,6 +503,11 @@ export const POSPage = () => {
                 onCancel={() => setIsBatchSalesModalOpen(false)}
                 exchangeRate={exchangeRate}
                 cashSessionId={activeSession?.id}
+            />
+
+            <ParkedSalesModal
+                open={isParkedSalesModalOpen}
+                onCancel={() => setIsParkedSalesModalOpen(false)}
             />
         </Layout>
     );

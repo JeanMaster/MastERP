@@ -19,6 +19,21 @@ export interface CartItem {
     originalCurrencyCode?: string; // Code of the currency the product was bought in
 }
 
+export interface ParkedSale {
+    id: string;
+    cart: CartItem[];
+    activeCustomer: string;
+    customerId: string | null;
+    appliedCoupon: { id: string; code: string; discountAmount: number } | null;
+    parkedAt: string;
+    note?: string;
+    totals: {
+        total: number;
+        itemsCount: number;
+    };
+}
+
+
 interface POSState {
     cart: CartItem[];
     activeCustomer: string;
@@ -53,6 +68,7 @@ interface POSState {
     customerPointsValueUsd: number;
     pointsRate: number;
     maxRedemptionPercentage: number;
+    parkedSales: ParkedSale[];
 
     // Actions
     fetchCustomerPoints: (clientId: string) => Promise<void>;
@@ -78,6 +94,11 @@ interface POSState {
     fetchNextInvoiceNumber: () => Promise<void>;
     refreshInvoiceNumber: () => Promise<void>;
     reserveInvoiceNumber: () => Promise<string>;
+
+    // Parked sales actions
+    parkCurrentSale: (note?: string) => boolean;
+    recoverParkedSale: (saleId: string) => { recovered: boolean; stockWarnings: string[] };
+    deleteParkedSale: (saleId: string) => void;
 
     // Helpers
     calculatePriceInPrimary: (product: Product, isSecondaryUnit: boolean) => number;
@@ -122,6 +143,7 @@ export const usePOSStore = create<POSState>()(
             customerPointsValueUsd: 0,
             pointsRate: 0,
             maxRedemptionPercentage: 100,
+            parkedSales: [],
             setSearchTerm: (term) => set({ searchTerm: term }),
             setSearchResults: (results) => set({ searchResults: results }),
 
@@ -592,6 +614,91 @@ export const usePOSStore = create<POSState>()(
                     console.error('Failed to reserve invoice number:', error);
                     throw error;
                 }
+            },
+
+            /**
+             * Park the current sale: save cart snapshot and clear POS for next customer.
+             * Returns true if a sale was parked, false if cart was empty.
+             */
+            parkCurrentSale: (note?: string) => {
+                const { cart, activeCustomer, customerId, appliedCoupon, totals } = get();
+                if (cart.length === 0) return false;
+
+                const parkedSale: ParkedSale = {
+                    id: Date.now().toString(),
+                    cart: JSON.parse(JSON.stringify(cart)), // deep clone to avoid reference issues
+                    activeCustomer,
+                    customerId,
+                    appliedCoupon,
+                    parkedAt: new Date().toISOString(),
+                    note: note || undefined,
+                    totals: {
+                        total: totals.total,
+                        itemsCount: totals.itemsCount,
+                    },
+                };
+
+                set((state) => ({
+                    parkedSales: [...state.parkedSales, parkedSale],
+                }));
+
+                // Clear POS for next customer
+                get().resetPOS();
+                return true;
+            },
+
+            /**
+             * Recover a parked sale: restore cart from snapshot.
+             * If current cart has items, auto-park it first.
+             * Validates stock and returns warnings for items with insufficient stock.
+             */
+            recoverParkedSale: (saleId: string) => {
+                const { cart, parkedSales } = get();
+                const targetSale = parkedSales.find((s) => s.id === saleId);
+                if (!targetSale) return { recovered: false, stockWarnings: [] };
+
+                // Auto-park current cart if it has items
+                if (cart.length > 0) {
+                    get().parkCurrentSale();
+                }
+
+                // Validate stock for recovered items
+                const stockWarnings: string[] = [];
+                for (const item of targetSale.cart) {
+                    if (item.product.type === 'SERVICE') continue;
+                    const normalizedQty = get().getNormalizedQuantity(
+                        item.quantity,
+                        item.product,
+                        item.isSecondaryUnit
+                    );
+                    if (normalizedQty > item.product.stock) {
+                        stockWarnings.push(
+                            `${item.product.name}: necesita ${item.quantity}, disponible ${item.product.stock}`
+                        );
+                    }
+                }
+
+                // Restore the parked sale state
+                set((state) => ({
+                    cart: JSON.parse(JSON.stringify(targetSale.cart)),
+                    activeCustomer: targetSale.activeCustomer,
+                    customerId: targetSale.customerId,
+                    appliedCoupon: targetSale.appliedCoupon,
+                    selectedItemId: null,
+                    parkedSales: state.parkedSales.filter((s) => s.id !== saleId),
+                }));
+
+                get().calculateTotals();
+                return { recovered: true, stockWarnings };
+            },
+
+            /**
+             * Delete a parked sale without recovering it.
+             */
+            deleteParkedSale: (saleId: string) => {
+                set((state) => ({
+                    parkedSales: state.parkedSales.filter((s) => s.id !== saleId),
+                }));
             },
 
             processSale: async (paymentData: any, cashSessionId?: string) => {

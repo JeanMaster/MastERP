@@ -1,11 +1,14 @@
-import { Button, Typography, Grid } from 'antd';
+import { Button, Typography, Grid, Badge } from 'antd';
 import {
     ShoppingCartOutlined,
     UserOutlined,
     SaveOutlined,
     ReloadOutlined,
+    PauseCircleOutlined,
+    InboxOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
+import { usePOSStore } from '../../../store/posStore';
 
 const { Text } = Typography;
 
@@ -18,15 +21,18 @@ const FunctionKey = ({
     label,
     icon,
     color = '#fff',
-    onClick
+    onClick,
+    disabled = false
 }: {
     fKey: string;
     label: string;
     icon?: React.ReactNode;
     color?: string;
-    onClick?: () => void
+    onClick?: () => void;
+    disabled?: boolean;
 }) => (
     <Button
+        disabled={disabled}
         style={{
             height: '50px',
             minWidth: '90px',
@@ -34,7 +40,7 @@ const FunctionKey = ({
             flexDirection: 'row',
             alignItems: 'center',
             justifyContent: 'center',
-            background: color,
+            background: disabled ? undefined : color,
             border: '1px solid #d9d9d9',
             padding: '0 15px',
             gap: 8
@@ -54,6 +60,8 @@ interface POSFooterProps {
     onCheckoutClick?: () => void;
     onCajaClick?: () => void;
     onCouponClick?: () => void;
+    onParkClick?: () => void;
+    onViewParkedClick?: () => void;
 }
 
 /**
@@ -61,10 +69,20 @@ interface POSFooterProps {
  * Bottom bar of the POS interface.
  * Contains global keyboard shortcut buttons and the main Checkout (Totalize) button.
  */
-export const POSFooter = ({ onClientClick, onCheckoutClick, onCajaClick, onCouponClick }: POSFooterProps) => {
+export const POSFooter = ({
+    onClientClick,
+    onCheckoutClick,
+    onCajaClick,
+    onCouponClick,
+    onParkClick,
+    onViewParkedClick
+}: POSFooterProps) => {
     const { t } = useTranslation();
     const screens = Grid.useBreakpoint();
     const isMobile = !screens.lg;
+
+    const cartLength = usePOSStore((state) => state.cart.length);
+    const parkedCount = usePOSStore((state) => state.parkedSales.length);
 
     return (
         <div style={{
@@ -77,7 +95,7 @@ export const POSFooter = ({ onClientClick, onCheckoutClick, onCajaClick, onCoupo
             width: '100%'
         }}>
             {/* Action Shortcut Buttons */}
-            <div style={{ display: 'flex', gap: isMobile ? 5 : 10, flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', gap: isMobile ? 5 : 10, flexWrap: 'wrap', alignItems: 'center' }}>
                 <FunctionKey
                     fKey="F3"
                     label={isMobile ? "" : t('pos.header.customer')}
@@ -103,6 +121,34 @@ export const POSFooter = ({ onClientClick, onCheckoutClick, onCajaClick, onCoupo
                             label={t('common.reload') || 'Reload'} 
                             icon={<ReloadOutlined />} 
                         />
+                        <FunctionKey
+                            fKey="F12"
+                            label={t('pos.parked.park_button')}
+                            icon={<PauseCircleOutlined />}
+                            color="#e6f7ff"
+                            onClick={onParkClick}
+                            disabled={cartLength === 0}
+                        />
+                        <Badge count={parkedCount} size="small" offset={[-5, 5]}>
+                            <Button
+                                style={{
+                                    height: '50px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    gap: 8,
+                                    padding: '0 15px',
+                                    border: '1px solid #d9d9d9',
+                                    background: '#f6ffed'
+                                }}
+                                icon={<InboxOutlined style={{ fontSize: 18 }} />}
+                                onClick={onViewParkedClick}
+                            >
+                                <span style={{ fontWeight: 'bold', fontSize: 11 }}>
+                                    {t('pos.parked.parked_sales')}
+                                </span>
+                            </Button>
+                        </Badge>
                     </>
                 )}
             </div>
