@@ -45,7 +45,7 @@ export const POSPage = () => {
     const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
     const [isBatchSalesModalOpen, setIsBatchSalesModalOpen] = useState(false);
     const [completedSale, setCompletedSale] = useState<Sale | null>(null);
-    const { processSale, setCustomer, refreshInvoiceNumber, initialize, resetPOS, exchangeRate } = usePOSStore();
+    const { processSale, setCustomer, refreshInvoiceNumber, initialize, resetPOS, exchangeRate, fetchBackendParkedSales } = usePOSStore();
     const queryClient = useQueryClient();
 
     const [isSummaryOpen, setIsSummaryOpen] = useState(false);
@@ -240,9 +240,26 @@ export const POSPage = () => {
             setIsCheckoutOpen(false);
         }
         initialize();
+        
+        // Poll for backend parked sales every 30 seconds
+        const effectiveRegisterId = user?.role === 'CASHIER' ? activeSession?.registerId : registerId;
+        const parkedSalesInterval = setInterval(() => {
+            if (effectiveRegisterId) {
+                fetchBackendParkedSales(effectiveRegisterId);
+            }
+        }, 30000);
+        
+        // Initial fetch
+        if (effectiveRegisterId) {
+            fetchBackendParkedSales(effectiveRegisterId);
+        }
+        
         window.addEventListener('keydown', handleKeyDown);
-        return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [activeSession?.status]);
+        return () => {
+            window.removeEventListener('keydown', handleKeyDown);
+            clearInterval(parkedSalesInterval);
+        };
+    }, [activeSession?.status, registerId, activeSession, user?.role]);
 
     const handleSelectRegister = (id: string) => {
         setRegisterId(id);
@@ -508,6 +525,7 @@ export const POSPage = () => {
             <ParkedSalesModal
                 open={isParkedSalesModalOpen}
                 onCancel={() => setIsParkedSalesModalOpen(false)}
+                registerId={user?.role === 'CASHIER' ? activeSession?.registerId : registerId}
             />
         </Layout>
     );

@@ -194,4 +194,41 @@ export const salesApi = {
     markAsUncollectible: async (id: string): Promise<void> => {
         await api.delete(`/sales/${id}/uncollectible`);
     },
+
+    /**
+     * Parks a sale for later processing.
+     * @param dto The parked sale data.
+     * @returns The created parked sale.
+     */
+    parkSale: async (dto: {
+        registerId: string;
+        cart: any[];
+        activeCustomer: string;
+        customerId?: string;
+        appliedCoupon?: any;
+        note?: string;
+        totals: { total: number; itemsCount: number };
+    }): Promise<any> => {
+        const { data } = await api.post(`/sales/parked`, dto);
+        return data;
+    },
+
+    /**
+     * Retrieves parked sales, optionally filtered by register.
+     * @param registerId Optional register ID to filter.
+     * @returns List of parked sales.
+     */
+    getParkedSales: async (registerId?: string): Promise<any[]> => {
+        const params = registerId ? `?registerId=${registerId}` : '';
+        const { data } = await api.get(`/sales/parked${params}`);
+        return data;
+    },
+
+    /**
+     * Deletes a parked sale by ID.
+     * @param id The ID of the parked sale.
+     */
+    deleteParkedSale: async (id: string): Promise<void> => {
+        await api.delete(`/sales/parked/${id}`);
+    },
 };

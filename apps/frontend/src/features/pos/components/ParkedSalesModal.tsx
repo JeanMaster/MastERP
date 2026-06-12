@@ -5,6 +5,7 @@ import { DeleteOutlined, PlayCircleOutlined, InfoCircleOutlined } from '@ant-des
 import { formatVenezuelanPrice } from '../../../utils/formatters';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
+import { useEffect } from 'react';
 
 dayjs.extend(relativeTime);
 
@@ -13,19 +14,33 @@ const { Text } = Typography;
 interface ParkedSalesModalProps {
     open: boolean;
     onCancel: () => void;
+    registerId?: string;
 }
 
 /**
  * ParkedSalesModal Component
  * Shows list of temporarily saved/parked sales, allows recovering or deleting them.
+ * Displays both local (ParkedSales) and backend (Preventa) sales with differentiation.
  */
-export const ParkedSalesModal = ({ open, onCancel }: ParkedSalesModalProps) => {
+export const ParkedSalesModal = ({ open, onCancel, registerId }: ParkedSalesModalProps) => {
     const { t } = useTranslation();
     const parkedSales = usePOSStore((state) => state.parkedSales);
+    const backendParkedSales = usePOSStore((state) => state.backendParkedSales);
     const recoverParkedSale = usePOSStore((state) => state.recoverParkedSale);
     const deleteParkedSale = usePOSStore((state) => state.deleteParkedSale);
     const primaryCurrency = usePOSStore((state) => state.primaryCurrency);
     const cart = usePOSStore((state) => state.cart);
+    const fetchBackendParkedSales = usePOSStore((state) => state.fetchBackendParkedSales);
+
+    // Fetch backend parked sales when modal opens or register changes
+    useEffect(() => {
+        if (open && registerId) {
+            fetchBackendParkedSales(registerId);
+        }
+    }, [open, registerId, fetchBackendParkedSales]);
+
+    // Combine both local and backend parked sales
+    const allParkedSales = [...parkedSales, ...backendParkedSales];
 
     const handleRecover = (saleId: string) => {
         const currentCartHasItems = cart.length > 0;
@@ -65,8 +80,22 @@ export const ParkedSalesModal = ({ open, onCancel }: ParkedSalesModalProps) => {
             dataIndex: 'activeCustomer',
             key: 'activeCustomer',
             render: (text: string, record: any) => (
-                <Space direction="vertical" size={1}>
-                    <Text strong>{text}</Text>
+                <Space orientation="vertical" size={1}>
+                    <Space>
+                        <Text strong>{text}</Text>
+                        {record.isBackend && (
+                            <Badge 
+                                count={t('pos.parked.pre_sale_tag') || 'Preventa'} 
+                                style={{ backgroundColor: '#722ed1' }} 
+                            />
+                        )}
+                        {!record.isBackend && record.registerId && (
+                            <Badge 
+                                count={t('pos.parked.local_tag') || 'Local'} 
+                                style={{ backgroundColor: '#52c41a' }} 
+                            />
+                        )}
+                    </Space>
                     {record.note && (
                         <Text type="secondary" style={{ fontSize: '12px' }}>
                             <InfoCircleOutlined style={{ marginRight: 4 }} />
@@ -155,7 +184,7 @@ export const ParkedSalesModal = ({ open, onCancel }: ParkedSalesModalProps) => {
             title={
                 <Space>
                     <span>{t('pos.parked.parked_sales')}</span>
-                    <Badge count={parkedSales.length} style={{ backgroundColor: '#1890ff' }} />
+                    <Badge count={allParkedSales.length} style={{ backgroundColor: '#1890ff' }} />
                 </Space>
             }
             open={open}
@@ -165,10 +194,10 @@ export const ParkedSalesModal = ({ open, onCancel }: ParkedSalesModalProps) => {
                     {t('common.close')}
                 </Button>
             ]}
-            width={800}
+            width={900}
         >
             <Table
-                dataSource={parkedSales}
+                dataSource={allParkedSales}
                 columns={columns}
                 rowKey="id"
                 pagination={{ pageSize: 5 }}

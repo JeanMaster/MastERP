@@ -210,7 +210,13 @@
       "customer": "Cliente",
       "total": "Total",
       "park_button": "Aparcar",
-      "cancel": "Cancelar"
+      "cancel": "Cancelar",
+      "pre_sale_tag": "Preventa",
+      "local_tag": "Local",
+      "select_register_required": "Seleccione una caja destino antes de aparcar la venta",
+      "park_error": "Error al aparcar la venta. Intente nuevamente.",
+      "select_register": "Seleccionar Caja",
+      "select_register_placeholder": "Seleccione la caja destino..."
     },
     "header": {
       "date": "Fecha",
@@ -760,7 +766,18 @@
     "no_products": "No se encontraron productos",
     "no_categories": "No hay categorías disponibles",
     "empty_category": "Esta categoría está vacía",
-    "empty_subcategory": "No hay productos en esta sub-categoría"
+    "empty_subcategory": "No hay productos en esta sub-categoría",
+    "add_to_cart": "Agregar al Carrito",
+    "cart": "Carrito",
+    "cart_empty": "El carrito está vacío",
+    "select_register_required": "Seleccione una caja destino antes de aparcar la venta",
+    "park_error": "Error al aparcar la venta. Intente nuevamente.",
+    "out_of_stock": "agotado",
+    "low_stock": "Stock bajo (disponible: {{available}})",
+    "welcome": "¡Bienvenido a nuestra tienda!",
+    "welcome_subtitle": "Escanea un código de barras o navega por categorías",
+    "select_register": "Seleccionar Caja",
+    "select_register_placeholder": "Seleccione la caja destino..."
   },
   "landing": {
     "nav": {

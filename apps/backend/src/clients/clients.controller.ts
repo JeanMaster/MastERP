@@ -23,6 +23,7 @@ import { Roles, Role } from '../common/decorators/roles.decorator';
 export class ClientsController {
   constructor(private readonly clientsService: ClientsService) {}
 
+  @Roles(Role.ADMIN, Role.MANAGER, Role.SELLER)
   @Post()
   @ApiOperation({ summary: 'Create a new client' })
   @ApiResponse({ status: 201, description: 'Client created successfully' })
@@ -31,9 +32,9 @@ export class ClientsController {
     return this.clientsService.create(createClientDto);
   }
 
-  // CASHIER role included to support client search/selection in POS (ClientSelectionModal + BatchSalesModal).
-  // This is required for core checkout operations; matches pattern in SalesController.
-  @Roles(Role.ADMIN, Role.MANAGER, Role.CASHIER)
+// SELLER role included to support client search/selection in PriceCheckerPage pre-sale mode.
+  // This is required for core checkout operations.
+  @Roles(Role.ADMIN, Role.MANAGER, Role.CASHIER, Role.SELLER)
   @Get()
   @ApiOperation({ summary: 'Retrieve all clients' })
   @ApiQuery({

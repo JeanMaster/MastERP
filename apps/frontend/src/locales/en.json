@@ -211,7 +211,13 @@
       "customer": "Customer",
       "total": "Total",
       "park_button": "Park",
-      "cancel": "Cancel"
+      "cancel": "Cancel",
+      "pre_sale_tag": "Pre-sale",
+      "local_tag": "Local",
+      "select_register_required": "Select a destination register before parking the sale",
+      "park_error": "Failed to park sale. Please try again.",
+      "select_register": "Select Register",
+      "select_register_placeholder": "Select destination register..."
     },
     "header": {
       "date": "Date",
@@ -761,7 +767,18 @@
     "no_products": "No products found matching your search",
     "no_categories": "No categories available",
     "empty_category": "This category is currently empty",
-    "empty_subcategory": "No products in this sub-category"
+    "empty_subcategory": "No products in this sub-category",
+    "add_to_cart": "Add to Cart",
+    "cart": "Cart",
+    "cart_empty": "Cart is empty",
+    "select_register_required": "Select a destination register before parking the sale",
+    "park_error": "Failed to park sale. Please try again.",
+    "out_of_stock": "out of stock",
+    "low_stock": "Low stock (available: {{available}})",
+    "welcome": "Welcome to our store!",
+    "welcome_subtitle": "Scan a barcode or browse categories",
+    "select_register": "Select Register",
+    "select_register_placeholder": "Select destination register..."
   },
   "landing": {
     "nav": {

@@ -31,6 +31,8 @@ export interface ParkedSale {
         total: number;
         itemsCount: number;
     };
+    registerId?: string;
+    isBackend?: boolean;
 }
 
 
@@ -69,6 +71,7 @@ interface POSState {
     pointsRate: number;
     maxRedemptionPercentage: number;
     parkedSales: ParkedSale[];
+    backendParkedSales: ParkedSale[];
 
     // Actions
     fetchCustomerPoints: (clientId: string) => Promise<void>;
@@ -97,6 +100,7 @@ interface POSState {
 
     // Parked sales actions
     parkCurrentSale: (note?: string) => boolean;
+    fetchBackendParkedSales: (registerId: string) => Promise<void>;
     recoverParkedSale: (saleId: string) => { recovered: boolean; stockWarnings: string[] };
     deleteParkedSale: (saleId: string) => void;
 
@@ -144,6 +148,7 @@ export const usePOSStore = create<POSState>()(
             pointsRate: 0,
             maxRedemptionPercentage: 100,
             parkedSales: [],
+            backendParkedSales: [],
             setSearchTerm: (term) => set({ searchTerm: term }),
             setSearchResults: (results) => set({ searchResults: results }),
 
@@ -616,11 +621,27 @@ export const usePOSStore = create<POSState>()(
                 }
             },
 
+            fetchBackendParkedSales: async (registerId: string) => {
+                try {
+                    const backendSales = await salesApi.getParkedSales(registerId);
+                    set({
+                        backendParkedSales: backendSales.map((sale: any) => ({
+                            ...sale,
+                            isBackend: true,
+                        }))
+                    });
+                } catch (error) {
+                    console.error('Failed to fetch backend parked sales:', error);
+                    set({ backendParkedSales: [] });
+                }
+            },
+
             /**
              * Park the current sale: save cart snapshot and clear POS for next customer.
              * Returns true if a sale was parked, false if cart was empty.
+             * If data is provided with registerId, also parks to backend.
              */
-            parkCurrentSale: (note?: string) => {
+            parkCurrentSale: (note?: string, registerId?: string) => {
                 const { cart, activeCustomer, customerId, appliedCoupon, totals } = get();
                 if (cart.length === 0) return false;
 
@@ -636,6 +657,7 @@ export const usePOSStore = create<POSState>()(
                         total: totals.total,
                         itemsCount: totals.itemsCount,
                     },
+                    registerId,
                 };
 
                 set((state) => ({
@@ -648,13 +670,47 @@ export const usePOSStore = create<POSState>()(
             },
 
             /**
+             * Park sale to backend for pre-sales.
+             * @param registerId The cash register ID to associate the parked sale with.
+             * @param note Optional note for the parked sale.
+             * @returns The created backend parked sale ID.
+             */
+            parkSaleToBackend: async (registerId: string, note?: string): Promise<string | null> => {
+                const { cart, activeCustomer, customerId, appliedCoupon, totals } = get();
+                if (cart.length === 0) return null;
+
+                try {
+                    const backendSale = await salesApi.parkSale({
+                        registerId,
+                        cart,
+                        activeCustomer,
+                        customerId: customerId || undefined,
+                        appliedCoupon: appliedCoupon || undefined,
+                        note,
+                        totals: {
+                            total: totals.total,
+                            itemsCount: totals.itemsCount,
+                        },
+                    });
+
+                    // Clear POS for next customer
+                    get().resetPOS();
+                    return backendSale.id;
+                } catch (error) {
+                    console.error('Failed to park sale to backend:', error);
+                    return null;
+                }
+            },
+
+            /**
              * Recover a parked sale: restore cart from snapshot.
              * If current cart has items, auto-park it first.
              * Validates stock and returns warnings for items with insufficient stock.
+             * Also handles backend parked sales (deletes from backend after recovery).
              */
             recoverParkedSale: (saleId: string) => {
-                const { cart, parkedSales } = get();
-                const targetSale = parkedSales.find((s) => s.id === saleId);
+                const { cart, parkedSales, backendParkedSales } = get();
+                const targetSale = parkedSales.find((s) => s.id === saleId) || backendParkedSales.find((s) => s.id === saleId);
                 if (!targetSale) return { recovered: false, stockWarnings: [] };
 
                 // Auto-park current cart if it has items
@@ -665,6 +721,8 @@ export const usePOSStore = create<POSState>()(
                 // Validate stock for recovered items
                 const stockWarnings: string[] = [];
                 for (const item of targetSale.cart) {
+                    // Skip if product data is missing (shouldn't happen after backend fix)
+                    if (!item.product) continue;
                     if (item.product.type === 'SERVICE') continue;
                     const normalizedQty = get().getNormalizedQuantity(
                         item.quantity,
@@ -686,7 +744,15 @@ export const usePOSStore = create<POSState>()(
                     appliedCoupon: targetSale.appliedCoupon,
                     selectedItemId: null,
                     parkedSales: state.parkedSales.filter((s) => s.id !== saleId),
+                    backendParkedSales: state.backendParkedSales.filter((s) => s.id !== saleId),
                 }));
+
+                // Delete from backend if it was a backend parked sale
+                if (targetSale.isBackend) {
+                    salesApi.deleteParkedSale(saleId).catch((err) => {
+                        console.error('Failed to delete backend parked sale:', err);
+                    });
+                }
 
                 get().calculateTotals();
                 return { recovered: true, stockWarnings };
@@ -694,11 +760,21 @@ export const usePOSStore = create<POSState>()(
 
             /**
              * Delete a parked sale without recovering it.
+             * Handles both local and backend parked sales.
              */
             deleteParkedSale: (saleId: string) => {
+                const isBackend = get().backendParkedSales.some((s) => s.id === saleId);
+
                 set((state) => ({
                     parkedSales: state.parkedSales.filter((s) => s.id !== saleId),
+                    backendParkedSales: state.backendParkedSales.filter((s) => s.id !== saleId),
                 }));
+
+                if (isBackend) {
+                    salesApi.deleteParkedSale(saleId).catch((err) => {
+                        console.error('Failed to delete backend parked sale:', err);
+                    });
+                }
             },
 
             processSale: async (paymentData: any, cashSessionId?: string) => {

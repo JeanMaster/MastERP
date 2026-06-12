@@ -156,10 +156,10 @@ export class SalesController {
     return this.salesService.markAsUncollectible(id);
   }
 
-  /**
-   * Retrieves the next available invoice number.
-   */
-  @Roles(Role.ADMIN, Role.MANAGER, Role.CASHIER)
+/**
+     * Retrieves the next available invoice number.
+     */
+  @Roles(Role.ADMIN, Role.MANAGER, Role.CASHIER, Role.SELLER)
   @Get('next-invoice-number')
   @ApiOperation({ summary: 'Retrieve the next invoice number' })
   @ApiResponse({ status: 200, description: 'Next invoice number' })
@@ -168,9 +168,9 @@ export class SalesController {
   }
 
   /**
-   * Reserves an invoice number for immediate use.
-   */
-  @Roles(Role.ADMIN, Role.MANAGER, Role.CASHIER)
+    * Reserves an invoice number for immediate use.
+    */
+  @Roles(Role.ADMIN, Role.MANAGER, Role.CASHIER, Role.SELLER)
   @Get('reserve-invoice-number')
   @ApiOperation({ summary: 'Reserve an invoice number for immediate use' })
   @ApiResponse({ status: 200, description: 'Reserved invoice number' })
@@ -179,8 +179,41 @@ export class SalesController {
   }
 
   /**
-   * Retrieves a single sale record by its ID.
-   */
+     * Creates a parked sale for pre-sales (vendedor/pre-sale mode).
+     */
+  @Roles(Role.ADMIN, Role.MANAGER, Role.CASHIER, Role.SELLER)
+  @Post('parked')
+  @ApiOperation({ summary: 'Park a sale for later processing' })
+  @ApiResponse({ status: 201, description: 'Sale parked successfully' })
+  parkSale(@Body() data: any, @Request() req) {
+    return this.salesService.parkSale(data, req.user);
+  }
+
+  /**
+     * Retrieves parked sales, optionally filtered by register.
+     */
+  @Roles(Role.ADMIN, Role.MANAGER, Role.CASHIER, Role.SELLER)
+  @Get('parked')
+  @ApiOperation({ summary: 'Retrieve parked sales' })
+  @ApiResponse({ status: 200, description: 'List of parked sales' })
+  getParkedSales(@Query('registerId') registerId?: string) {
+    return this.salesService.getParkedSales(registerId);
+  }
+
+  /**
+     * Deletes a parked sale by ID.
+     */
+  @Roles(Role.ADMIN, Role.MANAGER, Role.CASHIER, Role.SELLER)
+  @Delete('parked/:id')
+  @ApiOperation({ summary: 'Delete a parked sale' })
+  @ApiResponse({ status: 200, description: 'Parked sale deleted' })
+  deleteParkedSale(@Param('id') id: string) {
+    return this.salesService.deleteParkedSale(id);
+  }
+
+  /**
+    * Retrieves a single sale record by its ID.
+    */
   @Get(':id')
   @ApiOperation({ summary: 'Retrieve a sale by ID' })
   @ApiResponse({ status: 200, description: 'Sale found' })

@@ -497,13 +497,14 @@ model ReturnReplacementItem {
 }
 
 model CashRegister {
-  id        String        @id @default(uuid())
-  name      String
-  location  String?
-  isActive  Boolean       @default(true)
-  createdAt DateTime      @default(now())
-  updatedAt DateTime      @updatedAt
-  sessions  CashSession[]
+  id           String        @id @default(uuid())
+  name         String
+  location     String?
+  isActive     Boolean       @default(true)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  sessions     CashSession[]
+  parkedSales  ParkedSale[]
 
   @@map("cash_registers")
 }
@@ -912,4 +913,19 @@ enum LoyaltyMovementType {
   EARNED
   REDEEMED
   ADJUSTMENT
+}
+
+model ParkedSale {
+  id             String        @id @default(uuid())
+  registerId     String
+  cart           Json
+  activeCustomer String
+  customerId     String?
+  appliedCoupon  Json?
+  note           String?
+  totals         Json
+  parkedAt       DateTime      @default(now())
+  register       CashRegister  @relation(fields: [registerId], references: [id], onDelete: Cascade)
+
+  @@map("parked_sales")
 }

@@ -3,6 +3,8 @@ import { Modal, Typography, Row, Col, Descriptions, Button, Tag, Image, Divider 
 import type { Product } from '../../services/productsApi';
 import { formatVenezuelanPrice } from '../../utils/formatters';
 import { getRoundedPrice } from '../../utils/rounding';
+import { ShoppingCartOutlined } from '@ant-design/icons';
+import { useTranslation } from 'react-i18next';
 
 const { Title, Text } = Typography;
 
@@ -11,6 +13,7 @@ interface ProductDetailModalProps {
     onClose: () => void;
     product: Product | null;
     companySettings?: any;
+    onAddToCart?: (product: Product, isSecondary: boolean) => void;
 }
 
 /**
@@ -18,7 +21,8 @@ interface ProductDetailModalProps {
  * Immersive detailed view for a single product. 
  * Shows large price highlights, stock status, and category metadata.
  */
-export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({ visible, onClose, product, companySettings }) => {
+export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({ visible, onClose, product, companySettings, onAddToCart }) => {
+    const { t } = useTranslation();
     if (!product) return null;
 
     /**
@@ -88,7 +92,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({ visible,
                         fallback="https://via.placeholder.com/450x450?text=Error+Loading+Image"
                     />
                 </Col>
-                <Col xs={24} md={12}>
+<Col xs={24} md={12}>
                     <Title level={2} style={{ marginBottom: 4, lineHeight: 1.1, fontWeight: 800 }}>{product.name}</Title>
                     <Text type="secondary" style={{ fontSize: '18px', fontWeight: 500 }}>SKU: {product.sku}</Text>
 
@@ -116,6 +120,18 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({ visible,
                             )}
                         </div>
                     </div>
+
+                    {onAddToCart && (
+                        <Button
+                            type="primary"
+                            size="large"
+                            icon={<ShoppingCartOutlined />}
+                            onClick={() => onAddToCart(product, false)}
+                            style={{ width: '100%', marginBottom: 16, height: 50, fontSize: 16 }}
+                        >
+                            {t('price_checker.add_to_cart')}
+                        </Button>
+                    )}
 
                     <Descriptions column={1} size="default" bordered style={{ borderRadius: '12px', overflow: 'hidden' }}>
                         <Descriptions.Item label="Category" labelStyle={{ fontWeight: 600, width: '120px' }}>
