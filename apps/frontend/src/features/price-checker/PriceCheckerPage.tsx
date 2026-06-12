@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { Layout, Input, Row, Col, Card, Typography, Button, Spin, Empty, FloatButton, Breadcrumb, Grid, Drawer, Select, message, Space, Badge } from 'antd';
-import { SearchOutlined, ArrowLeftOutlined, BarcodeOutlined, ShopOutlined, AppstoreOutlined, HomeOutlined, ShoppingCartOutlined } from '@ant-design/icons';
+import { SearchOutlined, ArrowLeftOutlined, ShopOutlined, AppstoreOutlined, HomeOutlined, ShoppingCartOutlined } from '@ant-design/icons';
 import { productsApi, type Product } from '../../services/productsApi';
 import { departmentsApi, type Department } from '../../services/departmentsApi';
 import { companySettingsApi } from '../../services/companySettingsApi';
@@ -17,6 +17,17 @@ import { useAuth } from '../auth/AuthProvider';
 const { Header, Content, Sider } = Layout;
 const { useBreakpoint } = Grid;
 const { Title, Text } = Typography;
+
+interface CartItem {
+    product: Product;
+    quantity: number;
+    price: number;
+    tax: number;
+    discount: number;
+    discountPercent: number;
+    total: number;
+    isSecondaryUnit: boolean;
+}
 
 /**
  * PriceCheckerPage Component
