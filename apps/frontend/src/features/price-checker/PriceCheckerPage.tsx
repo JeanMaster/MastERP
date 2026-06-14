@@ -630,7 +630,7 @@ export const PriceCheckerPage = () => {
                             <Button
                                 type="primary"
                                 icon={<ShoppingCartOutlined />}
-                                onClick={() => setIsCartDrawerOpen(true)}
+                                onClick={() => setIsCartDrawerOpen(!isCartDrawerOpen)}
                                 style={{ background: '#0ea5e9', border: 'none', height: 40 }}
                             >
                                 {t('price_checker.cart')}
@@ -701,14 +701,16 @@ export const PriceCheckerPage = () => {
 
                 {!isMobile && isSellerMode && (
                     <Sider
-                        width={340}
+                        width={isCartDrawerOpen ? 340 : 0}
                         style={{
                             background: 'white',
                             borderLeft: '1px solid #e2e8f0',
-                            padding: 16,
+                            padding: isCartDrawerOpen ? 16 : 0,
                             height: 'calc(100vh - 80px)',
                             position: 'sticky',
-                            top: 80
+                            top: 80,
+                            transition: 'width 0.3s ease',
+                            overflow: 'hidden'
                         }}
                     >
                         <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>

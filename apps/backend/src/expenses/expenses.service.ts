@@ -39,7 +39,7 @@ export class ExpensesService {
           date: createExpenseDto.date
             ? new Date(createExpenseDto.date)
             : new Date(),
-          category: createExpenseDto.category,
+          category: this.normalizeCategory(createExpenseDto.category),
           paymentMethod: createExpenseDto.paymentMethod,
           reference: createExpenseDto.reference,
           notes: createExpenseDto.notes,
@@ -163,7 +163,9 @@ export class ExpensesService {
         date: updateExpenseDto.date
           ? new Date(updateExpenseDto.date)
           : undefined,
-        category: updateExpenseDto.category,
+        category: updateExpenseDto.category
+          ? this.normalizeCategory(updateExpenseDto.category)
+          : undefined,
         paymentMethod: updateExpenseDto.paymentMethod,
         reference: updateExpenseDto.reference,
         notes: updateExpenseDto.notes,
@@ -183,5 +185,35 @@ export class ExpensesService {
     return this.prisma.expense.delete({
       where: { id },
     });
+  }
+
+  /**
+   * Normalizes category names to standard uppercase English keys.
+   */
+  private normalizeCategory(category: string): string {
+    if (!category) return 'OTHERS';
+    const clean = category.trim().toUpperCase();
+    const mapping: Record<string, string> = {
+      'ALQUILER': 'RENT',
+      'RENT': 'RENT',
+      'SERVICIOS': 'SERVICES',
+      'SERVICES': 'SERVICES',
+      'NOMINA': 'PAYROLL',
+      'NÓMINA': 'PAYROLL',
+      'PAYROLL': 'PAYROLL',
+      'PATROLL': 'PAYROLL',
+      'MANTENIMIENTO': 'MAINTENANCE',
+      'MAINTENANCE': 'MAINTENANCE',
+      'PROVEEDORES': 'SUPPLIERS',
+      'SUPPLIERS': 'SUPPLIERS',
+      'TRANSPORTE': 'TRANSPORTATION',
+      'TRANSPORTATION': 'TRANSPORTATION',
+      'OTROS': 'OTHERS',
+      'OTHERS': 'OTHERS',
+      'IMPUESTOS': 'TAXES',
+      'TAXES': 'TAXES',
+      'MARKETING': 'MARKETING',
+    };
+    return mapping[clean] || clean;
   }
 }

@@ -1,6 +1,7 @@
 
 import { useEffect, useState } from 'react';
 import { Card, Spin, Empty, Row, Col, Statistic, Radio, Table, Progress, Tooltip as AntTooltip, Typography, Grid } from 'antd';
+import { useTranslation } from 'react-i18next';
 import {
     DollarOutlined,
     ShoppingOutlined,
@@ -17,6 +18,7 @@ const { Title, Text } = Typography;
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#FF6384', '#36A2EB', '#FFCE56'];
 
 export const ExpenseReports = () => {
+    const { t } = useTranslation();
     const screens = Grid.useBreakpoint();
     const isMobile = !screens.lg;
     const [report, setReport] = useState<ExpenseReport | null>(null);
@@ -83,6 +85,11 @@ export const ExpenseReports = () => {
     }
 
     const percentageOfSales = report.totalSales > 0 ? (report.totalExpenses / report.totalSales) * 100 : 0;
+
+    const translatedExpensesByCategory = report.expensesByCategory.map(item => ({
+        ...item,
+        category: t(`expenses.categories.${item.category}`, { defaultValue: item.category })
+    })) || [];
 
     // Table Columns
     const columns = [
@@ -213,7 +220,7 @@ export const ExpenseReports = () => {
                             <ResponsiveContainer minWidth={0} width="100%" height="100%" debounce={50}>
                                 <PieChart>
                                     <Pie
-                                        data={report.expensesByCategory}
+                                        data={translatedExpensesByCategory}
                                         cx="50%"
                                         cy="50%"
                                         labelLine={false}
@@ -224,7 +231,7 @@ export const ExpenseReports = () => {
                                         paddingAngle={5}
                                         dataKey="amount"
                                     >
-                                        {report.expensesByCategory.map((_entry, index) => (
+                                        {translatedExpensesByCategory.map((_entry, index) => (
                                             <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                                         ))}
                                     </Pie>
@@ -240,7 +247,7 @@ export const ExpenseReports = () => {
                         <div style={{ width: '100%', height: 300, minHeight: 300 }}>
                             <ResponsiveContainer minWidth={0} width="100%" height="100%" debounce={50}>
                                 <BarChart
-                                    data={report.expensesByCategory}
+                                    data={translatedExpensesByCategory}
                                     layout="vertical"
                                     margin={{ top: 5, right: 30, left: isMobile ? 0 : 40, bottom: 5 }}
                                 >
@@ -268,28 +275,28 @@ export const ExpenseReports = () => {
             >
                 {!isMobile ? (
                     <Table
-                        columns={columns}
-                        dataSource={report.expensesByCategory}
-                        rowKey="category"
-                        pagination={false}
-                        size="middle"
-                        summary={() => {
-                            return (
-                                <Table.Summary.Row style={{ background: '#fafafa', fontWeight: 'bold' }}>
-                                    <Table.Summary.Cell index={0}>Total General</Table.Summary.Cell>
-                                    <Table.Summary.Cell index={1} align="right">
-                                        {formatVenezuelanPrice(report.totalExpenses)}
-                                    </Table.Summary.Cell>
-                                    <Table.Summary.Cell index={2} align="right">
-                                        {percentageOfSales.toFixed(2)}%
-                                    </Table.Summary.Cell>
-                                </Table.Summary.Row>
-                            );
-                        }}
-                    />
-                ) : (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                        {report.expensesByCategory.map((item: any) => (
+                                        columns={columns}
+                                        dataSource={translatedExpensesByCategory}
+                                        rowKey="category"
+                                        pagination={false}
+                                        size="middle"
+                                        summary={() => {
+                                            return (
+                                                <Table.Summary.Row style={{ background: '#fafafa', fontWeight: 'bold' }}>
+                                                    <Table.Summary.Cell index={0}>Total General</Table.Summary.Cell>
+                                                    <Table.Summary.Cell index={1} align="right">
+                                                        {formatVenezuelanPrice(report.totalExpenses)}
+                                                    </Table.Summary.Cell>
+                                                    <Table.Summary.Cell index={2} align="right">
+                                                        {percentageOfSales.toFixed(2)}%
+                                                    </Table.Summary.Cell>
+                                                </Table.Summary.Row>
+                                            );
+                                        }}
+                                    />
+                                ) : (
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                                        {translatedExpensesByCategory.map((item: any) => (
                             <Card key={item.category} variant="borderless" style={{ background: '#fafafa', borderRadius: 12 }} styles={{ body: { padding: 16 } }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
                                     <div>
