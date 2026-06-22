@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { Input } from 'antd';
 import type { InputRef } from 'antd';
 
@@ -28,13 +28,20 @@ export const CalculatorInput: React.FC<CalculatorInputProps> = ({
     autoFocus = true
 }) => {
     const inputRef = useRef<InputRef>(null);
-    const [displayValue, setDisplayValue] = useState('');
 
-    // Sync display value when external value changes (mostly for initialization)
+    // Initialize display value as formatted string, but let user edit freely
+    const formattedValue = useMemo(() => {
+        return Number.isFinite(value) && value !== 0 ? value.toFixed(precision) : '';
+    }, [value, precision]);
+
+    const [displayValue, setDisplayValue] = useState(formattedValue);
+
+    // Sync display value when modal opens (value changes from external)
     useEffect(() => {
-        const formatted = value.toFixed(precision);
-        setDisplayValue(formatted);
-    }, [value, precision, open]); // Added open to re-sync when modal opens
+        if (inputRef.current && document.activeElement !== inputRef.current.input) {
+            setDisplayValue(formattedValue);
+        }
+    }, [formattedValue]);
 
     useEffect(() => {
         if (autoFocus) {
@@ -45,58 +52,34 @@ export const CalculatorInput: React.FC<CalculatorInputProps> = ({
     }, [autoFocus]);
 
     const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-        // Handle ENTER
         if (e.key === 'Enter' && onPressEnter) {
             onPressEnter();
-            return;
         }
-
-        // Handle Backspace
-        if (e.key === 'Backspace') {
-            e.preventDefault();
-            const digits = displayValue.replace(/[^\d]/g, '');
-            const newDigits = digits.slice(0, -1) || '0';
-            const newValue = parseInt(newDigits, 10) / Math.pow(10, precision);
-            onChange(newValue);
-            setDisplayValue(newValue.toFixed(precision));
-            return;
-        }
-
-        // Handle Numbers
-        if (/^\d$/.test(e.key)) {
-            e.preventDefault();
-            const digits = displayValue.replace(/[^\d]/g, '');
-            // Prevent too many digits (safety)
-            if (digits.length > 12) return;
-
-            const newDigits = (digits === '0' ? '' : digits) + e.key;
-            const newValue = parseInt(newDigits, 10) / Math.pow(10, precision);
-            onChange(newValue);
-            setDisplayValue(newValue.toFixed(precision));
-            return;
-        }
-
-        // Allow Tab, Escape, etc. but prevent others
-        if (!['Tab', 'Escape', 'ArrowLeft', 'ArrowRight', 'Shift', 'Control', 'Alt'].includes(e.key)) {
-            // If it's a character that would normally be typed (like a dot or letter), stop it
-            if (e.key.length === 1) {
-                e.preventDefault();
-            }
-        }
+        // No preventDefault - allows natural input flow on mobile and desktop
     };
+
+    const handleInputChange = useCallback(
+        (e: React.ChangeEvent<HTMLInputElement>) => {
+            const newVal = e.target.value;
+            setDisplayValue(newVal);
+            const numericValue = parseFloat(newVal) || 0;
+            onChange(numericValue);
+        },
+        [onChange]
+    );
 
     return (
         <Input
             ref={inputRef}
             value={displayValue}
             onKeyDown={handleKeyDown}
+            onChange={handleInputChange}
             size={size}
             style={{ textAlign: 'right', ...style }}
             addonAfter={addonAfter}
             status={status}
             placeholder={placeholder}
-            // We use readOnly or prevent default to control the behavior entirely
-            // but keeping it clickable for focus
+            inputMode="decimal"
             autoComplete="off"
         />
     );

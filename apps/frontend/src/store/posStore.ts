@@ -156,7 +156,7 @@ export const usePOSStore = create<POSState>()(
                 const { currencies, primaryCurrency } = get();
 
                 // Get the raw price from product
-                let rawPrice = isSecondaryUnit
+                const rawPrice = isSecondaryUnit
                     ? (product.secondarySalePrice || 0)
                     : Number(product.salePrice);
 
@@ -185,7 +185,7 @@ export const usePOSStore = create<POSState>()(
             calculateCostInPrimary: (product: Product, isSecondaryUnit: boolean) => {
                 const { currencies, primaryCurrency } = get();
 
-                let rawCost = isSecondaryUnit
+                const rawCost = isSecondaryUnit
                     ? (product.secondaryCostPrice || 0)
                     : Number(product.costPrice);
 
@@ -783,7 +783,7 @@ export const usePOSStore = create<POSState>()(
                 // Handle multiple payments - combine them into a single payment method string
                 let paymentMethod = 'MIXED';
                 let tendered = paymentData.totalPaid || 0;
-                let change = paymentData.change || 0;
+                const change = paymentData.change || 0;
 
                 // If only one payment, use that method
                 if (paymentData.payments && paymentData.payments.length === 1) {

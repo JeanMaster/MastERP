@@ -592,7 +592,7 @@ export const CheckoutModal = ({ open, onCancel, onProcess }: CheckoutModalProps)
                                         {foreignCurrencies.map((currency, index) => {
                                             const currentInput = inputAmount || 0;
                                             const rate = currency.exchangeRate || 1;
-                                            let displayValue = (Math.abs(currentInput - remaining) < 0.01) ? remaining / rate : currentInput;
+                                            const displayValue = (Math.abs(currentInput - remaining) < 0.01) ? remaining / rate : currentInput;
 
                                             return (
                                                 <Button 

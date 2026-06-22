@@ -358,7 +358,6 @@ export class CashRegisterService {
       switch (movement.type) {
         case 'SALE':
         case 'WITHDRAWAL':
-        case 'OPENING':
           expected += amountInVES;
           break;
         case 'EXPENSE':

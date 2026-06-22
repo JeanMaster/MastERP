@@ -145,7 +145,6 @@ export const DiscountModal = ({ open, product, currentPrice, isSecondaryUnit, on
                     <CalculatorInput
                         value={inputValue}
                         onChange={handleChange}
-                        precision={mode === 'PERCENT' ? 1 : 2}
                         size="large"
                         style={{ width: '100%' }}
                         onPressEnter={handleSubmit}
