@@ -5,6 +5,8 @@ import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import dayjs from 'dayjs';
 import { expensesApi, type Expense } from '../../services/expensesApi';
+import { currenciesApi } from '../../services/currenciesApi';
+import { companySettingsApi } from '../../services/companySettingsApi';
 import { CreateExpenseModal } from './components/CreateExpenseModal';
 import { formatVenezuelanPrice } from '../../utils/formatters';
 
@@ -28,6 +30,56 @@ export const ExpensesPage = () => {
         queryKey: ['expenses'],
         queryFn: expensesApi.getAll
     });
+
+    const { data: currencies = [] } = useQuery({
+        queryKey: ['currencies'],
+        queryFn: currenciesApi.getAll,
+    });
+
+    const { data: settings } = useQuery({
+        queryKey: ['company-settings'],
+        queryFn: companySettingsApi.getSettings,
+    });
+
+    // Reference currency for the "Relativo" column and totals. Defaults to USD if no
+    // preferred currency is configured, matching the original hardcoded behavior.
+    const preferredCurrency =
+        currencies.find(c => c.id === settings?.preferredSecondaryCurrencyId) ||
+        currencies.find(c => c.code === 'USD') ||
+        currencies.find(c => !c.isPrimary);
+    const preferredSymbol = preferredCurrency?.symbol || '$';
+
+    // Real symbol of whatever currency the expense was actually paid in (VES, USD,
+    // EUR, UDT, etc.) — instead of assuming every non-VES expense is in USD.
+    const getCurrencySymbol = (code: string) =>
+        currencies.find(c => c.code === code)?.symbol || (code === 'VES' ? 'Bs' : code);
+
+    /**
+     * Converts an expense's amount to the preferred reference currency using the
+     * exchange rate FROZEN on the record at the time it was created — never today's
+     * rate. This mirrors how the amount was actually valued the day it happened.
+     */
+    const convertToPreferred = (record: Expense) => {
+        if (!preferredCurrency) return Number(record.amount);
+        if (record.currencyCode === preferredCurrency.code) return Number(record.amount);
+
+        const rate = Number(record.exchangeRate) || 1;
+
+        if (record.currencyCode === 'VES') {
+            // exchangeRate stored on the expense = VES per unit of the reference
+            // currency that day (e.g. VES per USD).
+            return Number(record.amount) / rate;
+        }
+
+        // Edge case: the expense was paid in a third currency (e.g. EUR while the
+        // preferred currency is USD). We only have that currency's own historical
+        // VES rate, not a historical VES rate for the preferred currency on that
+        // same date, so this falls back to the preferred currency's CURRENT rate
+        // as a best-effort approximation.
+        const vesAmount = Number(record.amount) * rate;
+        const preferredRateNow = Number(preferredCurrency.exchangeRate) || rate;
+        return vesAmount / preferredRateNow;
+    };
 
     const handleSearch = (value: string) => {
         setSearchText(value);
@@ -53,23 +105,17 @@ export const ExpensesPage = () => {
     );
 
     /**
-     * Calculates totals in USD based on exchange rate at the time of expense.
+     * Sums a list of expenses in the preferred reference currency, using each
+     * record's own frozen historical rate (see convertToPreferred).
      */
-    const calculateTotalInUSD = (list: Expense[]) => {
-        return list.reduce((sum, e) => {
-            if (e.currencyCode === 'USD') {
-                return sum + Number(e.amount);
-            }
-            const rate = Number(e.exchangeRate) || 1;
-            return sum + (Number(e.amount) / rate);
-        }, 0);
-    };
+    const sumInPreferred = (list: Expense[]) =>
+        list.reduce((sum, e) => sum + convertToPreferred(e), 0);
 
-    const totalTodayUSD = calculateTotalInUSD(
+    const totalTodayRef = sumInPreferred(
         filteredExpenses.filter(e => dayjs(e.date).isSame(dayjs(), 'day'))
     );
 
-    const totalMonthUSD = calculateTotalInUSD(
+    const totalMonthRef = sumInPreferred(
         filteredExpenses.filter(e => dayjs(e.date).isSame(dayjs(), 'month'))
     );
 
@@ -107,7 +153,7 @@ export const ExpensesPage = () => {
             render: (_: any, record: Expense) => (
                 <Space direction="vertical" size={0} style={{ textAlign: 'right' }}>
                     <Typography.Text strong>
-                        {formatVenezuelanPrice(record.amount, record.currencyCode === 'VES' ? 'Bs' : '$')}
+                        {formatVenezuelanPrice(record.amount, getCurrencySymbol(record.currencyCode))}
                     </Typography.Text>
                     {record.exchangeRate && Number(record.exchangeRate) !== 1 && (
                         <Typography.Text type="secondary" style={{ fontSize: '11px' }}>
@@ -118,25 +164,14 @@ export const ExpensesPage = () => {
             ),
         },
         {
-            title: t('expenses_page.relative_usd'),
-            key: 'usdAmount',
+            title: t('expenses_page.relative_usd', { symbol: preferredSymbol }),
+            key: 'refAmount',
             align: 'right' as const,
-            render: (_: any, record: Expense) => {
-                let usdAmount = 0;
-                const rate = Number(record.exchangeRate) || 1;
-
-                if (record.currencyCode === 'USD') {
-                    usdAmount = Number(record.amount);
-                } else {
-                    usdAmount = Number(record.amount) / rate;
-                }
-
-                return (
-                    <Typography.Text type="secondary">
-                        {formatVenezuelanPrice(usdAmount, '$')}
-                    </Typography.Text>
-                );
-            }
+            render: (_: any, record: Expense) => (
+                <Typography.Text type="secondary">
+                    {formatVenezuelanPrice(convertToPreferred(record), preferredSymbol)}
+                </Typography.Text>
+            )
         },
         {
             title: t('expenses_page.method_account'),
@@ -186,24 +221,24 @@ export const ExpensesPage = () => {
                     <Col xs={12} sm={12} md={6}>
                         <Card size={isMobile ? 'small' : 'default'}>
                             <Statistic
-                                title={t('expenses_page.today_ref')}
-                                value={totalTodayUSD}
+                                title={t('expenses_page.today_ref', { symbol: preferredSymbol })}
+                                value={totalTodayRef}
                                 precision={2}
                                 styles={{ content: { color: '#cf1322', fontSize: isMobile ? '16px' : '24px' } }}
                                 prefix={<DollarOutlined />}
-                                suffix="$"
+                                suffix={preferredSymbol}
                             />
                         </Card>
                     </Col>
                     <Col xs={12} sm={12} md={6}>
                         <Card size={isMobile ? 'small' : 'default'}>
                             <Statistic
-                                title={t('expenses_page.month_ref')}
-                                value={totalMonthUSD}
+                                title={t('expenses_page.month_ref', { symbol: preferredSymbol })}
+                                value={totalMonthRef}
                                 precision={2}
                                 styles={{ content: { color: '#cf1322', fontSize: isMobile ? '16px' : '24px' } }}
                                 prefix={<DollarOutlined />}
-                                suffix="$"
+                                suffix={preferredSymbol}
                             />
                         </Card>
                     </Col>
@@ -260,13 +295,7 @@ export const ExpensesPage = () => {
                 ) : (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                         {filteredExpenses.slice((currentPage - 1) * pageSize, currentPage * pageSize).map((item: Expense) => {
-                            let usdAmount = 0;
-                            const rate = Number(item.exchangeRate) || 1;
-                            if (item.currencyCode === 'USD') {
-                                usdAmount = Number(item.amount);
-                            } else {
-                                usdAmount = Number(item.amount) / rate;
-                            }
+                            const refAmount = convertToPreferred(item);
 
                             return (
                                 <Card
@@ -283,10 +312,10 @@ export const ExpensesPage = () => {
                                         </Tag>
                                     </div>
                                     <div style={{ fontWeight: 700, fontSize: 15, color: '#cf1322', marginBottom: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                        <span>-{formatVenezuelanPrice(item.amount, item.currencyCode === 'VES' ? 'Bs' : '$')}</span>
-                                        {item.currencyCode !== 'USD' && (
+                                        <span>-{formatVenezuelanPrice(item.amount, getCurrencySymbol(item.currencyCode))}</span>
+                                        {item.currencyCode !== preferredCurrency?.code && (
                                             <span style={{ fontSize: 12, fontWeight: 'normal', color: '#8c8c8c' }}>
-                                                ({formatVenezuelanPrice(usdAmount, '$')})
+                                                ({formatVenezuelanPrice(refAmount, preferredSymbol)})
                                             </span>
                                         )}
                                     </div>

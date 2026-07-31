@@ -72,6 +72,13 @@ export const CreateExpenseModal = ({ open, onCancel, expense }: CreateExpenseMod
         enabled: open
     });
 
+    // Reference currency used to price expenses (configurable in Settings), falling
+    // back to USD to preserve prior behavior when nothing is configured.
+    const preferredCurrency =
+        currencies.find(c => c.id === settings?.preferredSecondaryCurrencyId) ||
+        currencies.find(c => c.code === 'USD') ||
+        currencies.find(c => !c.isPrimary);
+
     // Set initial values when modal opens
     useEffect(() => {
         if (open) {
@@ -96,19 +103,15 @@ export const CreateExpenseModal = ({ open, onCancel, expense }: CreateExpenseMod
                 // Create Mode: Set Defaults
                 form.resetFields();
 
-                // Default to Primary or USD
+                // Default to the preferred/reference currency, or Primary as fallback
                 const primary = currencies.find(c => c.isPrimary);
-                const usd = currencies.find(c => c.code === 'USD');
-                const defaultCurrency = usd || primary || currencies[0];
+                const defaultCurrency = preferredCurrency || primary || currencies[0];
 
                 form.setFieldValue('currencyId', defaultCurrency.id);
 
-                // Set Exchange Rate: Attempt to set the current system rate
-                if (usd) {
-                    form.setFieldValue('exchangeRate', usd.exchangeRate || 1);
-                } else {
-                    form.setFieldValue('exchangeRate', 1);
-                }
+                // Set Exchange Rate: current rate of the reference currency (today's
+                // snapshot for a NEW expense — this never touches already-saved records).
+                form.setFieldValue('exchangeRate', preferredCurrency?.exchangeRate || 1);
 
                 // Set other defaults
                 form.setFieldsValue({
@@ -118,10 +121,23 @@ export const CreateExpenseModal = ({ open, onCancel, expense }: CreateExpenseMod
                 });
             }
         }
-    }, [open, expense, currencies, form]);
+    }, [open, expense, currencies, settings, form]);
 
-    const handleCurrencyChange = () => {
-        // Exchange rate logic can be added here if needed to auto-update rate on currency change
+    const handleCurrencyChange = (currencyId: string) => {
+        // Only suggests today's rate as a starting point (still editable by the user
+        // if the supplier quoted a different rate). Never rewrites a saved expense's
+        // historical rate — this only runs while the field is being edited live.
+        const currency = currencies.find(c => c.id === currencyId);
+        if (!currency) return;
+
+        if (currency.isPrimary) {
+            // Paying in the primary currency: the rate field represents the
+            // reference currency's value that day (e.g. VES per USD).
+            form.setFieldValue('exchangeRate', preferredCurrency?.exchangeRate || 1);
+        } else {
+            // Paying in a foreign currency: use that currency's own rate to primary.
+            form.setFieldValue('exchangeRate', currency.exchangeRate || 1);
+        }
     };
 
     const createExpenseMutation = useMutation({

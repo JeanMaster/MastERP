@@ -1596,11 +1596,11 @@
   },
   "expenses_page": {
     "original_amount": "Original Amount",
-    "relative_usd": "Relative ($)",
+    "relative_usd": "Relative ({{symbol}})",
     "method_account": "Method / Account",
     "edit_expense": "Edit Expense",
-    "today_ref": "Today (Ref $)",
-    "month_ref": "Month (Ref $)",
+    "today_ref": "Today (Ref {{symbol}})",
+    "month_ref": "Month (Ref {{symbol}})",
     "search_placeholder": "Search expenses...",
     "register_short": "Register",
     "rate": "Rate"

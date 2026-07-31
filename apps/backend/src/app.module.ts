@@ -35,6 +35,7 @@ import { MercadoLibreModule } from './mercadolibre/mercadolibre.module';
 import { MarketingModule } from './marketing/marketing.module';
 import { TaxRetentionsModule } from './tax-retentions/tax-retentions.module';
 import { CatalogModule } from './catalog/catalog.module';
+import { DailyCashBalanceModule } from './daily-cash-balance/daily-cash-balance.module';
 
 @Module({
   imports: [
@@ -78,6 +79,7 @@ import { CatalogModule } from './catalog/catalog.module';
     MercadoLibreModule,
     TaxRetentionsModule,
     MarketingModule,
+    DailyCashBalanceModule,
   ],
   controllers: [AppController, DevToolsController],
   providers: [

@@ -1597,11 +1597,11 @@
   },
   "expenses_page": {
     "original_amount": "Monto Original",
-    "relative_usd": "Relativo ($)",
+    "relative_usd": "Relativo ({{symbol}})",
     "method_account": "Método / Cuenta",
     "edit_expense": "Editar Gasto",
-    "today_ref": "Hoy (Ref $)",
-    "month_ref": "Mes (Ref $)",
+    "today_ref": "Hoy (Ref {{symbol}})",
+    "month_ref": "Mes (Ref {{symbol}})",
     "search_placeholder": "Buscar gastos...",
     "register_short": "Registrar",
     "rate": "Tasa"

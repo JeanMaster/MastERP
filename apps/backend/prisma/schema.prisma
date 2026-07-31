@@ -497,14 +497,14 @@ model ReturnReplacementItem {
 }
 
 model CashRegister {
-  id           String        @id @default(uuid())
-  name         String
-  location     String?
-  isActive     Boolean       @default(true)
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
-  sessions     CashSession[]
-  parkedSales  ParkedSale[]
+  id          String        @id @default(uuid())
+  name        String
+  location    String?
+  isActive    Boolean       @default(true)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  sessions    CashSession[]
+  parkedSales ParkedSale[]
 
   @@map("cash_registers")
 }
@@ -594,35 +594,38 @@ model InventoryAdjustment {
   reason        String
   notes         String?
   performedBy   String
+  expenseId     String?  @unique
   createdAt     DateTime @default(now())
   product       Product  @relation(fields: [productId], references: [id])
+  expense       Expense? @relation(fields: [expenseId], references: [id])
 
   @@map("inventory_adjustments")
 }
 
 model Expense {
-  id                   String        @id @default(uuid())
+  id                   String               @id @default(uuid())
   description          String
-  amount               Decimal       @db.Decimal(10, 2)
-  currencyCode         String        @default("VES")
-  exchangeRate         Decimal       @default(1) @db.Decimal(10, 4)
-  date                 DateTime      @default(now())
+  amount               Decimal              @db.Decimal(10, 2)
+  currencyCode         String               @default("VES")
+  exchangeRate         Decimal              @default(1) @db.Decimal(10, 4)
+  date                 DateTime             @default(now())
   category             String
   paymentMethod        String
   reference            String?
   notes                String?
   userId               String?
-  cashMovementId       String?       @unique
-  createdAt            DateTime      @default(now())
-  updatedAt            DateTime      @updatedAt
+  cashMovementId       String?              @unique
+  createdAt            DateTime             @default(now())
+  updatedAt            DateTime             @updatedAt
   bankAccountId        String?
-  bankMovementId       String?       @unique
+  bankMovementId       String?              @unique
   invoiceControlNumber String?
   invoiceNumber        String?
-  isTaxable            Boolean       @default(false)
-  taxAmount            Decimal       @default(0) @db.Decimal(10, 2)
-  bankAccount          BankAccount?  @relation(fields: [bankAccountId], references: [id])
-  bankMovement         BankMovement? @relation(fields: [bankMovementId], references: [id])
+  isTaxable            Boolean              @default(false)
+  taxAmount            Decimal              @default(0) @db.Decimal(10, 2)
+  bankAccount          BankAccount?         @relation(fields: [bankAccountId], references: [id])
+  bankMovement         BankMovement?        @relation(fields: [bankMovementId], references: [id])
+  InventoryAdjustment  InventoryAdjustment?
 
   @@map("expenses")
 }
@@ -916,7 +919,7 @@ enum LoyaltyMovementType {
 }
 
 model ParkedSale {
-  id             String        @id @default(uuid())
+  id             String       @id @default(uuid())
   registerId     String
   cart           Json
   activeCustomer String
@@ -924,8 +927,22 @@ model ParkedSale {
   appliedCoupon  Json?
   note           String?
   totals         Json
-  parkedAt       DateTime      @default(now())
-  register       CashRegister  @relation(fields: [registerId], references: [id], onDelete: Cascade)
+  parkedAt       DateTime     @default(now())
+  register       CashRegister @relation(fields: [registerId], references: [id], onDelete: Cascade)
 
   @@map("parked_sales")
+}
+
+// Manual end-of-day snapshot of total Bs on hand (cash register + all Bs bank
+// accounts combined), used to measure real day-to-day inflation loss on idle
+// bolívares instead of an approximation derived from sales/expenses.
+model DailyCashBalance {
+  id        String   @id @default(uuid())
+  date      DateTime @unique @db.Date
+  balance   Decimal  @db.Decimal(14, 2)
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("daily_cash_balances")
 }
