@@ -1,15 +1,101 @@
 import { useState } from 'react';
-import { Card, Row, Col, Statistic, Table, Radio, Space, Typography, Tag, Grid } from 'antd';
+import { Card, Row, Col, Statistic, Table, Radio, Space, Typography, Tag, Grid, InputNumber, Button, App } from 'antd';
 import {
-    InfoCircleOutlined
+    InfoCircleOutlined,
+    SaveOutlined,
 } from '@ant-design/icons';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as ChartTooltip, ResponsiveContainer, Legend } from 'recharts';
 import { statsApi } from '../../../services/statsApi';
+import { dailyCashBalanceApi } from '../../../services/dailyCashBalanceApi';
 import { formatVenezuelanPrice } from '../../../utils/formatters';
 import dayjs from 'dayjs';
 
 const { Title, Text } = Typography;
+
+const DailyCashBalanceCapture: React.FC = () => {
+    const { message } = App.useApp();
+    const queryClient = useQueryClient();
+    const [editedAmount, setEditedAmount] = useState<number | null>(null);
+    const todayStr = dayjs().format('YYYY-MM-DD');
+
+    const { data: today } = useQuery({
+        queryKey: ['dailyCashBalance', 'today'],
+        queryFn: dailyCashBalanceApi.getToday,
+    });
+
+    const { data: impact } = useQuery({
+        queryKey: ['dailyCashBalance', 'inflationImpact'],
+        queryFn: () => dailyCashBalanceApi.getInflationImpact(),
+    });
+
+    // Whatever the user typed wins; otherwise fall back to today's saved value.
+    const amount = editedAmount ?? (today ? Number(today.balance) : null);
+
+    const saveMutation = useMutation({
+        mutationFn: (balance: number) => dailyCashBalanceApi.upsert({ date: todayStr, balance }),
+        onSuccess: () => {
+            message.success('Saldo del día guardado');
+            queryClient.invalidateQueries({ queryKey: ['dailyCashBalance'] });
+        },
+        onError: () => message.error('No se pudo guardar el saldo'),
+    });
+
+    return (
+        <Card
+            variant="borderless"
+            style={{ marginBottom: 24, borderRadius: 16, boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}
+            styles={{ body: { padding: 20 } }}
+        >
+            <Row gutter={[24, 16]} align="middle">
+                <Col xs={24} md={10}>
+                    <Text strong style={{ display: 'block', marginBottom: 4 }}>
+                        Saldo real en Bs de hoy ({dayjs().format('DD/MM/YYYY')})
+                    </Text>
+                    <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 8 }}>
+                        Caja + todas las cuentas bancarias en Bolívares combinadas, al cerrar el negocio.
+                    </Text>
+                    <Space.Compact style={{ width: '100%', maxWidth: 320 }}>
+                        <InputNumber
+                            style={{ width: '100%' }}
+                            prefix="Bs."
+                            min={0}
+                            precision={2}
+                            value={amount}
+                            onChange={setEditedAmount}
+                            placeholder="Ej. 45000"
+                        />
+                        <Button
+                            type="primary"
+                            icon={<SaveOutlined />}
+                            loading={saveMutation.isPending}
+                            disabled={amount === null}
+                            onClick={() => amount !== null && saveMutation.mutate(amount)}
+                        >
+                            Guardar
+                        </Button>
+                    </Space.Compact>
+                </Col>
+                <Col xs={24} md={14}>
+                    {impact?.hasEnoughData ? (
+                        <Statistic
+                            title={<Text type="secondary" style={{ fontSize: 11 }}>PÉRDIDA REAL MEDIDA (SALDOS CAPTURADOS, {impact.daysCovered} DÍAS)</Text>}
+                            value={impact.totalLoss}
+                            precision={2}
+                            prefix="Bs."
+                            styles={{ content: { color: '#cf1322', fontSize: 20, fontWeight: 800 } }}
+                        />
+                    ) : (
+                        <Text type="secondary" style={{ fontSize: 12 }}>
+                            <InfoCircleOutlined style={{ marginRight: 6 }} />
+                            Captura el saldo de al menos 2 días distintos para ver aquí la pérdida real medida día a día.
+                        </Text>
+                    )}
+                </Col>
+            </Row>
+        </Card>
+    );
+};
 
 const InflationReport: React.FC = () => {
     const screens = Grid.useBreakpoint();
@@ -146,6 +232,8 @@ const InflationReport: React.FC = () => {
                     </Col>
                 </Row>
             </div>
+
+            <DailyCashBalanceCapture />
 
             {/* Summary cards */}
             <Row gutter={[12, 12]} style={{ marginBottom: 24 }}>

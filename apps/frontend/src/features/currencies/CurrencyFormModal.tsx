@@ -133,7 +133,7 @@ export const CurrencyFormModal = ({ open, currency, onClose }: CurrencyFormModal
                     name="code"
                     rules={[{ required: true, message: t('common.error') }]}
                 >
-                    <Input placeholder={t('currencies.form.code_help')} maxLength={3} style={{ textTransform: 'uppercase' }} />
+                    <Input placeholder={t('currencies.form.code_help')} maxLength={5} style={{ textTransform: 'uppercase' }} />
                 </Form.Item>
 
                 <Form.Item

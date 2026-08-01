@@ -852,24 +852,12 @@ export class StatsService {
 
     let totalExpensesAmount = 0;
     expensesInRangeList.forEach((e) => {
-      const val = Number(e.amount);
-      const eCurrency = allCurrencies.find((c) => c.code === e.currencyCode);
-      const isLocal = !eCurrency || eCurrency.isPrimary;
-
-      const closingRate = getMonthRate(e.date);
-      const monthCrossRateFactor =
-        currencyCode === 'VES' ? closingRate : crossRateFactor;
-
-      let expTarget = 0;
-      if (isLocal && currencyCode === 'VES') {
-        expTarget = val;
-      } else {
-        // All other revalued at closingRate
-        const eRate = Number(e.exchangeRate) || 1;
-        const valVES = isLocal ? val : val * eRate;
-        expTarget = (valVES / closingRate) * monthCrossRateFactor;
-      }
-      totalExpensesAmount += expTarget;
+      totalExpensesAmount += this.valueExpenseInCurrency(
+        e,
+        currencyCode,
+        refCurrency?.code,
+        allCurrencies,
+      );
     });
 
     let adjustedCostOfSales =
@@ -1142,13 +1130,12 @@ export class StatsService {
 
     let totalExpenses = 0;
     expenses.forEach((e) => {
-      const val = Number(e.amount);
-      const rate = Number(e.exchangeRate) || 1;
-      const valVES = e.currencyCode === 'VES' ? val : val * rate;
-      const closingRate = getMonthRate(e.date);
-      const monthCrossRateFactor =
-        currencyCode === 'VES' ? closingRate : crossRateFactor;
-      totalExpenses += (valVES / closingRate) * monthCrossRateFactor;
+      totalExpenses += this.valueExpenseInCurrency(
+        e,
+        currencyCode,
+        refCurrency?.code,
+        allCurrencies,
+      );
     });
 
     // 3. Process Returns Consistency
@@ -1396,11 +1383,24 @@ export class StatsService {
       let monthlyPurchases = 0;
       let monthlyCOGS = 0;
 
+      // This month's own closing rate (falls back to today's live rate only
+      // for the current, still-open month or if there's no sales data to
+      // derive a closing rate from) — never a flat "today's rate" applied to
+      // every past month.
+      const monthClosingRates = this.calculateMonthClosingRates(
+        sales,
+        currentRefRate,
+      );
+      const monthKey = currentMonth.format('YYYY-MM');
+      const closingRate = monthClosingRates[monthKey] || currentRefRate;
+      const monthCrossRateFactor =
+        currencyCode === 'VES' ? closingRate : crossRateFactor;
+
       sales.forEach((sale) => {
         const { totalInTarget } = this.revalueSaleByPayments(
           sale,
-          currentRefRate,
-          crossRateFactor,
+          closingRate,
+          monthCrossRateFactor,
           currencyCode === 'VES',
           allCurrencies,
         );
@@ -1416,10 +1416,9 @@ export class StatsService {
               : Number(item.product.currency?.exchangeRate || 1);
             itemCostInVES = Number(item.product.costPrice || 0) * productRate;
           }
-          // Costs are ALWAYS revalued at current rate
           monthlyCOGS +=
-            ((itemCostInVES * Number(item.quantity)) / currentRefRate) *
-            crossRateFactor;
+            ((itemCostInVES * Number(item.quantity)) / closingRate) *
+            monthCrossRateFactor;
         });
       });
 
@@ -1427,15 +1426,16 @@ export class StatsService {
         const val = Number(p.total);
         const rate = Number(p.exchangeRate) || 1;
         const valVES = p.currencyCode === 'VES' ? val : val * rate;
-        monthlyPurchases += (valVES / currentRefRate) * crossRateFactor;
+        monthlyPurchases += (valVES / closingRate) * monthCrossRateFactor;
       });
 
       expenses.forEach((e) => {
-        const val = Number(e.amount);
-        const rate = Number(e.exchangeRate) || 1;
-        const valVES = e.currencyCode === 'VES' ? val : val * rate;
-        monthlyOperationalExpenses +=
-          (valVES / currentRefRate) * crossRateFactor;
+        monthlyOperationalExpenses += this.valueExpenseInCurrency(
+          e,
+          currencyCode,
+          refCurrency?.code,
+          allCurrencies,
+        );
       });
 
       const returnsInRange = await this.prisma.return.findMany({
@@ -1465,9 +1465,9 @@ export class StatsService {
         );
 
         const returnedValueTarget =
-          (returnedValueVES / currentRefRate) * crossRateFactor;
+          (returnedValueVES / closingRate) * monthCrossRateFactor;
         const replacementsTarget =
-          (replacementsVES / currentRefRate) * crossRateFactor;
+          (replacementsVES / closingRate) * monthCrossRateFactor;
 
         monthlyReturnsValue += returnedValueTarget;
         monthlyIncomeNominal -= returnedValueVES;
@@ -1482,7 +1482,7 @@ export class StatsService {
               productRate *
               Number(item.quantity);
             monthlyReturnedCOGS +=
-              (itemCostVES / currentRefRate) * crossRateFactor;
+              (itemCostVES / closingRate) * monthCrossRateFactor;
           });
         }
 
@@ -1499,7 +1499,7 @@ export class StatsService {
               productRate *
               Number(item.quantity);
             monthlyReplacementCOGS +=
-              (itemCostVES / currentRefRate) * crossRateFactor;
+              (itemCostVES / closingRate) * monthCrossRateFactor;
           });
         }
       });
@@ -1527,7 +1527,8 @@ export class StatsService {
           Number(adj.product.costPrice || 0) *
           productRate *
           Number(adj.quantity);
-        adjustedMonthlyCOGS += (lossCostVES / currentRefRate) * crossRateFactor;
+        adjustedMonthlyCOGS +=
+          (lossCostVES / closingRate) * monthCrossRateFactor;
       });
 
       const realProfit =
@@ -2020,58 +2021,67 @@ export class StatsService {
     const { currentRefRate } = await this.getCrossRateFactor('VES');
 
     // 1. Fetch all required data
-    const [sales, allReturns, inventoryLosses, expenses] = await Promise.all([
-      this.prisma.sale.findMany({
-        where: { active: true, date: dateFilter },
-        select: {
-          total: true,
-          paymentMethod: true,
-          date: true,
-          exchangeRate: true,
-          items: {
-            select: {
-              cost: true,
-              quantity: true,
-              product: {
-                select: { id: true, currency: true, costPrice: true },
+    const [sales, allReturns, inventoryLosses, expenses, bsPurchases] =
+      await Promise.all([
+        this.prisma.sale.findMany({
+          where: { active: true, date: dateFilter },
+          select: {
+            total: true,
+            paymentMethod: true,
+            date: true,
+            exchangeRate: true,
+            items: {
+              select: {
+                cost: true,
+                quantity: true,
+                product: {
+                  select: { id: true, currency: true, costPrice: true },
+                },
               },
             },
           },
-        },
-      }),
-      this.prisma.return.findMany({
-        where: { status: 'COMPLETED', createdAt: dateFilter },
-        select: {
-          refundAmount: true,
-          refundMethod: true,
-          createdAt: true,
-          reason: true,
-          returnType: true,
-          originalSale: { select: { exchangeRate: true } },
-          items: { include: { product: { include: { currency: true } } } },
-          replacementItems: {
-            include: { product: { include: { currency: true } } },
+        }),
+        this.prisma.return.findMany({
+          where: { status: 'COMPLETED', createdAt: dateFilter },
+          select: {
+            refundAmount: true,
+            refundMethod: true,
+            createdAt: true,
+            reason: true,
+            returnType: true,
+            originalSale: { select: { exchangeRate: true } },
+            items: { include: { product: { include: { currency: true } } } },
+            replacementItems: {
+              include: { product: { include: { currency: true } } },
+            },
           },
-        },
-      }),
-      this.prisma.inventoryAdjustment.findMany({
-        where: {
-          createdAt: dateFilter,
-          type: 'DECREASE',
-          reason: { in: this.LOSS_ADJUSTMENT_REASONS },
-        },
-        include: { product: { include: { currency: true } } },
-      }),
-      this.prisma.expense.findMany({
-        where: { date: dateFilter },
-        select: {
-          amount: true,
-          currencyCode: true,
-          exchangeRate: true,
-          date: true,
-        },
-      }),
-    ]);
+        }),
+        this.prisma.inventoryAdjustment.findMany({
+          where: {
+            createdAt: dateFilter,
+            type: 'DECREASE',
+            reason: { in: this.LOSS_ADJUSTMENT_REASONS },
+          },
+          include: { product: { include: { currency: true } } },
+        }),
+        this.prisma.expense.findMany({
+          where: { date: dateFilter },
+          select: {
+            amount: true,
+            currencyCode: true,
+            exchangeRate: true,
+            date: true,
+          },
+        }),
+        this.prisma.purchase.findMany({
+          where: {
+            createdAt: dateFilter,
+            status: 'COMPLETED',
+            currencyCode: 'VES',
+          },
+          select: { total: true, createdAt: true },
+        }),
+      ]);
 
     // 2. Initialize processing variables
     const totalNominalVES = 0;
@@ -2096,6 +2106,9 @@ export class StatsService {
         inflationLoss: number;
         realProfit: number;
         closingRateUsed: number;
+        localRevenueNominal: number;
+        bsOutflow: number;
+        retainedFloatRatio: number;
       }
     > = {};
 
@@ -2122,6 +2135,9 @@ export class StatsService {
           inflationLoss: 0,
           realProfit: 0,
           closingRateUsed: getMonthRate(date),
+          localRevenueNominal: 0,
+          bsOutflow: 0,
+          retainedFloatRatio: 0,
         };
       }
       return monthlyHistory[monthKey];
@@ -2179,6 +2195,7 @@ export class StatsService {
               nominalAmountAtTime;
             m.inflationLoss += loss;
             totalInflationLoss += loss;
+            m.localRevenueNominal += nominalAmountAtTime;
 
             if (!methodBreakdown[method])
               methodBreakdown[method] = { nominal: 0, revalued: 0, loss: 0 };
@@ -2255,6 +2272,7 @@ export class StatsService {
           totalRevaluedVES -= revaluedVES;
           totalInflationLoss -= loss;
           m.inflationLoss -= loss;
+          m.localRevenueNominal -= nominalVES;
 
           if (methodBreakdown[method]) {
             methodBreakdown[method].nominal -= nominalVES;
@@ -2347,7 +2365,56 @@ export class StatsService {
           : Number(exp.amount) * eRate;
       const expHistoricalRate = eRate !== 1 ? eRate : closingRate;
       m.revaluedExpenses += (valInVES / expHistoricalRate) * closingRate;
+
+      // Bs that actually left the register/bank that month — no longer
+      // exposed to further devaluation.
+      if (exp.currencyCode === 'VES') {
+        m.bsOutflow += Number(exp.amount);
+      }
     });
+
+    // 6.1 Purchases paid in Bs also remove money from the float
+    bsPurchases.forEach((p) => {
+      const m = getMonthRecord(p.createdAt);
+      m.bsOutflow += Number(p.total);
+    });
+
+    // 6.2 Scale each month's theoretical inflation loss down to only the
+    // portion of Bs revenue that's still sitting unspent at month's end —
+    // money already paid out no longer depreciates for this calculation.
+    let totalInflationLossAdjusted = 0;
+    Object.values(monthlyHistory).forEach((m) => {
+      const netFloat = Math.max(0, m.localRevenueNominal - m.bsOutflow);
+      const retainedRatio =
+        m.localRevenueNominal > 0
+          ? Math.min(1, netFloat / m.localRevenueNominal)
+          : 0;
+      m.retainedFloatRatio = retainedRatio;
+      m.inflationLoss = m.inflationLoss * retainedRatio;
+      totalInflationLossAdjusted += m.inflationLoss;
+    });
+
+    const globalRetainedScale =
+      totalInflationLoss > 0
+        ? totalInflationLossAdjusted / totalInflationLoss
+        : 0;
+
+    Object.entries(dailyData).forEach(([date, data]) => {
+      const monthKey = dayjs(date).format('YYYY-MM');
+      const ratio =
+        monthlyHistory[monthKey]?.retainedFloatRatio ?? globalRetainedScale;
+      const adjustedLoss = data.loss * ratio;
+      data.revalued = data.nominal + adjustedLoss;
+      data.loss = adjustedLoss;
+    });
+
+    Object.values(methodBreakdown).forEach((data) => {
+      const adjustedLoss = data.loss * globalRetainedScale;
+      data.revalued = data.nominal + adjustedLoss;
+      data.loss = adjustedLoss;
+    });
+
+    totalInflationLoss = totalInflationLossAdjusted;
 
     // 7. Finalize
     const finalMonthlyHistory = Object.values(monthlyHistory)
@@ -2690,22 +2757,12 @@ export class StatsService {
     let totalExpenses = 0;
 
     expenses.forEach((e) => {
-      const val = Number(e.amount);
-      const eCurrency = allCurrencies.find((c) => c.code === e.currencyCode);
-      const isLocal = !eCurrency || eCurrency.isPrimary;
-
-      let expenseValueTarget = 0;
-      if (currencyCode === 'VES' && isLocal) {
-        // VES Expense -> Nominal value
-        expenseValueTarget = val;
-      } else {
-        // Foreign Expense or Target is Foreign -> Revalued
-        const currentCurrencyRate = eCurrency?.isPrimary
-          ? 1
-          : Number(eCurrency?.exchangeRate || 1);
-        expenseValueTarget =
-          ((val * currentCurrencyRate) / currentRefRate) * crossRateFactor;
-      }
+      const expenseValueTarget = this.valueExpenseInCurrency(
+        e,
+        currencyCode,
+        refCurrency?.code,
+        allCurrencies,
+      );
 
       totalExpenses += expenseValueTarget;
 
@@ -2921,6 +2978,69 @@ export class StatsService {
   }
 
   /**
+   * Values an expense in a target currency using the rate FROZEN on the
+   * expense at the moment it was recorded — never today's live rate and
+   * never a month-end "closing" substitute. An expense made when the rate
+   * was 640 must always convert as if the rate were 640, even if today's
+   * rate has since moved to 750.
+   *
+   * Conversion always goes through the preferred/reference currency first
+   * (that's the only leg with an exact historical rate on file). Only the
+   * second leg — preferred currency -> some OTHER target like EUR/USDT —
+   * has no historical cross-rate available, so that leg falls back to
+   * today's live cross-rate as a best-effort approximation. This mirrors
+   * revalueSaleByPayments so expenses and sales stay comparable in any
+   * currency, not just the preferred one.
+   */
+  private valueExpenseInCurrency(
+    exp: { amount: any; currencyCode: string; exchangeRate: any },
+    targetCurrencyCode: string,
+    preferredCurrencyCode: string | undefined,
+    allCurrencies: { code: string; exchangeRate: any }[],
+  ): number {
+    const amount = Number(exp.amount);
+    const rate = Number(exp.exchangeRate) || 1;
+
+    const valueInVES = exp.currencyCode === 'VES' ? amount : amount * rate;
+
+    if (targetCurrencyCode === 'VES') return valueInVES;
+    if (exp.currencyCode === targetCurrencyCode) return amount;
+
+    // Step 1: value in the preferred/reference currency, using the actual
+    // historical rate in effect that day (exact for VES expenses; a
+    // foreign-currency expense that isn't the preferred currency itself has
+    // no historical cross-rate on file, so that leg approximates with
+    // today's rate).
+    let valueInPreferred: number;
+    if (exp.currencyCode === 'VES') {
+      valueInPreferred = valueInVES / rate;
+    } else if (exp.currencyCode === preferredCurrencyCode) {
+      valueInPreferred = amount;
+    } else {
+      const preferredCurrent = allCurrencies.find(
+        (c) => c.code === preferredCurrencyCode,
+      );
+      const preferredRateNow = Number(preferredCurrent?.exchangeRate) || rate;
+      valueInPreferred = valueInVES / preferredRateNow;
+    }
+
+    if (targetCurrencyCode === preferredCurrencyCode) return valueInPreferred;
+
+    // Step 2: cross-convert from the preferred currency to the requested
+    // target using today's live cross-rate.
+    const preferredCurrent = allCurrencies.find(
+      (c) => c.code === preferredCurrencyCode,
+    );
+    const targetCurrent = allCurrencies.find(
+      (c) => c.code === targetCurrencyCode,
+    );
+    const preferredRateNow = Number(preferredCurrent?.exchangeRate) || 1;
+    const targetRateNow = Number(targetCurrent?.exchangeRate) || 1;
+    if (targetRateNow === 0) return valueInPreferred;
+    return (valueInPreferred * preferredRateNow) / targetRateNow;
+  }
+
+  /**
    * Helper to calculate closing rates for each month based on sales history.
    */
   private calculateMonthClosingRates(
@@ -2951,8 +3071,11 @@ export class StatsService {
 
   /**
    * Helper to revalue a sale based on its payment methods.
-   * Treats Divisas as value-preserved (converted at current rate)
-   * Treats Bolivares as nominal (converted at current rate for foreign reports)
+   * Bolívar portions are converted using THIS sale's own frozen exchangeRate
+   * (the rate in effect the day it happened), matching how expenses are
+   * valued — never the caller-supplied month/live rate.
+   * Divisa portions remain value-preserved (converted at current rate), since
+   * hard currency doesn't lose value to local inflation the way Bs does.
    */
   private revalueSaleByPayments(
     sale: any,
@@ -3023,16 +3146,19 @@ export class StatsService {
 
         if (isLikelyMisrepresented) {
           paymentVES = rawAmount;
-          paymentUSD = rawAmount / currentRefRate;
+          paymentUSD = rawAmount / saleRate;
         } else {
           // Correct logic: amount is divisa. revalue to USD today then to target.
           paymentUSD = (rawAmount * foreignRate) / currentRefRate;
           paymentVES = rawAmount * foreignRate;
         }
       } else {
-        // Local payment: Use nominal Bs directly (no revaluation)
+        // Local payment: Use nominal Bs directly, converted at THIS sale's
+        // own historical rate (frozen the day it happened) — never the
+        // caller-supplied month/live rate. Keeps this consistent with how
+        // expenses are valued (see valueExpenseInCurrency).
         paymentVES = rawAmount;
-        paymentUSD = rawAmount / currentRefRate;
+        paymentUSD = rawAmount / saleRate;
       }
 
       const amountInTarget = isTargetVES

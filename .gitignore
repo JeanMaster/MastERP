@@ -65,3 +65,9 @@ start-local.sh
 backend.pid
 # Local tasks
 futureTask.MD
+
+# Runtime PIDs
+*.pid
+
+# Claude Code session data
+.claude/
