@@ -62,6 +62,6 @@ frontend.local.log
 .zenith.pids
 .masterp.pids
 start-local.sh
-
+backend.pid
 # Local tasks
 futureTask.MD
