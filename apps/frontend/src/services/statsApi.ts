@@ -93,6 +93,8 @@ export interface InflationReport {
         totalRevaluedVES: number;
         totalLossVES: number;
         lossPercentage: number;
+        totalBsRevenue: number;
+        lossPercentageOverBsRevenue: number;
     };
     methodBreakdown: {
         method: string;

@@ -47,6 +47,8 @@ export class DailyCashBalanceService {
         hasEnoughData: false,
         daysCovered: snapshots.length,
         totalLoss: 0,
+        bsRevenueInWindow: 0,
+        lossPercentageOverBsRevenue: 0,
         transitions: [],
       };
     }
@@ -59,7 +61,12 @@ export class DailyCashBalanceService {
     const [sales, vesExpenses, companySettings] = await Promise.all([
       this.prisma.sale.findMany({
         where: { active: true, date: { gte: rangeStart, lte: rangeEnd } },
-        select: { date: true, exchangeRate: true },
+        select: {
+          date: true,
+          exchangeRate: true,
+          total: true,
+          paymentMethod: true,
+        },
         orderBy: { date: 'asc' },
       }),
       this.prisma.expense.findMany({
@@ -99,6 +106,39 @@ export class DailyCashBalanceService {
       return fallbackRate;
     };
 
+    // Bs revenue actually captured within the reported window (first to last
+    // snapshot), so the % can be compared apples-to-apples against the
+    // monthly-approximation percentage.
+    const windowStart = snapshots[0].date;
+    const windowEnd = snapshots[snapshots.length - 1].date;
+    let bsRevenueInWindow = 0;
+    sales
+      .filter((s) => s.date >= windowStart && s.date <= windowEnd)
+      .forEach((sale) => {
+        const total = Number(sale.total);
+        const parts = (sale.paymentMethod || 'CASH').split(', ');
+        parts.forEach((p) => {
+          const subparts = p.trim().split(':');
+          const method = subparts[0].trim().toUpperCase();
+          const rawAmount =
+            subparts.length > 1
+              ? parseFloat(subparts[1])
+              : parts.length > 1
+                ? total / parts.length
+                : total;
+          const isDivisa =
+            method === 'ZELLE' ||
+            method === 'USDT' ||
+            method === 'UDT' ||
+            method.includes('_UDT') ||
+            method.includes('_USD') ||
+            method.startsWith('CURRENCY_') ||
+            (method.startsWith('ACCOUNT_CREDIT_') &&
+              method !== 'ACCOUNT_CREDIT');
+          if (!isDivisa) bsRevenueInWindow += rawAmount;
+        });
+      });
+
     let totalLoss = 0;
     const transitions: {
       fromDate: string;
@@ -135,6 +175,9 @@ export class DailyCashBalanceService {
       hasEnoughData: true,
       daysCovered: snapshots.length,
       totalLoss,
+      bsRevenueInWindow,
+      lossPercentageOverBsRevenue:
+        bsRevenueInWindow > 0 ? (totalLoss / bsRevenueInWindow) * 100 : 0,
       transitions,
     };
   }

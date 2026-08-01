@@ -78,13 +78,26 @@ const DailyCashBalanceCapture: React.FC = () => {
                 </Col>
                 <Col xs={24} md={14}>
                     {impact?.hasEnoughData ? (
-                        <Statistic
-                            title={<Text type="secondary" style={{ fontSize: 11 }}>PÉRDIDA REAL MEDIDA (SALDOS CAPTURADOS, {impact.daysCovered} DÍAS)</Text>}
-                            value={impact.totalLoss}
-                            precision={2}
-                            prefix="Bs."
-                            styles={{ content: { color: '#cf1322', fontSize: 20, fontWeight: 800 } }}
-                        />
+                        <Row gutter={16}>
+                            <Col span={12}>
+                                <Statistic
+                                    title={<Text type="secondary" style={{ fontSize: 11 }}>PÉRDIDA REAL MEDIDA ({impact.daysCovered} DÍAS)</Text>}
+                                    value={impact.totalLoss}
+                                    precision={2}
+                                    prefix="Bs."
+                                    styles={{ content: { color: '#cf1322', fontSize: 20, fontWeight: 800 } }}
+                                />
+                            </Col>
+                            <Col span={12}>
+                                <Statistic
+                                    title={<Text type="secondary" style={{ fontSize: 11 }}>% SOBRE VENTAS EN BS DE ESOS DÍAS</Text>}
+                                    value={impact.lossPercentageOverBsRevenue}
+                                    precision={2}
+                                    suffix="%"
+                                    styles={{ content: { color: '#cf1322', fontSize: 20, fontWeight: 800 } }}
+                                />
+                            </Col>
+                        </Row>
                     ) : (
                         <Text type="secondary" style={{ fontSize: 12 }}>
                             <InfoCircleOutlined style={{ marginRight: 6 }} />
@@ -233,8 +246,14 @@ const InflationReport: React.FC = () => {
                 </Row>
             </div>
 
+            <Text strong style={{ display: 'block', marginBottom: 8, fontSize: 12, color: '#8c8c8c', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                Valor 2 · Medido con tus saldos reales capturados a diario
+            </Text>
             <DailyCashBalanceCapture />
 
+            <Text strong style={{ display: 'block', marginBottom: 8, fontSize: 12, color: '#8c8c8c', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                Valor 1 · Aproximación mensual (Ventas − Gastos registrados)
+            </Text>
             {/* Summary cards */}
             <Row gutter={[12, 12]} style={{ marginBottom: 24 }}>
                 <Col xs={12} lg={6}>
@@ -274,14 +293,17 @@ const InflationReport: React.FC = () => {
                     </Card>
                 </Col>
                 <Col xs={12} lg={6}>
-                    <Card variant="borderless" styles={{ body: { padding: 16 } }} style={{ borderRadius: 12, background: (report.summary.lossPercentage ?? 0) > 10 ? '#fff1f0' : '#fffbe6', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
+                    <Card variant="borderless" styles={{ body: { padding: 16 } }} style={{ borderRadius: 12, background: (report.summary.lossPercentageOverBsRevenue ?? 0) > 10 ? '#fff1f0' : '#fffbe6', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
                         <Statistic
-                            title={<Text type="secondary" style={{ fontSize: 11 }}>% IMPACTO</Text>}
-                            value={report.summary.lossPercentage}
+                            title={<Text type="secondary" style={{ fontSize: 11 }}>% IMPACTO SOBRE VENTAS EN BS (ESTIMADO)</Text>}
+                            value={report.summary.lossPercentageOverBsRevenue}
                             precision={2}
                             suffix="%"
-                            styles={{ content: { color: (report.summary.lossPercentage ?? 0) > 10 ? '#cf1322' : '#faad14', fontSize: isMobile ? 18 : 22, fontWeight: 800 } }}
+                            styles={{ content: { color: (report.summary.lossPercentageOverBsRevenue ?? 0) > 10 ? '#cf1322' : '#faad14', fontSize: isMobile ? 18 : 22, fontWeight: 800 } }}
                         />
+                        <Text type="secondary" style={{ fontSize: 10 }}>
+                            Aprox. mensual (Ventas − Gastos en Bs) · {(report.summary.lossPercentage ?? 0).toFixed(2)}% sobre ventas totales
+                        </Text>
                         <Text type="secondary" style={{ fontSize: 10 }}>Sobre el valor total</Text>
                     </Card>
                 </Col>

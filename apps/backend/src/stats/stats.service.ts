@@ -2438,6 +2438,16 @@ export class StatsService {
     const totalLossVES = totalInflationLoss;
     const summaryNominal = summaryRevaluedVES - totalLossVES;
 
+    // Loss as % of Bs revenue specifically (not total revenue across all
+    // currencies) — this is the "monthly approximation" figure: only the
+    // portion of Bs sales still unspent at month's end is exposed.
+    const totalBsRevenue = Object.values(monthlyHistory).reduce(
+      (sum, m) => sum + m.localRevenueNominal,
+      0,
+    );
+    const lossPercentageOverBsRevenue =
+      totalBsRevenue > 0 ? (totalLossVES / totalBsRevenue) * 100 : 0;
+
     return {
       summary: {
         totalNominalVES: summaryNominal,
@@ -2447,6 +2457,8 @@ export class StatsService {
           summaryRevaluedVES > 0
             ? (totalLossVES / summaryRevaluedVES) * 100
             : 0,
+        totalBsRevenue,
+        lossPercentageOverBsRevenue,
       },
       methodBreakdown: Object.entries(methodBreakdown).map(
         ([method, data]) => ({ method, ...data }),

@@ -28,6 +28,8 @@ export interface CashBalanceInflationImpact {
     hasEnoughData: boolean;
     daysCovered: number;
     totalLoss: number;
+    bsRevenueInWindow: number;
+    lossPercentageOverBsRevenue: number;
     transitions: CashBalanceTransition[];
 }
 
