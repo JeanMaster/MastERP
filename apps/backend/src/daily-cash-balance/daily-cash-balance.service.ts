@@ -3,6 +3,13 @@ import dayjs from 'dayjs';
 import { PrismaService } from '../prisma/prisma.service';
 import { UpsertDailyCashBalanceDto } from './dto/upsert-daily-cash-balance.dto';
 
+// Rounds to 2 decimals and clears floating-point noise (e.g. a
+// mathematically-zero loss coming back as 4.2e-13) so the frontend never
+// has to render scientific notation for what is effectively zero.
+function round2(value: number): number {
+  return Number((value || 0).toFixed(2));
+}
+
 @Injectable()
 export class DailyCashBalanceService {
   constructor(private prisma: PrismaService) {}
@@ -167,17 +174,18 @@ export class DailyCashBalanceService {
         balance,
         rateFrom,
         rateTo,
-        loss,
+        loss: round2(loss),
       });
     }
 
     return {
       hasEnoughData: true,
       daysCovered: snapshots.length,
-      totalLoss,
-      bsRevenueInWindow,
-      lossPercentageOverBsRevenue:
+      totalLoss: round2(totalLoss),
+      bsRevenueInWindow: round2(bsRevenueInWindow),
+      lossPercentageOverBsRevenue: round2(
         bsRevenueInWindow > 0 ? (totalLoss / bsRevenueInWindow) * 100 : 0,
+      ),
       transitions,
     };
   }

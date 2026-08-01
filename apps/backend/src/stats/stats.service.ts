@@ -2423,8 +2423,12 @@ export class StatsService {
           m.revaluedSales - m.revaluedCOGS - m.revaluedExpenses;
         return {
           ...m,
-          operatingProfit,
-          realProfit: operatingProfit - m.inflationLoss,
+          revaluedSales: this.round2(m.revaluedSales),
+          revaluedCOGS: this.round2(m.revaluedCOGS),
+          revaluedExpenses: this.round2(m.revaluedExpenses),
+          inflationLoss: this.round2(m.inflationLoss),
+          operatingProfit: this.round2(operatingProfit),
+          realProfit: this.round2(operatingProfit - m.inflationLoss),
         };
       })
       .sort((a, b) => b.month.localeCompare(a.month));
@@ -2450,24 +2454,32 @@ export class StatsService {
 
     return {
       summary: {
-        totalNominalVES: summaryNominal,
-        totalRevaluedVES: summaryRevaluedVES,
-        totalLossVES,
-        lossPercentage:
+        totalNominalVES: this.round2(summaryNominal),
+        totalRevaluedVES: this.round2(summaryRevaluedVES),
+        totalLossVES: this.round2(totalLossVES),
+        lossPercentage: this.round2(
           summaryRevaluedVES > 0
             ? (totalLossVES / summaryRevaluedVES) * 100
             : 0,
-        totalBsRevenue,
-        lossPercentageOverBsRevenue,
+        ),
+        totalBsRevenue: this.round2(totalBsRevenue),
+        lossPercentageOverBsRevenue: this.round2(lossPercentageOverBsRevenue),
       },
       methodBreakdown: Object.entries(methodBreakdown).map(
-        ([method, data]) => ({ method, ...data }),
+        ([method, data]) => ({
+          method,
+          nominal: this.round2(data.nominal),
+          revalued: this.round2(data.revalued),
+          loss: this.round2(data.loss),
+        }),
       ),
       dailyData: Object.entries(dailyData)
         .sort((a, b) => a[0].localeCompare(b[0]))
         .map(([date, data]) => ({
           date: dayjs(date).format('DD/MM'),
-          ...data,
+          nominal: this.round2(data.nominal),
+          revalued: this.round2(data.revalued),
+          loss: this.round2(data.loss),
         })),
       monthlyHistory: finalMonthlyHistory,
     };
@@ -3004,6 +3016,16 @@ export class StatsService {
    * revalueSaleByPayments so expenses and sales stay comparable in any
    * currency, not just the preferred one.
    */
+  /**
+   * Rounds to 2 decimals and clears floating-point noise (e.g. a loss that
+   * is mathematically zero coming back as 4.2e-13 after several
+   * divide/multiply steps) so the frontend never has to render scientific
+   * notation for what is effectively zero.
+   */
+  private round2(value: number): number {
+    return Number((value || 0).toFixed(2));
+  }
+
   private valueExpenseInCurrency(
     exp: { amount: any; currencyCode: string; exchangeRate: any },
     targetCurrencyCode: string,
