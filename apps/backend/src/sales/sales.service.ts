@@ -142,11 +142,10 @@ export class SalesService {
     }
 
     // 🛡️ SECURITY: Verify Total Consistency
-    // Calculate expected tax and total (this is simplified, should ideally match your tax logic)
-    const expectedTax = createSaleDto.tax; // We still use the tax sent but could recalculate if taxRate was known here
+    // Calculate expected total based on line items
+    // Note: unitPrice from frontend already includes tax, so calculatedSubtotal already contains tax
     const expectedTotal =
-      calculatedSubtotal +
-      Number(expectedTax) -
+      calculatedSubtotal -
       Number(createSaleDto.discount || 0) +
       Number(createSaleDto.igtfAmount || 0);
 
@@ -1095,8 +1094,9 @@ export class SalesService {
         const cartArray = sale.cart ? (sale.cart as any[]) : [];
         const transformedCart = await Promise.all(
           cartArray.map(async (item: any) => {
+            if (!item.product?.id) return item;
             const product = await this.prisma.product.findUnique({
-              where: { id: item.productId },
+              where: { id: item.product.id },
             });
             if (!product) return item;
             const p = product as any;
