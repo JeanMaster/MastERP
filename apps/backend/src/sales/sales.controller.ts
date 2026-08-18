@@ -156,9 +156,9 @@ export class SalesController {
     return this.salesService.markAsUncollectible(id);
   }
 
-/**
-     * Retrieves the next available invoice number.
-     */
+  /**
+   * Retrieves the next available invoice number.
+   */
   @Roles(Role.ADMIN, Role.MANAGER, Role.CASHIER, Role.SELLER)
   @Get('next-invoice-number')
   @ApiOperation({ summary: 'Retrieve the next invoice number' })
@@ -168,8 +168,8 @@ export class SalesController {
   }
 
   /**
-    * Reserves an invoice number for immediate use.
-    */
+   * Reserves an invoice number for immediate use.
+   */
   @Roles(Role.ADMIN, Role.MANAGER, Role.CASHIER, Role.SELLER)
   @Get('reserve-invoice-number')
   @ApiOperation({ summary: 'Reserve an invoice number for immediate use' })
@@ -179,8 +179,8 @@ export class SalesController {
   }
 
   /**
-     * Creates a parked sale for pre-sales (vendedor/pre-sale mode).
-     */
+   * Creates a parked sale for pre-sales (vendedor/pre-sale mode).
+   */
   @Roles(Role.ADMIN, Role.MANAGER, Role.CASHIER, Role.SELLER)
   @Post('parked')
   @ApiOperation({ summary: 'Park a sale for later processing' })
@@ -190,8 +190,8 @@ export class SalesController {
   }
 
   /**
-     * Retrieves parked sales, optionally filtered by register.
-     */
+   * Retrieves parked sales, optionally filtered by register.
+   */
   @Roles(Role.ADMIN, Role.MANAGER, Role.CASHIER, Role.SELLER)
   @Get('parked')
   @ApiOperation({ summary: 'Retrieve parked sales' })
@@ -201,8 +201,8 @@ export class SalesController {
   }
 
   /**
-     * Deletes a parked sale by ID.
-     */
+   * Deletes a parked sale by ID.
+   */
   @Roles(Role.ADMIN, Role.MANAGER, Role.CASHIER, Role.SELLER)
   @Delete('parked/:id')
   @ApiOperation({ summary: 'Delete a parked sale' })
@@ -212,8 +212,8 @@ export class SalesController {
   }
 
   /**
-    * Retrieves a single sale record by its ID.
-    */
+   * Retrieves a single sale record by its ID.
+   */
   @Get(':id')
   @ApiOperation({ summary: 'Retrieve a sale by ID' })
   @ApiResponse({ status: 200, description: 'Sale found' })

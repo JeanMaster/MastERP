@@ -957,183 +957,203 @@ export class SalesService {
     return paymentMethod.toUpperCase().includes('ACCOUNT_CREDIT');
   }
 
-/**
-     * Helper to extract detailed credit information (amount, currency, rate).
-     * @param paymentMethod The raw payment method string.
-     * @param totalAmount The total amount of the sale.
-     * @param saleRate The exchange rate used for the sale.
-     * @returns Detailed credit information.
-     */
-    private extractCreditInfo(
-        paymentMethod: string,
-        totalAmount: number,
-        saleRate: number = 1,
-    ): {
-        amount: number; // in Bs
-        currencyCode: string;
-        exchangeRate: number;
-        originalAmount?: number; // in foreign currency if applicable
-    } {
-        const methods = paymentMethod.split(', ');
+  /**
+   * Helper to extract detailed credit information (amount, currency, rate).
+   * @param paymentMethod The raw payment method string.
+   * @param totalAmount The total amount of the sale.
+   * @param saleRate The exchange rate used for the sale.
+   * @returns Detailed credit information.
+   */
+  private extractCreditInfo(
+    paymentMethod: string,
+    totalAmount: number,
+    saleRate: number = 1,
+  ): {
+    amount: number; // in Bs
+    currencyCode: string;
+    exchangeRate: number;
+    originalAmount?: number; // in foreign currency if applicable
+  } {
+    const methods = paymentMethod.split(', ');
 
-        for (const methodPart of methods) {
-            if (methodPart.toUpperCase().includes('ACCOUNT_CREDIT')) {
-                // Format: ACCOUNT_CREDIT_USD:10.5:45.5 (METHOD_CURRENCY:FOREIGN_AMOUNT:RATE)
-                // Or simple: ACCOUNT_CREDIT:500 (METHOD:BS_AMOUNT)
-                const mainParts = methodPart.split(':');
-                const methodKey = mainParts[0];
-                const isForeign = methodKey.includes('_');
-                const amount = mainParts[1] ? parseFloat(mainParts[1]) : totalAmount;
+    for (const methodPart of methods) {
+      if (methodPart.toUpperCase().includes('ACCOUNT_CREDIT')) {
+        // Format: ACCOUNT_CREDIT_USD:10.5:45.5 (METHOD_CURRENCY:FOREIGN_AMOUNT:RATE)
+        // Or simple: ACCOUNT_CREDIT:500 (METHOD:BS_AMOUNT)
+        const mainParts = methodPart.split(':');
+        const methodKey = mainParts[0];
+        const isForeign = methodKey.includes('_');
+        const amount = mainParts[1] ? parseFloat(mainParts[1]) : totalAmount;
 
-                const defaultRate = isForeign ? (saleRate > 1 ? saleRate : 1) : 1;
-                const rate = mainParts[2] ? parseFloat(mainParts[2]) : defaultRate;
+        const defaultRate = isForeign ? (saleRate > 1 ? saleRate : 1) : 1;
+        const rate = mainParts[2] ? parseFloat(mainParts[2]) : defaultRate;
 
-                const currencyCode = isForeign ? methodKey.split('_')[2] : 'VES';
+        const currencyCode = isForeign ? methodKey.split('_')[2] : 'VES';
 
-                return {
-                    amount: currencyCode === 'VES' ? amount : amount * rate,
-                    currencyCode,
-                    exchangeRate: rate,
-                    originalAmount: currencyCode === 'VES' ? undefined : amount,
-                };
-            }
-        }
-
-        return { amount: totalAmount, currencyCode: 'VES', exchangeRate: 1 };
+        return {
+          amount: currencyCode === 'VES' ? amount : amount * rate,
+          currencyCode,
+          exchangeRate: rate,
+          originalAmount: currencyCode === 'VES' ? undefined : amount,
+        };
+      }
     }
 
-    /**
-     * Creates a parked sale record for pre-sales.
-     * @param data The parked sale data.
-     * @param user The authenticated user.
-     * @returns The created parked sale.
-     */
-    async parkSale(data: {
-        registerId: string;
-        cart: any[];
-        activeCustomer: string;
-        customerId?: string;
-        appliedCoupon?: any;
-        note?: string;
-        totals: { total: number; itemsCount: number };
-    }, user: any) {
-        // Validate that the register exists
+    return { amount: totalAmount, currencyCode: 'VES', exchangeRate: 1 };
+  }
+
+  /**
+   * Creates a parked sale record for pre-sales.
+   * @param data The parked sale data.
+   * @param user The authenticated user.
+   * @returns The created parked sale.
+   */
+  async parkSale(
+    data: {
+      registerId: string;
+      cart: any[];
+      activeCustomer: string;
+      customerId?: string;
+      appliedCoupon?: any;
+      note?: string;
+      totals: { total: number; itemsCount: number };
+    },
+    user: any,
+  ) {
+    // Validate that the register exists
+    const register = await this.prisma.cashRegister.findUnique({
+      where: { id: data.registerId },
+    });
+    if (!register) {
+      throw new BadRequestException('Cash register not found');
+    }
+
+    // Aggregate quantities by productId for stock validation
+    const quantityByProduct: Record<string, number> = {};
+    for (const item of data.cart) {
+      quantityByProduct[item.productId] =
+        (quantityByProduct[item.productId] || 0) + item.quantity;
+    }
+
+    // Validate stock for each product in cart
+    for (const [productId, totalQuantity] of Object.entries(
+      quantityByProduct,
+    )) {
+      const product = await this.prisma.product.findUnique({
+        where: { id: productId },
+      });
+      if (!product) {
+        throw new BadRequestException(`Product with ID ${productId} not found`);
+      }
+      if (Number(product.stock) < totalQuantity) {
+        throw new BadRequestException(
+          `Insufficient stock for ${product.name}. Available: ${product.stock}, Required: ${totalQuantity}`,
+        );
+      }
+    }
+
+    return this.prisma.parkedSale.create({
+      data: {
+        registerId: data.registerId,
+        cart: data.cart,
+        activeCustomer: data.activeCustomer,
+        customerId: data.customerId,
+        appliedCoupon: data.appliedCoupon || null,
+        note: data.note || null,
+        totals: data.totals,
+      },
+    });
+  }
+
+  /**
+   * Retrieves parked sales, optionally filtered by register.
+   * @param registerId Optional register ID to filter sales.
+   * @returns List of parked sales.
+   */
+  async getParkedSales(registerId?: string) {
+    if (registerId) {
+      try {
         const register = await this.prisma.cashRegister.findUnique({
-            where: { id: data.registerId }
+          where: { id: registerId },
         });
         if (!register) {
-            throw new BadRequestException('Cash register not found');
+          return [];
         }
+      } catch (e) {
+        console.error('Invalid registerId format:', registerId, e);
+        return [];
+      }
+    }
+    const parkedSales = await this.prisma.parkedSale.findMany({
+      where: registerId ? { registerId } : undefined,
+      orderBy: { parkedAt: 'desc' },
+    });
 
-        // Aggregate quantities by productId for stock validation
-        const quantityByProduct: Record<string, number> = {};
-        for (const item of data.cart) {
-            quantityByProduct[item.productId] = (quantityByProduct[item.productId] || 0) + item.quantity;
-        }
-
-        // Validate stock for each product in cart
-        for (const [productId, totalQuantity] of Object.entries(quantityByProduct)) {
+    // Transform cart to include product information for frontend compatibility
+    const transformedSales = await Promise.all(
+      parkedSales.map(async (sale) => {
+        const cartArray = sale.cart ? (sale.cart as any[]) : [];
+        const transformedCart = await Promise.all(
+          cartArray.map(async (item: any) => {
             const product = await this.prisma.product.findUnique({
-                where: { id: productId }
+              where: { id: item.productId },
             });
-            if (!product) {
-                throw new BadRequestException(`Product with ID ${productId} not found`);
-            }
-            if (Number(product.stock) < totalQuantity) {
-                throw new BadRequestException(
-                    `Insufficient stock for ${product.name}. Available: ${product.stock}, Required: ${totalQuantity}`
-                );
-            }
-        }
+            if (!product) return item;
+            const p = product as any;
+            return {
+              ...item,
+              product: {
+                id: p.id,
+                sku: p.sku,
+                name: p.name,
+                description: p.description,
+                categoryId: p.categoryId,
+                currencyId: p.currencyId,
+                costPrice: p.costPrice ? Number(p.costPrice) : undefined,
+                salePrice: Number(p.salePrice),
+                offerPrice: p.offerPrice ? Number(p.offerPrice) : undefined,
+                wholesalePrice: p.wholesalePrice
+                  ? Number(p.wholesalePrice)
+                  : undefined,
+                stock: Number(p.stock),
+                unitId: p.unitId,
+                secondaryUnitId: p.secondaryUnitId,
+                unitsPerSecondaryUnit: p.unitsPerSecondaryUnit,
+                conversionDirection: p.conversionDirection,
+                secondaryCostPrice: p.secondaryCostPrice
+                  ? Number(p.secondaryCostPrice)
+                  : undefined,
+                secondarySalePrice: p.secondarySalePrice
+                  ? Number(p.secondarySalePrice)
+                  : undefined,
+                secondaryOfferPrice: p.secondaryOfferPrice
+                  ? Number(p.secondaryOfferPrice)
+                  : undefined,
+                secondaryWholesalePrice: p.secondaryWholesalePrice
+                  ? Number(p.secondaryWholesalePrice)
+                  : undefined,
+                images: p.images,
+                isTaxExempt: p.isTaxExempt,
+                active: p.active,
+                type: p.type,
+              },
+            };
+          }),
+        );
+        return { ...sale, cart: transformedCart };
+      }),
+    );
 
-        return this.prisma.parkedSale.create({
-            data: {
-                registerId: data.registerId,
-                cart: data.cart,
-                activeCustomer: data.activeCustomer,
-                customerId: data.customerId,
-                appliedCoupon: data.appliedCoupon || null,
-                note: data.note || null,
-                totals: data.totals,
-            },
-        });
-    }
+    return transformedSales;
+  }
 
-    /**
-     * Retrieves parked sales, optionally filtered by register.
-     * @param registerId Optional register ID to filter sales.
-     * @returns List of parked sales.
-     */
-    async getParkedSales(registerId?: string) {
-        if (registerId) {
-            try {
-                const register = await this.prisma.cashRegister.findUnique({
-                    where: { id: registerId },
-                });
-                if (!register) {
-                    return [];
-                }
-            } catch (e) {
-                console.error('Invalid registerId format:', registerId, e);
-                return [];
-            }
-        }
-        const parkedSales = await this.prisma.parkedSale.findMany({
-            where: registerId ? { registerId } : undefined,
-            orderBy: { parkedAt: 'desc' },
-        });
-
-        // Transform cart to include product information for frontend compatibility
-        const transformedSales = await Promise.all(parkedSales.map(async (sale) => {
-            const cartArray = sale.cart ? (sale.cart as any[]) : [];
-            const transformedCart = await Promise.all(cartArray.map(async (item: any) => {
-                const product = await this.prisma.product.findUnique({
-                    where: { id: item.productId },
-                });
-                if (!product) return item;
-                const p = product as any;
-                return {
-                    ...item,
-                    product: {
-                        id: p.id,
-                        sku: p.sku,
-                        name: p.name,
-                        description: p.description,
-                        categoryId: p.categoryId,
-                        currencyId: p.currencyId,
-                        costPrice: p.costPrice ? Number(p.costPrice) : undefined,
-                        salePrice: Number(p.salePrice),
-                        offerPrice: p.offerPrice ? Number(p.offerPrice) : undefined,
-                        wholesalePrice: p.wholesalePrice ? Number(p.wholesalePrice) : undefined,
-                        stock: Number(p.stock),
-                        unitId: p.unitId,
-                        secondaryUnitId: p.secondaryUnitId,
-                        unitsPerSecondaryUnit: p.unitsPerSecondaryUnit,
-                        conversionDirection: p.conversionDirection,
-                        secondaryCostPrice: p.secondaryCostPrice ? Number(p.secondaryCostPrice) : undefined,
-                        secondarySalePrice: p.secondarySalePrice ? Number(p.secondarySalePrice) : undefined,
-                        secondaryOfferPrice: p.secondaryOfferPrice ? Number(p.secondaryOfferPrice) : undefined,
-                        secondaryWholesalePrice: p.secondaryWholesalePrice ? Number(p.secondaryWholesalePrice) : undefined,
-                        images: p.images,
-                        isTaxExempt: p.isTaxExempt,
-                        active: p.active,
-                        type: p.type,
-                    },
-                };
-            }));
-            return { ...sale, cart: transformedCart };
-        }));
-
-        return transformedSales;
-    }
-
-    /**
-     * Deletes a parked sale by ID.
-     * @param id The ID of the parked sale to delete.
-     */
-    async deleteParkedSale(id: string) {
-        return this.prisma.parkedSale.delete({
-            where: { id },
-        });
-    }
+  /**
+   * Deletes a parked sale by ID.
+   * @param id The ID of the parked sale to delete.
+   */
+  async deleteParkedSale(id: string) {
+    return this.prisma.parkedSale.delete({
+      where: { id },
+    });
+  }
 }

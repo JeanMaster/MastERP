@@ -25,15 +25,15 @@ export class ImageCompressionService {
       if (mimeType === 'image/png') outputFormat = 'png';
       if (mimeType === 'image/webp') outputFormat = 'webp';
 
-const quality = outputFormat === 'png' ? 6 : 40;
+      const quality = outputFormat === 'png' ? 6 : 40;
 
-       const compressedBuffer = await sharp(buffer)
-         .resize({
-           width: 500,
-           height: 500,
-           fit: 'inside',
-           withoutEnlargement: true,
-         })
+      const compressedBuffer = await sharp(buffer)
+        .resize({
+          width: 500,
+          height: 500,
+          fit: 'inside',
+          withoutEnlargement: true,
+        })
         .toFormat(outputFormat, { quality })
         .toBuffer();
 

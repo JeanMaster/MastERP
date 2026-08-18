@@ -14,7 +14,7 @@ import {
 export class InventoryAdjustmentsService {
   constructor(private prisma: PrismaService) {}
 
-/**
+  /**
    * Creates a new inventory adjustment.
    * Updates the product's stock and records the adjustment in a transaction.
    * @param createAdjustmentDto The data for the inventory adjustment.
@@ -22,7 +22,7 @@ export class InventoryAdjustmentsService {
    * @returns The created inventory adjustment record.
    */
   async create(createAdjustmentDto: CreateAdjustmentDto, user: any) {
-// 1. Get current product with currency for proper conversion
+    // 1. Get current product with currency for proper conversion
     const product = await this.prisma.product.findUnique({
       where: { id: createAdjustmentDto.productId },
       include: { currency: true },
@@ -105,8 +105,7 @@ export class InventoryAdjustmentsService {
           // Convert cost to primary currency
           const costInPrimary = productCostValue * productRate;
 
-          const impact =
-            Number(createAdjustmentDto.quantity) * costInPrimary;
+          const impact = Number(createAdjustmentDto.quantity) * costInPrimary;
 
           // Use primary currency code for expense (amount already in primary)
           const expenseCurrencyCode = primaryCurrency?.code || 'VES';
