@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Card, Spin, Empty, Row, Col, Statistic, Switch, Typography, Grid } from 'antd';
+import { Card, Spin, Empty, Row, Col, Statistic, Switch, Typography, Grid, Select } from 'antd';
 import {
     ClockCircleOutlined,
     RiseOutlined,
@@ -27,20 +27,34 @@ export const HourlyPerformanceReport = ({ currency, startDate, endDate }: Hourly
     const [use12Hour, setUse12Hour] = useState(() => {
         return localStorage.getItem('reports_use_12hour') === 'true';
     });
+    const [selectedDays, setSelectedDays] = useState<number[]>(() => {
+        const saved = localStorage.getItem('reports_selected_days');
+        return saved ? saved.split(',').map(Number).filter((n) => !Number.isNaN(n)) : [];
+    });
 
     useEffect(() => {
         fetchData();
         localStorage.setItem('reports_include_sundays', includeSundays.toString());
-    }, [currency, startDate, endDate, includeSundays]);
+    }, [currency, startDate, endDate, includeSundays, selectedDays]);
 
     useEffect(() => {
         localStorage.setItem('reports_use_12hour', use12Hour.toString());
     }, [use12Hour]);
 
+    useEffect(() => {
+        localStorage.setItem('reports_selected_days', selectedDays.join(','));
+    }, [selectedDays]);
+
     const fetchData = async () => {
         setLoading(true);
         try {
-            const response = await statsApi.getHourlyPerformance(currency, includeSundays, startDate, endDate);
+            const response = await statsApi.getHourlyPerformance(
+                currency,
+                includeSundays,
+                startDate,
+                endDate,
+                selectedDays,
+            );
             setData(response);
         } catch (error) {
             console.error('Error fetching hourly performance:', error);
@@ -48,6 +62,16 @@ export const HourlyPerformanceReport = ({ currency, startDate, endDate }: Hourly
             setLoading(false);
         }
     };
+
+    const DAY_OPTIONS = [
+        { value: 1, label: 'Lun' },
+        { value: 2, label: 'Mar' },
+        { value: 3, label: 'Mié' },
+        { value: 4, label: 'Jue' },
+        { value: 5, label: 'Vie' },
+        { value: 6, label: 'Sáb' },
+        { value: 0, label: 'Dom' },
+    ];
 
     const formatHour = (hour: number): string => {
         if (!use12Hour) return `${hour}:00`;
@@ -71,7 +95,7 @@ export const HourlyPerformanceReport = ({ currency, startDate, endDate }: Hourly
         );
     }
 
-    if (!data || data.data.length === 0) {
+    if (!data || data.data.length === 0 || (data.stats.totalSalesSum || 0) === 0) {
         return <Empty description="No hay datos de ventas para este período" />;
     }
 
@@ -101,6 +125,20 @@ export const HourlyPerformanceReport = ({ currency, startDate, endDate }: Hourly
                                     checkedChildren="12h"
                                     unCheckedChildren="24h"
                                     size="small"
+                                />
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <Text strong style={{ fontSize: 12 }}>Días:</Text>
+                                <Select
+                                    mode="multiple"
+                                    allowClear
+                                    maxTagCount="responsive"
+                                    placeholder="Todos"
+                                    value={selectedDays}
+                                    onChange={(vals: number[]) => setSelectedDays(vals)}
+                                    options={DAY_OPTIONS}
+                                    size="small"
+                                    style={{ minWidth: 160 }}
                                 />
                             </div>
                         </div>
@@ -187,9 +225,14 @@ export const HourlyPerformanceReport = ({ currency, startDate, endDate }: Hourly
                     </ResponsiveContainer>
                 </div>
                 <div style={{ marginTop: 16, fontSize: 11, color: '#8c8c8c', textAlign: 'center' }}>
-                    {includeSundays
-                        ? "* Reporte incluye todos los días de la semana."
-                        : "* Reporte excluye los domingos para una media más precisa."}
+                    {selectedDays.length > 0
+                        ? `* Reporte filtrado a: ${selectedDays
+                              .sort((a, b) => a - b)
+                              .map((d) => DAY_OPTIONS.find((o) => o.value === d)?.label)
+                              .join(', ')}.`
+                        : includeSundays
+                          ? "* Reporte global de todo el historial (incluye domingos)."
+                          : "* Reporte global de todo el historial (excluye domingos)."}
                 </div>
             </Card>
         </div>

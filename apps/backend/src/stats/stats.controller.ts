@@ -164,17 +164,26 @@ export class StatsController {
   @ApiQuery({ name: 'startDate', required: false })
   @ApiQuery({ name: 'endDate', required: false })
   @ApiQuery({ name: 'includeSundays', required: false, type: Boolean })
+  @ApiQuery({ name: 'daysOfWeek', required: false, description: 'Comma-separated weekdays (0=Sun..6=Sat) to filter' })
   getHourlyPerformance(
     @Query('currency') currency: string = 'VES',
     @Query('startDate') startDate?: string,
     @Query('endDate') endDate?: string,
     @Query('includeSundays') includeSundays: any = 'false',
+    @Query('daysOfWeek') daysOfWeekParam?: string,
   ) {
+    const daysOfWeek = daysOfWeekParam
+      ? daysOfWeekParam
+          .split(',')
+          .map((d) => Number(d.trim()))
+          .filter((d) => !Number.isNaN(d) && d >= 0 && d <= 6)
+      : undefined;
     return this.statsService.getHourlyPerformance(
       currency,
       startDate,
       endDate,
       includeSundays === 'true',
+      daysOfWeek,
     );
   }
 

@@ -322,9 +322,15 @@ export const statsApi = {
     /**
      * Fetches sales performance by hour of the day.
      */
-    getHourlyPerformance: async (currency: string, includeSundays: boolean, startDate?: string, endDate?: string): Promise<HourlyPerformanceResponse> => {
+    getHourlyPerformance: async (currency: string, includeSundays: boolean, startDate?: string, endDate?: string, daysOfWeek?: number[]): Promise<HourlyPerformanceResponse> => {
         const response = await api.get('/stats/hourly-performance', {
-            params: { currency, includeSundays, startDate, endDate }
+            params: {
+                currency,
+                includeSundays,
+                startDate,
+                endDate,
+                daysOfWeek: daysOfWeek && daysOfWeek.length > 0 ? daysOfWeek.join(',') : undefined,
+            }
         });
         return response.data;
     },

@@ -2886,6 +2886,7 @@ export class StatsService {
    * @param startDate Optional start date.
    * @param endDate Optional end date.
    * @param includeSundays Whether to include Sundays in the analysis.
+   * @param daysOfWeek Optional list of weekdays (0=Sun..6=Sat) to restrict the analysis to.
    * @returns Hourly performance statistics.
    */
   async getHourlyPerformance(
@@ -2893,14 +2894,16 @@ export class StatsService {
     startDate?: string,
     endDate?: string,
     includeSundays: boolean = false,
+    daysOfWeek?: number[],
   ) {
     const dateFilter: any = {};
     if (startDate || endDate) {
       if (startDate) dateFilter.gte = dayjs(startDate).startOf('day').toDate();
       if (endDate) dateFilter.lte = dayjs(endDate).endOf('day').toDate();
-    } else {
-      dateFilter.gte = dayjs().startOf('month').toDate();
     }
+    // Sin rango explícito: se usa TODO el historial de ventas registradas
+    // (vista global y filtro por día de la semana), respetando el toggle de
+    // domingos en la vista global.
 
     const allCurrencies = await this.prisma.currency.findMany({
       where: { active: true },
@@ -2958,7 +2961,11 @@ export class StatsService {
       const saleDate = dayjs(sale.date);
       const dayOfWeek = saleDate.day(); // 0 = Sunday
 
-      if (!includeSundays && dayOfWeek === 0) return;
+      if (daysOfWeek && daysOfWeek.length > 0) {
+        if (!daysOfWeek.includes(dayOfWeek)) return;
+      } else if (!includeSundays && dayOfWeek === 0) {
+        return;
+      }
 
       const hour = saleDate.hour();
       const closingRate = getMonthRate(sale.date);
